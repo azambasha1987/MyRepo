@@ -872,10 +872,31 @@ if [ -x /opt/unetlab/wrappers/unl_wrapper ]; then
     /opt/unetlab/wrappers/unl_wrapper -a fixpermissions || true
 fi
 
-# Ensure /opt/unetlab is world-traversable so www-data can reach /opt/unetlab/html
+# Ensure /opt/unetlab is world-traversable so www-data can reach /opt/unetlab/html.
 # The pnetlab deb sets /opt/unetlab to 700 (root-only) which causes Apache 403.
 chmod 755 /opt/unetlab 2>/dev/null || true
 chown -R www-data:www-data /opt/unetlab/html 2>/dev/null || true
+
+# Install a boot-time oneshot service to keep /opt/unetlab at 755 permanently.
+# Without this, unl_wrapper or postinst scripts can reset it to 700 after reboot.
+cat > /etc/systemd/system/fix-unetlab-perms.service << 'SVCEOF'
+[Unit]
+Description=Fix /opt/unetlab permissions for Apache www-data access
+Before=apache2.service
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/chmod 755 /opt/unetlab
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+SVCEOF
+systemctl daemon-reload 2>/dev/null || true
+systemctl enable fix-unetlab-perms.service 2>/dev/null || true
+systemctl start fix-unetlab-perms.service 2>/dev/null || true
+
 
 # Enable IPv4 Forwarding
 sysctl -w net.ipv4.ip_forward=1 >/dev/null

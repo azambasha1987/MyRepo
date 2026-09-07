@@ -1,0 +1,6 @@
+package	version	filename	arch	size
+pnetlab-docker	6.8.74resolute1	pnetlab-docker_6.8.74resolute1_amd64.deb	amd64	3610
+pnetlab-qemu	6.8.74resolute1	pnetlab-qemu_6.8.74resolute1_amd64.deb	amd64	1275140
+pnetlab-satellite	6.8.74resolute1	pnetlab-satellite_6.8.74resolute1_amd64.deb	amd64	82342146
+pnetlab-vpcs	6.8.74resolute1	pnetlab-vpcs_6.8.74resolute1_amd64.deb	amd64	86668
+pnetlab-bridge-dkms	6.8.74resolute1	pnetlab-bridge-dkms_6.8.74resolute1_all.deb	all	142376

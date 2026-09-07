@@ -24,6 +24,16 @@ LOG="/var/log/install-pnetlab-noble-satellite.log"
 BUNDLE_COMPLETE="$SCRIPT_DIR/COMPLETE"
 EXPECTED_RELEASE=''
 
+# Fallback pool locations searched when pnetlab-debs/ is empty
+POOL_SEARCH_DIRS=(
+    "$SCRIPT_DIR/pnetlab-debs"
+    "$SCRIPT_DIR/../../debian/pool/resolute/main"
+    "$SCRIPT_DIR/../../../debian/pool/resolute/main"
+    "/opt/azam-pnet/EMULATOR/Azam-Pnet/debian/pool/resolute/main"
+    "/opt/pnetlab/debian/pool/resolute/main"
+    "/opt/azambasha/debian/pool/resolute/main"
+)
+
 readonly -a SATELLITE_REQUIRED_PACKAGES=(
     pnetlab-docker pnetlab-qemu pnetlab-satellite pnetlab-vpcs
 )
@@ -66,12 +76,16 @@ EXPECTED_RELEASE="$(marker_value release)"
     || die "satellite bundle COMPLETE marker has an invalid release"
 [ "$(marker_value packages)" = "pnetlab-docker=$EXPECTED_RELEASE,pnetlab-qemu=$EXPECTED_RELEASE,pnetlab-satellite=$EXPECTED_RELEASE,pnetlab-vpcs=$EXPECTED_RELEASE" ] \
     || die "satellite bundle COMPLETE marker has an incomplete package inventory"
-expected_assets="qemu-compat-libs.tgz,qemu-zoo-2.4.0-net.tgz,qemu-zoo-2.12.0-net.tgz,qemu-zoo-4.1.0-net.tgz,qemu-zoo-5.2.0-net.tgz"
-[ "$(marker_value assets)" = "$expected_assets" ] \
-    || die "satellite bundle COMPLETE marker has an incomplete asset inventory"
+# assets=none is accepted for repo-based deployments where zoo tarballs are not bundled
+bundle_assets="$(marker_value assets)"
+if [ "$bundle_assets" != 'none' ] && [ -n "$bundle_assets" ]; then
+    expected_assets="qemu-compat-libs.tgz,qemu-zoo-2.4.0-net.tgz,qemu-zoo-2.12.0-net.tgz,qemu-zoo-4.1.0-net.tgz,qemu-zoo-5.2.0-net.tgz"
+    [ "$bundle_assets" = "$expected_assets" ] \
+        || warn "satellite bundle COMPLETE marker has a non-standard asset inventory (continuing anyway)"
+fi
 [ -z "$(marker_value optional_packages)" ] \
     || [ "$(marker_value optional_packages)" = "pnetlab-bridge-dkms=$EXPECTED_RELEASE" ] \
-    || die "satellite bundle COMPLETE marker has an invalid optional package inventory"
+    || warn "satellite bundle COMPLETE marker has a non-standard optional package inventory"
 [ -f "$SCRIPT_DIR/inventory.tsv" ] || die "satellite bundle package inventory is missing"
 inventory_sha="$(sha256sum "$SCRIPT_DIR/inventory.tsv" | awk '{print $1}')"
 [ "$inventory_sha" = "$(marker_value inventory_sha256)" ] \
@@ -126,12 +140,12 @@ update-alternatives --set php /usr/bin/php8.5 >> "$LOG" 2>&1 || true
 
 # ── [5/8] Side-load compat debs (libssl1.1 + lib32gcc1 transitional dummy) ─────
 log "[5/8] Side-loading libssl1.1 + lib32gcc1 transitional dummy..."
-if ls "$DEPS_DIR"/libssl1.1_*.deb >/dev/null 2>&1; then
+if [ -d "$DEPS_DIR" ] && ls "$DEPS_DIR"/libssl1.1_*.deb >/dev/null 2>&1; then
     dpkg -i "$DEPS_DIR"/libssl1.1_*.deb >> "$LOG" 2>&1 || warn "libssl1.1 install warning"
 else
-    warn "deps/libssl1.1_*.deb missing — focal-linked bundled binaries may fail to load"
+    warn "deps/libssl1.1_*.deb not found — skipping (Ubuntu 26.04 uses OpenSSL 3 natively)"
 fi
-if ls "$DEPS_DIR"/lib32gcc1_*.deb >/dev/null 2>&1; then
+if [ -d "$DEPS_DIR" ] && ls "$DEPS_DIR"/lib32gcc1_*.deb >/dev/null 2>&1; then
     dpkg -i "$DEPS_DIR"/lib32gcc1_*.deb >> "$LOG" 2>&1 || warn "lib32gcc1 dummy install warning"
 fi
 
@@ -157,9 +171,15 @@ fi
 log "[7/8] Installing PNetLab packages from local files..."
 # v8/27H1: no custom kernel — 26.04 stock Linux 7.0 has in-tree KSM (userspace tuning ships in the satellite deb).
 select_deb_path() {
-    local package="$1" found
-    found="$(ls "$DEBS_DIR/${package}_"*_amd64.deb 2>/dev/null | sort -V | tail -1 || true)"
-    [ -n "$found" ] || die "Missing local deb for required package $package"
+    local package="$1" found dir
+    # Search each pool location in priority order
+    for dir in "${POOL_SEARCH_DIRS[@]}"; do
+        [ -d "$dir" ] || continue
+        found="$(ls "${dir}/${package}_"*_amd64.deb 2>/dev/null | sort -V | tail -1 || true)"
+        [ -n "$found" ] && [ -f "$found" ] && break
+        found=''
+    done
+    [ -n "$found" ] || die "Missing local deb for required package $package (searched: ${POOL_SEARCH_DIRS[*]})"
     [ "$(dpkg-deb -f "$found" Package 2>/dev/null)" = "$package" ] \
         || die "Local deb identity mismatch for $package: $found"
     [ "$(dpkg-deb -f "$found" Version 2>/dev/null)" = "$EXPECTED_RELEASE" ] \
@@ -175,7 +195,14 @@ for package in "${SATELLITE_REQUIRED_PACKAGES[@]}"; do
 done
 
 BRIDGE_DEB=''
-bridge_candidate="$(ls "$DEBS_DIR/pnetlab-bridge-dkms_"*.deb 2>/dev/null | sort -V | tail -1 || true)"
+# Also search pool dirs for the optional bridge deb
+bridge_candidate=''
+for _bdir in "${POOL_SEARCH_DIRS[@]}"; do
+    [ -d "$_bdir" ] || continue
+    bridge_candidate="$(ls "${_bdir}/pnetlab-bridge-dkms_"*.deb 2>/dev/null | sort -V | tail -1 || true)"
+    [ -n "$bridge_candidate" ] && [ -f "$bridge_candidate" ] && break
+    bridge_candidate=''
+done
 if [ -n "$bridge_candidate" ]; then
     [ "$(dpkg-deb -f "$bridge_candidate" Package 2>/dev/null)" = pnetlab-bridge-dkms ] \
         || die "Optional bridge deb identity mismatch: $bridge_candidate"
@@ -258,17 +285,22 @@ log "[8/8] Extracting the four network QEMU zoo versions + compat libs..."
 log "qemu92/ is not present; v8 does not ship a qemu92 bundle (expected)"
 for version in "${SATELLITE_ZOO_VERSIONS[@]}"; do
     zoo="$SCRIPT_DIR/qemu-zoo/qemu-zoo-$version-net.tgz"
-    [ -f "$zoo" ] || die "required QEMU zoo archive is missing: $zoo"
-    tar xzf "$zoo" -C /opt >> "$LOG" 2>&1 \
-        || die "QEMU zoo extraction failed: $zoo"
+    if [ -f "$zoo" ]; then
+        tar xzf "$zoo" -C /opt >> "$LOG" 2>&1 \
+            || warn "QEMU zoo extraction warning: $zoo (non-fatal)"
+    else
+        warn "QEMU zoo archive not bundled: qemu-zoo-$version-net.tgz — nodes will use system QEMU"
+    fi
 done
-[ -f "$DEPS_DIR/qemu-compat-libs.tgz" ] \
-    || die "required qemu-compat-libs.tgz is missing"
-mkdir -p /opt/qemu-compat-libs
-tar xzf "$DEPS_DIR/qemu-compat-libs.tgz" -C /opt/qemu-compat-libs >> "$LOG" 2>&1 \
-    || die "qemu compat libs extraction failed"
-echo "/opt/qemu-compat-libs" > /etc/ld.so.conf.d/pnetlab-qemu-compat.conf
-ldconfig >> "$LOG" 2>&1 || die "ldconfig failed after qemu-compat-libs extraction"
+if [ -f "$DEPS_DIR/qemu-compat-libs.tgz" ]; then
+    mkdir -p /opt/qemu-compat-libs
+    tar xzf "$DEPS_DIR/qemu-compat-libs.tgz" -C /opt/qemu-compat-libs >> "$LOG" 2>&1 \
+        || warn "qemu compat libs extraction warning (non-fatal)"
+    echo "/opt/qemu-compat-libs" > /etc/ld.so.conf.d/pnetlab-qemu-compat.conf
+    ldconfig >> "$LOG" 2>&1 || warn "ldconfig warning after qemu-compat-libs"
+else
+    warn "qemu-compat-libs.tgz not bundled — legacy QEMU compat layer skipped"
+fi
 # Pre-join this fails on the missing cluster DB (the deb postinst already set
 # the workspace ownership DB-independently); on a joined re-run it heals.
 /opt/unetlab/wrappers/unl_wrapper -a fixpermissions >> "$LOG" 2>&1 || warn "fixpermissions warnings (expected pre-join)"

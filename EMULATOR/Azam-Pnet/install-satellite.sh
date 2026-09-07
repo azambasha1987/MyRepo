@@ -17,7 +17,21 @@
 # ==============================================================================
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve script directory safely — handles both direct execution and curl|bash
+_RAW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "")"
+if [ -z "$_RAW_DIR" ] || [ "$_RAW_DIR" = "/dev" ] || [ ! -f "${_RAW_DIR}/install-satellite.sh" ]; then
+    echo "[*] Running via curl|bash — self-cloning repo to /opt/azam-pnet..."
+    MYREPO_DIR="/opt/azam-pnet"
+    if [ ! -d "${MYREPO_DIR}/.git" ]; then
+        git clone --depth 1 https://github.com/azambasha1987/MyRepo.git "$MYREPO_DIR" 2>/dev/null \
+            || { echo "[ERROR] Failed to self-clone repo. Check internet/GitHub access."; exit 1; }
+    fi
+    SCRIPT_DIR="${MYREPO_DIR}/EMULATOR/Azam-Pnet"
+    exec bash "${SCRIPT_DIR}/install-satellite.sh" "$@"
+else
+    SCRIPT_DIR="$_RAW_DIR"
+fi
+
 LOG_FILE="/var/log/azambasha-satellite-install.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 

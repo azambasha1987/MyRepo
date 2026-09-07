@@ -511,7 +511,7 @@ fi
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-database-schema.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-fix-database-schema.sh" || true
 else
-    mysql << 'EOF' 2>/dev/null || mysql -u root << 'EOF' 2>/dev/null || true
+    _DB_INIT_SQL="$(cat <<'EOF'
 CREATE DATABASE IF NOT EXISTS pnetlab_db CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 CREATE DATABASE IF NOT EXISTS guacdb CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
@@ -531,6 +531,10 @@ GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'%';
 GRANT ALL PRIVILEGES ON guacdb.* TO 'guacuser'@'localhost';
 FLUSH PRIVILEGES;
 EOF
+)"
+    echo "$_DB_INIT_SQL" | mysql 2>/dev/null \
+        || echo "$_DB_INIT_SQL" | mysql -u root 2>/dev/null \
+        || true
 
     if [ -f "${SCRIPT_DIR}/schema/pnetlab_db.sql" ]; then
         mysql -u pnetlab -ppnetlab pnetlab_db < "${SCRIPT_DIR}/schema/pnetlab_db.sql" 2>/dev/null || mysql pnetlab_db < "${SCRIPT_DIR}/schema/pnetlab_db.sql" 2>/dev/null || true
@@ -539,7 +543,7 @@ EOF
         mysql -u guacuser -ppnetlab guacdb < "${SCRIPT_DIR}/schema/guacdb.sql" 2>/dev/null || mysql guacdb < "${SCRIPT_DIR}/schema/guacdb.sql" 2>/dev/null || true
     fi
 
-    mysql -u pnetlab -ppnetlab pnetlab_db << 'EOF' 2>/dev/null || mysql pnetlab_db << 'EOF' 2>/dev/null || true
+    _CRED_SQL="$(cat <<'EOF'
 INSERT INTO control (control_name, control_value) VALUES
   ('ctrl_offline_mode','1'), ('ctrl_online_mode','0'),
   ('ctrl_default_mode','offline'), ('ctrl_captcha','0'),
@@ -557,6 +561,10 @@ INSERT INTO users (
     1, NULL, UNIX_TIMESTAMP() + 315360000, '/', '127.0.0.1'
 );
 EOF
+)"
+    echo "$_CRED_SQL" | mysql -u pnetlab -ppnetlab pnetlab_db 2>/dev/null \
+        || echo "$_CRED_SQL" | mysql pnetlab_db 2>/dev/null \
+        || true
 fi
 
 # Clear any login rate-limit lockouts
@@ -1010,27 +1018,30 @@ rm -rf /dev/shm/pnet-authfail* /tmp/pnet-authfail* 2>/dev/null || true
 # This block runs last, after all packages, schemas and branding scripts.
 # It ensures the admin user ALWAYS exists with password 'azam' even if any
 # earlier step partially failed (e.g. first-time install with empty DB).
-mysql -u root << 'ADMIN_SQL' 2>/dev/null || mysql << 'ADMIN_SQL' 2>/dev/null || true
+#
+# NOTE: We capture the SQL in a variable first, then pipe to each mysql
+# fallback — this avoids the bash 'double heredoc on one line' warning.
+ADMIN_SQL_BODY="$(cat <<'ADMIN_SQL'
 USE pnetlab_db;
 
 -- Ensure the users table exists (minimal definition; real schema from .deb overrides)
-CREATE TABLE IF NOT EXISTS `users` (
-  `pod`          int(11)      NOT NULL DEFAULT '0',
-  `username`     varchar(64)  NOT NULL,
-  `email`        varchar(128) DEFAULT NULL,
-  `name`         varchar(128) DEFAULT NULL,
-  `password`     varchar(64)  DEFAULT NULL,
-  `role`         varchar(32)  DEFAULT 'user',
-  `user_status`  tinyint(1)   DEFAULT '1',
-  `active_time`  int(11)      DEFAULT '0',
-  `expired_time` int(11)      DEFAULT '0',
-  `access_days`  int(11)      DEFAULT NULL,
-  `offline`      tinyint(1)   DEFAULT '1',
-  `ext_auth`     varchar(32)  DEFAULT NULL,
-  `session`      varchar(256) DEFAULT NULL,
-  `folder`       varchar(256) DEFAULT '/',
-  `ip`           varchar(64)  DEFAULT '127.0.0.1',
-  PRIMARY KEY (`username`)
+CREATE TABLE IF NOT EXISTS \`users\` (
+  \`pod\`          int(11)      NOT NULL DEFAULT '0',
+  \`username\`     varchar(64)  NOT NULL,
+  \`email\`        varchar(128) DEFAULT NULL,
+  \`name\`         varchar(128) DEFAULT NULL,
+  \`password\`     varchar(64)  DEFAULT NULL,
+  \`role\`         varchar(32)  DEFAULT 'user',
+  \`user_status\`  tinyint(1)   DEFAULT '1',
+  \`active_time\`  int(11)      DEFAULT '0',
+  \`expired_time\` int(11)      DEFAULT '0',
+  \`access_days\`  int(11)      DEFAULT NULL,
+  \`offline\`      tinyint(1)   DEFAULT '1',
+  \`ext_auth\`     varchar(32)  DEFAULT NULL,
+  \`session\`      varchar(256) DEFAULT NULL,
+  \`folder\`       varchar(256) DEFAULT '/',
+  \`ip\`           varchar(64)  DEFAULT '127.0.0.1',
+  PRIMARY KEY (\`username\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Upsert admin user with password 'azam' (SHA-256)
@@ -1044,10 +1055,10 @@ ON DUPLICATE KEY UPDATE
   session      = UNIX_TIMESTAMP()+315360000;
 
 -- Ensure control table entries exist
-CREATE TABLE IF NOT EXISTS `control` (
-  `control_name`  varchar(64) NOT NULL,
-  `control_value` varchar(256) DEFAULT NULL,
-  PRIMARY KEY (`control_name`)
+CREATE TABLE IF NOT EXISTS \`control\` (
+  \`control_name\`  varchar(64) NOT NULL,
+  \`control_value\` varchar(256) DEFAULT NULL,
+  PRIMARY KEY (\`control_name\`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO control (control_name, control_value) VALUES
@@ -1056,6 +1067,11 @@ INSERT INTO control (control_name, control_value) VALUES
   ('ctrl_version','1.0.0')
 ON DUPLICATE KEY UPDATE control_value = VALUES(control_value);
 ADMIN_SQL
+)"
+
+echo "$ADMIN_SQL_BODY" | mysql -u root 2>/dev/null \
+    || echo "$ADMIN_SQL_BODY" | mysql 2>/dev/null \
+    || true
 echo "      [✔] Admin credentials enforced: admin / azam"
 # ────────────────────────────────────────────────────────────────────────────
 

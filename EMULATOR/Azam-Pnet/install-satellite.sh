@@ -9,11 +9,17 @@
 #
 # After installation, join this satellite to your master server via:
 #   pnet-satellite-join --master <MASTER_IP> --id <1|2> --name "Satellite-1" --psk <PSK>
+#
+# Package sources (in priority order):
+#   1. Local pool shipped alongside this script  (debian/pool/resolute/main/)
+#   2. Existing /opt/azam-pnet MyRepo clone
+#   3. Fresh GitHub MyRepo clone (requires internet)
 # ==============================================================================
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LOG_FILE="/var/log/azambasha-satellite-install.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
 
 # Maintain root installation symlinks for /opt/azambasha and /opt/pnetlab
 mkdir -p /opt/azambasha /opt/pnetlab 2>/dev/null || true
@@ -29,6 +35,10 @@ fi
 
 echo "============================================================"
 echo "    Azam Basha v8 Cluster Satellite (Worker) Installer      "
+echo "============================================================"
+echo "[*] Start Time: $(date)"
+echo "[*] Working Directory: $SCRIPT_DIR"
+echo "[*] Installation Log: $LOG_FILE"
 echo "============================================================"
 
 # --- Pre-flight Checks ---
@@ -81,17 +91,52 @@ SATELLITE_DEPS=(
     libaio1t64
     php-cli
     zstd
+    git
 )
 
 for pkg in "${SATELLITE_DEPS[@]}"; do
     apt-get install -y --no-install-recommends "$pkg" 2>/dev/null || true
 done
 
-# --- Step 3: Install Satellite Debian Packages ---
-echo "[3/6] Installing Satellite runtime debian packages..."
-DEB_POOL_DIR="${SCRIPT_DIR}/debian/pool/resolute/main"
+# --- Step 3: Resolve Debian Package Pool (3-tier) ---
+echo "[3/6] Resolving satellite Debian package source..."
 
-if [ -n "$DEB_POOL_DIR" ] && [ -d "$DEB_POOL_DIR" ]; then
+# Priority 1: Local pool shipped alongside this script
+LOCAL_POOL_CANDIDATE="${SCRIPT_DIR}/debian/pool/resolute/main"
+DEB_POOL_DIR=""
+
+if [ -d "$LOCAL_POOL_CANDIDATE" ] && compgen -G "${LOCAL_POOL_CANDIDATE}/pnetlab-satellite_*.deb" > /dev/null 2>&1; then
+    echo "      -> Local Debian pool found at $LOCAL_POOL_CANDIDATE — using it directly."
+    DEB_POOL_DIR="$LOCAL_POOL_CANDIDATE"
+else
+    MYREPO_FALLBACK="/opt/azam-pnet"
+    FALLBACK_POOL="${MYREPO_FALLBACK}/EMULATOR/Azam-Pnet/debian/pool/resolute/main"
+
+    # Priority 2: Existing MyRepo clone
+    if [ -d "$FALLBACK_POOL" ] && compgen -G "${FALLBACK_POOL}/pnetlab-satellite_*.deb" > /dev/null 2>&1; then
+        echo "      -> Found pool in existing MyRepo clone at $FALLBACK_POOL."
+        DEB_POOL_DIR="$FALLBACK_POOL"
+        SCRIPT_DIR="${MYREPO_FALLBACK}/EMULATOR/Azam-Pnet"
+    else
+        # Priority 3: Clone MyRepo from GitHub
+        echo "      -> Local pool not found. Cloning MyRepo to $MYREPO_FALLBACK..."
+        if [ ! -d "${MYREPO_FALLBACK}/.git" ]; then
+            git clone --depth 1 https://github.com/azambasha1987/MyRepo.git "$MYREPO_FALLBACK" 2>/dev/null \
+                || echo "      [WARNING] Could not clone MyRepo — satellite packages may be unavailable."
+        fi
+        if [ -d "$FALLBACK_POOL" ] && compgen -G "${FALLBACK_POOL}/pnetlab-satellite_*.deb" > /dev/null 2>&1; then
+            DEB_POOL_DIR="$FALLBACK_POOL"
+            SCRIPT_DIR="${MYREPO_FALLBACK}/EMULATOR/Azam-Pnet"
+        fi
+    fi
+fi
+
+# --- Step 4: Install Satellite Debian Packages ---
+echo "[4/6] Installing Satellite runtime debian packages..."
+
+if [ -n "$DEB_POOL_DIR" ]; then
+    echo "      Found package pool in $DEB_POOL_DIR. Resolving latest satellite builds..."
+
     PKG_PREFIXES=(
         "pnetlab-qemu"
         "pnetlab-vpcs"
@@ -106,26 +151,49 @@ if [ -n "$DEB_POOL_DIR" ] && [ -d "$DEB_POOL_DIR" ]; then
             echo "      -> Installing $(basename "$deb_path")..."
             dpkg-deb -x "$deb_path" / 2>/dev/null || true
             dpkg -i --force-depends --force-confdef --force-confold "$deb_path" 2>/dev/null || true
+        else
+            echo "      [INFO] No package found for prefix: $prefix — skipping."
         fi
     done
+
+    echo "      -> Fixing broken dependencies..."
+    apt-get --fix-broken install -y 2>/dev/null || true
 
     # Apply authoritative network engine and bridge supervisor
     if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-network.py" ]; then
         echo "      -> Applying network engine and bridge supervisor..."
         python3 "${SCRIPT_DIR}/scripts/azambasha-fix-network.py" || true
     fi
+else
+    echo "      [WARNING] No Debian packages found in local or remote pool — skipping satellite package installation."
+    echo "      Populate debian/pool/resolute/main/ with .deb files and re-run the installer."
 fi
 
-# --- Step 4: Extract QEMU Zoo Assets if Available ---
-echo "[4/6] Checking for QEMU multi-version runtime zoo..."
-ASSET_TAR=$(find "${SCRIPT_DIR}/generic" -name "pnetlab-core-assets-*.tar.zst" 2>/dev/null | sort -V | tail -n1 || true)
-if [ -n "$ASSET_TAR" ] && [ -f "$ASSET_TAR" ] && command -v zstd &>/dev/null; then
+# --- Step 5: Extract QEMU Zoo Assets if Available ---
+echo "[5/6] Checking for QEMU multi-version runtime zoo..."
+
+ASSET_TAR=""
+for search_dir in \
+    "${SCRIPT_DIR}/generic/6.8.74resolute1" \
+    "${SCRIPT_DIR}/generic" \
+    "${SCRIPT_DIR}"; do
+    found=$(find "$search_dir" -maxdepth 1 -name "pnetlab-core-assets-*.tar.zst" 2>/dev/null | sort -V | tail -n1 || true)
+    if [ -n "$found" ] && [ -f "$found" ]; then
+        ASSET_TAR="$found"
+        break
+    fi
+done
+
+if [ -n "$ASSET_TAR" ] && command -v zstd &>/dev/null; then
     echo "      -> Unpacking QEMU runtime assets ($(basename "$ASSET_TAR"))..."
+    mkdir -p /opt/unetlab
     tar --zstd -xf "$ASSET_TAR" -C /opt/unetlab/ 2>/dev/null || true
+else
+    echo "      [INFO] No QEMU zoo archive found locally — nodes will use system QEMU."
 fi
 
-# --- Step 5: Hardware Virtualization & Permissions ---
-echo "[5/6] Setting permissions and hardware markers..."
+# --- Step 6: Hardware Virtualization & Permissions ---
+echo "[6/6] Setting permissions and hardware markers..."
 mkdir -p /opt/unetlab/addons/{qemu,iol/bin,dynamips,docker}
 mkdir -p /opt/unetlab/data/Logs
 mkdir -p /etc/pnetlab-satellite

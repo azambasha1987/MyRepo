@@ -42,6 +42,16 @@ if [ "$SCRIPT_DIR" != "/opt/azambasha" ]; then
 fi
 ln -sfn /opt/azambasha /opt/pnetlab 2>/dev/null || true
 
+# Parse flags
+FORCE=0
+NO_REBOOT=0
+for arg in "$@"; do
+    case $arg in
+        --force)    FORCE=1 ;;
+        --no-reboot) NO_REBOOT=1 ;;
+    esac
+done
+
 if [ "$(id -u)" -ne 0 ]; then
     echo "[ERROR] Please run this script as root (sudo bash $0)" >&2
     exit 1
@@ -58,9 +68,14 @@ echo "============================================================"
 # --- Pre-flight Checks ---
 echo "[1/6] Performing pre-flight checks..."
 if dpkg -s pnetlab >/dev/null 2>&1; then
-    echo "[ERROR] 'pnetlab' (Master) is already installed on this machine." >&2
-    echo "A single VM cannot be both Master and Satellite simultaneously." >&2
-    exit 1
+    if [ "$FORCE" = "1" ]; then
+        echo "[WARNING] 'pnetlab' (Master) is installed — continuing anyway (--force mode, testing only)." >&2
+    else
+        echo "[ERROR] 'pnetlab' (Master) is already installed on this machine." >&2
+        echo "A single VM cannot be both Master and Satellite simultaneously." >&2
+        echo "To override for testing: bash $0 --force" >&2
+        exit 1
+    fi
 fi
 
 export DEBIAN_FRONTEND=noninteractive

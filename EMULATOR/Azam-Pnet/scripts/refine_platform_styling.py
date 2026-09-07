@@ -592,8 +592,9 @@ body {
         f.write(LOGIN_CSS.encode('utf-8'))
 
     # 2. Update render.js for sidebar logo
-    RENDER_JS_SNIPPET = """                    <div class="logo_img">
-                        <img data-brand-logo src='${brandLogoUrl()}' class="sidebar-avatar-img" alt="Azam Basha" style="width:54px; height:54px; object-fit:contain; display:block; margin:0 auto; filter:drop-shadow(0 0 10px rgba(0,242,254,0.6));"></img>
+    # Use the home screen avatar directly (hard-coded path) instead of the branding API URL.
+    RENDER_JS_SNIPPET = """                    <div class=\"logo_img\">
+                        <img data-brand-logo src='/login/img/azam_home_avatar.png' class=\"sidebar-avatar-img\" alt=\"Azam Basha\" style=\"width:54px; height:54px; object-fit:contain; display:block; margin:0 auto; filter:drop-shadow(0 0 10px rgba(0,242,254,0.6));\"></img>
                     </div>"""
 
     with sftp.open('/opt/unetlab/html/themes/default/js/functions/status/render.js', 'r') as f:
@@ -635,7 +636,7 @@ body {
 
 		el.innerHTML = 
 			'<div class="avatar-hero-unit-mini">' +
-				'<img class="brand-logo-mini" id="brand-logo-mini" data-brand-logo src="/branding/api.php?action=logo" alt="Azam Basha">' +
+				'<img class="brand-logo-mini" id="brand-logo-mini" data-brand-logo src="/login/img/azam_home_avatar.png" alt="Azam Basha">' +
 			'</div>' +
 			'<div class="brand-name-mini-container">' +
 				'<span class="brand-name-mini" data-brand-name>Azam Basha</span>' +

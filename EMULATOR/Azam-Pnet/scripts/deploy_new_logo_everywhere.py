@@ -17,13 +17,20 @@ LOGIN_DIR = os.path.join(BASE_DIR, "login")
 
 def deploy_locally():
     print("[*] Applying Azam Basha Branding & Logo Assets natively...")
-    
-    logo_src = os.path.join(ASSETS_DIR, "logo.png")
-    favicon_src = os.path.join(ASSETS_DIR, "favicon.ico")
+
+    # Primary source: use the home screen avatar as the universal platform logo
+    avatar_src = os.path.join(LOGIN_DIR, "img", "azam_home_avatar.png")
+    logo_src   = os.path.join(ASSETS_DIR, "logo.png")  # fallback
+    favicon_src     = os.path.join(ASSETS_DIR, "favicon.ico")
     favicon_png_src = os.path.join(ASSETS_DIR, "favicon.png")
-    
-    if not os.path.exists(logo_src):
-        print(f"[!] Logo source not found at {logo_src}")
+
+    if os.path.exists(avatar_src):
+        logo_src = avatar_src
+        print(f"  [*] Using home screen avatar as master logo: {avatar_src}")
+    elif not os.path.exists(logo_src):
+        print(f"[!] Neither avatar nor logo source found. Checked:")
+        print(f"    {avatar_src}")
+        print(f"    {logo_src}")
         return False
 
     remote_logo_paths = [
@@ -31,6 +38,7 @@ def deploy_locally():
         "/opt/unetlab/html/images/logo.png",
         "/opt/unetlab/html/themes/default/images/logo.png",
         "/opt/unetlab/html/assets-common/img/logo.png",
+        "/opt/unetlab/html/login/img/azam_home_avatar.png",  # ensure avatar is on VM
         "/usr/share/plymouth/themes/pnetlab/logo.png"
     ]
 
@@ -89,7 +97,7 @@ def deploy_locally():
 
     # Update branding config.json to cache bust
     now_ts = int(time.time())
-    cfg_json = f'{{\n    "name": "Azam Basha",\n    "login_header": "Azam Basha Network Emulation Platform",\n    "hide_default_creds": false,\n    "updated_at": {now_ts}\n}}\n'
+    cfg_json = f'{{\n    "name": "Azam Basha",\n    "login_header": "Azam Basha Network Emulation Platform",\n    "hide_default_creds": false,\n    "logo_source": "azam_home_avatar.png",\n    "updated_at": {now_ts}\n}}\n'
     cfg_path = "/opt/unetlab/data/branding/config.json"
     os.makedirs("/opt/unetlab/data/branding", exist_ok=True)
     with open(cfg_path, 'w', encoding='utf-8') as f:

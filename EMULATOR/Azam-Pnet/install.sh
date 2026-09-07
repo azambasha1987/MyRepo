@@ -1102,7 +1102,21 @@ fi
 cp -f /etc/issue /etc/issue.net 2>/dev/null || true
 
 
-# --- Automated Post-Install Self-Test Verification Suite ---
+# --- Deploy Home Screen Avatar as Universal Platform Logo ---
+# Must run AFTER the login page + branding files are installed so that the
+# avatar source exists before we propagate it everywhere.
+echo ""
+echo "============================================================"
+echo "      Deploying Home Screen Avatar Logo Everywhere...       "
+echo "============================================================"
+HOMELOGO_SCRIPT="${SCRIPT_DIR}/scripts/azambasha-deploy-homelogo.sh"
+if [ -f "$HOMELOGO_SCRIPT" ]; then
+    bash "$HOMELOGO_SCRIPT" || true
+else
+    echo "  [!] azambasha-deploy-homelogo.sh not found — skipping logo propagation" >&2
+fi
+
+
 echo ""
 echo "============================================================"
 echo "      Running Post-Install Diagnostic Self-Test...          "

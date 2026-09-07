@@ -20,7 +20,7 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
     echo "  4    SSL IP-SAN Certificate, HTML5 Console & Cloud Bridge Fix"
     echo "  5    Database SQL Mode, 1M Limits, Logrotate & THP Deep-Fix"
     echo "  6    High-Performance Speed Optimizer Suite (KSM, OPcache, Gzip, Sysctl)"
-    echo "  7    Silicon Dataplane Fast-Path Accelerator (2× Throughput, 1/3 CPU, MTU 9000)"
+    echo "  7    Silicon Dataplane Fast-Path Accelerator (2x Throughput, 1/3 CPU, MTU 9000)"
     echo "  8    Image Doctor & Virtual Disk Integrity Audit"
     echo "  9    Link Quality & Impairment Controller (latency, jitter, loss)"
     echo "  10   Packet Capture & Live Wireshark Streamer (TAP/Hub/Cloud)"
@@ -33,7 +33,8 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
     echo "  17   Azam Basha Pure Black Dark Mode Theme Engine"
     echo "  18   Run Complete Node & Image Validation Suite (IOL, IOS, QEMU, Docker)"
     echo "  19   Apply ALL Essential Fixes & Dark Mode Suite"
-    echo "  20   Exit"
+    echo "  20   Deploy Home Screen Avatar Logo Everywhere"
+    echo "  21   Exit"
     echo "  --check  Run non-destructive diagnostic health check"
     exit 0
 fi
@@ -63,7 +64,7 @@ echo "3) 512MB Upload Limits & Docker IP Routing Fix"
 echo "4) SSL IP-SAN Certificate, HTML5 Console & Cloud Bridge Fix"
 echo "5) Database SQL Mode, 1M Limits, Logrotate & THP Deep-Fix"
 echo "6) High-Performance Speed Optimizer (KSM, OPcache, Gzip, Sysctl)"
-echo "7) Silicon Dataplane Fast-Path Accelerator (~2× Throughput, MTU 9000)"
+echo "7) Silicon Dataplane Fast-Path Accelerator (~2x Throughput, MTU 9000)"
 echo "8) Image Doctor & QCOW2 Disk Integrity Audit"
 echo "9) Link Impairment Controller (Latency, Jitter, Packet Loss)"
 echo "10) Packet Capture & Live Wireshark Streamer (TAP/Hub/Cloud)"
@@ -76,15 +77,16 @@ echo "16) Freeze Version & Block Future Updates (Anti-Conflict Lock)"
 echo "17) Azam Basha Pure Black Dark Mode Theme Engine"
 echo "18) Run Complete Node & Image Validation Suite (IOL, IOS, QEMU, Docker)"
 echo "19) Apply ALL Essential Fixes & Dark Mode Suite"
-echo "20) Exit"
+echo "20) Deploy Home Screen Avatar Logo Everywhere"
+echo "21) Exit"
 echo "============================================================"
 
 # Handle interactive /dev/tty or non-interactive argument/fallback
 CHOICE=""
-if [ -n "${1:-}" ] && [[ "$1" =~ ^([1-9]|1[0-9]|20)$ ]]; then
+if [ -n "${1:-}" ] && [[ "$1" =~ ^([1-9]|1[0-9]|2[01])$ ]]; then
     CHOICE="$1"
 elif [ -e /dev/tty ]; then
-    read -rp "Select an option [1-20, default: 19]: " USER_INPUT < /dev/tty || true
+    read -rp "Select an option [1-21, default: 19]: " USER_INPUT < /dev/tty || true
     CHOICE="${USER_INPUT:-19}"
 else
     CHOICE="19"
@@ -196,22 +198,27 @@ case "$CHOICE" in
             bash "${SCRIPT_DIR}/azambasha-apply-branding.sh" || true
         fi
         echo ""
-        echo "--> [12/15] Applying Node Startup & Cisco IOSv Repair Engine..."
+        echo "--> [12/16] Deploying Home Screen Avatar as Universal Platform Logo..."
+        if [ -f "${SCRIPT_DIR}/azambasha-deploy-homelogo.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-deploy-homelogo.sh" || true
+        fi
+        echo ""
+        echo "--> [13/16] Applying Node Startup & Cisco IOSv Repair Engine..."
         if [ -f "${SCRIPT_DIR}/azambasha-fix-node-startup.sh" ]; then
             bash "${SCRIPT_DIR}/azambasha-fix-node-startup.sh" || true
         fi
         echo ""
-        echo "--> [13/15] Auditing Virtual Disks with Image Doctor..."
+        echo "--> [14/16] Auditing Virtual Disks with Image Doctor..."
         if [ -f "${SCRIPT_DIR}/azambasha-image-doctor.sh" ]; then
             bash "${SCRIPT_DIR}/azambasha-image-doctor.sh" --fix || true
         fi
         echo ""
-        echo "--> [14/15] Applying Azam Basha Pure Black Dark Mode Theme..."
+        echo "--> [15/16] Applying Azam Basha Pure Black Dark Mode Theme..."
         if [ -f "${SCRIPT_DIR}/azambasha-dark-theme.sh" ]; then
             bash "${SCRIPT_DIR}/azambasha-dark-theme.sh" || true
         fi
         echo ""
-        echo "--> [15/15] Running Automated Node & Virtualization Validation Suite..."
+        echo "--> [16/16] Running Automated Node & Virtualization Validation Suite..."
         if [ -f "${SCRIPT_DIR}/azambasha-node-test-suite.py" ]; then
             python3 "${SCRIPT_DIR}/azambasha-node-test-suite.py" --all || true
         fi
@@ -221,6 +228,13 @@ case "$CHOICE" in
         echo "============================================================"
         ;;
     20)
+        if [ -f "${SCRIPT_DIR}/azambasha-deploy-homelogo.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-deploy-homelogo.sh"
+        else
+            echo "[!] azambasha-deploy-homelogo.sh not found." >&2
+        fi
+        ;;
+    21)
         echo "Exiting."
         exit 0
         ;;

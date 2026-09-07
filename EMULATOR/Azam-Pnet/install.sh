@@ -872,6 +872,11 @@ if [ -x /opt/unetlab/wrappers/unl_wrapper ]; then
     /opt/unetlab/wrappers/unl_wrapper -a fixpermissions || true
 fi
 
+# Ensure /opt/unetlab is world-traversable so www-data can reach /opt/unetlab/html
+# The pnetlab deb sets /opt/unetlab to 700 (root-only) which causes Apache 403.
+chmod 755 /opt/unetlab 2>/dev/null || true
+chown -R www-data:www-data /opt/unetlab/html 2>/dev/null || true
+
 # Enable IPv4 Forwarding
 sysctl -w net.ipv4.ip_forward=1 >/dev/null
 if ! grep -q "^net.ipv4.ip_forward=1" /etc/sysctl.conf /etc/sysctl.d/* 2>/dev/null; then

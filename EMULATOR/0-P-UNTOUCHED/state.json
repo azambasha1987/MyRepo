@@ -1,9 +1,5 @@
 {
-<<<<<<< HEAD
-  "last_run_utc": "2026-09-07T05:40:28Z",
-=======
-  "last_run_utc": "2026-09-07T02:08:13Z",
->>>>>>> 5af0449e42fd861c688e76d0b44a18bd9cb03255
+  "last_run_utc": "2026-09-08T06:14:55Z",
   "git_head": "adef61101bb7c228f56512be429925636f63292b",
   "files": {
     "debian/pool/resolute/main/pnetlab_6.8.63resolute1_amd64.deb": {

@@ -119,6 +119,14 @@ readonly LOG='/var/log/pnetlab-network-install.log'
 readonly HTML='/opt/unetlab/html'
 readonly ROOT_PASSWORD='pnet'
 readonly MYSQL_ROOT_PASSWORD='pnetlab'
+# Presence means this host's management networking belongs to the network
+# installer, so /etc/profile.d/ovf.sh must not launch the legacy eth0 wizard.
+# This state is deliberately outside the Pass 2 transaction: the marker has to
+# exist before dpkg unpacks the profile hook, closing the root-login race while
+# apt is still configuring the package. It is armed only after the signed
+# manifest, apt origins, exact transaction simulation, and confirmation gate.
+readonly PNETLAB_NETWORK_INSTALL_MARKER='/var/lib/pnetlab/network-install-owner'
+readonly PNETLAB_NETWORK_INSTALL_MARKER_CONTENT='pnetlab-network-install-owner-v1'
 readonly PNETLAB_DEB_CACHE_ROOT="${PNETLAB_DEB_CACHE_ROOT:-/var/cache/pnetlab/debs}"
 readonly PNETLAB_DEB_CACHE_LOCK="$PNETLAB_DEB_CACHE_ROOT/.lock"
 readonly PNETLAB_DEB_CACHE_LOCK_FD=8   # FD 9 is reserved by pnetlab-update's whole-process lock
@@ -137,7 +145,7 @@ readonly -a BASE_PACKAGES=(
     # pnetlab-docker-image-watcher.service exit clean and silently do nothing
     # rather than fail loudly. The offline bundle installer already pulls this
     # in as part of its own base dependency list; netinstall never did.
-    inotify-tools
+    inotify-tools ovmf swtpm swtpm-tools
 )
 
 # Populated from the verified manifest's install_profiles selection (main()).
@@ -231,9 +239,47 @@ cleanup() {
     [ -z "$P2_BASELINE_TMP" ] || rm -f -- "$P2_BASELINE_TMP"
 }
 
+pnetlab_network_install_marker_arm() {
+    local marker="$PNETLAB_NETWORK_INSTALL_MARKER" parent temporary
+
+    if [ -e "$marker" ] || [ -L "$marker" ]; then
+        [ ! -L "$marker" ] || die "network-install ownership marker must not be a symlink: $marker"
+        [ -f "$marker" ] || die "network-install ownership marker is not a regular file: $marker"
+        [ "$(stat -c '%u:%g:%a' -- "$marker" 2>/dev/null || true)" = '0:0:644' ] || \
+            die "network-install ownership marker has unexpected owner or mode: $marker"
+        [ "$(<"$marker")" = "$PNETLAB_NETWORK_INSTALL_MARKER_CONTENT" ] || \
+            die "existing network-install ownership marker is invalid: $marker"
+        log "reusing existing network-install ownership marker: $marker"
+        return 0
+    fi
+
+    parent="${marker%/*}"
+    if [ ! -d "$parent" ]; then
+        install -d -m 0755 -o root -g root -- "$parent" || \
+            die "could not create network-install marker directory: $parent"
+    fi
+    temporary=$(mktemp "$parent/.network-install-owner.XXXXXX") || \
+        die 'could not allocate a network-install ownership marker'
+    if ! {
+        printf '%s\n' "$PNETLAB_NETWORK_INSTALL_MARKER_CONTENT"
+    } >"$temporary"; then
+        rm -f -- "$temporary"
+        die "could not write network-install ownership marker: $marker"
+    fi
+    chmod 0644 -- "$temporary" || { rm -f -- "$temporary"; die "could not set network-install marker mode: $marker"; }
+    chown root:root -- "$temporary" || { rm -f -- "$temporary"; die "could not set network-install marker owner: $marker"; }
+    mv -f -- "$temporary" "$marker" || { rm -f -- "$temporary"; die "could not install network-install ownership marker: $marker"; }
+    log "network-install ownership marker armed: $marker"
+}
+
 on_exit() {
     local rc=$?
     if [ "${P2_TXN_ACTIVE:-0}" -eq 1 ]; then
+        # The ownership marker is intentionally permanent once armed. Even a
+        # failed/retried install may have unpacked the profile hook or package
+        # networking state; allowing the legacy OVF wizard to run after Pass 2
+        # rollback would make that partial state less recoverable. The marker
+        # therefore survives failure and keeps ownership with this stream.
         p2_rollback || true
     fi
     cleanup
@@ -2098,9 +2144,9 @@ simulate_exact_transaction() {
     local -a options=()
     [ "$NO_DOCKER" -eq 1 ] && options+=(--no-install-recommends)
     log '=== preflight: exact transaction simulation (last gate before mutation) ==='
-    log "+ apt-get install --simulate -y ${options[*]} ${TRANSACTION[*]}"
+    log "+ apt-get install --simulate -y --allow-change-held-packages ${options[*]} ${TRANSACTION[*]}"
     DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a \
-        apt-get install --simulate -y "${options[@]}" \
+        apt-get install --simulate -y --allow-change-held-packages "${options[@]}" \
         -o Dpkg::Options::='--force-confdef' \
         -o Dpkg::Options::='--force-confold' \
         "${TRANSACTION[@]}" >>"$LOG" 2>&1 || die 'exact apt transaction simulation failed; no package mutation was attempted'
@@ -2120,9 +2166,9 @@ confirm_mutation() {
 install_transaction() {
     local -a options=()
     [ "$NO_DOCKER" -eq 1 ] && options+=(--no-install-recommends)
-    log '=== installing exact pinned transaction ==='
+    log '=== installing exact pinned transaction (held packages explicitly allowed) ==='
     DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a \
-        apt-get install -y "${options[@]}" \
+        apt-get install -y --allow-change-held-packages "${options[@]}" \
         -o Dpkg::Options::='--force-confdef' \
         -o Dpkg::Options::='--force-confold' \
         "${TRANSACTION[@]}" >>"$LOG" 2>&1 || die 'pinned package transaction failed; inspect the installer log'
@@ -3372,6 +3418,17 @@ PY
     log 'Docker apt/runtime smoke and brokered Docker node smoke OK'
 }
 
+ensure_manifest_oci() {
+    local helper='/opt/unetlab/scripts/pnetlab-oci-images'
+    local -a options=(--manifest "$MANIFEST_FILE")
+    [ "$NO_DOCKER" -eq 0 ] || options+=(--no-docker)
+    [ -x "$helper" ] || die "manifest OCI helper is missing or not executable: $helper"
+    log '=== ensuring signed-manifest OCI images ==='
+    "$helper" "${options[@]}" >>"$LOG" 2>&1 \
+        || die 'signed-manifest OCI image provisioning failed (see log)'
+    log 'signed-manifest OCI image provisioning OK'
+}
+
 # pnet-capture-web:1.0 -- the html5 web packet-capture image the link Capture
 # action invokes. Never bundled offline on any install path (Docker Hub pull
 # only); the ISO installer pre-pulls it during install so it's warm for the
@@ -3402,7 +3459,7 @@ summary() {
         apt-cache policy "$package" >>"$LOG" 2>&1 || true
     done
     log "Manifest consumed: release=$MANIFEST_RELEASE sequence=$MANIFEST_SEQUENCE profile=$PROFILE"
-    log 'Not available on network installs (offline bundle only): pnet-wireshark, pnet-wifi-spike.'
+    log 'Not available on network installs (offline bundle only): pnet-wireshark.'
     if [ "$PROFILE" = master ] && [ "$NO_DOCKER" -eq 0 ]; then
         if [ "$CAPWEB_PRELOADED" -eq 1 ]; then
             log 'html5 packet capture : pnet-capture-web:1.0 preloaded, ready for the link Capture action.'
@@ -3484,6 +3541,11 @@ main() {
     fi
     simulate_exact_transaction
     confirm_mutation
+    # This is the first host mutation, after the signed manifest, apt-origin
+    # checks, exact transaction simulation, and operator confirmation. Arm it
+    # before dpkg unpacks /etc/profile.d/ovf.sh so a concurrent root login
+    # cannot invoke the legacy OVF eth0 wizard during network installation.
+    pnetlab_network_install_marker_arm
     stage_deb_cache
     install_transaction
     install_dkms_best_effort
@@ -3509,6 +3571,7 @@ main() {
 
         verify_docker
         [ "$NO_DOCKER" -eq 0 ] && preload_capture_web
+        ensure_manifest_oci
         verify_services
         verify_cloud_bridges
         verify_schema
@@ -3528,6 +3591,7 @@ main() {
         log '=== satellite profile: skipping master-only web/DB/console configuration ==='
         systemctl daemon-reload >>"$LOG" 2>&1 || die 'systemd daemon-reload failed'
         verify_docker
+        ensure_manifest_oci
         verify_broker_only
         verify_cloud_bridges
     fi

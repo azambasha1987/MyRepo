@@ -2,94 +2,75 @@
 import json
 from napalm import get_network_driver
 driver = get_network_driver('ios')
-iosv = driver('17.1.1.2', 'azam', 'cisco')
+iosv = driver('17.1.1.2', 'david', 'cisco')
 iosv.open()
-
-ios_output = iosv.get_facts()
-print (json.dumps(ios_output, indent=4)) 
-
+ 
+#ios_output = iosv.get_facts()
+#print (json.dumps(ios_output, indent=4)) 
+ 
 ios_output2 = iosv.get_bgp_neighbors()
-print ios_output2
+print (json.dumps(ios_output2, indent=4))
 
 
 """
 ===============================================================================
 STUDENT STUDY & TEACHING GUIDE
-Script: bgp.py
-Topic: Connecting to a Cisco IOS Router & Gathering BGP Information with NAPALM
+Script: bgp_modified.py
+Topic: Code Evolution & Formatting BGP Output with JSON
 ===============================================================================
 
 1. WHAT IS THIS SCRIPT TRYING TO DO?
 -----------------------------------
-This script uses NAPALM (Network Automation and Programmability Abstraction
-Layer with Multivendor support) to:
-  a) Establish an SSH connection to a Cisco IOS router at 17.1.1.2.
-  b) Retrieve general device facts (hostname, model, OS version, uptime, serial).
-  c) Format and print those device facts as a neat JSON structure.
-  d) Retrieve BGP neighbor summary details (peer state, AS numbers, packet stats).
-  e) Print the BGP data to the terminal.
+This script is an evolution of `bgp.py`. The student or developer:
+  a) Removed the device facts retrieval to focus purely on BGP.
+  b) Fixed the Python 2 print statement error found in `bgp.py`.
+  c) Changed the username from 'azam' to 'david'.
+  d) Formats the BGP neighbors dictionary as pretty-printed JSON.
 
 
 2. STEP-BY-STEP EXPLANATION FOR STUDENTS:
 -----------------------------------------
-- Line 2: `import json`
-  Imports Python's built-in JSON module so dictionary data can be formatted
-  and printed nicely with indentation.
+- Line 2-6: Standard NAPALM initialization and SSH session opening.
+  `driver('17.1.1.2', 'david', 'cisco')` sets the target router IP and credentials.
 
-- Line 3: `from napalm import get_network_driver`
-  Imports the factory function from NAPALM that loads the right driver
-  for a specific network operating system (e.g., 'ios', 'eos', 'junos', 'nxos').
-
-- Line 4: `driver = get_network_driver('ios')`
-  Loads the Cisco IOS driver class.
-
-- Line 5: `iosv = driver('17.1.1.2', 'azam', 'cisco')`
-  Instantiates the device object with (Host IP, Username, Password).
-
-- Line 6: `iosv.open()`
-  Actually establishes the underlying SSH connection to the router.
-
-- Line 8: `ios_output = iosv.get_facts()`
-  A NAPALM "getter" function that returns a standard Python dictionary containing
-  core device info (uptime, vendor, model, os_version, serial_number, etc.).
-
-- Line 9: `print (json.dumps(ios_output, indent=4))`
-  Converts the dictionary into an indented, human-readable JSON string.
+- Lines 8-9: `#ios_output = iosv.get_facts()`
+  These lines were commented out with `#` so Python ignores them.
 
 - Line 11: `ios_output2 = iosv.get_bgp_neighbors()`
-  Another NAPALM getter that queries the device's BGP state and returns
-  a dictionary of peers, their remote AS, and whether the session is up.
+  Fetches BGP neighbor details (local AS, remote AS, router ID, uptime, peer state).
 
-- Line 12: `print ios_output2`
-  Prints the raw dictionary output.
+- Line 12: `print (json.dumps(ios_output2, indent=4))`
+  `json.dumps()` turns the Python dictionary into an easy-to-read JSON string
+  indented by 4 spaces.
 
 
 3. MISTAKES & TRAPS IN THIS SCRIPT (TEACHING POINTS):
 -----------------------------------------------------
-TRAP 1: Python 2 vs. Python 3 Fatal Syntax Error!
-  - Look at Line 12: `print ios_output2` (no parentheses).
-  - In Python 2, `print` was a statement. In Python 3, `print()` is a function.
-  - If a student runs this on Python 3, it will immediately crash with:
-      SyntaxError: Missing parentheses in call to 'print'. Did you mean print(...)?
-  - Lesson: Always use `print(...)` in modern Python.
+WHAT IMPROVED:
+  + Python 3 Compatibility: Used `print(...)` with parentheses.
+  + Visual Clarity: Output is formatted as structured JSON instead of a raw
+    single-line dictionary dump.
 
-TRAP 2: The "Dangling Connection" Leak (Missing `.close()`)!
-  - Notice there is an `iosv.open()`, but nowhere in the script is there
-    an `iosv.close()`.
-  - Why this matters in networking: Routers have a limited number of VTY lines
-    (usually 5 to 16 lines: line vty 0 4). If automation scripts open sessions
-    and never close them, the router's VTY lines get locked or exhausted,
-    preventing any other engineer or script from logging in!
+WHAT IS STILL BROKEN OR DANGEROUS:
+TRAP 1: The Missing Connection Close (Resource Leak)!
+  - `iosv.open()` is called on line 6, but `iosv.close()` is NEVER called.
+  - Question to ask students: "What happens to the router's SSH session when
+    your script finishes running?"
+  - Answer: In quick test scripts, the OS socket eventually closes on script exit,
+    but in Cisco IOS, the VTY line can remain tied up until an idle-timeout
+    kicks in. In longer automation workflows, omitting `.close()` quickly leads to
+    "Connection refused / VTY lines busy" errors.
 
-TRAP 3: Plaintext Credentials Hardcoded in Code:
-  - Username 'azam' and password 'cisco' are written directly in the file.
-  - If pushed to GitHub or shared, anyone can see the credentials.
-  - Best Practice: Use environment variables (`os.environ`) or `getpass.getpass()`.
+TRAP 2: "Zombie Code" (Commented-out Code):
+  - Lines 8-9 are commented out.
+  - Teaching lesson: In production, do not leave old code commented out.
+    Use Git version control to remember past versions. Clean code is easier to read!
 
-TRAP 4: No Error Handling (No Safety Net):
-  - If the router is unreachable, or the password is wrong, the script crashes
-    with an ugly, confusing traceback.
-  - Best Practice: Wrap connections in `try ... except ... finally`.
+TRAP 3: Hardcoded Plaintext Passwords:
+  - 'david' and 'cisco' are hardcoded.
+
+TRAP 4: Fragile Execution (No `try...finally`):
+  - If the router is unreachable or BGP is not configured, the script crashes.
 
 
 4. HOW TO WRITE THIS LIKE A PROFESSIONAL (CLEAN REFERENCE):
@@ -97,33 +78,23 @@ TRAP 4: No Error Handling (No Safety Net):
 import json
 import sys
 from napalm import get_network_driver
-from napalm.base.exceptions import ConnectionException, AuthenticationException
 
 driver = get_network_driver('ios')
-router = driver('17.1.1.2', 'azam', 'cisco')
+router = driver('17.1.1.2', 'david', 'cisco')
 
 try:
-    print("Connecting to router...")
+    print("Connecting to 17.1.1.2...")
     router.open()
 
-    print("\n--- Router Facts ---")
-    facts = router.get_facts()
-    print(json.dumps(facts, indent=4))
+    print("Fetching BGP neighbors...")
+    bgp_neighbors = router.get_bgp_neighbors()
+    print(json.dumps(bgp_neighbors, indent=4))
 
-    print("\n--- BGP Neighbors ---")
-    bgp_data = router.get_bgp_neighbors()
-    print(json.dumps(bgp_data, indent=4))
-
-except AuthenticationException:
-    print("Authentication failed! Check username/password.", file=sys.stderr)
-except ConnectionException as conn_err:
-    print(f"Network error: Could not reach router: {conn_err}", file=sys.stderr)
 except Exception as err:
-    print(f"An unexpected error occurred: {err}", file=sys.stderr)
+    print(f"Error querying router: {err}", file=sys.stderr)
 finally:
-    # Guaranteed to close, even if an error happened above!
     router.close()
-    print("\nConnection safely closed.")
+    print("Session disconnected.")
 ===============================================================================
 """
 

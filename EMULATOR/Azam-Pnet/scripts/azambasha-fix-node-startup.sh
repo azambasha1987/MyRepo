@@ -145,15 +145,26 @@ echo "  [✔] UEFI firmware & Windows VirtIO drivers linked to QEMU share direct
 # --- 3. Hardware Acceleration & Kernel Modules ---
 echo "[3/7] Activating Kernel Virtualization, vhost-net & Loopback Drivers..."
 ln -sfn /usr/lib/modules /lib/modules 2>/dev/null || true
+
+KVM_MOD=""
+if grep -m1 -E -qw 'vmx' /proc/cpuinfo 2>/dev/null; then
+    KVM_MOD="kvm_intel"
+elif grep -m1 -E -qw 'svm' /proc/cpuinfo 2>/dev/null; then
+    KVM_MOD="kvm_amd"
+fi
+
+mkdir -p /etc/modules-load.d /etc/modprobe.d
 cat << 'EOF' > /etc/modules-load.d/pnetlab.conf
 kvm
-kvm_intel
-kvm_amd
 vhost
 vhost_net
 tun
 loop
 EOF
+[ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/pnetlab.conf
+
+# Blacklist i2c_piix4 virtual controller to silence unhandled SMBus warning
+echo "blacklist i2c_piix4" > /etc/modprobe.d/blacklist-piix4.conf
 
 cat << 'EOF' > /etc/udev/rules.d/99-pnetlab-kvm.rules
 KERNEL=="kvm", GROUP="kvm", MODE="0666"
@@ -167,8 +178,7 @@ modprobe loop 2>/dev/null || true
 modprobe tun 2>/dev/null || true
 modprobe bridge 2>/dev/null || true
 modprobe kvm 2>/dev/null || true
-modprobe kvm_intel 2>/dev/null || true
-modprobe kvm_amd 2>/dev/null || true
+[ -n "$KVM_MOD" ] && modprobe "$KVM_MOD" 2>/dev/null || true
 modprobe vhost 2>/dev/null || true
 modprobe vhost_net 2>/dev/null || true
 

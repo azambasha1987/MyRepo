@@ -82,11 +82,16 @@ for nic_path in /sys/class/net/eth* /sys/class/net/en*; do
 done
 
 # Ensure KVM, vhost-net and 802.1q kernel modules are persisted
-mkdir -p /etc/modules-load.d
+KVM_MOD=""
+if grep -m1 -E -qw 'vmx' /proc/cpuinfo 2>/dev/null; then
+    KVM_MOD="kvm_intel"
+elif grep -m1 -E -qw 'svm' /proc/cpuinfo 2>/dev/null; then
+    KVM_MOD="kvm_amd"
+fi
+
+mkdir -p /etc/modules-load.d /etc/modprobe.d
 cat << 'EOF' > /etc/modules-load.d/pnetlab.conf
 kvm
-kvm_intel
-kvm_amd
 vhost
 vhost_net
 tun
@@ -95,6 +100,15 @@ br_netfilter
 8021q
 sch_fq_codel
 EOF
+[ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/pnetlab.conf
+
+# Blacklist i2c_piix4 virtual controller to silence unhandled SMBus warning
+echo "blacklist i2c_piix4" > /etc/modprobe.d/blacklist-piix4.conf
+
+# Sanitize GRUB kernel commandline to remove obsolete copymods
+if [ -f /etc/default/grub ]; then
+    sed -i -E 's/\b(copymods|rd\.driver\.export(=[a-zA-Z0-9_-]+)?)\b//g' /etc/default/grub /etc/default/grub.d/*.cfg 2>/dev/null || true
+fi
 
 # Ensure /lib/modules link exists for modprobe
 if [ ! -d /lib/modules ] && [ -d /usr/lib/modules ]; then

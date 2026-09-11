@@ -167,7 +167,14 @@ if [ -n "$REAL_IFACE" ]; then
     echo "network: {config: disabled}" > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
 
     # Ensure kernel bridge, virtualization, and br_netfilter modules load at boot
-    mkdir -p /etc/modules-load.d /etc/sysctl.d /etc/systemd/system/networking.service.d /etc/systemd/network
+    KVM_MOD=""
+    if grep -m1 -E -qw 'vmx' /proc/cpuinfo 2>/dev/null; then
+        KVM_MOD="kvm_intel"
+    elif grep -m1 -E -qw 'svm' /proc/cpuinfo 2>/dev/null; then
+        KVM_MOD="kvm_amd"
+    fi
+
+    mkdir -p /etc/modules-load.d /etc/sysctl.d /etc/systemd/system/networking.service.d /etc/systemd/network /etc/modprobe.d
     cat > /etc/modules-load.d/pnetlab.conf << 'MODEOF'
 bridge
 stp
@@ -176,11 +183,26 @@ llc
 tun
 dummy
 br_netfilter
+veth
+sch_fq_codel
+kvm
 MODEOF
+    [ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/pnetlab.conf
+
+    # Blacklist i2c_piix4 virtual controller to silence unhandled SMBus warning
+    echo "blacklist i2c_piix4" > /etc/modprobe.d/blacklist-piix4.conf
+
+    # Sanitize GRUB kernel commandline to eliminate obsolete copymods
+    if [ -f /etc/default/grub ]; then
+        sed -i -E 's/\b(copymods|rd\.driver\.export(=[a-zA-Z0-9_-]+)?)\b//g' /etc/default/grub /etc/default/grub.d/*.cfg 2>/dev/null || true
+    fi
+
     modprobe bridge 2>/dev/null || true
     modprobe 8021q 2>/dev/null || true
     modprobe tun 2>/dev/null || true
     modprobe br_netfilter 2>/dev/null || true
+    modprobe kvm 2>/dev/null || true
+    [ -n "$KVM_MOD" ] && modprobe "$KVM_MOD" 2>/dev/null || true
 
     # Bridge sysctl bypass to ensure ARP and IP traffic on bridges are never dropped by netfilter
     cat > /etc/sysctl.d/99-pnetlab-bridge.conf << 'EOF'
@@ -1148,18 +1170,34 @@ fi
 
 # Install dynamic banner updater — regenerates /etc/issue with the LIVE IP on every boot
 # so the VM console header always shows the correct address after reboots or IP changes.
+echo "master" > /etc/pnetlab-role
 BANNER_SCRIPT="/usr/local/bin/azambasha-update-banner.sh"
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-update-banner.sh" ]; then
     cp -f "${SCRIPT_DIR}/scripts/azambasha-update-banner.sh" "$BANNER_SCRIPT"
     chmod +x "$BANNER_SCRIPT"
 fi
 
-# Install as a systemd one-shot service (runs after network is up)
+# Install network dispatcher hooks so DHCP renewals/changes immediately update console banner
+mkdir -p /etc/networkd-dispatcher/routable.d /etc/network/if-up.d 2>/dev/null || true
+cat > /etc/networkd-dispatcher/routable.d/50-azambasha-banner.sh << 'EOF'
+#!/bin/sh
+/usr/local/bin/azambasha-update-banner.sh >/dev/null 2>&1 || true
+EOF
+chmod +x /etc/networkd-dispatcher/routable.d/50-azambasha-banner.sh 2>/dev/null || true
+
+cat > /etc/network/if-up.d/azambasha-banner << 'EOF'
+#!/bin/sh
+/usr/local/bin/azambasha-update-banner.sh >/dev/null 2>&1 || true
+EOF
+chmod +x /etc/network/if-up.d/azambasha-banner 2>/dev/null || true
+
+# Install as a systemd one-shot service (runs before getty console login prompt)
 cat > /etc/systemd/system/azambasha-banner.service << 'SVCEOF'
 [Unit]
 Description=Azam Basha — Update console banner with live IP
-After=network-online.target
+After=network-online.target systemd-networkd.service networking.service
 Wants=network-online.target
+Before=getty.target serial-getty@ttyS0.service
 
 [Service]
 Type=oneshot

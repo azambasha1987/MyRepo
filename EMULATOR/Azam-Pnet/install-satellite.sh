@@ -360,10 +360,20 @@ netplan apply 2>/dev/null || true
 # ── Step 4: Kernel Datapath Modules & Sysctl Tuning ───────────────────────────
 echo "[4/10] Loading kernel modules & tuning datapath sysctl..."
 
+# Universal CPU Virtualization Module Selection (Intel VT-x vs AMD-V)
+KVM_MOD=""
+if grep -m1 -E -qw 'vmx' /proc/cpuinfo 2>/dev/null; then
+    KVM_MOD="kvm_intel"
+    echo "      -> Detected Intel processor with VT-x support (kvm_intel)"
+elif grep -m1 -E -qw 'svm' /proc/cpuinfo 2>/dev/null; then
+    KVM_MOD="kvm_amd"
+    echo "      -> Detected AMD processor with AMD-V support (kvm_amd)"
+else
+    echo "      -> Nested hardware virtualization not detected (generic kvm fallback)"
+fi
+
 KERNEL_MODULES=(
     kvm
-    kvm_intel
-    kvm_amd
     vhost
     vhost_net
     bridge
@@ -379,12 +389,11 @@ KERNEL_MODULES=(
     iptable_filter
     iptable_nat
 )
+[ -n "$KVM_MOD" ] && KERNEL_MODULES+=("$KVM_MOD")
 
-mkdir -p /etc/modules-load.d
+mkdir -p /etc/modules-load.d /etc/modprobe.d
 cat << 'EOF_MODS' > /etc/modules-load.d/pnetlab.conf
 kvm
-kvm_intel
-kvm_amd
 vhost
 vhost_net
 bridge
@@ -400,6 +409,15 @@ ip_tables
 iptable_filter
 iptable_nat
 EOF_MODS
+[ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/pnetlab.conf
+
+# Blacklist i2c_piix4 virtual controller to silence unhandled SMBus warning
+echo "blacklist i2c_piix4" > /etc/modprobe.d/blacklist-piix4.conf
+
+# Sanitize GRUB kernel commandline to remove obsolete copymods
+if [ -f /etc/default/grub ]; then
+    sed -i -E 's/\b(copymods|rd\.driver\.export(=[a-zA-Z0-9_-]+)?)\b//g' /etc/default/grub /etc/default/grub.d/*.cfg 2>/dev/null || true
+fi
 
 # Ensure /lib/modules link exists for modprobe
 if [ ! -d /lib/modules ] && [ -d /usr/lib/modules ]; then
@@ -799,6 +817,54 @@ fi
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-block-updates.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-block-updates.sh" 2>/dev/null || true
 fi
+
+# ── Dynamic Console Banner & Live IP Hook for Satellite Worker ───────────────
+echo "satellite" > /etc/pnetlab-role
+BANNER_SCRIPT="/usr/local/bin/azambasha-update-banner.sh"
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-update-banner.sh" ]; then
+    cp -f "${SCRIPT_DIR}/scripts/azambasha-update-banner.sh" "$BANNER_SCRIPT"
+    chmod +x "$BANNER_SCRIPT"
+fi
+
+# Install network dispatcher hooks so DHCP renewals/changes immediately update console banner
+mkdir -p /etc/networkd-dispatcher/routable.d /etc/network/if-up.d 2>/dev/null || true
+cat > /etc/networkd-dispatcher/routable.d/50-azambasha-banner.sh << 'EOF'
+#!/bin/sh
+/usr/local/bin/azambasha-update-banner.sh >/dev/null 2>&1 || true
+EOF
+chmod +x /etc/networkd-dispatcher/routable.d/50-azambasha-banner.sh 2>/dev/null || true
+
+cat > /etc/network/if-up.d/azambasha-banner << 'EOF'
+#!/bin/sh
+/usr/local/bin/azambasha-update-banner.sh >/dev/null 2>&1 || true
+EOF
+chmod +x /etc/network/if-up.d/azambasha-banner 2>/dev/null || true
+
+# Install as a systemd one-shot service (runs before getty console login prompt)
+cat > /etc/systemd/system/azambasha-banner.service << 'SVCEOF'
+[Unit]
+Description=Azam Basha — Update console banner with live IP
+After=network-online.target systemd-networkd.service networking.service
+Wants=network-online.target
+Before=getty.target serial-getty@ttyS0.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/azambasha-update-banner.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+SVCEOF
+
+systemctl daemon-reload 2>/dev/null || true
+systemctl enable azambasha-banner.service 2>/dev/null || true
+
+# Run immediately to fix the current banner right now
+if [ -x "$BANNER_SCRIPT" ]; then
+    bash "$BANNER_SCRIPT" || true
+fi
+cp -f /etc/issue /etc/issue.net 2>/dev/null || true
 
 # ── Step 10: Automated or Interactive Join to Master Server ───────────────────
 echo "[10/10] Verifying satellite readiness and cluster configuration..."

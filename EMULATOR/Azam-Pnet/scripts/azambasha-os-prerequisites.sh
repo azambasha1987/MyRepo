@@ -59,10 +59,20 @@ apt-get update -y -qq
 # --- Phase 2: Kernel Module Provisioning & Sysctl Tuning ---
 echo "[2/6] Provisioning kernel modules & network datapath parameters..."
 
+# Universal CPU Virtualization Module Selection (Intel VT-x vs AMD-V)
+KVM_MOD=""
+if grep -m1 -E -qw 'vmx' /proc/cpuinfo 2>/dev/null; then
+    KVM_MOD="kvm_intel"
+    echo "      -> Detected Intel processor with VT-x support (kvm_intel)"
+elif grep -m1 -E -qw 'svm' /proc/cpuinfo 2>/dev/null; then
+    KVM_MOD="kvm_amd"
+    echo "      -> Detected AMD processor with AMD-V support (kvm_amd)"
+else
+    echo "      -> Nested hardware virtualization not detected (generic kvm fallback)"
+fi
+
 KERNEL_MODULES=(
     kvm
-    kvm_intel
-    kvm_amd
     vhost
     vhost_net
     bridge
@@ -79,15 +89,14 @@ KERNEL_MODULES=(
     iptable_filter
     iptable_nat
 )
+[ -n "$KVM_MOD" ] && KERNEL_MODULES+=("$KVM_MOD")
 
-mkdir -p /etc/modules-load.d
+mkdir -p /etc/modules-load.d /etc/modprobe.d
 cat << 'EOF' > /etc/modules-load.d/pnetlab.conf
 # ==============================================================================
 # Azam-Pnet Required Kernel Modules for Ubuntu 26+
 # ==============================================================================
 kvm
-kvm_intel
-kvm_amd
 vhost
 vhost_net
 bridge
@@ -104,6 +113,15 @@ ip_tables
 iptable_filter
 iptable_nat
 EOF
+[ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/pnetlab.conf
+
+# Blacklist i2c_piix4 virtual controller to silence unhandled SMBus warning
+echo "blacklist i2c_piix4" > /etc/modprobe.d/blacklist-piix4.conf
+
+# Sanitize GRUB kernel commandline to remove obsolete copymods
+if [ -f /etc/default/grub ]; then
+    sed -i -E 's/\b(copymods|rd\.driver\.export(=[a-zA-Z0-9_-]+)?)\b//g' /etc/default/grub /etc/default/grub.d/*.cfg 2>/dev/null || true
+fi
 
 # Ensure /lib/modules link exists for modprobe
 if [ ! -d /lib/modules ] && [ -d /usr/lib/modules ]; then

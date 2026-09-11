@@ -92,6 +92,14 @@ TimeoutStartSec=10sec
 EOF
 
 # 4. Kernel Modules & Bridge Netfilter Sysctl Bypass
+KVM_MOD=""
+if grep -m1 -E -qw 'vmx' /proc/cpuinfo 2>/dev/null; then
+    KVM_MOD="kvm_intel"
+elif grep -m1 -E -qw 'svm' /proc/cpuinfo 2>/dev/null; then
+    KVM_MOD="kvm_amd"
+fi
+
+mkdir -p /etc/modules-load.d /etc/modprobe.d
 cat > /etc/modules-load.d/pnetlab.conf << 'EOF'
 bridge
 stp
@@ -100,11 +108,21 @@ llc
 tun
 dummy
 br_netfilter
+veth
+sch_fq_codel
+kvm
 EOF
+[ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/pnetlab.conf
+
+# Blacklist i2c_piix4 virtual controller to silence unhandled SMBus warning
+echo "blacklist i2c_piix4" > /etc/modprobe.d/blacklist-piix4.conf
+
 modprobe bridge 2>/dev/null || true
 modprobe 8021q 2>/dev/null || true
 modprobe tun 2>/dev/null || true
 modprobe br_netfilter 2>/dev/null || true
+modprobe kvm 2>/dev/null || true
+[ -n "$KVM_MOD" ] && modprobe "$KVM_MOD" 2>/dev/null || true
 
 cat > /etc/sysctl.d/99-pnetlab-bridge.conf << 'EOF'
 net.bridge.bridge-nf-call-iptables = 0

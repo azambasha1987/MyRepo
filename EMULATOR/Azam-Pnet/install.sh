@@ -923,6 +923,16 @@ if [ -x /opt/unetlab/wrappers/unl_wrapper ]; then
     /opt/unetlab/wrappers/unl_wrapper -a fixpermissions || true
 fi
 
+# Ensure wrappers retain SUID permissions and socket directories are accessible
+chmod 4755 /opt/unetlab/wrappers/iol_wrapper 2>/dev/null || true
+chmod 777 /tmp/netio* 2>/dev/null || true
+
+# Systemd tmpfiles rule for IOL AF_UNIX socket directories
+mkdir -p /etc/tmpfiles.d
+cat > /etc/tmpfiles.d/pnetlab-iol.conf << 'EOF'
+d /tmp/netio* 1777 root unl -
+EOF
+
 # Ensure /opt/unetlab is world-traversable so www-data can reach /opt/unetlab/html.
 # The pnetlab deb sets /opt/unetlab to 700 (root-only) which causes Apache 403.
 chmod 755 /opt/unetlab 2>/dev/null || true

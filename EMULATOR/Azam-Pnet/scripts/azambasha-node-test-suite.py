@@ -237,16 +237,37 @@ class NodeTestSuite:
         iol_wrapper = "/opt/unetlab/wrappers/iol_wrapper"
         if os.path.exists(iol_wrapper):
             is_suid = (os.stat(iol_wrapper).st_mode & 0o4000) != 0
-            if is_suid or os.access(iol_wrapper, os.X_OK):
-                self.record(tier, "IOL SUID Wrapper", "PASS", f"{iol_wrapper} present and executable")
+            if is_suid:
+                self.record(tier, "IOL SUID Wrapper", "PASS", f"{iol_wrapper} present with SUID (4755)")
             else:
                 if self.repair:
                     os.system(f"chmod 4755 {iol_wrapper} 2>/dev/null")
                     self.record(tier, "IOL SUID Wrapper", "PASS", "Restored SUID permissions 4755")
                 else:
-                    self.record(tier, "IOL SUID Wrapper", "WARN", f"{iol_wrapper} lacks SUID permissions")
+                    self.record(tier, "IOL SUID Wrapper", "FAIL", f"{iol_wrapper} lacks SUID permissions (required for TAP interfaces)")
         else:
             self.record(tier, "IOL SUID Wrapper", "WARN", f"{iol_wrapper} not found in wrappers directory")
+
+        # 4. Check /tmp/netio socket directory permissions
+        import glob
+        netio_dirs = glob.glob("/tmp/netio*")
+        netio_ok = True
+        blocked_dirs = []
+        for nd in netio_dirs:
+            if os.path.isdir(nd):
+                mode = os.stat(nd).st_mode
+                if not (mode & 0o002 or mode & 0o020):
+                    netio_ok = False
+                    blocked_dirs.append(nd)
+        if netio_ok:
+            self.record(tier, "IOL AF_UNIX Socket Dirs", "PASS", "Socket directories writable by node tenants")
+        else:
+            if self.repair:
+                for nd in blocked_dirs:
+                    os.system(f"chmod 777 {nd} 2>/dev/null")
+                self.record(tier, "IOL AF_UNIX Socket Dirs", "PASS", f"Repaired permissions on {len(blocked_dirs)} socket directories")
+            else:
+                self.record(tier, "IOL AF_UNIX Socket Dirs", "WARN", f"Socket directories lack write access: {', '.join(blocked_dirs)}")
 
     def generate_iourc(self):
         try:

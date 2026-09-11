@@ -366,6 +366,12 @@ fi
 # the workspace ownership DB-independently); on a joined re-run it heals.
 /opt/unetlab/wrappers/unl_wrapper -a fixpermissions >> "$LOG" 2>&1 || warn "fixpermissions warnings (expected pre-join)"
 
+# Ensure IOL wrapper retains SUID and netio socket directory remains accessible
+chmod 4755 /opt/unetlab/wrappers/iol_wrapper >> "$LOG" 2>&1 || true
+chmod 777 /tmp/netio* >> "$LOG" 2>&1 || true
+mkdir -p /etc/tmpfiles.d
+echo "d /tmp/netio* 1777 root unl -" > /etc/tmpfiles.d/pnetlab-iol.conf 2>/dev/null || true
+
 log "=== Satellite install complete ==="
 log "Next: on the MASTER, System -> Cluster -> Generate PSK, then run here:"
 log "    pnet-satellite-join --master <master-ip> --id <1|2> --psk <psk>"

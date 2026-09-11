@@ -79,6 +79,8 @@ if [ -d /opt/unetlab ]; then
     chown -R root:root /opt/unetlab/wrappers /opt/unetlab/scripts 2>/dev/null || true
     chmod -R 755 /opt/unetlab/wrappers /opt/unetlab/scripts 2>/dev/null || true
     chmod +s /opt/unetlab/wrappers/unl_wrapper 2>/dev/null || true
+    chmod 4755 /opt/unetlab/wrappers/iol_wrapper 2>/dev/null || true
+    chmod 777 /tmp/netio* 2>/dev/null || true
 fi
 
 # 3. Hardware Virtualization /dev/kvm Access
@@ -97,6 +99,8 @@ if [ -d /opt/unetlab/tmp ]; then
     find /opt/unetlab/tmp -name "*.lock" -delete 2>/dev/null || true
     find /opt/unetlab/tmp -name "*.socket" -delete 2>/dev/null || true
 fi
+rm -f /tmp/netio*/*.lck 2>/dev/null || true
+chmod 777 /tmp/netio* 2>/dev/null || true
 
 # 5. Verify & Symlink/Generate Cisco IOL License
 echo "[5/5] Checking Cisco IOL license linkage..."

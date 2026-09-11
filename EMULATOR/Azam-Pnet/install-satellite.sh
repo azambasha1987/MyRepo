@@ -754,11 +754,19 @@ systemctl enable pnetlab-satd.service 2>/dev/null || true
 
 # Hardware virtualization and permissions
 mkdir -p /opt/unetlab/addons/{qemu,iol/bin,dynamips,docker}
-mkdir -p /opt/unetlab/data/Logs /opt/unetlab/tmp /etc/pnetlab-satellite /etc/pnetlab
+mkdir -p /opt/unetlab/data/Logs /opt/unetlab/tmp /etc/pnetlab-satellite /etc/pnetlab /etc/tmpfiles.d
 chmod 700 /etc/pnetlab-satellite 2>/dev/null || true
 groupadd -g 32768 -f unl 2>/dev/null || true
 chown -R root:unl /opt/unetlab/tmp 2>/dev/null || true
 chmod 2777 /opt/unetlab/tmp 2>/dev/null || true
+
+# Cisco IOL SUID wrapper and socket directory permissions
+chmod 4755 /opt/unetlab/wrappers/iol_wrapper 2>/dev/null || true
+chmod 777 /tmp/netio* 2>/dev/null || true
+rm -f /tmp/netio*/*.lck 2>/dev/null || true
+cat > /etc/tmpfiles.d/pnetlab-iol.conf << 'EOF'
+d /tmp/netio* 1777 root unl -
+EOF
 
 [ -c /dev/kvm ] && chmod 666 /dev/kvm || true
 [ -c /dev/net/tun ] && chmod 666 /dev/net/tun || true

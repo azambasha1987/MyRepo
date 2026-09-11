@@ -449,10 +449,84 @@ except Exception as e:
     print(f"  [!] IOU keygen note: {e}")
 PYEOF
 
+# --- 6.5. Patch Core IOL Engine & Wrapper Permissions ---
+echo "[6.5/7] Patching IOL engine and unl_wrapper for AF_UNIX socket permissions..."
+python3 - << 'PY_IOL_PATCH' 2>/dev/null || true
+import os
+
+# Patch device_iol.php
+php_file = "/opt/unetlab/html/devices/iol/device_iol.php"
+if os.path.isfile(php_file):
+    with open(php_file, "r", encoding="utf-8") as f:
+        php_c = f.read()
+    
+    t_php = '''        $cmd = "id -u " . $user . " 2>&1";
+        exec($cmd, $o, $rc);
+        $uid = $o[0];
+        if (!posix_setuid($uid)) {'''
+
+    r_php = '''        $cmd = "id -u " . $user . " 2>&1";
+        exec($cmd, $o, $rc);
+        $uid = isset($o[0]) ? (int)$o[0] : 0;
+
+        // Ensure IOL netio socket directory exists with proper permissions for this tenant/user
+        if ($uid > 0) {
+            $netio_dir = "/tmp/netio" . $uid;
+            if (!is_dir($netio_dir)) {
+                @mkdir($netio_dir, 0777, true);
+            }
+            @chown($netio_dir, $uid);
+            @chgrp($netio_dir, "unl");
+            @chmod($netio_dir, 0777);
+
+            // Clean up stale socket and lock file for this node ID to prevent boot failure
+            $iol_id = $this->node->getIolId();
+            if ($iol_id !== null) {
+                @unlink($netio_dir . "/" . (int)$iol_id);
+                @unlink($netio_dir . "/" . (int)$iol_id . ".lck");
+            }
+        }
+
+        if (!posix_setuid($uid)) {'''
+
+    if t_php in php_c:
+        with open(php_file, "w", encoding="utf-8") as f:
+            f.write(php_c.replace(t_php, r_php))
+
+# Patch unl_wrapper
+unl_file = "/opt/unetlab/wrappers/unl_wrapper"
+if os.path.isfile(unl_file):
+    with open(unl_file, "r", encoding="utf-8") as f:
+        unl_c = f.read()
+
+    t_unl = '''		// Wrappers
+		$cmd = '/bin/chmod 755 /opt/unetlab/wrappers/nsenter /opt/unetlab/wrappers/*_wrapper*  /opt/unetlab/wrappers/bash-static /opt/unetlab/wrappers/busybox /opt/unetlab/wrappers/profile.sh > /dev/null 2>&1';
+		exec($cmd, $o, $rc);'''
+
+    r_unl = '''		// Wrappers
+		$cmd = '/bin/chmod 755 /opt/unetlab/wrappers/nsenter /opt/unetlab/wrappers/*_wrapper*  /opt/unetlab/wrappers/bash-static /opt/unetlab/wrappers/busybox /opt/unetlab/wrappers/profile.sh > /dev/null 2>&1';
+		exec($cmd, $o, $rc);
+		$cmd = '/bin/chmod 4755 /opt/unetlab/wrappers/iol_wrapper > /dev/null 2>&1';
+		exec($cmd, $o, $rc);
+		$cmd = '/bin/chmod 777 /tmp/netio* > /dev/null 2>&1';
+		exec($cmd, $o, $rc);'''
+
+    if t_unl in unl_c:
+        with open(unl_file, "w", encoding="utf-8") as f:
+            f.write(unl_c.replace(t_unl, r_unl))
+PY_IOL_PATCH
+
+# Systemd tmpfiles rule for IOL AF_UNIX socket directories
+mkdir -p /etc/tmpfiles.d
+cat > /etc/tmpfiles.d/pnetlab-iol.conf << 'EOF'
+d /tmp/netio* 1777 root unl -
+EOF
+
 # --- 7. Clean Stale Sockets & Fix Permissions ---
 echo "[7/7] Repairing UNetLab wrappers and file permissions..."
 rm -rf /opt/unetlab/tmp/*/*/*/console.sock \
        /opt/unetlab/tmp/*/*/*/wrapper_telnet.txt \
+       /tmp/netio*/*.lck \
        /dev/shm/pnet-authfail* 2>/dev/null || true
 
 # Native wrapper fixpermissions
@@ -472,6 +546,7 @@ done
 
 chmod 755 /opt/unetlab/scripts/* 2>/dev/null || true
 chmod -R 777 /opt/unetlab/tmp 2>/dev/null || true
+chmod 777 /tmp/netio* 2>/dev/null || true
 chown -R www-data:www-data /opt/unetlab/data /opt/unetlab/labs /opt/unetlab/html 2>/dev/null || true
 
 # Status Summary

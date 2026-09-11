@@ -2,7 +2,7 @@
 import json
 from napalm import get_network_driver
 driver = get_network_driver('ios')
-iosv = driver('17.1.1.2', 'azam', 'cisco')
+iosv = driver('192.168.1.105', 'azam', 'cisco')
 iosv.open()
  
 #ios_output = iosv.get_facts()

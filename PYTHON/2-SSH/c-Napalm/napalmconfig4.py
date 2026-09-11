@@ -9,7 +9,7 @@ devicelist = ['192.168.122.72',
 for ip_address in devicelist:
     print ("Connecting to " + str(ip_address))
     driver = get_network_driver('ios')
-    iosv = driver(ip_address, 'david', 'cisco')
+    iosv = driver(ip_address, 'azam', 'cisco')
     iosv.open()
     iosv.load_merge_candidate(filename='ACL1.cfg')
     diffs = iosv.compare_config()

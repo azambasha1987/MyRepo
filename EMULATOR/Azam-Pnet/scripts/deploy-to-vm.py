@@ -190,8 +190,32 @@ def deploy_host(host, user, password, port, args):
             log_info("Executing Master Installer (install.sh)...")
             execute_remote_cmd(client, f"cd {remote_base} && sudo bash install.sh")
         elif args.satellite:
-            log_info("Executing Satellite Worker Installer (install-satellite.sh)...")
-            execute_remote_cmd(client, f"cd {remote_base} && sudo bash install-satellite.sh")
+            sat_cmd = f"cd {remote_base} && sudo bash install-satellite.sh"
+            if args.join_master:
+                sat_cmd += f" --master {args.join_master}"
+                if args.cluster_id:
+                    sat_cmd += f" --id {args.cluster_id}"
+                if args.cluster_name:
+                    sat_cmd += f" --name '{args.cluster_name}'"
+                if args.cluster_psk:
+                    sat_cmd += f" --psk {args.cluster_psk}"
+            log_info(f"Executing Satellite Worker Installer...")
+            execute_remote_cmd(client, sat_cmd)
+        elif args.join_only:
+            join_cmd = f"cd {remote_base} && sudo bash scripts/azambasha-satellite-join.sh"
+            if args.join_master:
+                join_cmd += f" --master {args.join_master}"
+            if args.cluster_id:
+                join_cmd += f" --id {args.cluster_id}"
+            if args.cluster_name:
+                join_cmd += f" --name '{args.cluster_name}'"
+            if args.cluster_psk:
+                join_cmd += f" --psk {args.cluster_psk}"
+            log_info(f"Executing Satellite Cluster Join Utility...")
+            execute_remote_cmd(client, join_cmd)
+        elif args.fix_cluster:
+            log_info("Executing Master Cluster Staging & Fixes (azambasha-fix-cluster.sh)...")
+            execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-fix-cluster.sh")
         elif args.apply_all:
             log_info("Executing Master Fix & Optimization Suite...")
             execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-apply-all-fixes.sh 19")
@@ -221,6 +245,12 @@ def main():
     parser.add_argument("--test", action="store_true", help="Run node validation test suite on targets")
     parser.add_argument("--install", action="store_true", help="Run master installer on targets")
     parser.add_argument("--satellite", action="store_true", help="Run satellite worker installer on targets")
+    parser.add_argument("--fix-cluster", action="store_true", help="Stage cluster bundle and configure remote DB on Master")
+    parser.add_argument("--join-master", help="Master node IP address for satellite cluster join")
+    parser.add_argument("--cluster-id", type=int, choices=[1, 2, 3, 4, 5], default=1, help="Satellite slot ID (default: 1)")
+    parser.add_argument("--cluster-name", help="Satellite display name (default: Satellite <id>)")
+    parser.add_argument("--cluster-psk", help="Cluster 64-hex PSK key from Master")
+    parser.add_argument("--join-only", action="store_true", help="Run satellite cluster join utility without full re-install")
     parser.add_argument("--dry-run", action="store_true", help="Simulate sync without uploading")
 
     args = parser.parse_args()

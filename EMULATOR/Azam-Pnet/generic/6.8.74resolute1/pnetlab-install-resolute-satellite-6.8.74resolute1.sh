@@ -91,9 +91,17 @@ inventory_sha="$(sha256sum "$SCRIPT_DIR/inventory.tsv" | awk '{print $1}')"
 [ "$inventory_sha" = "$(marker_value inventory_sha256)" ] \
     || die "satellite bundle package inventory digest does not match COMPLETE"
 
-# ── [1/8] DPKG cleanup ─────────────────────────────────────────────────────────
+# ── [1/8] DPKG cleanup & 32-bit compatibility ─────────────────────────────────
 log "[1/8] Cleaning dpkg locks / configuring pending packages..."
 rm -f /var/lib/dpkg/lock /var/lib/dpkg/lock-frontend /var/cache/apt/archives/lock 2>/dev/null || true
+
+# Multiarch and 32-bit dynamic linker symlink to prevent dracut initramfs crashes
+dpkg --add-architecture i386 2>/dev/null || true
+mkdir -p /lib /usr/lib32 2>/dev/null || true
+if [ -f /usr/lib32/ld-linux.so.2 ] && [ ! -f /lib/ld-linux.so.2 ]; then
+    ln -sfn /usr/lib32/ld-linux.so.2 /lib/ld-linux.so.2 2>/dev/null || true
+fi
+
 dpkg --configure -a >> "$LOG" 2>&1 || die "Initial dpkg configuration failed"
 
 # ── [2/8] SSH / systemd / root password ────────────────────────────────────────
@@ -103,9 +111,8 @@ sed -i 's/.*DefaultTimeoutStopSec=.*/DefaultTimeoutStopSec=5s/' /etc/systemd/sys
 systemctl restart ssh >> "$LOG" 2>&1 || true
 echo 'root:pnet' | chpasswd >> "$LOG" 2>&1 || warn "Could not set root password"
 
-# ── [3/8] APT update + remove conflicting docker ───────────────────────────────
-log "[3/8] apt update; removing distro docker.io/containerd if present..."
-apt-get purge -y docker.io containerd runc >> "$LOG" 2>&1 || true
+# ── [3/8] APT update ──────────────────────────────────────────────────────────
+log "[3/8] Running apt update..."
 apt-get update -q >> "$LOG" 2>&1 || die "apt-get update failed (need internet to Ubuntu mirrors)"
 
 # ── [4/8] Base apt dependencies (headless subset of the master list) ───────────
@@ -125,7 +132,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
     lib32gcc-s1 lib32z1 libc6 libc6-i386 libelf1 libpcap0.8 \
     libsdl1.2debian logrotate lsb-release lvm2 chrony rsync \
     python3-pexpect sqlite3 tcpdump telnet uml-utilities zip \
-    cgroup-tools libyaml-0-2 net-tools \
+    cgroup-tools libyaml-0-2 net-tools jq zstd \
     libaio1t64 libasound2t64 libbrlapi0.8 libcacard0 libepoxy0 libfdt1 libgbm1 \
     libgcc-s1 libglib2.0-0 libgnutls30 libibverbs1 libjpeg8 \
     libnettle8 libnuma1 libpixman-1-0 libpmem1 librdmacm1 libsasl2-2 \
@@ -133,7 +140,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libusbredirparser1 libvirglrenderer1 zlib1g qemu-system-common qemu-system-x86 qemu-utils \
     libcapstone5 libvdeplug2 libnfs14 libxss1 libsdl2-2.0-0 libsnappy1v5 \
     libspice-client-glib-2.0-8 inotify-tools curl ca-certificates gnupg \
-    bc lsof busybox-static \
+    bc lsof busybox-static open-vm-tools qemu-guest-agent \
     openssh-server openssl \
     >> "$LOG" 2>&1 || die "Base dependency installation failed"
 update-alternatives --set php /usr/bin/php8.5 >> "$LOG" 2>&1 || true
@@ -149,23 +156,54 @@ if [ -d "$DEPS_DIR" ] && ls "$DEPS_DIR"/lib32gcc1_*.deb >/dev/null 2>&1; then
     dpkg -i "$DEPS_DIR"/lib32gcc1_*.deb >> "$LOG" 2>&1 || warn "lib32gcc1 dummy install warning"
 fi
 
-# ── [6/8] Docker CE from docker.com (resolute) ─────────────────────────────────
-log "[6/8] Installing Docker CE (docker.com resolute repo)..."
-if have docker && docker --version >/dev/null 2>&1; then
-    log "  Docker already present ($(docker --version)) — skipping repo setup"
-else
-    install -m 0755 -d /etc/apt/keyrings
-    if [ ! -f /etc/apt/keyrings/docker.gpg ]; then
+# ── [6/8] Docker Runtime & Compatibility Bridge ───────────────────────────────
+log "[6/8] Provisioning Docker container runtime & dependency bridge..."
+install_docker_and_compat() {
+    # 1. Install Docker runtime (try docker-ce from noble channel if available, else docker.io)
+    local docker_installed=0
+    if have docker && docker --version >/dev/null 2>&1; then
+        docker_installed=1
+    else
+        install -m 0755 -d /etc/apt/keyrings
         curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
-            | gpg --dearmor -o /etc/apt/keyrings/docker.gpg 2>>"$LOG" || warn "docker gpg fetch failed"
+            | gpg --dearmor -o /etc/apt/keyrings/docker.gpg 2>/dev/null || true
         chmod a+r /etc/apt/keyrings/docker.gpg 2>/dev/null || true
+
+        # Try noble channel since resolute does not have upstream docker-ce builds yet
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu noble stable" \
+            > /etc/apt/sources.list.d/docker.list 2>/dev/null || true
+        if apt-get update -q >> "$LOG" 2>&1 && apt-get install -y --no-install-recommends docker-ce docker-ce-cli containerd.io >> "$LOG" 2>&1; then
+            docker_installed=1
+        else
+            rm -f /etc/apt/sources.list.d/docker.list
+            apt-get update -q >> "$LOG" 2>&1 || true
+            apt-get install -y --no-install-recommends docker.io containerd >> "$LOG" 2>&1 && docker_installed=1 || true
+        fi
     fi
-    echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu resolute stable" \
-        > /etc/apt/sources.list.d/docker.list
-    apt-get update -q >> "$LOG" 2>&1 || warn "docker repo apt update failed"
-    apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin \
-        >> "$LOG" 2>&1 || warn "docker-ce install failed — install manually later"
-fi
+
+    # 2. Bridge the strict 'docker-engine | docker-ce' package dependency requirement of pnetlab-docker
+    if ! dpkg -s docker-ce >/dev/null 2>&1 && ! dpkg -s docker-engine >/dev/null 2>&1; then
+        local dummy_dir="/tmp/docker-ce-dummy"
+        rm -rf "$dummy_dir" && mkdir -p "$dummy_dir/DEBIAN"
+        cat << 'EOF_DUMMY' > "$dummy_dir/DEBIAN/control"
+Package: docker-ce-dummy
+Version: 1:26.0.0-1
+Section: admin
+Priority: optional
+Architecture: all
+Provides: docker-ce, docker-engine
+Depends: docker.io | docker-ce
+Maintainer: Azam-Basha <admin@azam-pnet.local>
+Description: Compatibility bridge providing docker-ce virtual package for pnetlab-docker
+EOF_DUMMY
+        dpkg-deb --build "$dummy_dir" /tmp/docker-ce-dummy.deb >> "$LOG" 2>&1 || true
+        dpkg -i --force-depends /tmp/docker-ce-dummy.deb >> "$LOG" 2>&1 || true
+        rm -rf "$dummy_dir" /tmp/docker-ce-dummy.deb
+    fi
+
+    systemctl enable --now docker >> "$LOG" 2>&1 || true
+}
+install_docker_and_compat
 
 # ── [7/8] PNetLab packages (kernel, runtimes, satellite) ───────────────────────
 log "[7/8] Installing PNetLab packages from local files..."
@@ -257,6 +295,29 @@ apt-get check >> "$LOG" 2>&1 || die "apt-get check failed after satellite instal
 for package in "${SATELLITE_REQUIRED_PACKAGES[@]}"; do
     assert_package_configured "$package"
 done
+
+# Deploy and preset all satellite systemd units to both /etc/systemd/system and /usr/lib/systemd/system
+for s_unit in pnetlab-brokerd.service pnetlab-docker-image-watcher.service pnetlab-ksm.service pnetlab-pnet-bridges.service pnetlab-satd.service; do
+    for cand_dir in /lib/systemd/system /usr/lib/systemd/system /opt/unetlab/scripts; do
+        if [ -f "${cand_dir}/${s_unit}" ]; then
+            cp -f "${cand_dir}/${s_unit}" "/etc/systemd/system/${s_unit}" 2>/dev/null || true
+            cp -f "${cand_dir}/${s_unit}" "/usr/lib/systemd/system/${s_unit}" 2>/dev/null || true
+            chmod 644 "/etc/systemd/system/${s_unit}" 2>/dev/null || true
+            break
+        fi
+    done
+done
+
+# Ensure rrsync is available for master-to-satellite image syncing
+if [ ! -x /usr/bin/rrsync ]; then
+    for r_src in /usr/share/doc/rsync/scripts/rrsync /usr/share/rsync/scripts/rrsync; do
+        if [ -f "$r_src.gz" ]; then
+            gunzip -c "$r_src.gz" > /usr/bin/rrsync 2>/dev/null && chmod 755 /usr/bin/rrsync && break
+        elif [ -f "$r_src" ]; then
+            cp "$r_src" /usr/bin/rrsync 2>/dev/null && chmod 755 /usr/bin/rrsync && break
+        fi
+    done
+fi
 
 systemctl daemon-reload >> "$LOG" 2>&1 || die "systemd daemon-reload failed"
 # pnetlab-docker configures docker.service; the PNetLab package set provides

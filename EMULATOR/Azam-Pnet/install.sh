@@ -488,6 +488,17 @@ fi
 
 # --- Step 4: Configure Database & Schemas ---
 echo "[4/8] Configuring MySQL database, schemas, and admin credentials..."
+mkdir -p /etc/mysql/mysql.conf.d
+cat > /etc/mysql/mysql.conf.d/zz-pnetlab-cluster.cnf << 'EOF'
+# Azam Basha & PNetLab Cluster: Satellites connect to Master DB
+[mysqld]
+bind-address = 0.0.0.0
+mysqlx-bind-address = 127.0.0.1
+max_connections = 1000
+connect_timeout = 60
+wait_timeout = 28800
+interactive_timeout = 28800
+EOF
 systemctl enable mysql 2>/dev/null || true
 systemctl restart mysql 2>/dev/null || true
 
@@ -954,6 +965,9 @@ fi
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-block-updates.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-block-updates.sh" || true
 fi
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-cluster.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-fix-cluster.sh" || true
+fi
 
 # Mask and disable redundant / failing boot services for clean startup
 systemctl mask multipathd.service keyboard-setup.service systemd-networkd-wait-online.service 2>/dev/null || true
@@ -986,6 +1000,8 @@ fi
 # Register global administrative CLI commands in /usr/local/bin
 ln -sfn /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/azambasha-menu 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/azambasha-fix 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-fix-cluster.sh /usr/local/bin/azambasha-cluster 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azambasha-satellite-join 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-apply-branding.sh /usr/local/bin/azambasha-branding 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/azambasha-health 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/azambasha-doctor 2>/dev/null || true
@@ -995,6 +1011,8 @@ ln -sfn /opt/unetlab/scripts/azambasha-dark-theme.sh /usr/local/bin/azambasha-da
 
 ln -sfn /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/azam-menu 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/azam-fix 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-fix-cluster.sh /usr/local/bin/azam-cluster 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-apply-branding.sh /usr/local/bin/azam-branding 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-fix-node-startup.sh /usr/local/bin/azam-nodes 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/azam-health 2>/dev/null || true
@@ -1005,6 +1023,8 @@ ln -sfn /opt/unetlab/scripts/azambasha-dark-theme.sh /usr/local/bin/azam-dark 2>
 
 ln -sfn /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/pnet-menu 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/pnet-fix 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-fix-cluster.sh /usr/local/bin/pnet-cluster 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/pnet-satellite-join 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/pnet-health 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/pnet-doctor 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/pnet-images 2>/dev/null || true

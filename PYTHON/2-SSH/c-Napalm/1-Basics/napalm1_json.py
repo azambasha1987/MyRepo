@@ -2,7 +2,7 @@
 ===============================================================================
 Script Name   : napalm1_json.py
 Description   : Querying device facts and interface telemetry, formatted with JSON.
-Target Device : Cisco IOSvL2 Switch (192.168.122.72)
+Target Device : Cisco IOSXE-L2 Switch (192.168.1.105)
 Audience      : Network Engineering Students & Automation Beginners
 ===============================================================================
 
@@ -31,13 +31,14 @@ from napalm import get_network_driver
 # STEP 2: Initialize Cisco IOS driver and connection details
 # -----------------------------------------------------------------------------
 driver = get_network_driver('ios')
-iosvl2 = driver('192.168.122.72', 'azam', 'cisco')
+# Note: Variable name uses an underscore (IOSXE_L2) since Python identifiers cannot contain hyphens
+IOSXE_L2 = driver('192.168.1.105', 'azam', 'cisco')
 
 # -----------------------------------------------------------------------------
 # STEP 3: Open SSH session
 # -----------------------------------------------------------------------------
-print("Opening connection to 192.168.122.72...")
-iosvl2.open()
+print("Opening connection to 192.168.1.105...")
+IOSXE_L2.open()
 
 try:
     # -------------------------------------------------------------------------
@@ -46,7 +47,7 @@ try:
     print("\n" + "="*50)
     print("1. DEVICE FACTS")
     print("="*50)
-    ios_output = iosvl2.get_facts()
+    ios_output = IOSXE_L2.get_facts()
     # indent=4 creates readable 4-space indentation for nested JSON blocks
     print(json.dumps(ios_output, indent=4))
 
@@ -57,7 +58,7 @@ try:
     print("2. INTERFACE STATUS (Operational & Admin State)")
     print("="*50)
     # get_interfaces() returns info like: is_up, is_enabled, description, mac_address
-    ios_output = iosvl2.get_interfaces()
+    ios_output = IOSXE_L2.get_interfaces()
     # sort_keys=True sorts interface names alphabetically for easier reading
     print(json.dumps(ios_output, sort_keys=True, indent=4))
 
@@ -68,12 +69,12 @@ try:
     print("3. INTERFACE COUNTERS (Packets, Errors, Discards)")
     print("="*50)
     # get_interfaces_counters() is crucial for troubleshooting packet drops or CRC errors
-    ios_output = iosvl2.get_interfaces_counters()
+    ios_output = IOSXE_L2.get_interfaces_counters()
     print(json.dumps(ios_output, sort_keys=True, indent=4))
 
 finally:
     # -------------------------------------------------------------------------
     # STEP 7: Close the session to release the device VTY line
     # -------------------------------------------------------------------------
-    iosvl2.close()
+    IOSXE_L2.close()
     print("\nSession closed cleanly.")

@@ -65,17 +65,29 @@ echo "[3/5] Blacklisting unhandled virtual SMBus controller (i2c_piix4)..."
 echo "blacklist i2c_piix4" > /etc/modprobe.d/blacklist-piix4.conf
 rmmod i2c_piix4 2>/dev/null || true
 
-# --- 4. Sanitize GRUB Commandline (Remove copymods) ---
-echo "[4/5] Inspecting GRUB configuration for deprecated copymods..."
+# --- 4. Sanitize GRUB & Rebuild Clean Dracut Initramfs ---
+echo "[4/5] Eliminating deprecated copymods and rebuilding clean initramfs..."
 if [ -f /etc/default/grub ]; then
-    if grep -q -E '\b(copymods|rd\.driver\.export)\b' /etc/default/grub 2>/dev/null; then
-        echo "      -> Removing copymods from /etc/default/grub..."
-        sed -i -E 's/\b(copymods|rd\.driver\.export(=[a-zA-Z0-9_-]+)?)\b//g' /etc/default/grub /etc/default/grub.d/*.cfg 2>/dev/null || true
-        command -v update-grub >/dev/null 2>&1 && update-grub 2>/dev/null || true
-    else
-        echo "      -> GRUB cmdline is clean."
+    sed -i -E 's/\b(copymods|rd\.driver\.export(=[a-zA-Z0-9_-]+)?)\b//g' /etc/default/grub /etc/default/grub.d/*.cfg 2>/dev/null || true
+    if ! grep -q 'loglevel=3' /etc/default/grub 2>/dev/null; then
+        sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 /' /etc/default/grub 2>/dev/null || true
     fi
+    command -v update-grub >/dev/null 2>&1 && update-grub 2>/dev/null || true
 fi
+
+# Purge cloud-initramfs packages that inject 50copymods hook into dracut
+echo "      -> Purging cloud-initramfs-copymods & cloud-initramfs-dyn-netconf..."
+DEBIAN_FRONTEND=noninteractive apt-get purge -y cloud-initramfs-copymods cloud-initramfs-dyn-netconf 2>/dev/null || true
+rm -rf /usr/lib/dracut/modules.d/50copymods /usr/lib/dracut/modules.d/50kernel-modules-export 2>/dev/null || true
+
+# Permanently omit copymods from dracut
+mkdir -p /etc/dracut.conf.d
+echo 'omit_dracutmodules+=" copymods kernel-modules-export "' > /etc/dracut.conf.d/01-omit-copymods.conf
+
+# Rebuild active kernel initramfs with dracut
+echo "      -> Rebuilding clean initramfs (dracut -f)..."
+dracut -f 2>/dev/null || true
+echo "      -> Initramfs rebuilt successfully."
 
 # --- 5. Deploy Dynamic Banner Updater & Live Network Hooks ---
 echo "[5/5] Updating console banner script and network dispatcher hooks..."

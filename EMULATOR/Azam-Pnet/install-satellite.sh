@@ -414,10 +414,19 @@ EOF_MODS
 # Blacklist i2c_piix4 virtual controller to silence unhandled SMBus warning
 echo "blacklist i2c_piix4" > /etc/modprobe.d/blacklist-piix4.conf
 
-# Sanitize GRUB kernel commandline to remove obsolete copymods
+# Sanitize GRUB kernel commandline to remove obsolete copymods and set loglevel=3
 if [ -f /etc/default/grub ]; then
     sed -i -E 's/\b(copymods|rd\.driver\.export(=[a-zA-Z0-9_-]+)?)\b//g' /etc/default/grub /etc/default/grub.d/*.cfg 2>/dev/null || true
+    if ! grep -q 'loglevel=3' /etc/default/grub 2>/dev/null; then
+        sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 /' /etc/default/grub 2>/dev/null || true
+    fi
 fi
+
+# Purge obsolete cloud-initramfs packages and permanently omit copymods from dracut
+DEBIAN_FRONTEND=noninteractive apt-get purge -y cloud-initramfs-copymods cloud-initramfs-dyn-netconf 2>/dev/null || true
+rm -rf /usr/lib/dracut/modules.d/50copymods /usr/lib/dracut/modules.d/50kernel-modules-export 2>/dev/null || true
+mkdir -p /etc/dracut.conf.d
+echo 'omit_dracutmodules+=" copymods kernel-modules-export "' > /etc/dracut.conf.d/01-omit-copymods.conf
 
 # Ensure /lib/modules link exists for modprobe
 if [ ! -d /lib/modules ] && [ -d /usr/lib/modules ]; then

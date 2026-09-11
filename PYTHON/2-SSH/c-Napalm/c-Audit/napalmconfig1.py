@@ -4,7 +4,6 @@ Script Name   : napalmconfig1.py
 Description   : Declarative Configuration Management - Loading a merge candidate
                 configuration (ACL1.cfg) and committing it to a Cisco device.
 Target Device : Cisco Switch/Router (192.168.1.105)
-Audience      : Network Engineering Students & Automation Beginners
 ===============================================================================
 
 HOW NAPALM MANAGES CONFIGURATION:

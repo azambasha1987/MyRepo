@@ -4,7 +4,6 @@ Script Name   : napalmconfig2.py
 Description   : Safe Configuration Audit & Idempotency - Previewing diffs with
                 compare_config() before committing or discarding changes.
 Target Device : Cisco Switch/Router (192.168.1.105)
-Audience      : Network Engineering Students & Automation Beginners
 ===============================================================================
 
 THE "AUDIT & DRY-RUN" PATTERN:

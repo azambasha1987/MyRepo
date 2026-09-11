@@ -4,7 +4,6 @@ Script Name   : napalmconfig3.py
 Description   : Multi-Stage Configuration Audit - Applying and auditing multiple
                 independent configuration files (ACL and OSPF) sequentially.
 Target Device : Cisco Switch/Router (192.168.1.105)
-Audience      : Network Engineering Students & Automation Beginners
 ===============================================================================
 
 MULTI-STAGE CONFIGURATION AUDITS:

@@ -1,6 +1,6 @@
 BGP topology router configuration:
 
-Use NAPALM to retrieve BGP neighbor information
+Use NAPALM to retrieve BGP neighbor information Part 1 - 3:
 
 S1 - 
 int vlan 1
@@ -23,6 +23,10 @@ ip add 2.2.2.2 255.255.255.255
 router bgp 65000
 neighbor 192.168.122.72 remote-as 65000
 network 2.2.2.2 mask 255.255.255.255
+
+
+
+
 
 
 NAPALM:  Multiple BGP neighbors
@@ -54,7 +58,9 @@ neighbor 192.168.122.72 remote-as 65000
 network 2.2.2.2 mask 255.255.255.255
 
 
-NAPALM and bigger BGP Network:
+
+
+NAPALM and bigger BGP Network Parts 1 and 2:
 
 (NOTE: You'll need to add static routes to Ubuntu for this one. Those are included after the router configuration details)
 
@@ -117,4 +123,29 @@ neighbor 15.1.1.1 remote-as 65002
 
 
 The output of "sh ip route"  on R1 and R4 should list the 192.168.122.0/24, 17.1.1.0/24, 8.8.8.0/24, and the 15.1.1.0/24 networks. 
+
+
+
+
+
+
+
+Ubuntu (temporary static routes)
+
+sudo ip route add 17.1.1.0/24 via 192.168.122.72
+sudo ip route add 8.8.8.0/24 via 192.168.122.72
+sudo ip route add 15.1.1.0/24 via 192.168.122.72
+
+
+Since the Ubuntu VM is a DHCP client, it'll default to sending traffic for any destination outside the 192.168.122.0/24 network to its default gateway, which is the NAT node in this instance.
+That will prevent it from reaching anything behind R1,  since it'll just forward traffic intended for the 17.1.1.0/24, 8.8.8.0/24, and 15.1.1.0/24 networks to the NAT node instead of R1. 
+Temporarily adding static routes to the Ubuntu VM will tell it to forward traffic destined to those three networks to R1 instead of the NAT node  (traffic to all other remote networks still gets forwarded to the NAT node)
+
+
+After setting up BGP on the four routers as well as adding those temp static routes to the Ubuntu VM,  the VM should now be able to ping all the way to R4 (15.1.1.2) and successfully get replies from it.
+That means we've verified end-to-end connectivity at this point, which is important, as  Part 2 of this topology has you use a napalm script to connect to all four routers. 
+
+
+
+
 

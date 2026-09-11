@@ -1,65 +1,5 @@
 Package: pnetlab-bridge-dkms
-Version: 6.8.63resolute1
-Architecture: all
-Maintainer: PNetLab Noble Port <noble@pnetlab.local>
-Installed-Size: 836
-Depends: dkms (>= 2.1.0.0), build-essential
-Section: kernel
-Priority: optional
-Homepage: http://www.pnetlab.com/
-Description: PNetLab patched bridge module (group-MAC forwarding)
- Rebuilds the kernel bridge module via DKMS with BR_GROUPFWD_RESTRICTED
- cleared, so a bridge's group_fwd_mask can forward all 01:80:c2:00:00:0X
- reserved group MACs (STP, MAC pause, LACP/slow protocols). This lets
- emulated switches connected through the host Linux bridges that PNetLab
- builds per lab network form LACP EtherChannels and exchange pause frames —
- impossible with the stock module, which hard-restricts those bits.
- .
- The module installs under updates/ (outranking the in-tree bridge.ko) and
- is rebuilt automatically on every kernel upgrade. The engine writes
- group_fwd_mask 65535 with a 65528 fallback, so labs work with or without it.
-Filename: pool/resolute/main/pnetlab-bridge-dkms_6.8.63resolute1_all.deb
-Size: 135488
-MD5sum: 78c4122cf800e7ef0ad7b9528fbede8d
-SHA1: df7f548eb6fe7d496be7e5882bf53328abe97b4d
-SHA256: 0e582e34a2a9eada67b9564a76b03965c55e93ffbbee852cc1864d79f4a72127
-SHA512: fcf1c2d4d39300351a00c39cbf1da4d5dac5e6144137693744ffb994a01782e0538c2bcce25e312143416f03a5a2b33110cf9fade0b7d75d5e85715e01c33289
-
-Package: pnetlab-bridge-dkms
-Version: 6.8.74resolute1
-Architecture: all
-Maintainer: PNetLab Noble Port <noble@pnetlab.local>
-Installed-Size: 864
-Depends: dkms (>= 2.1.0.0), build-essential, iproute2, kmod
-Section: kernel
-Priority: optional
-Homepage: http://www.pnetlab.com/
-Description: PNetLab patched bridge module (group-MAC forwarding)
- Rebuilds the kernel bridge module via DKMS with BR_GROUPFWD_RESTRICTED
- cleared, so a bridge's group_fwd_mask can forward all 01:80:c2:00:00:0X
- reserved group MACs (STP, MAC pause, LACP/slow protocols). This lets
- emulated switches connected through the host Linux bridges that PNetLab
- builds per lab network form LACP EtherChannels and exchange pause frames —
- impossible with the stock module, which hard-restricts those bits.
- .
- The module installs under updates/ (outranking the in-tree bridge.ko) and
- is rebuilt automatically on every kernel upgrade. The engine writes
- group_fwd_mask 65535 with a 65528 fallback, so labs work with or without it.
- A boot-time self-check records whether the running bridge module actually
- accepts the full mask, making future kernel/DKMS incompatibilities visible.
- Runtime results are retained per kernel and can be reviewed with
- pnetlab-bridge-dkms-status. Rollback guidance uses only the shipped registry
- of fully gated kernels that are actually installed; it never treats a mask
- pass as release confirmation or changes GRUB/unloads an active bridge.
-Filename: pool/resolute/main/pnetlab-bridge-dkms_6.8.74resolute1_all.deb
-Size: 142376
-MD5sum: 8686d25276bb413c64a5b3f3d899ea0e
-SHA1: 12f0161a35c2c897d60d72c00e062984117b0b10
-SHA256: f936b6898d1de6ac13db0e40017d38a55a9007654ca3d4f205d836e7a4b9a696
-SHA512: 1d2c38a2278a957cca1a99aece3d0193a68ef7504a246d831adcb9ae9afbf44743e35974b91a8b9d9604267c10592413eea0656284cd2508deecba88dc431e34
-
-Package: pnetlab-bridge-dkms
-Version: 6.8.75resolute1
+Version: 6.8.78resolute1
 Architecture: all
 Maintainer: PNetLab Noble Port <noble@pnetlab.local>
 Installed-Size: 865
@@ -84,75 +24,9 @@ Description: PNetLab patched bridge module (group-MAC forwarding)
  pnetlab-bridge-dkms-status. Rollback guidance uses only the shipped registry
  of fully gated kernels that are actually installed; it never treats a mask
  pass as release confirmation or changes GRUB/unloads an active bridge.
-Filename: pool/resolute/main/pnetlab-bridge-dkms_6.8.75resolute1_all.deb
-Size: 142470
-MD5sum: 3329b13ec96153c8227c994e0ccb4c93
-SHA1: b5d605580bcc2b4675532a9f50681f7facbf635f
-SHA256: eaadd5cf49432a907e1e998b81936d922d04420ec903c969af2ea1fcd0e9c146
-SHA512: 950b256dcc7f8467d2b15649784042a3444c97a7b2943cb3c2c5872a9b0835402d2b0144a13c1302d17396a31c0fb32a1b9c3766157a2b61f37d2df01337b520
-
-Package: pnetlab-bridge-dkms
-Version: 6.8.76resolute1
-Architecture: all
-Maintainer: PNetLab Noble Port <noble@pnetlab.local>
-Installed-Size: 865
-Depends: dkms (>= 2.1.0.0), build-essential, iproute2, kmod
-Section: kernel
-Priority: optional
-Homepage: http://www.pnetlab.com/
-Description: PNetLab patched bridge module (group-MAC forwarding)
- Rebuilds the kernel bridge module via DKMS with BR_GROUPFWD_RESTRICTED
- cleared, so a bridge's group_fwd_mask can forward all 01:80:c2:00:00:0X
- reserved group MACs (STP, MAC pause, LACP/slow protocols). This lets
- emulated switches connected through the host Linux bridges that PNetLab
- builds per lab network form LACP EtherChannels and exchange pause frames —
- impossible with the stock module, which hard-restricts those bits.
- .
- The module installs under updates/ (outranking the in-tree bridge.ko) and
- is rebuilt automatically on every kernel upgrade. The engine writes
- group_fwd_mask 65535 with a 65528 fallback, so labs work with or without it.
- A boot-time self-check records whether the running bridge module actually
- accepts the full mask, making future kernel/DKMS incompatibilities visible.
- Runtime results are retained per kernel and can be reviewed with
- pnetlab-bridge-dkms-status. Rollback guidance uses only the shipped registry
- of fully gated kernels that are actually installed; it never treats a mask
- pass as release confirmation or changes GRUB/unloads an active bridge.
-Filename: pool/resolute/main/pnetlab-bridge-dkms_6.8.76resolute1_all.deb
-Size: 142546
-MD5sum: 57fa40169bc6f3db2bdc6af8421aa3b1
-SHA1: 2514a877549f99fe17b9038c85dfdce376435c18
-SHA256: ce9484e9981ed7fcc917ad4b7f5ed1068ad3dc920c87c7635d9d1ec879d23fca
-SHA512: e44dd86693e9b2f830bcd4538e2459f90c9461af71c95d731227d2676e68ea4abd206573adf1c2daa08bb21e3687966df09ce36581dfff052cf6e723d51169f2
-
-Package: pnetlab-bridge-dkms
-Version: 6.8.77resolute1
-Architecture: all
-Maintainer: PNetLab Noble Port <noble@pnetlab.local>
-Installed-Size: 865
-Depends: dkms (>= 2.1.0.0), build-essential, iproute2, kmod
-Section: kernel
-Priority: optional
-Homepage: http://www.pnetlab.com/
-Description: PNetLab patched bridge module (group-MAC forwarding)
- Rebuilds the kernel bridge module via DKMS with BR_GROUPFWD_RESTRICTED
- cleared, so a bridge's group_fwd_mask can forward all 01:80:c2:00:00:0X
- reserved group MACs (STP, MAC pause, LACP/slow protocols). This lets
- emulated switches connected through the host Linux bridges that PNetLab
- builds per lab network form LACP EtherChannels and exchange pause frames —
- impossible with the stock module, which hard-restricts those bits.
- .
- The module installs under updates/ (outranking the in-tree bridge.ko) and
- is rebuilt automatically on every kernel upgrade. The engine writes
- group_fwd_mask 65535 with a 65528 fallback, so labs work with or without it.
- A boot-time self-check records whether the running bridge module actually
- accepts the full mask, making future kernel/DKMS incompatibilities visible.
- Runtime results are retained per kernel and can be reviewed with
- pnetlab-bridge-dkms-status. Rollback guidance uses only the shipped registry
- of fully gated kernels that are actually installed; it never treats a mask
- pass as release confirmation or changes GRUB/unloads an active bridge.
-Filename: pool/resolute/main/pnetlab-bridge-dkms_6.8.77resolute1_all.deb
-Size: 142544
-MD5sum: 731aec325d4f1045a6dc0898f9559561
-SHA1: f08c178522596ec49724ebd3249e4c49566cbdc5
-SHA256: 3b4118fb560e7593eb1745c8195d137506c8b2db49339a7fd63932bf49e9fd00
-SHA512: 2ad67782e687125e4fabd76274fc3199097c046444bbb58e3b07e5a5b9f4870f31708f91911cc7563b705cb09550ee18a102326f0f3df42c67e7fe0a8574c6f8
+Filename: pool/resolute/main/pnetlab-bridge-dkms_6.8.78resolute1_all.deb
+Size: 142698
+MD5sum: 59e8973ea039fc1ba996ca907db02391
+SHA1: 87f96c72e6d8d512c60e9fcf4accb3c2a07a7e88
+SHA256: 8066b5796736d4c1c423be392867cb6142080cf6bfd5f4e4967e12469f7e7cb7
+SHA512: 2eefafbad0f5b50663f5982ffee36bfde5b9875489740c79f3a93acfba004de32baafe88831cce33f58adfc6d2aa68c48d302ead05d45382975dc957580eb2e3

@@ -217,11 +217,25 @@ discover_real_iface() {
 
 REAL_IFACE="$(discover_real_iface)"
 echo "       -> Active Physical Interface: $REAL_IFACE"
+REAL_MAC="$(cat "/sys/class/net/${REAL_IFACE}/address" 2>/dev/null || ip link show "$REAL_IFACE" 2>/dev/null | awk '/ether/{print $2}' | head -n1 || true)"
+CURRENT_IP_CIDR="$(ip -4 -o addr show dev "$REAL_IFACE" 2>/dev/null | awk '{print $4}' | head -n1 || true)"
+CURRENT_GW="$(ip -4 route show to default 2>/dev/null | awk '{for(i=1;i<=NF;i++) if($i=="via") print $(i+1)}' | head -n1 || true)"
+[ -n "$REAL_MAC" ] && echo "       -> Hardware MAC Address    : $REAL_MAC"
+[ -n "$CURRENT_IP_CIDR" ] && echo "       -> Active Management IP/CIDR: $CURRENT_IP_CIDR (GW: ${CURRENT_GW:-None})"
 ip link set dev "$REAL_IFACE" up 2>/dev/null || true
 
 # Permanently disable cloud-init network overwrite
-mkdir -p /etc/cloud/cloud.cfg.d
+mkdir -p /etc/cloud/cloud.cfg.d /etc/systemd/network
 echo "network: {config: disabled}" > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+
+# Deploy udev/systemd link policy so pnet0 retains physical MAC and avoids synthetic MAC override
+cat > /etc/systemd/network/98-pnet0-mac.link << 'LINKEOF'
+[Match]
+OriginalName=pnet0
+
+[Link]
+MACAddressPolicy=none
+LINKEOF
 
 # Clean conflicting netplan configs
 mkdir -p /etc/netplan
@@ -229,6 +243,10 @@ for f in /etc/netplan/*.yaml /etc/netplan/*.yml; do
     [ -f "$f" ] && [ "$(basename "$f")" != "01-pnetlab-netcfg.yaml" ] && rm -f "$f" 2>/dev/null || true
 done
 rm -f /etc/systemd/network/*.network 2>/dev/null || true
+
+# Prepare MAC address line for Netplan
+MAC_LINE=""
+[ -n "$REAL_MAC" ] && MAC_LINE="      macaddress: $REAL_MAC"
 
 # Write authoritative Netplan bridge configuration
 if [ -n "$STATIC_IP" ]; then
@@ -247,6 +265,7 @@ network:
   bridges:
     pnet0:
       interfaces: [$REAL_IFACE]
+$MAC_LINE
       dhcp4: false
       dhcp6: false
       addresses:
@@ -270,8 +289,11 @@ network:
   bridges:
     pnet0:
       interfaces: [$REAL_IFACE]
+$MAC_LINE
       dhcp4: true
       dhcp6: false
+      dhcp4-overrides:
+        dhcp-identifier: mac
       parameters:
         stp: false
         forward-delay: 0
@@ -309,6 +331,27 @@ iface pnet0 inet dhcp
 INTEOF
 fi
 chmod 644 /etc/network/interfaces
+
+# In-flight kernel datapath migration: prevent IP loss and SSH disconnection
+ip link add name pnet0 type bridge forward_delay 0 stp_state 0 2>/dev/null || true
+[ -n "$REAL_MAC" ] && ip link set dev pnet0 address "$REAL_MAC" 2>/dev/null || true
+ip link set dev "$REAL_IFACE" master pnet0 2>/dev/null || true
+ip link set dev "$REAL_IFACE" up promisc on 2>/dev/null || true
+ip link set dev pnet0 up promisc on 2>/dev/null || true
+
+if [ -n "$STATIC_IP" ]; then
+    IP_NET="$STATIC_IP"
+    [[ "$IP_NET" != *"/"* ]] && IP_NET="${IP_NET}/24"
+    ip addr flush dev "$REAL_IFACE" 2>/dev/null || true
+    ip addr flush dev pnet0 2>/dev/null || true
+    ip addr add "$IP_NET" dev pnet0 2>/dev/null || true
+    [ -n "$STATIC_GW" ] && ip route replace default via "$STATIC_GW" dev pnet0 2>/dev/null || true
+elif [ -n "$CURRENT_IP_CIDR" ]; then
+    # Seamlessly assign active IP/CIDR to pnet0 before flushing physical NIC so SSH / cluster-join never drops
+    ip addr add "$CURRENT_IP_CIDR" dev pnet0 2>/dev/null || true
+    [ -n "$CURRENT_GW" ] && ip route replace default via "$CURRENT_GW" dev pnet0 2>/dev/null || true
+    ip addr del "$CURRENT_IP_CIDR" dev "$REAL_IFACE" 2>/dev/null || true
+fi
 
 # Apply systemd-networkd & Netplan
 systemctl enable --now systemd-networkd 2>/dev/null || true

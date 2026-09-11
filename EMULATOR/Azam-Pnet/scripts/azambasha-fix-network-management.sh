@@ -50,6 +50,15 @@ mkdir -p /etc/sysctl.d
 chmod 755 /opt/unetlab/data/netcfg-backups /etc/systemd/resolved.conf.d /run/pnetlab 2>/dev/null || true
 chown root:www-data /run/pnetlab 2>/dev/null || true
 
+mkdir -p /etc/systemd/network
+cat > /etc/systemd/network/98-pnet0-mac.link << 'LINKEOF'
+[Match]
+OriginalName=pnet0
+
+[Link]
+MACAddressPolicy=none
+LINKEOF
+
 # Purge any legacy/installer/cloud-init netplan YAMLs
 for f in /etc/netplan/*.yaml /etc/netplan/*.yml; do
     [ -f "$f" ] && [ "$(basename "$f")" != "01-pnetlab-netcfg.yaml" ] && rm -f "$f" 2>/dev/null || true
@@ -358,6 +367,14 @@ def verb_server_netcfg(args):
 
     try:
         real_iface = _get_real_iface()
+        real_mac = ""
+        try:
+            with open(f"/sys/class/net/{real_iface}/address", "r") as f:
+                real_mac = f.read().strip()
+        except Exception:
+            pass
+        mac_yaml = f"      macaddress: {real_mac}\\n" if real_mac else ""
+
         os.makedirs("/etc/netplan", exist_ok=True)
         if mode == "dhcp":
             netplan_yaml = (
@@ -371,8 +388,11 @@ def verb_server_netcfg(args):
                 "  bridges:\\n"
                 "    pnet0:\\n"
                 f"      interfaces: [{real_iface}]\\n"
+                f"{mac_yaml}"
                 "      dhcp4: true\\n"
                 "      dhcp6: false\\n"
+                "      dhcp4-overrides:\\n"
+                "        dhcp-identifier: mac\\n"
                 "      parameters:\\n"
                 "        stp: false\\n"
                 "        forward-delay: 0\\n"
@@ -398,6 +418,7 @@ def verb_server_netcfg(args):
                 "  bridges:\\n"
                 "    pnet0:\\n"
                 f"      interfaces: [{real_iface}]\\n"
+                f"{mac_yaml}"
                 "      dhcp4: false\\n"
                 "      dhcp6: false\\n"
                 f"      addresses: [{address}/{cidr}]\\n"

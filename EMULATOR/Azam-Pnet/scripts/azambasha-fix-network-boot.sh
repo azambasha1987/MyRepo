@@ -20,6 +20,7 @@ for iface in $(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | cut -d'@'
     esac
 done
 [ -z "$REAL_IFACE" ] && REAL_IFACE="eth0"
+REAL_MAC="$(cat "/sys/class/net/${REAL_IFACE}/address" 2>/dev/null || ip link show "$REAL_IFACE" 2>/dev/null | awk '/ether/{print $2}' | head -n1 || true)"
 
 # Auto-detect dynamic or current live IP & Gateway if not passed as CLI args
 DETECTED_IP="$(ip -4 addr show dev "$REAL_IFACE" 2>/dev/null | awk '/inet /{print $2}' | cut -d/ -f1 | head -n1 || true)"
@@ -55,10 +56,19 @@ echo "[1/5] Physical Uplink Interface : ${REAL_IFACE}"
 echo "      Configuring Static IP     : ${IP_ADDR}/${CIDR} via ${GATEWAY}"
 
 # 2. Disable Cloud-Init Network Overwrites & Purge Conflicting Netplan Files
-mkdir -p /etc/cloud/cloud.cfg.d /etc/netplan /etc/systemd/system/networking.service.d /etc/modules-load.d /etc/sysctl.d
+mkdir -p /etc/cloud/cloud.cfg.d /etc/netplan /etc/systemd/system/networking.service.d /etc/systemd/network /etc/modules-load.d /etc/sysctl.d
 cat > /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg << 'EOF'
 network: {config: disabled}
 EOF
+
+# Deploy udev/systemd link policy so pnet0 retains physical MAC and avoids synthetic MAC override
+cat > /etc/systemd/network/98-pnet0-mac.link << 'LINKEOF'
+[Match]
+OriginalName=pnet0
+
+[Link]
+MACAddressPolicy=none
+LINKEOF
 
 # Purge any legacy/installer/cloud-init netplan YAMLs that could re-enable DHCP on physical NIC
 for f in /etc/netplan/*.yaml /etc/netplan/*.yml; do
@@ -164,6 +174,9 @@ EOF
 chmod +x /usr/local/bin/pnetlab-boot-network.sh
 echo "[3/5] Installed /usr/local/bin/pnetlab-boot-network.sh"
 
+MAC_LINE=""
+[ -n "$REAL_MAC" ] && MAC_LINE="      macaddress: $REAL_MAC"
+
 # 4. Synchronize Netplan and Clean /etc/network/interfaces
 cat > /etc/netplan/01-pnetlab-netcfg.yaml << EOF
 network:
@@ -176,6 +189,7 @@ network:
   bridges:
     pnet0:
       interfaces: [${REAL_IFACE}]
+$MAC_LINE
       dhcp4: false
       dhcp6: false
       addresses:

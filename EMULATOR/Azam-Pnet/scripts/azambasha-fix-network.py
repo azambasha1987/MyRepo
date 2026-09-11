@@ -92,6 +92,22 @@ def discover_physical_uplink():
 
 real_iface = discover_physical_uplink()
 print(f"[2/7] Detected primary physical uplink: {real_iface}")
+real_mac = ""
+try:
+    with open(f"/sys/class/net/{real_iface}/address", "r") as f:
+        real_mac = f.read().strip()
+except Exception:
+    pass
+if real_mac:
+    print(f"      Hardware MAC address: {real_mac}")
+
+# Deploy systemd link policy so pnet0 adopts hardware MAC and prevents synthetic MAC override
+os.makedirs("/etc/systemd/network", exist_ok=True)
+try:
+    with open("/etc/systemd/network/98-pnet0-mac.link", "w") as f:
+        f.write("[Match]\nOriginalName=pnet0\n\n[Link]\nMACAddressPolicy=none\n")
+except Exception:
+    pass
 
 # 3. Create required directories and sanitize permissions
 print("[3/7] Setting up network paths, runtime directories, and cloud-init guards...")
@@ -113,7 +129,7 @@ try:
 except Exception:
     pass
 
-# Detect static intent before purging
+# Detect static intent before purging - inspect pnet0 specifically
 is_static = False
 if os.path.isdir("/etc/netplan"):
     for f in os.listdir("/etc/netplan"):
@@ -121,9 +137,12 @@ if os.path.isdir("/etc/netplan"):
             try:
                 with open(os.path.join("/etc/netplan", f), "r") as nf:
                     data = nf.read()
-                    if any(x in data for x in ["dhcp4: false", "dhcp4: no", "addresses:"]):
-                        is_static = True
-                        break
+                    m_pnet = re.search(r'pnet0:\s*\n((?:[ \t]+.*\n)*)', data)
+                    if m_pnet:
+                        pnet_block = m_pnet.group(1)
+                        if "addresses:" in pnet_block and ("dhcp4: false" in pnet_block or "dhcp4: no" in pnet_block):
+                            is_static = True
+                            break
             except Exception:
                 pass
 
@@ -204,6 +223,8 @@ if os.path.exists("/etc/network/interfaces"):
     except Exception:
         pass
 
+mac_line = f"      macaddress: {real_mac}\n" if real_mac else ""
+
 if is_static and current_ip:
     ifaces_content = f"""# This file describes the network interfaces available on your system
 # and how to activate them. For more information, see interfaces(5).
@@ -242,7 +263,7 @@ iface pnet0 inet static
   bridges:
     pnet0:
       interfaces: [{real_iface}]
-      dhcp4: false
+{mac_line}      dhcp4: false
       dhcp6: false
       addresses: [{current_ip}/{cidr}]
 {gw_line}      nameservers:
@@ -264,12 +285,9 @@ iface lo inet loopback
 # The primary network interface
 # BEGIN pnetlab-netcfg pnet0
 allow-hotplug pnet0
-iface pnet0 inet static
-    address ${current_ip}
-    netmask ${current_mask}
-    gateway ${current_gw}
-    pre-up ip link set dev ${real_iface} up
-    bridge_ports ${real_iface}
+iface pnet0 inet dhcp
+    pre-up ip link set dev {real_iface} up
+    bridge_ports {real_iface}
     bridge_stp off
 # END pnetlab-netcfg pnet0
 """
@@ -283,8 +301,10 @@ iface pnet0 inet static
   bridges:
     pnet0:
       interfaces: [{real_iface}]
-      dhcp4: true
+{mac_line}      dhcp4: true
       dhcp6: false
+      dhcp4-overrides:
+        dhcp-identifier: mac
       parameters:
         stp: false
         forward-delay: 0
@@ -496,8 +516,6 @@ iface pnet0 inet dhcp
                         if m_gw:
                             gw_val = m_gw.group(1).strip()
                             subprocess.run(["ip", "route", "replace", "default", "via", gw_val, "dev", "pnet0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                else:
-                    subprocess.run(["dhclient", "-v", "pnet0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             except Exception:
                 pass
 
@@ -844,6 +862,14 @@ def verb_server_netcfg(args):
                 except Exception:
                     pass
 
+        real_mac = ""
+        try:
+            with open(f"/sys/class/net/{real_iface}/address", "r") as f:
+                real_mac = f.read().strip()
+        except Exception:
+            pass
+        mac_yaml = f"      macaddress: {real_mac}\\n" if real_mac else ""
+
         if mode == "dhcp":
             netplan_yaml = (
                 "network:\\n"
@@ -856,8 +882,11 @@ def verb_server_netcfg(args):
                 "  bridges:\\n"
                 "    pnet0:\\n"
                 f"      interfaces: [{real_iface}]\\n"
+                f"{mac_yaml}"
                 "      dhcp4: true\\n"
                 "      dhcp6: false\\n"
+                "      dhcp4-overrides:\\n"
+                "        dhcp-identifier: mac\\n"
                 "      parameters:\\n"
                 "        stp: false\\n"
                 "        forward-delay: 0\\n"
@@ -883,6 +912,7 @@ def verb_server_netcfg(args):
                 "  bridges:\\n"
                 "    pnet0:\\n"
                 f"      interfaces: [{real_iface}]\\n"
+                f"{mac_yaml}"
                 "      dhcp4: false\\n"
                 "      dhcp6: false\\n"
                 f"      addresses: [{address}/{cidr}]\\n"

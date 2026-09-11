@@ -55,7 +55,9 @@ fi
 if [ -z "$REAL_IFACE" ]; then
     REAL_IFACE="ens33"
 fi
+REAL_MAC="$(cat "/sys/class/net/${REAL_IFACE}/address" 2>/dev/null || ip link show "$REAL_IFACE" 2>/dev/null | awk '/ether/{print $2}' | head -n1 || true)"
 echo "      -> Detected primary physical uplink: ${REAL_IFACE}"
+[ -n "$REAL_MAC" ] && echo "      -> Physical Hardware MAC Address: ${REAL_MAC}"
 
 # 2. Ensure Required Directories Exist & Purge Conflicting Netplans
 mkdir -p /etc/network/interfaces.d
@@ -63,9 +65,19 @@ mkdir -p /opt/unetlab/data/netcfg-backups
 mkdir -p /etc/systemd/resolved.conf.d
 mkdir -p /etc/netplan
 mkdir -p /etc/systemd/system/networking.service.d
+mkdir -p /etc/systemd/network
 mkdir -p /etc/modules-load.d
 mkdir -p /etc/sysctl.d
 chmod 755 /opt/unetlab/data/netcfg-backups /etc/systemd/resolved.conf.d 2>/dev/null || true
+
+# Deploy udev/systemd link policy so pnet0 retains physical MAC and avoids synthetic MAC override
+cat > /etc/systemd/network/98-pnet0-mac.link << 'LINKEOF'
+[Match]
+OriginalName=pnet0
+
+[Link]
+MACAddressPolicy=none
+LINKEOF
 
 # Purge any legacy/installer/cloud-init netplan YAMLs
 for f in /etc/netplan/*.yaml /etc/netplan/*.yml; do
@@ -125,6 +137,10 @@ EOF
 chmod 644 /etc/network/interfaces
 echo "      -> Sanitized /etc/network/interfaces with pnet0 stanza"
 
+# Prepare MAC address line for Netplan
+MAC_LINE=""
+[ -n "$REAL_MAC" ] && MAC_LINE="      macaddress: $REAL_MAC"
+
 # 6. Create /etc/netplan/01-pnetlab-netcfg.yaml for Native Ubuntu 26 Support
 if [ ! -f /etc/netplan/01-pnetlab-netcfg.yaml ]; then
     cat > /etc/netplan/01-pnetlab-netcfg.yaml << EOF
@@ -138,8 +154,11 @@ network:
   bridges:
     pnet0:
       interfaces: [${REAL_IFACE}]
+$MAC_LINE
       dhcp4: true
       dhcp6: false
+      dhcp4-overrides:
+        dhcp-identifier: mac
       parameters:
         stp: false
         forward-delay: 0

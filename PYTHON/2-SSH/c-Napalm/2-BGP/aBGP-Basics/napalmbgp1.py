@@ -4,7 +4,6 @@ Script Name   : napalmbgp1.py
 Description   : Querying BGP neighbor relationships and peering states on a
                 single Cisco router/switch using NAPALM.
 Target Device : Cisco Device (192.168.1.105)
-Audience      : Network Engineering Students & Automation Beginners
 ===============================================================================
 
 WHAT IS BGP (Border Gateway Protocol)?

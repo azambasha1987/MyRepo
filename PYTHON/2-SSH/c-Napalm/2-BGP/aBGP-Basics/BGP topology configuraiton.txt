@@ -1,34 +1,30 @@
 BGP topology router configuration:
 
-Use NAPALM to retrieve BGP neighbor information Part 1 - 3:
+Use NAPALM to retrieve BGP neighbor information:
 
-S1 - 
+CORE-SW1 - 
 int vlan 1
-ip add 192.168.122.72 255.255.255.0
-no shut
-int lo0
-ip add 1.1.1.1 255.255.255.255
-
-router bgp 65000
-neighbor 192.168.122.73 remote-as 65000
-network 1.1.1.1 mask 255.255.255.255
-
-R1 - 
-int g0/0
-ip add 192.168.122.73 255.255.255.0
+ip add 192.168.10.2 255.255.255.252
 no shut
 int lo0
 ip add 2.2.2.2 255.255.255.255
 
 router bgp 65000
-neighbor 192.168.122.72 remote-as 65000
+neighbor 192.168.10.1 remote-as 65000
+network 1.1.1.1 mask 255.255.255.255
+
+GW-R1 - 
+int g0/1
+ip add 192.168.10.1 255.255.255.252
+no shut
+int lo0
+ip add 1.1.1.1 255.255.255.255
+
+router bgp 65000
+neighbor 192.168.10.2 remote-as 65000
 network 2.2.2.2 mask 255.255.255.255
 
-
-
-
-
-
+=============================================
 NAPALM:  Multiple BGP neighbors
 
 (You're just adding a single line to S1's BGP configuration to add a non-existant neighbor)

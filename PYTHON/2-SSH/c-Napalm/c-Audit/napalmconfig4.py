@@ -3,7 +3,7 @@
 Script Name   : napalmconfig4.py
 Description   : Multi-Device Fleet Compliance Audit - Applying ACL and OSPF policies
                 across an inventory of switches/routers with full idempotency.
-Target Devices: 192.168.122.72, 192.168.122.73
+Target Devices: 192.168.1.105, 192.168.122.73
 Audience      : Network Engineering Students & Automation Beginners
 ===============================================================================
 
@@ -39,7 +39,7 @@ from napalm import get_network_driver
 # STEP 2: Define device inventory list
 # -----------------------------------------------------------------------------
 devicelist = [
-    '192.168.122.72',
+    '192.168.1.105',
     '192.168.122.73'
 ]
 

@@ -3,7 +3,7 @@
 Script Name   : napalmconfig3.py
 Description   : Multi-Stage Configuration Audit - Applying and auditing multiple
                 independent configuration files (ACL and OSPF) sequentially.
-Target Device : Cisco Switch/Router (192.168.122.72)
+Target Device : Cisco Switch/Router (192.168.1.105)
 Audience      : Network Engineering Students & Automation Beginners
 ===============================================================================
 
@@ -32,12 +32,12 @@ from napalm import get_network_driver
 # STEP 2: Configure driver and target device
 # -----------------------------------------------------------------------------
 driver = get_network_driver('ios')
-iosvl2 = driver('192.168.122.72', 'azam', 'cisco')
+iosvl2 = driver('192.168.1.105', 'azam', 'cisco')
 
 # -----------------------------------------------------------------------------
 # STEP 3: Open SSH session
 # -----------------------------------------------------------------------------
-print("Accessing 192.168.122.72...")
+print("Accessing 192.168.1.105...")
 iosvl2.open()
 
 try:

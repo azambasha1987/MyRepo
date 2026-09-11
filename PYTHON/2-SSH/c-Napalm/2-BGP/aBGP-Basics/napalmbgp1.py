@@ -3,7 +3,7 @@
 Script Name   : napalmbgp1.py
 Description   : Querying BGP neighbor relationships and peering states on a
                 single Cisco router/switch using NAPALM.
-Target Device : Cisco Device (192.168.122.72)
+Target Device : Cisco Device (192.168.1.105)
 Audience      : Network Engineering Students & Automation Beginners
 ===============================================================================
 
@@ -36,12 +36,12 @@ from napalm import get_network_driver
 # STEP 2: Initialize Cisco IOS driver and credentials
 # -----------------------------------------------------------------------------
 driver = get_network_driver('ios')
-iosvl2 = driver('192.168.122.72', 'azam', 'cisco')
+iosvl2 = driver('192.168.1.105', 'azam', 'cisco')
 
 # -----------------------------------------------------------------------------
 # STEP 3: Open SSH session
 # -----------------------------------------------------------------------------
-print("Connecting to 192.168.122.72 to query BGP status...")
+print("Connecting to 192.168.1.105 to query BGP status...")
 iosvl2.open()
 
 try:

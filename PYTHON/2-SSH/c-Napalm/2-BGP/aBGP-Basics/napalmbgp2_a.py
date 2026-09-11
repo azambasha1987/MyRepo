@@ -4,7 +4,6 @@ Script Name   : napalmbgp2_a.py
 Description   : Multi-Device BGP Auditor - Iterating through an inventory of routers
                 to collect and verify BGP peering health across a multi-hop topology.
 Target Devices: 17.1.1.1, 17.1.1.2, 8.8.8.2, 15.1.1.2
-Audience      : Network Engineering Students & Automation Beginners
 ===============================================================================
 
 KEY CONCEPTS TAUGHT IN THIS SCRIPT:

@@ -4,7 +4,6 @@ Script Name   : napalmbgp2_a.py
 Description   : Full 4-Router BGP Network Audit - Auditing BGP relationships
                 across an extended multi-AS topology (AS 65001 and AS 65002).
 Target Devices: 17.1.1.1 (R1), 17.1.1.2 (R2), 8.8.8.2 (R3), 15.1.1.2 (R4)
-Audience      : Network Engineering Students & Automation Beginners
 ===============================================================================
 
 TOPOLOGY & NETWORKING CONTEXT:

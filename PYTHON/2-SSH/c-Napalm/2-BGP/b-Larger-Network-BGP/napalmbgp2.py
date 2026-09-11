@@ -4,7 +4,6 @@ Script Name   : napalmbgp2.py
 Description   : Two-Router BGP Peering Verification - Testing automated verification
                 on a baseline 2-router link (R1: 17.1.1.1 and R2: 17.1.1.2).
 Target Devices: 17.1.1.1 (R1), 17.1.1.2 (R2)
-Audience      : Network Engineering Students & Automation Beginners
 ===============================================================================
 
 PEDAGOGICAL OBJECTIVE:

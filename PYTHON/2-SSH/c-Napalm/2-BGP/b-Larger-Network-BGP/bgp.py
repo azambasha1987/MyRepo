@@ -4,7 +4,6 @@ Script Name   : bgp.py
 Description   : Connecting to an intermediate BGP router (R2: 17.1.1.2) to inspect
                 both device identity (facts) and active BGP peering sessions.
 Target Device : Cisco Router R2 (17.1.1.2)
-Audience      : Network Engineering Students & Automation Beginners
 ===============================================================================
 
 KEY LEARNING OBJECTIVES:

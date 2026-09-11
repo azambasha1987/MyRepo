@@ -3,7 +3,7 @@
 Script Name   : napalm1.py
 Description   : Introduction to NAPALM - Connecting to a Cisco IOS switch/router
                 and retrieving fundamental device facts.
-Target Device : Cisco IOSvL2 Switch (192.168.122.72)
+Target Device : Cisco IOS-XE (192.168.1.105)
 Audience      : Network Engineering Students & Automation Beginners
 ===============================================================================
 
@@ -41,13 +41,13 @@ driver = get_network_driver('ios')
 # -----------------------------------------------------------------------------
 # Syntax: driver(hostname_or_ip, username, password, optional_args)
 # Note: Ensure the username matches the local user configured on the Cisco device.
-iosvl2 = driver('192.168.122.72', 'azam', 'cisco')
+ios_xe = driver('192.168.1.105', 'azam', 'cisco')
 
 # -----------------------------------------------------------------------------
 # STEP 4: Open the SSH connection to the device
 # -----------------------------------------------------------------------------
-print("Connecting to 192.168.122.72...")
-iosvl2.open()
+print("Connecting to 192.168.1.105...")
+ios_xe.open()
 
 try:
     # -------------------------------------------------------------------------
@@ -55,7 +55,7 @@ try:
     # -------------------------------------------------------------------------
     # get_facts() returns a dictionary with keys:
     # 'uptime', 'vendor', 'model', 'os_version', 'serial_number', 'hostname', etc.
-    ios_output = iosvl2.get_facts()
+    ios_output = ios_xe.get_facts()
 
     # -------------------------------------------------------------------------
     # STEP 6: Display the output
@@ -70,5 +70,5 @@ finally:
     # -------------------------------------------------------------------------
     # Cisco IOS devices have a limited number of VTY (virtual terminal) lines.
     # Leaving sessions open can lock engineers out of the device!
-    iosvl2.close()
+    ios_xe.close()
     print("\nConnection closed successfully.")

@@ -90,4 +90,8 @@ finally:
     print("Session disconnected.")
 ===============================================================================
 """
-
+#why we use import a network driver in Napalm? 
+#import the driver because NAPALM needs to know which vendor 
+# translator to load so it can bridge the gap between 
+# NAPALM's universal methods and the 
+# target device's vendor-specific syntax and communication protocols.

@@ -3,7 +3,7 @@
 Script Name   : napalm2.py
 Description   : Inspecting Layer 2 MAC tables, Layer 3 ARP tables, and running
                 synthetic ICMP ping tests from a Cisco device.
-Target Device : Cisco IOSvL2 Switch (192.168.122.72)
+Target Device : Cisco IOS-XE (192.168.1.105)
 ===============================================================================
 
 KEY NETWORKING CONCEPTS COVERED:
@@ -28,13 +28,13 @@ from napalm import get_network_driver
 # STEP 2: Initialize Cisco IOS driver and connection details
 # -----------------------------------------------------------------------------
 driver = get_network_driver('ios')
-iosvl2 = driver('192.168.122.72', 'azam', 'cisco')
+ios_xe = driver('192.168.1.105', 'azam', 'cisco')
 
 # -----------------------------------------------------------------------------
 # STEP 3: Open SSH session
 # -----------------------------------------------------------------------------
-print("Connecting to 192.168.122.72...")
-iosvl2.open()
+print("Connecting to 192.168.1.105...")
+ios_xe.open()
 
 try:
     # -------------------------------------------------------------------------
@@ -43,7 +43,7 @@ try:
     print("\n" + "="*50)
     print("1. MAC ADDRESS TABLE (Layer 2 Switching)")
     print("="*50)
-    ios_output = iosvl2.get_mac_address_table()
+    ios_output = ios_xe.get_mac_address_table()
     print(json.dumps(ios_output, indent=4))
 
     # -------------------------------------------------------------------------
@@ -52,22 +52,22 @@ try:
     print("\n" + "="*50)
     print("2. ARP TABLE (Layer 3 IP-to-MAC Resolution)")
     print("="*50)
-    ios_output = iosvl2.get_arp_table()
+    ios_output = ios_xe.get_arp_table()
     print(json.dumps(ios_output, indent=4))
 
     # -------------------------------------------------------------------------
     # STEP 6: Execute synthetic ping test from the device
     # -------------------------------------------------------------------------
     print("\n" + "="*50)
-    print("3. SYNTHETIC REACHABILITY TEST (Ping to google.com)")
+    print("3. SYNTHETIC REACHABILITY TEST (Ping to Gateway 192.168.1.1)")
     print("="*50)
     # The device sends ICMP echo requests from its own perspective
-    ios_output = iosvl2.ping('google.com')
+    ios_output = ios_xe.ping('192.168.1.1')
     print(json.dumps(ios_output, indent=4))
 
 finally:
     # -------------------------------------------------------------------------
     # STEP 7: Close the session to release the device VTY line
     # -------------------------------------------------------------------------
-    iosvl2.close()
+    ios_xe.close()
     print("\nConnection closed successfully.")

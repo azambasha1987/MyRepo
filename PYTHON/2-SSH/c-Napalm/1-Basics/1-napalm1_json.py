@@ -3,7 +3,6 @@
 Script Name   : napalm1_json.py
 Description   : Querying device facts and interface telemetry, formatted with JSON.
 Target Device : Cisco IOSXE-L2 Switch (192.168.1.105)
-Audience      : Network Engineering Students & Automation Beginners
 ===============================================================================
 
 WHY USE JSON FORMATTING?

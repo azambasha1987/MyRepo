@@ -4,7 +4,6 @@ Script Name   : napalm1.py
 Description   : Introduction to NAPALM - Connecting to a Cisco IOS switch/router
                 and retrieving fundamental device facts.
 Target Device : Cisco IOS-XE (192.168.1.105)
-Audience      : Network Engineering Students & Automation Beginners
 ===============================================================================
 
 WHAT IS NAPALM?

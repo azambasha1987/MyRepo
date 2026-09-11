@@ -4,7 +4,6 @@ Script Name   : napalm2.py
 Description   : Inspecting Layer 2 MAC tables, Layer 3 ARP tables, and running
                 synthetic ICMP ping tests from a Cisco device.
 Target Device : Cisco IOSvL2 Switch (192.168.122.72)
-Audience      : Network Engineering Students & Automation Beginners
 ===============================================================================
 
 KEY NETWORKING CONCEPTS COVERED:

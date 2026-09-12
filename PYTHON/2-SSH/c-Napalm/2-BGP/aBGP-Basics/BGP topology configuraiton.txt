@@ -25,53 +25,53 @@ neighbor 192.168.10.2 remote-as 65000
 network 2.2.2.2 mask 255.255.255.255
 
 =============================================
-R1
+GW-R1
 int g0/1
-ip add 17.1.1.1 255.255.255.0
+ip add 192.168.20.1 255.255.255.0
 no shut
 
 router bgp 65001
-neighbor 17.1.1.2 remote-as 65001
+neighbor 192.168.20.2 remote-as 65001
 network 192.168.122.0 mask 255.255.255.0
 
 
 
-R2
+GW-R2
 int g0/0
-ip add 17.1.1.2 255.255.255.0
+ip add 192.168.20.2 255.255.255.0
 no shut
 int g0/1
-ip add 8.8.8.1 255.255.255.0
+ip add 100.100.100.1 255.255.255.0
 no shut
 
 
 router bgp 65001
-neighbor 17.1.1.1 remote-as 65001
-neighbor 8.8.8.2 remote-as 65002
+neighbor 192.168.20.1 remote-as 65001
+neighbor 100.100.100.2 remote-as 65002
 network 17.1.1.0 mask 255.255.255.0
 network 8.8.8.0 mask 255.255.255.0
 
 
 
-R3
+GW-R3
 int g0/0
-ip add 8.8.8.2 255.255.255.0
+ip add 100.100.100.2 255.255.255.0
 no shut
 int g0/1
-ip add 15.1.1.1 255.255.255.0
+ip add 10.10.0.1 255.255.255.0
 no shut
 
 router bgp 65002
-neighbor 8.8.8.1 remote-as 65001
-neighbor 15.1.1.2 remote-as 65002
+neighbor 100.100.100.1 remote-as 65001
+neighbor 10.10.0.2 remote-as 65002
 network 8.8.8.0 mask 255.255.255.0
 network 15.1.1.0 mask 255.255.255.0
 
 
-R4
+GW-R4
 int g0/0
-ip add 15.1.1.2 255.255.255.0
+ip add 10.10.0.2 255.255.255.0
 no shut
 
 router bgp 65002
-neighbor 15.1.1.1 remote-as 65002
+neighbor 10.10.0.1 remote-as 65002

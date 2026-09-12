@@ -1,9 +1,9 @@
 """
 ===============================================================================
 Script Name   : bgp.py
-Description   : Connecting to an intermediate BGP router (R2: 17.1.1.2) to inspect
+Description   : Connecting to an intermediate BGP router (GW-R2: 192.168.20.2) to inspect
                 both device identity (facts) and active BGP peering sessions.
-Target Device : Cisco Router R2 (17.1.1.2)
+Target Device : Cisco Router GW-R2 (192.168.20.2)
 ===============================================================================
 
 KEY LEARNING OBJECTIVES:
@@ -27,12 +27,12 @@ from napalm import get_network_driver
 # STEP 2: Configure Cisco IOS driver and credentials
 # -----------------------------------------------------------------------------
 driver = get_network_driver('ios')
-iosv = driver('17.1.1.2', 'azam', 'cisco')
+iosv = driver('192.168.20.2', 'azam', 'cisco')
 
 # -----------------------------------------------------------------------------
 # STEP 3: Establish SSH connection
 # -----------------------------------------------------------------------------
-print("Connecting to router 17.1.1.2...")
+print("Connecting to router 192.168.20.2...")
 iosv.open()
 
 try:

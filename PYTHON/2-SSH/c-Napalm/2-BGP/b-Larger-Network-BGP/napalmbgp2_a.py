@@ -3,15 +3,15 @@
 Script Name   : napalmbgp2_a.py
 Description   : Full 4-Router BGP Network Audit - Auditing BGP relationships
                 across an extended multi-AS topology (AS 65001 and AS 65002).
-Target Devices: 17.1.1.1 (R1), 17.1.1.2 (R2), 8.8.8.2 (R3), 15.1.1.2 (R4)
+Target Devices: 192.168.20.1 (GW-R1), 192.168.20.2 (GW-R2), 100.100.100.2 (GW-R3), 10.10.0.2 (GW-R4)
 ===============================================================================
 
 TOPOLOGY & NETWORKING CONTEXT:
 -------------------------------
 In this larger topology:
-- R1 (17.1.1.1) and R2 (17.1.1.2) are in Autonomous System 65001 (iBGP peering).
-- R2 (8.8.8.1) peers with R3 (8.8.8.2) across AS boundaries (eBGP: AS 65001 <-> AS 65002).
-- R3 (15.1.1.1) peers with R4 (15.1.1.2) within AS 65002 (iBGP peering).
+- GW-R1 (192.168.20.1) and GW-R2 (192.168.20.2) are in Autonomous System 65001 (iBGP peering).
+- GW-R2 (100.100.100.1) peers with GW-R3 (100.100.100.2) across AS boundaries (eBGP: AS 65001 <-> AS 65002).
+- GW-R3 (10.10.0.1) peers with GW-R4 (10.10.0.2) within AS 65002 (iBGP peering).
 
 Students can observe how NAPALM cleanly exposes differences in:
 - `remote_as` (matching local AS for iBGP, differing for eBGP)
@@ -29,10 +29,10 @@ from napalm import get_network_driver
 # STEP 2: Define full 4-router inventory
 # -----------------------------------------------------------------------------
 bgplist = [
-    '17.1.1.1',   # R1 (AS 65001)
-    '17.1.1.2',   # R2 (AS 65001)
-    '8.8.8.2',    # R3 (AS 65002)
-    '15.1.1.2'    # R4 (AS 65002)
+    '192.168.20.1',   # GW-R1 (AS 65001)
+    '192.168.20.2',   # GW-R2 (AS 65001)
+    '100.100.100.2',  # GW-R3 (AS 65002)
+    '10.10.0.2'       # GW-R4 (AS 65002)
 ]
 
 # -----------------------------------------------------------------------------

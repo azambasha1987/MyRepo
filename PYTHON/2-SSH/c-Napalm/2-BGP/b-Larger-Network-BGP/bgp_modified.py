@@ -3,7 +3,7 @@
 Script Name   : bgp_modified.py
 Description   : Streamlined BGP Neighbor Query - Demonstrating targeted getter
                 execution to minimize network and router CPU overhead.
-Target Device : Cisco Router R2 (17.1.1.2)
+Target Device : Cisco Router GW-R2 (192.168.20.2)
 ===============================================================================
 
 LESSON: OPTIMIZING AUTOMATION QUERIES
@@ -26,12 +26,12 @@ from napalm import get_network_driver
 # STEP 2: Configure Cisco IOS driver and credentials
 # -----------------------------------------------------------------------------
 driver = get_network_driver('ios')
-iosv = driver('17.1.1.2', 'azam', 'cisco')
+iosv = driver('192.168.20.2', 'azam', 'cisco')
 
 # -----------------------------------------------------------------------------
 # STEP 3: Establish SSH connection
 # -----------------------------------------------------------------------------
-print("Connecting to router 17.1.1.2 for targeted BGP inspection...")
+print("Connecting to router 192.168.20.2 for targeted BGP inspection...")
 iosv.open()
 
 try:

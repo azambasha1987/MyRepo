@@ -1,9 +1,9 @@
 """
 ===============================================================================
 Script Name   : bgp.py
-Description   : Connecting to an intermediate BGP router (GW-R2: 192.168.20.2) to inspect
+Description   : Connecting to an intermediate BGP router (Inhouse-ISP: 192.168.20.2) to inspect
                 both device identity (facts) and active BGP peering sessions.
-Target Device : Cisco Router GW-R2 (192.168.20.2)
+Target Device : Cisco Router Inhouse-ISP (192.168.20.2)
 ===============================================================================
 
 KEY LEARNING OBJECTIVES:

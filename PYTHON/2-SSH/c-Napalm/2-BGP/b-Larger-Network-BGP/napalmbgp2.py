@@ -2,19 +2,19 @@
 ===============================================================================
 Script Name   : napalmbgp2.py
 Description   : Two-Router BGP Peering Verification - Testing automated verification
-                on a baseline 2-router link (GW-R1: 192.168.20.1 and GW-R2: 192.168.20.2).
-Target Devices: 192.168.20.1 (GW-R1), 192.168.20.2 (GW-R2)
+                on a baseline 2-router link (GW-R1: 192.168.20.1 and Inhouse-ISP: 192.168.20.2).
+Target Devices: 192.168.20.1 (GW-R1), 192.168.20.2 (Inhouse-ISP)
 ===============================================================================
 
 PEDAGOGICAL OBJECTIVE:
 ----------------------
 Before deploying scripts across an entire enterprise network of dozens or hundreds
 of routers, best practice is to test the automation logic against a minimal
-peering pair (GW-R1 and GW-R2).
+peering pair (GW-R1 and Inhouse-ISP).
 This script verifies that:
 1. Both endpoints are reachable over IP.
 2. BGP adjacency is established between AS 65001 neighbors.
-3. The automated loop pattern functions correctly before adding GW-R3 and GW-R4.
+3. The automated loop pattern functions correctly before adding ISP-Network and SITE-1.
 """
 
 # -----------------------------------------------------------------------------

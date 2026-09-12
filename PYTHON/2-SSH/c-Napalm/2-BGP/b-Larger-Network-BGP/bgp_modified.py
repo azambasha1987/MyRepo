@@ -3,7 +3,7 @@
 Script Name   : bgp_modified.py
 Description   : Streamlined BGP Neighbor Query - Demonstrating targeted getter
                 execution to minimize network and router CPU overhead.
-Target Device : Cisco Router GW-R2 (192.168.20.2)
+Target Device : Cisco Router Inhouse-ISP (192.168.20.2)
 ===============================================================================
 
 LESSON: OPTIMIZING AUTOMATION QUERIES

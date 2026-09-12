@@ -36,7 +36,7 @@ network 192.168.122.0 mask 255.255.255.0
 
 
 
-GW-R2
+Inhouse-ISP
 int g0/0
 ip add 192.168.20.2 255.255.255.0
 no shut
@@ -53,7 +53,7 @@ network 8.8.8.0 mask 255.255.255.0
 
 
 
-GW-R3
+ISP-Network
 int g0/0
 ip add 100.100.100.2 255.255.255.0
 no shut
@@ -68,7 +68,7 @@ network 8.8.8.0 mask 255.255.255.0
 network 15.1.1.0 mask 255.255.255.0
 
 
-GW-R4
+SITE-1
 int g0/0
 ip add 10.10.0.2 255.255.255.0
 no shut

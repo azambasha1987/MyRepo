@@ -35,7 +35,8 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
     echo "  19   Apply ALL Essential Fixes & Dark Mode Suite"
     echo "  20   Deploy Home Screen Avatar Logo Everywhere"
     echo "  21   Repair Cluster & Stage Satellite Deploy Bundle"
-    echo "  22   Exit"
+    echo "  22   High-Density Heavy Node Optimizer (Cat8000, Cisco 8000, Cat9000)"
+    echo "  23   Exit"
     echo "  --check  Run non-destructive diagnostic health check"
     exit 0
 fi
@@ -80,15 +81,16 @@ echo "18) Run Complete Node & Image Validation Suite (IOL, IOS, QEMU, Docker)"
 echo "19) Apply ALL Essential Fixes & Dark Mode Suite"
 echo "20) Deploy Home Screen Avatar Logo Everywhere"
 echo "21) Repair Cluster & Stage Satellite Deploy Bundle"
-echo "22) Exit"
+echo "22) High-Density Heavy Node Optimizer (Cat8000, Cisco 8000, Cat9000)"
+echo "23) Exit"
 echo "============================================================"
 
 # Handle interactive /dev/tty or non-interactive argument/fallback
 CHOICE=""
-if [ -n "${1:-}" ] && [[ "$1" =~ ^([1-9]|1[0-9]|2[0-2])$ ]]; then
+if [ -n "${1:-}" ] && [[ "$1" =~ ^([1-9]|1[0-9]|2[0-3])$ ]]; then
     CHOICE="$1"
 elif [ -e /dev/tty ]; then
-    read -rp "Select an option [1-22, default: 19]: " USER_INPUT < /dev/tty || true
+    read -rp "Select an option [1-23, default: 19]: " USER_INPUT < /dev/tty || true
     CHOICE="${USER_INPUT:-19}"
 else
     CHOICE="19"
@@ -225,9 +227,14 @@ case "$CHOICE" in
             python3 "${SCRIPT_DIR}/azambasha-node-test-suite.py" --all || true
         fi
         echo ""
-        echo "--> [17/17] Staging Satellite Cluster Deploy Bundle & Master Remote Sync..."
+        echo "--> [17/18] Staging Satellite Cluster Deploy Bundle & Master Remote Sync..."
         if [ -f "${SCRIPT_DIR}/azambasha-fix-cluster.sh" ]; then
             bash "${SCRIPT_DIR}/azambasha-fix-cluster.sh" || true
+        fi
+        echo ""
+        echo "--> [18/18] Applying High-Density Heavy Node Optimizer (Cat8000, Cisco 8000, Cat9000)..."
+        if [ -f "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" || true
         fi
         echo ""
         echo "============================================================"
@@ -249,6 +256,13 @@ case "$CHOICE" in
         fi
         ;;
     22)
+        if [ -f "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh"
+        else
+            echo "[!] azambasha-heavy-node-optimizer.sh not found." >&2
+        fi
+        ;;
+    23)
         echo "Exiting."
         exit 0
         ;;

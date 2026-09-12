@@ -1241,6 +1241,11 @@ else
     echo "  [!] azambasha-deploy-homelogo.sh not found — skipping logo propagation" >&2
 fi
 
+# Apply High-Density Heavy Node Memory & CPU Optimization (Cat8000, Cisco 8000, Cat9000)
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh" ]; then
+    echo "  [*] Applying High-Density Heavy Node Optimizer (Cat8000, Cisco 8000, Cat9000)..."
+    bash "${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh" --master 2>/dev/null || true
+fi
 
 echo ""
 echo "============================================================"

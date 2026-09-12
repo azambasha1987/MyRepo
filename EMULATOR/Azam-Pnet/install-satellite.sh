@@ -875,6 +875,15 @@ if [ -x "$BANNER_SCRIPT" ]; then
 fi
 cp -f /etc/issue /etc/issue.net 2>/dev/null || true
 
+# Apply High-Density Heavy Node Memory & CPU Optimization for Satellite
+OPT_TOOL="${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh"
+if [ -f "$OPT_TOOL" ]; then
+    echo "       -> Applying High-Density Heavy Node Optimizer (Cat8000, Cisco 8000, Cat9000)..."
+    bash "$OPT_TOOL" --satellite || true
+elif [ -f "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" ]; then
+    bash "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" --satellite || true
+fi
+
 # ── Step 10: Automated or Interactive Join to Master Server ───────────────────
 echo "[10/10] Verifying satellite readiness and cluster configuration..."
 

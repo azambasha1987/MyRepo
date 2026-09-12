@@ -426,6 +426,17 @@ else
     exit 1
 fi
 
+# Step 8: Apply High-Density Heavy Node Memory & CPU Optimization
+log_info "[8/8] Enforcing High-Density Heavy Node Optimizer on Satellite..."
+SCRIPT_LOC="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "/opt/unetlab/scripts")"
+if [ -f /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh ]; then
+    bash /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh --satellite 2>/dev/null || true
+    log_ok "High-Density Optimizer: Active on Satellite (KSM Ultra, THP madvise, CPU governor)"
+elif [ -f "$SCRIPT_LOC/azambasha-heavy-node-optimizer.sh" ]; then
+    bash "$SCRIPT_LOC/azambasha-heavy-node-optimizer.sh" --satellite 2>/dev/null || true
+    log_ok "High-Density Optimizer: Active on Satellite (KSM Ultra, THP madvise, CPU governor)"
+fi
+
 echo ""
 echo "============================================================"
 echo "  [SUCCESS] SATELLITE NODE JOINED TO MASTER SUCCESSFULLY!   "

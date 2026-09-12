@@ -88,9 +88,17 @@ echo "[1/5] Configuring Proactive Adaptive KSM & In-Memory ZSWAP Compression..."
 if [ -d /sys/kernel/mm/ksm ]; then
     echo 1 > /sys/kernel/mm/ksm/run 2>/dev/null || true
     echo 10 > /sys/kernel/mm/ksm/sleep_millisecs 2>/dev/null || true
-    echo 3000 > /sys/kernel/mm/ksm/pages_to_scan 2>/dev/null || true
+    echo 10000 > /sys/kernel/mm/ksm/pages_to_scan 2>/dev/null || true
     echo 1 > /sys/kernel/mm/ksm/use_zero_pages 2>/dev/null || true
     echo 1 > /sys/kernel/mm/ksm/merge_across_nodes 2>/dev/null || true
+
+    # Configure Transparent Hugepages (THP) to madvise so KSM can merge 4KB pages for heavy routers
+    if [ -f /sys/kernel/mm/transparent_hugepage/enabled ]; then
+        echo madvise > /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || true
+    fi
+    if [ -f /sys/kernel/mm/transparent_hugepage/defrag ]; then
+        echo defer+madvise > /sys/kernel/mm/transparent_hugepage/defrag 2>/dev/null || true
+    fi
 
     # Persist KSM via systemd service
     cat << 'EOF' > /etc/systemd/system/ksm-azambasha.service
@@ -100,7 +108,7 @@ After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c 'echo 1 > /sys/kernel/mm/ksm/run && echo 10 > /sys/kernel/mm/ksm/sleep_millisecs && echo 3000 > /sys/kernel/mm/ksm/pages_to_scan && echo 1 > /sys/kernel/mm/ksm/use_zero_pages && echo 1 > /sys/kernel/mm/ksm/merge_across_nodes || true'
+ExecStart=/bin/sh -c 'echo 1 > /sys/kernel/mm/ksm/run && echo 10 > /sys/kernel/mm/ksm/sleep_millisecs && echo 10000 > /sys/kernel/mm/ksm/pages_to_scan && echo 1 > /sys/kernel/mm/ksm/use_zero_pages && echo 1 > /sys/kernel/mm/ksm/merge_across_nodes; [ -f /sys/kernel/mm/transparent_hugepage/enabled ] && echo madvise > /sys/kernel/mm/transparent_hugepage/enabled; exit 0'
 RemainAfterExit=yes
 
 [Install]
@@ -109,7 +117,7 @@ EOF
     systemctl daemon-reload
     systemctl enable ksm-azambasha.service || true
     systemctl start ksm-azambasha.service || true
-    echo "  [✔] KSM active: High-frequency memory deduplication across identical Cisco/Linux nodes"
+    echo "  [✔] KSM active: High-frequency memory deduplication (10,000 pages / 10ms with THP madvise)"
 else
     echo "  -> Note: Kernel KSM interface not available in this kernel/container."
 fi

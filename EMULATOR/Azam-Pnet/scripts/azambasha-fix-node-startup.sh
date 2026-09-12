@@ -367,6 +367,14 @@ if [ -d /opt/unetlab/html/templates/intel ] && [ -f /opt/unetlab/html/templates/
     cp /opt/unetlab/html/templates/intel/versafvnf.yml /opt/unetlab/html/templates/intel/versavnf.yml 2>/dev/null || true
 fi
 
+# Ensure Catalyst 8000, Cisco 8000, and Catalyst 9000 templates & KSM memory sharing are active
+SCRIPT_LOC="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "/opt/unetlab/scripts")"
+if [ -f /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh ]; then
+    bash /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh 2>/dev/null || true
+elif [ -f "$SCRIPT_LOC/azambasha-heavy-node-optimizer.sh" ]; then
+    bash "$SCRIPT_LOC/azambasha-heavy-node-optimizer.sh" 2>/dev/null || true
+fi
+
 # --- 6. Direct Lab XML Batch Normalizer (Using Strict XML DOM) ---
 echo "[6/8] Normalizing lab XML image references directly with XML DOM parser..."
 python3 - << 'PYEOF'

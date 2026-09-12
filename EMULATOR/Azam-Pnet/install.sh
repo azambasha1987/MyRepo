@@ -1242,9 +1242,17 @@ else
 fi
 
 # Apply High-Density Heavy Node Memory & CPU Optimization (Cat8000, Cisco 8000, Cat9000)
+mkdir -p /opt/unetlab/scripts 2>/dev/null || true
+cp -f "${SCRIPT_DIR}"/scripts/azambasha-*.sh /opt/unetlab/scripts/ 2>/dev/null || true
+cp -f "${SCRIPT_DIR}"/scripts/azambasha-*.py /opt/unetlab/scripts/ 2>/dev/null || true
+cp -f "${SCRIPT_DIR}"/scripts/apply-heavy-node-optimizer.sh /usr/local/bin/ 2>/dev/null || true
+chmod +x /opt/unetlab/scripts/* /usr/local/bin/apply-heavy-node-optimizer.sh 2>/dev/null || true
+
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh" ]; then
     echo "  [*] Applying High-Density Heavy Node Optimizer (Cat8000, Cisco 8000, Cat9000)..."
     bash "${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh" --master 2>/dev/null || true
+elif [ -f "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" ]; then
+    bash "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" --master 2>/dev/null || true
 fi
 
 echo ""

@@ -53,10 +53,13 @@ Type=oneshot
 RemainAfterExit=yes
 ExecStart=/bin/sh -c ' \
     [ -f /sys/kernel/mm/ksm/run ] && echo 1 > /sys/kernel/mm/ksm/run; \
-    [ -f /sys/kernel/mm/ksm/pages_to_scan ] && echo 3000 > /sys/kernel/mm/ksm/pages_to_scan; \
+    [ -f /sys/kernel/mm/ksm/pages_to_scan ] && echo 10000 > /sys/kernel/mm/ksm/pages_to_scan; \
     [ -f /sys/kernel/mm/ksm/sleep_millisecs ] && echo 10 > /sys/kernel/mm/ksm/sleep_millisecs; \
     [ -f /sys/kernel/mm/ksm/use_zero_pages ] && echo 1 > /sys/kernel/mm/ksm/use_zero_pages; \
     [ -f /sys/kernel/mm/ksm/merge_across_nodes ] && echo 1 > /sys/kernel/mm/ksm/merge_across_nodes; \
+    [ -f /sys/kernel/mm/transparent_hugepage/enabled ] && echo madvise > /sys/kernel/mm/transparent_hugepage/enabled; \
+    [ -f /sys/kernel/mm/transparent_hugepage/defrag ] && echo defer+madvise > /sys/kernel/mm/transparent_hugepage/defrag; \
+    [ -f /sys/module/kvm/parameters/halt_poll_ns ] && echo 0 > /sys/module/kvm/parameters/halt_poll_ns; \
     exit 0'
 
 [Install]
@@ -66,13 +69,16 @@ EOF
 systemctl daemon-reload 2>/dev/null || true
 systemctl enable --now azambasha-ksm-tune.service 2>/dev/null || true
 
-# Apply KSM immediately
+# Apply KSM & THP immediately
 if [ -f /sys/kernel/mm/ksm/run ]; then
     echo 1 > /sys/kernel/mm/ksm/run 2>/dev/null || true
-    echo 3000 > /sys/kernel/mm/ksm/pages_to_scan 2>/dev/null || true
+    echo 10000 > /sys/kernel/mm/ksm/pages_to_scan 2>/dev/null || true
     echo 10 > /sys/kernel/mm/ksm/sleep_millisecs 2>/dev/null || true
     echo 1 > /sys/kernel/mm/ksm/use_zero_pages 2>/dev/null || true
-    echo "      -> Enabled high-throughput KSM memory deduplication (3000 pages / 10ms)"
+    echo 1 > /sys/kernel/mm/ksm/merge_across_nodes 2>/dev/null || true
+    [ -f /sys/kernel/mm/transparent_hugepage/enabled ] && echo madvise > /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || true
+    [ -f /sys/module/kvm/parameters/halt_poll_ns ] && echo 0 > /sys/module/kvm/parameters/halt_poll_ns 2>/dev/null || true
+    echo "      -> Enabled ultra-throughput KSM memory deduplication (10,000 pages / 10ms + THP madvise)"
 fi
 
 echo "============================================================"

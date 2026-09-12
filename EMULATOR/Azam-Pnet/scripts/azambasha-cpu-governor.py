@@ -20,14 +20,24 @@ import argparse
 import subprocess
 
 TARGET_PATTERNS = [
+    r'8000v',
     r'c8000v',
+    r'c8000',
     r'cisco8000',
+    r'cisco8k',
+    r'cat8000',
+    r'cat8k',
     r'cat9000v',
-    r'c9300v',
-    r'c9500v',
+    r'cat9000',
     r'cat9k',
+    r'c9300v',
+    r'c9300',
+    r'c9500v',
+    r'c9500',
     r'csr1000v',
+    r'csr1000',
     r'xrv9k',
+    r'xrv',
     r'xr8000'
 ]
 
@@ -41,7 +51,7 @@ class HeavyNodeGovernor:
         self.node_states = {}
 
     def find_heavy_qemu_nodes(self):
-        """Finds all running QEMU processes matching heavy router appliance signatures."""
+        """Finds all running QEMU processes matching heavy router appliance signatures or PNETLab nodes."""
         nodes = []
         try:
             for pid_dir in glob.glob('/proc/[0-9]*'):
@@ -55,17 +65,48 @@ class HeavyNodeGovernor:
                 except (IOError, PermissionError):
                     continue
 
-                if 'qemu-system' in cmdline and TARGET_REGEX.search(cmdline):
-                    # Identify node name or template from cmdline or lab path
-                    match = TARGET_REGEX.search(cmdline)
-                    matched_type = match.group(0) if match else "heavy-qemu"
-                    
-                    # Extract node ID / lab ID from wrapper arguments if available
-                    # Typical unetlab qemu cmdline has: .../labs/<lab_id>/... or -name ...
-                    node_name = f"{matched_type}-{pid}"
+                if 'qemu-system' not in cmdline:
+                    continue
+
+                is_target = False
+                matched_type = "QEMU-Router"
+
+                # Check 1: Direct match in command line
+                m = TARGET_REGEX.search(cmdline)
+                if m:
+                    is_target = True
+                    matched_type = m.group(0)
+
+                # Check 2: Inspect open file descriptors for backing files in /opt/unetlab/addons/qemu/
+                if not is_target:
+                    try:
+                        fd_dir = f'/proc/{pid}/fd'
+                        if os.path.isdir(fd_dir):
+                            for fd in os.listdir(fd_dir):
+                                try:
+                                    target = os.readlink(os.path.join(fd_dir, fd))
+                                    m_fd = TARGET_REGEX.search(target)
+                                    if m_fd:
+                                        is_target = True
+                                        matched_type = m_fd.group(0)
+                                        break
+                                    if '/opt/unetlab/addons/qemu/' in target:
+                                        matched_type = target.split('/opt/unetlab/addons/qemu/')[1].split('/')[0]
+                                        is_target = True
+                                        break
+                                except (IOError, OSError):
+                                    continue
+                    except Exception:
+                        pass
+
+                # Check 3: Any QEMU node running under PNETLab (/opt/unetlab/tmp)
+                if not is_target and ('/opt/unetlab' in cmdline or '/opt/qemu' in cmdline):
+                    is_target = True
+                    matched_type = "pnet-router"
+
+                if is_target:
                     name_match = re.search(r'-name\s+([^\s]+)', cmdline)
-                    if name_match:
-                        node_name = name_match.group(1)
+                    node_name = name_match.group(1) if name_match else f"{matched_type}-{pid}"
 
                     nodes.append({
                         "pid": int(pid),
@@ -73,7 +114,7 @@ class HeavyNodeGovernor:
                         "type": matched_type,
                         "cmdline": cmdline
                     })
-        except Exception as e:
+        except Exception:
             pass
         return nodes
 
@@ -224,6 +265,22 @@ class HeavyNodeGovernor:
         if not results:
             print("  [*] No active Catalyst 8000, Cisco 8000, or Cat 9000 instances detected.")
             print("      (Governor is ready and will automatically attach when nodes boot).")
+            
+            other_qemu = []
+            for pid_dir in glob.glob('/proc/[0-9]*'):
+                cmdline_path = os.path.join(pid_dir, 'cmdline')
+                if os.path.isfile(cmdline_path):
+                    try:
+                        with open(cmdline_path, 'rb') as f:
+                            cmd = f.read().decode('utf-8', errors='ignore').replace('\x00', ' ')
+                        if 'qemu-system' in cmd:
+                            other_qemu.append((os.path.basename(pid_dir), cmd[:80]))
+                    except Exception:
+                        pass
+            if other_qemu:
+                print("\n  [i] Other active QEMU processes found on this host:")
+                for p, c in other_qemu:
+                    print(f"      PID {p:<6}: {c}...")
         else:
             print(f"  {'APPLIANCE / NAME':<25} {'PID':<8} {'TYPE':<12} {'STATE':<25}")
             print("  " + "-" * 70)

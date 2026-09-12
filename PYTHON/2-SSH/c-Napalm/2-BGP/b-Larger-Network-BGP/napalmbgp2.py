@@ -2,8 +2,8 @@
 ===============================================================================
 Script Name   : napalmbgp2.py
 Description   : Two-Router BGP Peering Verification - Testing automated verification
-                on a baseline 2-router link (GW-R1: 192.168.20.1 and Inhouse-ISP: 192.168.20.2).
-Target Devices: 192.168.20.1 (GW-R1), 192.168.20.2 (Inhouse-ISP)
+                on a baseline 2-router link (GW-R1: 192.168.1.104 and Inhouse-ISP: 192.168.1.111).
+Target Devices: 192.168.1.104 (GW-R1), 192.168.1.111 (Inhouse-ISP)
 ===============================================================================
 
 PEDAGOGICAL OBJECTIVE:
@@ -27,8 +27,8 @@ from napalm import get_network_driver
 # STEP 2: Define baseline 2-router inventory
 # -----------------------------------------------------------------------------
 bgplist = [
-    '192.168.20.1',
-    '192.168.20.2'
+    '192.168.1.104',
+    '192.168.1.111'
 ]
 
 # -----------------------------------------------------------------------------

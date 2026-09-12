@@ -3,15 +3,15 @@
 Script Name   : napalmbgp2_a.py
 Description   : Full 4-Router BGP Network Audit - Auditing BGP relationships
                 across an extended multi-AS topology (AS 65001 and AS 65002).
-Target Devices: 192.168.20.1 (GW-R1), 192.168.20.2 (Inhouse-ISP), 100.100.100.2 (ISP-Network), 10.10.0.2 (SITE-1)
+Target Devices: 192.168.1.104 (GW-R1), 192.168.1.111 (Inhouse-ISP), 192.168.1.112 (ISP-Network), 192.168.1.113 (SITE-1)
 ===============================================================================
 
 TOPOLOGY & NETWORKING CONTEXT:
 -------------------------------
 In this larger topology:
-- GW-R1 (192.168.20.1) and Inhouse-ISP (192.168.20.2) are in Autonomous System 65001 (iBGP peering).
-- Inhouse-ISP (100.100.100.1) peers with ISP-Network (100.100.100.2) across AS boundaries (eBGP: AS 65001 <-> AS 65002).
-- ISP-Network (10.10.0.1) peers with SITE-1 (10.10.0.2) within AS 65002 (iBGP peering).
+- GW-R1 (192.168.1.104) and Inhouse-ISP (192.168.1.111) are in Autonomous System 65001 (iBGP peering).
+- Inhouse-ISP (192.168.1.111) peers with ISP-Network (192.168.1.112) across AS boundaries (eBGP: AS 65001 <-> AS 65002).
+- ISP-Network (10.10.0.1) peers with SITE-1 (192.168.1.113) within AS 65002 (iBGP peering).
 
 Students can observe how NAPALM cleanly exposes differences in:
 - `remote_as` (matching local AS for iBGP, differing for eBGP)
@@ -29,10 +29,10 @@ from napalm import get_network_driver
 # STEP 2: Define full 4-router inventory
 # -----------------------------------------------------------------------------
 bgplist = [
-    '192.168.20.1',   # GW-R1 (AS 65001)
-    '192.168.20.2',   # Inhouse-ISP (AS 65001)
-    '100.100.100.2',  # ISP-Network (AS 65002)
-    '10.10.0.2'       # SITE-1 (AS 65002)
+    '192.168.1.104',   # GW-R1 (AS 65001)
+    '192.168.1.111',   # Inhouse-ISP (AS 65001)
+    '192.168.1.112',  # ISP-Network (AS 65002)
+    '192.168.1.113'       # SITE-1 (AS 65002)
 ]
 
 # -----------------------------------------------------------------------------

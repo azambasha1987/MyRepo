@@ -3,7 +3,7 @@
 Script Name   : napalmbgp2_a.py
 Description   : Multi-Device BGP Auditor - Iterating through an inventory of routers
                 to collect and verify BGP peering health across a multi-hop topology.
-Target Devices: 192.168.20.1, 192.168.20.2, 100.100.100.2, 10.10.0.2
+Target Devices: 192.168.1.104, 192.168.1.111, 192.168.1.112, 192.168.1.113
 ===============================================================================
 
 KEY CONCEPTS TAUGHT IN THIS SCRIPT:
@@ -27,10 +27,10 @@ from napalm import get_network_driver
 # STEP 2: Define the target device inventory (BGP routers in topology)
 # -----------------------------------------------------------------------------
 bgplist = [
-    '192.168.20.1',
-    '192.168.20.2',
-    '100.100.100.2',
-    '10.10.0.2'
+    '192.168.1.104',
+    '192.168.1.111',
+    '192.168.1.112',
+    '192.168.1.113'
 ]
 
 # -----------------------------------------------------------------------------

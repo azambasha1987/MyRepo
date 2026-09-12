@@ -110,8 +110,10 @@ ARMOR
 # expected key travel with the signed manifest, not with this script.
 CODEBERG_REPOSITORY=''
 CODEBERG_KEY_URL=''
-readonly CODEBERG_KEYRING='/usr/share/keyrings/pnetlab-netinstall-codeberg.gpg'
-readonly CODEBERG_SOURCE='/etc/apt/sources.list.d/pnetlab-netinstall-codeberg.list'
+# Share the updater's canonical paths. Different Signed-By paths for the same
+# URI/suite make ordinary apt operations fail once online updates are enrolled.
+readonly CODEBERG_KEYRING='/usr/share/keyrings/pnetlab-codeberg.gpg'
+readonly CODEBERG_SOURCE='/etc/apt/sources.list.d/pnetlab-codeberg.list'
 readonly DOCKER_KEY_URL='https://download.docker.com/linux/ubuntu/gpg'
 readonly DOCKER_KEYRING='/etc/apt/keyrings/docker.gpg'
 readonly DOCKER_SOURCE='/etc/apt/sources.list.d/docker.list'
@@ -139,7 +141,7 @@ readonly -a DOCKER_PACKAGES=(
     docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 )
 readonly -a BASE_PACKAGES=(
-    ca-certificates curl gnupg iproute2 mysql-server openssl php8.5-fpm python3-pip uml-utilities
+    ca-certificates curl gnupg iproute2 iputils-ping mysql-server openssl php8.5-fpm python3-pip uml-utilities
     # inotify-tools: docker_image_watcher.sh (config_scripts) shells out to
     # `inotifywait`, stderr-suppressed, so a missing binary makes
     # pnetlab-docker-image-watcher.service exit clean and silently do nothing
@@ -427,6 +429,27 @@ enroll_source() {
     printf '%s\n' "$source_line" >"$temporary"
     chmod 0644 "$temporary"
     mv -f "$temporary" "$source_file"
+}
+
+# Standalone bootstrap copy of the package helper; contract-tested for parity.
+# It must run before the first apt refresh, before the pnetlab deb is available.
+pnetlab_retire_netinstall_source() {
+    local source="$1" keyring="$2" repository="$3"
+    local legacy="${4:-/etc/apt/sources.list.d/pnetlab-netinstall-codeberg.list}" backup
+    [ -f "$legacy" ] && [ ! -L "$legacy" ] || return 0
+    [ -f "$source" ] && [ ! -L "$source" ] && [ -s "$keyring" ] && [ -r "$keyring" ] || return 0
+    printf '%s\n' "deb [arch=amd64 signed-by=/usr/share/keyrings/pnetlab-netinstall-codeberg.gpg] $repository resolute main" \
+        | cmp -s - "$legacy" || return 0
+    if ! printf '%s\n' "deb [signed-by=$keyring] $repository resolute main" | cmp -s - "$source"; then
+        printf '%s\n' "deb [arch=amd64 signed-by=$keyring] $repository resolute main" \
+            | cmp -s - "$source" || return 0
+    fi
+    backup=$(mktemp "${legacy}.XXXXXX.disabled") || return 1
+    if ! mv -f -- "$legacy" "$backup"; then
+        rm -f -- "$backup"
+        return 1
+    fi
+    printf 'Retired duplicate network-install apt source; backup: %s\n' "$backup"
 }
 
 # --- Manifest-driven bootstrap ---------------------------------------------
@@ -3520,6 +3543,8 @@ main() {
     enroll_keyring "$CODEBERG_KEY_URL" "$CODEBERG_KEYRING"
     assert_apt_keyring_fpr "$CODEBERG_KEYRING" "$DEB_SOURCE_KEY_FPR"
     enroll_source "$CODEBERG_SOURCE" "deb [arch=amd64 signed-by=$CODEBERG_KEYRING] $CODEBERG_REPOSITORY resolute main"
+    pnetlab_retire_netinstall_source "$CODEBERG_SOURCE" "$CODEBERG_KEYRING" "$CODEBERG_REPOSITORY" \
+        || die 'could not retire the obsolete network-install apt source'
 
     if [ "$NO_DOCKER" -eq 0 ]; then
         log '=== enrolling Docker apt source ==='

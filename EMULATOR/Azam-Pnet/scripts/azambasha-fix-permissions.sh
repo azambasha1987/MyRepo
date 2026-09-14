@@ -102,6 +102,13 @@ fi
 rm -f /tmp/netio*/*.lck 2>/dev/null || true
 chmod 777 /tmp/netio* 2>/dev/null || true
 
+# Prune orphaned TAP interfaces if no emulation processes are running
+if ! pgrep -f 'iol_wrapper|qemu-system|dynamips' >/dev/null 2>&1; then
+    for dev in $(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | grep -E '^(vunl|ser)[0-9]+_[0-9]+' || true); do
+        ip link delete "$dev" 2>/dev/null || true
+    done
+fi
+
 # 5. Verify & Symlink/Generate Cisco IOL License
 echo "[5/5] Checking Cisco IOL license linkage..."
 IOL_BIN="/opt/unetlab/addons/iol/bin"

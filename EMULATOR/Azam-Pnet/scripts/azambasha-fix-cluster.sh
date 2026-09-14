@@ -339,19 +339,57 @@ parsed = {}
 for row in rows[1:]:
     if len(row) != 6:
         reject('package inventory row is malformed')
-    package, arch, version, digest, size, filename = row"""
+    package, arch, version, digest, size, filename = row
+    if package in parsed or arch not in ('amd64', 'all') or version != release:
+        reject('package inventory identity is invalid')
+    if not re.fullmatch(r'[0-9a-f]{64}', digest) or not size.isdigit() or '/' in filename or not filename.endswith('.deb'):
+        reject('package inventory digest/filename is invalid')
+    parsed[package] = (arch, version, digest, int(size), filename)
+actual_debs = []
+for item in deb_dir.iterdir():
+    if item.is_symlink():
+        reject('satellite deb directory contains a symlink')
+    if item.is_file() and item.name.endswith('.deb'):
+        actual_debs.append(item.name)
+        owned_mode(item, 0o644, 'satellite deb ' + item.name)
+if set(actual_debs) != {row[5] for row in rows[1:]}:
+    reject('package inventory does not match the staged deb set')"""
 
     new_hdr = """parsed = {}
+expected_debs = set()
 if rows and rows[0] == ['package', 'version', 'filename', 'arch', 'size']:
     for row in rows[1:]:
+        if len(row) != 5:
+            reject('package inventory row is malformed')
         package, version, filename, arch, size = row
+        if package in parsed or arch not in ('amd64', 'all') or version != release:
+            reject('package inventory identity is invalid')
+        if not size.isdigit() or '/' in filename or not filename.endswith('.deb'):
+            reject('package inventory digest/filename is invalid')
         parsed[package] = (arch, version, None, int(size), filename)
+        expected_debs.add(filename)
 elif rows and rows[0] == ['package', 'architecture', 'version', 'sha256', 'size', 'filename']:
     for row in rows[1:]:
+        if len(row) != 6:
+            reject('package inventory row is malformed')
         package, arch, version, digest, size, filename = row
+        if package in parsed or arch not in ('amd64', 'all') or version != release:
+            reject('package inventory identity is invalid')
+        if not re.fullmatch(r'[0-9a-f]{64}', digest) or not size.isdigit() or '/' in filename or not filename.endswith('.deb'):
+            reject('package inventory digest/filename is invalid')
         parsed[package] = (arch, version, digest, int(size), filename)
+        expected_debs.add(filename)
 else:
-    reject('package inventory header is invalid')"""
+    reject('package inventory header is invalid')
+actual_debs = []
+for item in deb_dir.iterdir():
+    if item.is_symlink():
+        reject('satellite deb directory contains a symlink')
+    if item.is_file() and item.name.endswith('.deb'):
+        actual_debs.append(item.name)
+        owned_mode(item, 0o644, 'satellite deb ' + item.name)
+if set(actual_debs) != expected_debs:
+    reject('package inventory does not match the staged deb set')"""
 
     if old_hdr in code:
         code = code.replace(old_hdr, new_hdr)

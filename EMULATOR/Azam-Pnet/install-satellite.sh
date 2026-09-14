@@ -598,6 +598,9 @@ POOL_SEARCH_DIRS=(
     "/opt/azambasha/debian/pool/resolute/main"
     "/opt/pnetlab/debian/pool/resolute/main"
     "/opt/azam-pnet/EMULATOR/Azam-Pnet/debian/pool/resolute/main"
+    "/opt/unetlab/cluster-bundle/current/pnetlab-debs"
+    "/tmp/pnet-satellite-bundle/pnetlab-debs"
+    "/opt/azambasha/generic/6.8.74resolute1/pnetlab-debs"
 )
 
 DEB_POOL_DIR=""

@@ -66,24 +66,45 @@ log_ok "Master deployment tools (sshpass, rsync) ready."
 # Step 2: Locate Source Bundle Assets
 log_info "[2/6] Locating source satellite deployment assets..."
 SRC_DIR=""
+SRC_INSTALLER=""
 for candidate in \
     "${REPO_ROOT}/generic/${MASTER_RELEASE}" \
     "${REPO_ROOT}/generic/6.8.74resolute1" \
     "/opt/azambasha/generic/${MASTER_RELEASE}" \
     "/opt/azambasha/generic/6.8.74resolute1" \
+    "${REPO_ROOT}/generic"/* \
+    "/opt/azambasha/generic"/* \
     "/root/pnetlab-27H1-v8.2-resolute" \
     "/opt/unetlab/cluster-bundle/releases/${MASTER_RELEASE}"; do
-    if [ -d "$candidate" ] && [ -f "${candidate}/install-resolute-satellite.sh" ] && [ -f "${candidate}/inventory.tsv" ]; then
+    [ -d "$candidate" ] || continue
+    [ -f "${candidate}/inventory.tsv" ] || continue
+
+    # Check for installer script variants
+    inst=""
+    for cand_script in \
+        "${candidate}/install-resolute-satellite.sh" \
+        "${candidate}/pnetlab-install-resolute-satellite-${MASTER_RELEASE}.sh" \
+        "${candidate}/pnetlab-install-resolute-satellite-6.8.74resolute1.sh" \
+        "${candidate}"/pnetlab-install-resolute-satellite-*.sh; do
+        if [ -f "$cand_script" ]; then
+            inst="$cand_script"
+            break
+        fi
+    done
+
+    if [ -n "$inst" ]; then
         SRC_DIR="$candidate"
+        SRC_INSTALLER="$inst"
         break
     fi
 done
 
-if [ -z "$SRC_DIR" ]; then
+if [ -z "$SRC_DIR" ] || [ -z "$SRC_INSTALLER" ]; then
     log_err "Could not locate source satellite assets in generic/${MASTER_RELEASE} or known paths."
     exit 1
 fi
 log_ok "Source satellite assets located at: $SRC_DIR"
+log_ok "Satellite installer script located at: $SRC_INSTALLER"
 
 # Step 3: Authoritatively Stage /opt/unetlab/cluster-bundle
 log_info "[3/6] Staging Satellite Deploy Bundle under /opt/unetlab/cluster-bundle..."
@@ -94,8 +115,8 @@ mkdir -p "$BUNDLE_ROOT" "${BUNDLE_ROOT}/releases" "$RELEASE_DIR"
 chown -R root:root "$BUNDLE_ROOT"
 chmod 0755 "$BUNDLE_ROOT" "${BUNDLE_ROOT}/releases" "$RELEASE_DIR"
 
-# Copy installer script
-cp -f "${SRC_DIR}/install-resolute-satellite.sh" "${RELEASE_DIR}/install-resolute-satellite.sh"
+# Copy installer script and name it authoritatively install-resolute-satellite.sh
+cp -f "$SRC_INSTALLER" "${RELEASE_DIR}/install-resolute-satellite.sh"
 chmod 0755 "${RELEASE_DIR}/install-resolute-satellite.sh"
 
 # Copy metadata inventories
@@ -106,21 +127,45 @@ for meta in inventory.tsv asset-inventory.tsv COMPLETE provenance; do
     fi
 done
 
-# Copy subdirectories (pnetlab-debs, deps, qemu-zoo)
-for subdir in pnetlab-debs deps qemu-zoo; do
+# Ensure deps, qemu-zoo, and pnetlab-debs subdirectories exist
+mkdir -p "${RELEASE_DIR}/pnetlab-debs" "${RELEASE_DIR}/deps" "${RELEASE_DIR}/qemu-zoo"
+chmod 0755 "${RELEASE_DIR}/pnetlab-debs" "${RELEASE_DIR}/deps" "${RELEASE_DIR}/qemu-zoo"
+
+# Copy deb packages from all known pool directories
+for deb_pool in \
+    "${SRC_DIR}/pnetlab-debs" \
+    "${REPO_ROOT}/generic/${MASTER_RELEASE}/pnetlab-debs" \
+    "${REPO_ROOT}/generic/6.8.74resolute1/pnetlab-debs" \
+    "${REPO_ROOT}/debian/pool/resolute/main" \
+    "/opt/azambasha/debian/pool/resolute/main" \
+    "/opt/pnetlab/debian/pool/resolute/main" \
+    "/opt/azambasha/generic/${MASTER_RELEASE}/pnetlab-debs"; do
+    if [ -d "$deb_pool" ]; then
+        for deb in "${deb_pool}"/pnetlab-*.deb; do
+            [ -f "$deb" ] || continue
+            pkgname="$(basename "$deb")"
+            case "$pkgname" in
+                pnetlab-satellite_*|pnetlab-qemu_*|pnetlab-docker_*|pnetlab-vpcs_*|pnetlab-bridge-dkms_*)
+                    cp -f "$deb" "${RELEASE_DIR}/pnetlab-debs/" 2>/dev/null || true
+                    ;;
+            esac
+        done
+    fi
+done
+find "${RELEASE_DIR}/pnetlab-debs" -type f -exec chmod 0644 {} +
+
+# Copy optional deps or qemu-zoo if present in source
+for subdir in deps qemu-zoo; do
     if [ -d "${SRC_DIR}/${subdir}" ]; then
-        mkdir -p "${RELEASE_DIR}/${subdir}"
         cp -rf "${SRC_DIR}/${subdir}/"* "${RELEASE_DIR}/${subdir}/" 2>/dev/null || true
         find "${RELEASE_DIR}/${subdir}" -type d -exec chmod 0755 {} +
         find "${RELEASE_DIR}/${subdir}" -type f -exec chmod 0644 {} +
     fi
 done
 
-# Verify all deb packages exist and regenerate inventory if needed
-if [ -d "${RELEASE_DIR}/pnetlab-debs" ]; then
-    DEB_COUNT="$(find "${RELEASE_DIR}/pnetlab-debs" -maxdepth 1 -name '*.deb' | wc -l)"
-    log_ok "Staged $DEB_COUNT satellite Debian package(s)."
-fi
+# Verify all deb packages exist and report count
+DEB_COUNT="$(find "${RELEASE_DIR}/pnetlab-debs" -maxdepth 1 -name '*.deb' | wc -l)"
+log_ok "Staged $DEB_COUNT satellite Debian package(s)."
 
 # Authoritatively create / update symlink: /opt/unetlab/cluster-bundle/current -> releases/<RELEASE>
 rm -f "${BUNDLE_ROOT}/current"
@@ -195,40 +240,156 @@ try:
     with open(satdeploy, "r", encoding="utf-8", errors="replace") as f:
         code = f.read()
 
-    # 1. Allow assets=none in required_keys
-    old1 = "required_keys = {'format', 'release', 'packages', 'optional_packages', 'assets', 'inventory_sha256', 'asset_inventory_sha256'}\nif set(values) != required_keys"
-    new1 = "has_zoo_assets = (values.get('assets') not in ('none', ''))\nrequired_keys = {'format', 'release', 'packages', 'optional_packages', 'assets', 'inventory_sha256'}\nif has_zoo_assets: required_keys.add('asset_inventory_sha256')\nif set(values) != required_keys"
+    # 1. Allow assets=none in required_keys and bypass zoo asset checks if no zoo assets
+    old1 = """required_keys = {'format', 'release', 'packages', 'optional_packages', 'assets', 'inventory_sha256', 'asset_inventory_sha256'}
+if set(values) != required_keys or values['format'] != '1' or values['release'] != release:
+    reject('COMPLETE is absent, incomplete, or release-mismatched')
+expected_packages = ','.join([package + '=' + release for package in hard])
+if values['packages'] != expected_packages:
+    reject('COMPLETE hard package inventory is incomplete or stale')
+if values['optional_packages'] not in ('', 'pnetlab-bridge-dkms=' + release):
+    reject('COMPLETE optional package inventory is invalid')
+if values['assets'] != ','.join(['qemu-compat-libs.tgz'] + zoo):
+    reject('COMPLETE asset inventory is incomplete')"""
+
+    new1 = """has_zoo_assets = (values.get('assets') not in ('none', '', None))
+required_keys = {'format', 'release', 'packages', 'optional_packages', 'assets', 'inventory_sha256'}
+if has_zoo_assets:
+    required_keys.add('asset_inventory_sha256')
+if set(values) != required_keys or values['format'] != '1' or values['release'] != release:
+    reject('COMPLETE is absent, incomplete, or release-mismatched')
+expected_packages = ','.join([package + '=' + release for package in hard])
+if values['packages'] != expected_packages:
+    reject('COMPLETE hard package inventory is incomplete or stale')
+if values['optional_packages'] not in ('', 'pnetlab-bridge-dkms=' + release):
+    reject('COMPLETE optional package inventory is invalid')
+if has_zoo_assets and values['assets'] != ','.join(['qemu-compat-libs.tgz'] + zoo):
+    reject('COMPLETE asset inventory is incomplete')"""
+
     if old1 in code:
         code = code.replace(old1, new1)
 
-    old_assets = "if values['assets'] != ','.join(['qemu-compat-libs.tgz'] + zoo):\n    reject('COMPLETE asset inventory is incomplete')"
-    new_assets = "if has_zoo_assets and values['assets'] != ','.join(['qemu-compat-libs.tgz'] + zoo):\n    reject('COMPLETE asset inventory is incomplete')"
-    if old_assets in code:
-        code = code.replace(old_assets, new_assets)
+    # 2. Asset inventory block: guard entire section with if has_zoo_assets
+    old_asset_block = """asset_inventory = release_dir / 'asset-inventory.tsv'
+owned_mode(asset_inventory, 0o644, 'asset inventory')
+if not re.fullmatch(r'[0-9a-f]{64}', values['asset_inventory_sha256']):
+    reject('COMPLETE asset inventory digest is malformed')
+if hashlib.sha256(asset_inventory.read_bytes()).hexdigest() != values['asset_inventory_sha256']:
+    reject('asset inventory digest does not match COMPLETE')
+asset_rows = list(csv.reader(asset_inventory.open(newline=''), delimiter='\\t'))
+if not asset_rows or asset_rows[0] != ['asset', 'sha256', 'size', 'path']:
+    reject('asset inventory header is invalid')
+expected_assets = {
+    'qemu-compat-libs.tgz': ('deps/qemu-compat-libs.tgz',),
+    'qemu-zoo-2.4.0-net.tgz': ('qemu-zoo/qemu-zoo-2.4.0-net.tgz',),
+    'qemu-zoo-2.12.0-net.tgz': ('qemu-zoo/qemu-zoo-2.12.0-net.tgz',),
+    'qemu-zoo-4.1.0-net.tgz': ('qemu-zoo/qemu-zoo-4.1.0-net.tgz',),
+    'qemu-zoo-5.2.0-net.tgz': ('qemu-zoo/qemu-zoo-5.2.0-net.tgz',),
+}
+asset_parsed = {}
+for row in asset_rows[1:]:
+    if len(row) != 4:
+        reject('asset inventory row is malformed')
+    asset, digest, size, path = row
+    if asset in asset_parsed or asset not in expected_assets or path != expected_assets[asset][0]:
+        reject('asset inventory identity is invalid')
+    if not re.fullmatch(r'[0-9a-f]{64}', digest) or not size.isdigit():
+        reject('asset inventory digest/size is invalid')
+    asset_parsed[asset] = (digest, int(size), path)
+if set(asset_parsed) != set(expected_assets):
+    reject('asset inventory is incomplete')"""
 
-    # 2. Asset inventory
-    old_asset_inv = "asset_inventory = release_dir / 'asset-inventory.tsv'\nowned_mode(asset_inventory, 0o644, 'asset inventory')"
-    new_asset_inv = "asset_parsed = {}\nif has_zoo_assets:\n    asset_inventory = release_dir / 'asset-inventory.tsv'\n    owned_mode(asset_inventory, 0o644, 'asset inventory')"
-    if old_asset_inv in code:
-        code = code.replace(old_asset_inv, new_asset_inv)
+    new_asset_block = """asset_parsed = {}
+if has_zoo_assets:
+    asset_inventory = release_dir / 'asset-inventory.tsv'
+    owned_mode(asset_inventory, 0o644, 'asset inventory')
+    if not re.fullmatch(r'[0-9a-f]{64}', values.get('asset_inventory_sha256', '')):
+        reject('COMPLETE asset inventory digest is malformed')
+    if hashlib.sha256(asset_inventory.read_bytes()).hexdigest() != values['asset_inventory_sha256']:
+        reject('asset inventory digest does not match COMPLETE')
+    asset_rows = list(csv.reader(asset_inventory.open(newline=''), delimiter='\\t'))
+    if not asset_rows or asset_rows[0] != ['asset', 'sha256', 'size', 'path']:
+        reject('asset inventory header is invalid')
+    expected_assets = {
+        'qemu-compat-libs.tgz': ('deps/qemu-compat-libs.tgz',),
+        'qemu-zoo-2.4.0-net.tgz': ('qemu-zoo/qemu-zoo-2.4.0-net.tgz',),
+        'qemu-zoo-2.12.0-net.tgz': ('qemu-zoo/qemu-zoo-2.12.0-net.tgz',),
+        'qemu-zoo-4.1.0-net.tgz': ('qemu-zoo/qemu-zoo-4.1.0-net.tgz',),
+        'qemu-zoo-5.2.0-net.tgz': ('qemu-zoo/qemu-zoo-5.2.0-net.tgz',),
+    }
+    for row in asset_rows[1:]:
+        if len(row) != 4:
+            reject('asset inventory row is malformed')
+        asset, digest, size, path = row
+        if asset in asset_parsed or asset not in expected_assets or path != expected_assets[asset][0]:
+            reject('asset inventory identity is invalid')
+        if not re.fullmatch(r'[0-9a-f]{64}', digest) or not size.isdigit():
+            reject('asset inventory digest/size is invalid')
+        asset_parsed[asset] = (digest, int(size), path)
+    if set(asset_parsed) != set(expected_assets):
+        reject('asset inventory is incomplete')"""
 
-    # 3. Deps and zoo_dir
-    old_deps = "deps = release_dir / 'deps'\nzoo_dir = release_dir / 'qemu-zoo'\nowned_mode(deps, 0o755, 'satellite deps directory')"
-    new_deps = "if has_zoo_assets:\n    deps = release_dir / 'deps'\n    zoo_dir = release_dir / 'qemu-zoo'\n    owned_mode(deps, 0o755, 'satellite deps directory')"
-    if old_deps in code:
-        code = code.replace(old_deps, new_deps)
+    if old_asset_block in code:
+        code = code.replace(old_asset_block, new_asset_block)
 
-    # 4. 5-column TSV header
-    old_hdr = "if not rows or rows[0] != ['package', 'architecture', 'version', 'sha256', 'size', 'filename']:\n    reject('package inventory header is invalid')\nparsed = {}\nfor row in rows[1:]:\n    if len(row) != 6:\n        reject('package inventory row is malformed')\n    package, arch, version, digest, size, filename = row"
-    new_hdr = "parsed = {}\nif rows and rows[0] == ['package', 'version', 'filename', 'arch', 'size']:\n    for row in rows[1:]:\n        package, version, filename, arch, size = row\n        parsed[package] = (arch, version, None, int(size), filename)\nelif rows and rows[0] == ['package', 'architecture', 'version', 'sha256', 'size', 'filename']:\n    for row in rows[1:]:\n        package, arch, version, digest, size, filename = row\n        parsed[package] = (arch, version, digest, int(size), filename)\nelse:\n    reject('package inventory header is invalid')"
+    # 3. TSV header: support both 5-column and 6-column formats
+    old_hdr = """if not rows or rows[0] != ['package', 'architecture', 'version', 'sha256', 'size', 'filename']:
+    reject('package inventory header is invalid')
+parsed = {}
+for row in rows[1:]:
+    if len(row) != 6:
+        reject('package inventory row is malformed')
+    package, arch, version, digest, size, filename = row"""
+
+    new_hdr = """parsed = {}
+if rows and rows[0] == ['package', 'version', 'filename', 'arch', 'size']:
+    for row in rows[1:]:
+        package, version, filename, arch, size = row
+        parsed[package] = (arch, version, None, int(size), filename)
+elif rows and rows[0] == ['package', 'architecture', 'version', 'sha256', 'size', 'filename']:
+    for row in rows[1:]:
+        package, arch, version, digest, size, filename = row
+        parsed[package] = (arch, version, digest, int(size), filename)
+else:
+    reject('package inventory header is invalid')"""
+
     if old_hdr in code:
         code = code.replace(old_hdr, new_hdr)
 
-    # 5. Digest compare fallback
+    # 4. Digest compare fallback
     old_digest_chk = "if hashlib.sha256(deb.read_bytes()).hexdigest() != digest or deb.stat().st_size != size:"
     new_digest_chk = "if (digest and hashlib.sha256(deb.read_bytes()).hexdigest() != digest) or deb.stat().st_size != size:"
     if old_digest_chk in code:
         code = code.replace(old_digest_chk, new_digest_chk)
+
+    # 5. Deps and zoo asset checking block: guard entire section with if has_zoo_assets
+    old_zoo_block = """deps = release_dir / 'deps'
+zoo_dir = release_dir / 'qemu-zoo'
+owned_mode(deps, 0o755, 'satellite deps directory')
+owned_mode(zoo_dir, 0o755, 'QEMU zoo directory')
+owned_mode(deps / 'qemu-compat-libs.tgz', 0o644, 'qemu-compat-libs.tgz')
+for filename in zoo:
+    owned_mode(zoo_dir / filename, 0o644, filename)
+for asset, (digest, size, path) in asset_parsed.items():
+    payload = release_dir / path
+    if hashlib.sha256(payload.read_bytes()).hexdigest() != digest or payload.stat().st_size != size:
+        reject(asset + ': digest or size differs from asset inventory')"""
+
+    new_zoo_block = """if has_zoo_assets:
+    deps = release_dir / 'deps'
+    zoo_dir = release_dir / 'qemu-zoo'
+    owned_mode(deps, 0o755, 'satellite deps directory')
+    owned_mode(zoo_dir, 0o755, 'QEMU zoo directory')
+    owned_mode(deps / 'qemu-compat-libs.tgz', 0o644, 'qemu-compat-libs.tgz')
+    for filename in zoo:
+        owned_mode(zoo_dir / filename, 0o644, filename)
+    for asset, (digest, size, path) in asset_parsed.items():
+        payload = release_dir / path
+        if hashlib.sha256(payload.read_bytes()).hexdigest() != digest or payload.stat().st_size != size:
+            reject(asset + ': digest or size differs from asset inventory')"""
+
+    if old_zoo_block in code:
+        code = code.replace(old_zoo_block, new_zoo_block)
 
     with open(satdeploy, "w", encoding="utf-8") as f:
         f.write(code)

@@ -467,6 +467,10 @@ except Exception as e:
     print(f"  [!] IOU keygen note: {e}")
 PYEOF
 
+# Ensure all Cisco IOL binaries are executable
+chmod 0755 /opt/unetlab/addons/iol/bin/* 2>/dev/null || true
+chmod 0644 /opt/unetlab/addons/iol/bin/iourc* 2>/dev/null || true
+
 # --- 6.5. Patch Core IOL Engine & Wrapper Permissions ---
 echo "[6.5/7] Patching IOL engine and unl_wrapper for AF_UNIX socket permissions..."
 python3 - << 'PY_IOL_PATCH' 2>/dev/null || true

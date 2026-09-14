@@ -145,5 +145,10 @@ if [ -f "$IOL_BIN/iourc" ]; then
     echo "  -> Cisco IOL license (iourc) linked successfully."
 fi
 
+# Ensure all Cisco IOL binaries are executable
+chmod 0755 "$IOL_BIN"/* 2>/dev/null || true
+chmod 0644 "$IOL_BIN"/iourc* 2>/dev/null || true
+
+
 echo ""
 echo "=== [SUCCESS] PNETLab permissions and node environment repaired! ==="

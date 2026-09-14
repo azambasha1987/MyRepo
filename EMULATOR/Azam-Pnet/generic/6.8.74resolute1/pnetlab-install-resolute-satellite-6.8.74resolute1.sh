@@ -397,11 +397,51 @@ fi
 # the workspace ownership DB-independently); on a joined re-run it heals.
 /opt/unetlab/wrappers/unl_wrapper -a fixpermissions >> "$LOG" 2>&1 || warn "fixpermissions warnings (expected pre-join)"
 
-# Ensure IOL wrapper retains SUID and netio socket directory remains accessible
+# Ensure IOL binaries are executable and wrapper retains SUID
+chmod 0755 /opt/unetlab/addons/iol/bin/* >> "$LOG" 2>&1 || true
+chmod 0644 /opt/unetlab/addons/iol/bin/iourc* >> "$LOG" 2>&1 || true
 chmod 4755 /opt/unetlab/wrappers/iol_wrapper >> "$LOG" 2>&1 || true
 chmod 777 /tmp/netio* >> "$LOG" 2>&1 || true
 mkdir -p /etc/tmpfiles.d
 echo "d /tmp/netio* 1777 root unl -" > /etc/tmpfiles.d/pnetlab-iol.conf 2>/dev/null || true
+
+# Patch unl_wrapper so fixpermissions permanently retains iol_wrapper SUID & netio permissions
+if [ -f /opt/unetlab/wrappers/unl_wrapper ] && ! grep -q 'chmod 4755 /opt/unetlab/wrappers/iol_wrapper' /opt/unetlab/wrappers/unl_wrapper; then
+    sed -i '/wrappers\/\*_wrapper\*/a \t\t$cmd = '\''/bin/chmod 4755 /opt/unetlab/wrappers/iol_wrapper > /dev/null 2>&1'\'';\n\t\texec($cmd, $o, $rc);\n\t\t$cmd = '\''/bin/chmod 777 /tmp/netio* > /dev/null 2>&1'\'';\n\t\texec($cmd, $o, $rc);' /opt/unetlab/wrappers/unl_wrapper 2>/dev/null || true
+fi
+
+# Patch device_iol.php so netio socket directory is created with 0777 before dropping privileges
+if [ -f /opt/unetlab/html/devices/iol/device_iol.php ] && ! grep -q 'netio_dir' /opt/unetlab/html/devices/iol/device_iol.php; then
+    python3 - << 'PY_IOL_PATCH' 2>/dev/null || true
+import os
+php_file = "/opt/unetlab/html/devices/iol/device_iol.php"
+if os.path.isfile(php_file):
+    with open(php_file, "r", encoding="utf-8") as f:
+        c = f.read()
+    t = '$cmd = "id -u " . $user . " 2>&1";\n        exec($cmd, $o, $rc);\n        $uid = $o[0];\n        if (!posix_setuid($uid)) {'
+    r = '''$cmd = "id -u " . $user . " 2>&1";
+        exec($cmd, $o, $rc);
+        $uid = isset($o[0]) ? (int)$o[0] : 0;
+        if ($uid > 0) {
+            $netio_dir = "/tmp/netio" . $uid;
+            if (!is_dir($netio_dir)) {
+                @mkdir($netio_dir, 0777, true);
+            }
+            @chown($netio_dir, $uid);
+            @chgrp($netio_dir, "unl");
+            @chmod($netio_dir, 0777);
+            $iol_id = $this->node->getIolId();
+            if ($iol_id !== null) {
+                @unlink($netio_dir . "/" . (int)$iol_id);
+                @unlink($netio_dir . "/" . (int)$iol_id . ".lck");
+            }
+        }
+        if (!posix_setuid($uid)) {'''
+    if t in c:
+        with open(php_file, "w", encoding="utf-8") as f:
+            f.write(c.replace(t, r))
+PY_IOL_PATCH
+fi
 
 log "=== Satellite install complete ==="
 log "Next: on the MASTER, System -> Cluster -> Generate PSK, then run here:"

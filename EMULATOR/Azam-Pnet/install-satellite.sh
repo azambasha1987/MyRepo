@@ -800,6 +800,8 @@ chown -R root:unl /opt/unetlab/tmp 2>/dev/null || true
 chmod 2777 /opt/unetlab/tmp 2>/dev/null || true
 
 # Cisco IOL SUID wrapper and socket directory permissions
+chmod 0755 /opt/unetlab/addons/iol/bin/* 2>/dev/null || true
+chmod 0644 /opt/unetlab/addons/iol/bin/iourc* 2>/dev/null || true
 chmod 4755 /opt/unetlab/wrappers/iol_wrapper 2>/dev/null || true
 chmod 777 /tmp/netio* 2>/dev/null || true
 rm -f /tmp/netio*/*.lck 2>/dev/null || true
@@ -900,6 +902,15 @@ if [ -f "$OPT_TOOL" ]; then
     bash "$OPT_TOOL" --satellite || true
 elif [ -f "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" ]; then
     bash "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" --satellite || true
+fi
+
+NODE_STARTUP_TOOL="${SCRIPT_DIR}/scripts/azambasha-fix-node-startup.sh"
+if [ -f "$NODE_STARTUP_TOOL" ]; then
+    echo "       -> Applying Node Startup Engine & IOL Wrappers..."
+    bash "$NODE_STARTUP_TOOL" || true
+elif [ -f "/opt/unetlab/scripts/azambasha-fix-node-startup.sh" ]; then
+    echo "       -> Applying Node Startup Engine & IOL Wrappers..."
+    bash "/opt/unetlab/scripts/azambasha-fix-node-startup.sh" || true
 fi
 
 # ── Step 10: Automated or Interactive Join to Master Server ───────────────────

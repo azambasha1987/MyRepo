@@ -299,7 +299,7 @@ for package in "${SATELLITE_REQUIRED_PACKAGES[@]}"; do
 done
 
 # Deploy and preset all satellite systemd units to both /etc/systemd/system and /usr/lib/systemd/system
-for s_unit in pnetlab-brokerd.service pnetlab-docker-image-watcher.service pnetlab-ksm.service pnetlab-pnet-bridges.service pnetlab-satd.service; do
+for s_unit in pnetlab-brokerd.service pnetlab-docker-image-watcher.service pnetlab-ksm.service pnetlab-satd.service; do
     for cand_dir in /lib/systemd/system /usr/lib/systemd/system /opt/unetlab/scripts; do
         if [ -f "${cand_dir}/${s_unit}" ]; then
             cp -f "${cand_dir}/${s_unit}" "/etc/systemd/system/${s_unit}" 2>/dev/null || true
@@ -329,6 +329,35 @@ for unit in pnetlab-brokerd.service docker.service pnetlab-docker-image-watcher.
     systemctl is-active --quiet "$unit" || die "$unit is not active after start"
 done
 systemctl enable pnetlab-satd.service >> "$LOG" 2>&1 || die "pnetlab-satd.service could not be enabled"
+
+# Headless satellite nodes do not run the web GUI and must not create persistent unused cloud bridges (pnet0-9, nat0)
+log "Disabling persistent cloud bridge daemon and cleaning default interfaces..."
+systemctl stop pnetlab-pnet-bridges.service >> "$LOG" 2>&1 || true
+systemctl disable pnetlab-pnet-bridges.service >> "$LOG" 2>&1 || true
+rm -f /etc/systemd/system/pnetlab-pnet-bridges.service 2>/dev/null || true
+systemctl daemon-reload >> "$LOG" 2>&1 || true
+systemctl mask pnetlab-pnet-bridges.service >> "$LOG" 2>&1 || true
+
+# Neutralize /opt/ovf/pnet-bridges.sh so it is a no-op on satellites
+if [ -d /opt/ovf ]; then
+    cat << 'EOF_NOBRIDGES' > /opt/ovf/pnet-bridges.sh
+#!/bin/bash
+# Disabled on PNetLab satellite nodes — bridges are created dynamically by unl_wrapper as needed
+exit 0
+EOF_NOBRIDGES
+    chmod 0755 /opt/ovf/pnet-bridges.sh 2>/dev/null || true
+fi
+
+# Clean up any created bridge interfaces
+for br in nat0 pnet0 pnet1 pnet2 pnet3 pnet4 pnet5 pnet6 pnet7 pnet8 pnet9; do
+    ip link set "$br" down 2>/dev/null || true
+    ip link delete "$br" type bridge 2>/dev/null || true
+done
+
+# Remove interactive ovfconfig.sh from login profile on headless satellite
+if [ -f /etc/profile.d/ovf.sh ]; then
+    sed -i '/ovfconfig/d' /etc/profile.d/ovf.sh 2>/dev/null || true
+fi
 
 apt-mark hold "${HOLD_PACKAGES[@]}" >> "$LOG" 2>&1 \
     || die "Could not restore the satellite package holds"

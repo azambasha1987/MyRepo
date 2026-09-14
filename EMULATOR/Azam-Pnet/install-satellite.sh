@@ -648,7 +648,6 @@ UNITS=(
     "pnetlab-brokerd.service"
     "pnetlab-docker-image-watcher.service"
     "pnetlab-ksm.service"
-    "pnetlab-pnet-bridges.service"
     "pnetlab-satd.service"
 )
 
@@ -736,24 +735,6 @@ ExecStart=/opt/unetlab/scripts/pnetlab-ksm-tune.sh
 WantedBy=multi-user.target
 EOF_UKSM
                 ;;
-            pnetlab-pnet-bridges.service)
-                cat << 'EOF_UBRIDGES' > "/etc/systemd/system/${u}"
-[Unit]
-Description=PNetLab cloud bridge devices (pnet0-9 + nat0)
-DefaultDependencies=no
-After=systemd-udev-settle.service
-Before=networking.service network-pre.target
-ConditionPathExists=/opt/ovf/pnet-bridges.sh
-
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-ExecStart=/bin/bash /opt/ovf/pnet-bridges.sh
-
-[Install]
-WantedBy=multi-user.target
-EOF_UBRIDGES
-                ;;
         esac
         cp -f "/etc/systemd/system/${u}" "/usr/lib/systemd/system/${u}" 2>/dev/null || true
         chmod 644 "/etc/systemd/system/${u}" 2>/dev/null || true
@@ -781,6 +762,34 @@ systemctl enable --now pnetlab-brokerd.service 2>/dev/null || true
 systemctl enable --now pnetlab-docker-image-watcher.service 2>/dev/null || true
 systemctl enable --now pnetlab-ksm.service 2>/dev/null || true
 systemctl enable pnetlab-satd.service 2>/dev/null || true
+
+# Headless satellite nodes do not run the web GUI and must not create persistent unused cloud bridges (pnet0-9, nat0)
+systemctl stop pnetlab-pnet-bridges.service 2>/dev/null || true
+systemctl disable pnetlab-pnet-bridges.service 2>/dev/null || true
+rm -f /etc/systemd/system/pnetlab-pnet-bridges.service 2>/dev/null || true
+systemctl daemon-reload 2>/dev/null || true
+systemctl mask pnetlab-pnet-bridges.service 2>/dev/null || true
+
+# Neutralize /opt/ovf/pnet-bridges.sh so it is a no-op on satellites
+if [ -d /opt/ovf ]; then
+    cat << 'EOF_NOBRIDGES' > /opt/ovf/pnet-bridges.sh
+#!/bin/bash
+# Disabled on PNetLab satellite nodes — bridges are created dynamically by unl_wrapper as needed
+exit 0
+EOF_NOBRIDGES
+    chmod 0755 /opt/ovf/pnet-bridges.sh 2>/dev/null || true
+fi
+
+# Clean up any created bridge interfaces
+for br in nat0 pnet0 pnet1 pnet2 pnet3 pnet4 pnet5 pnet6 pnet7 pnet8 pnet9; do
+    ip link set "$br" down 2>/dev/null || true
+    ip link delete "$br" type bridge 2>/dev/null || true
+done
+
+# Remove interactive ovfconfig.sh from login profile on headless satellite
+if [ -f /etc/profile.d/ovf.sh ]; then
+    sed -i '/ovfconfig/d' /etc/profile.d/ovf.sh 2>/dev/null || true
+fi
 
 # Hardware virtualization and permissions
 mkdir -p /opt/unetlab/addons/{qemu,iol/bin,dynamips,docker}

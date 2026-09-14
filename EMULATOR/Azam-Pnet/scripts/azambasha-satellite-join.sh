@@ -62,7 +62,7 @@ show_status() {
 
     echo ""
     echo "--- Systemd Services ---"
-    for svc in pnetlab-satd.service pnetlab-brokerd.service pnetlab-docker-image-watcher.service pnetlab-ksm.service pnetlab-pnet-bridges.service; do
+    for svc in pnetlab-satd.service pnetlab-brokerd.service pnetlab-docker-image-watcher.service pnetlab-ksm.service; do
         if systemctl is-active --quiet "$svc" 2>/dev/null; then
             log_ok "$svc: ACTIVE"
         else

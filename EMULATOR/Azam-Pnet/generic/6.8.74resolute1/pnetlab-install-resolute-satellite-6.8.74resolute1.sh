@@ -105,11 +105,13 @@ fi
 dpkg --configure -a >> "$LOG" 2>&1 || die "Initial dpkg configuration failed"
 
 # ── [2/8] SSH / systemd / root password ────────────────────────────────────────
-log "[2/8] Configuring SSH, systemd timeout, root password..."
+log "[2/8] Configuring SSH, systemd timeout..."
 sed -i 's/.*PermitRootLogin .*/PermitRootLogin yes/' /etc/ssh/sshd_config 2>/dev/null || true
 sed -i 's/.*DefaultTimeoutStopSec=.*/DefaultTimeoutStopSec=5s/' /etc/systemd/system.conf 2>/dev/null || true
 systemctl restart ssh >> "$LOG" 2>&1 || true
-echo 'root:pnet' | chpasswd >> "$LOG" 2>&1 || warn "Could not set root password"
+if [ -n "${SATELLITE_ROOT_PASSWORD:-}" ]; then
+    echo "root:$SATELLITE_ROOT_PASSWORD" | chpasswd >> "$LOG" 2>&1 || warn "Could not set root password"
+fi
 
 # ── [3/8] APT update ──────────────────────────────────────────────────────────
 log "[3/8] Running apt update..."

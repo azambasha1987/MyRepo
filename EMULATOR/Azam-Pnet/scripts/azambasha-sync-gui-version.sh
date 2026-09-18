@@ -32,12 +32,17 @@ TARGET_PKG="${2:-}"
 
 # Auto-detect latest release from repo or installed packages
 if [ "$TARGET_INPUT" = "auto" ] || [ -z "$TARGET_INPUT" ]; then
-    # Look for highest release tag in generic/ or manifests
-    LATEST_DIR="$(ls -d ${REPO_ROOT}/generic/6.* 2>/dev/null | sort -V | tail -n1 || true)"
-    if [ -n "$LATEST_DIR" ]; then
-        BASE_DETECT="$(basename "$LATEST_DIR")"
-    else
-        BASE_DETECT="6.8.79resolute1"
+    BASE_DETECT=""
+    if [ -f "${REPO_ROOT}/docs/WEEKLY_IMPLEMENTATION_PLAN.md" ]; then
+        BASE_DETECT="$(grep -oP '(?<=Implemented Package Version\*\*: `)[^`]+' "${REPO_ROOT}/docs/WEEKLY_IMPLEMENTATION_PLAN.md" 2>/dev/null | head -n1 || true)"
+    fi
+    if [ -z "$BASE_DETECT" ]; then
+        LATEST_DIR="$(ls -d ${REPO_ROOT}/generic/6.* 2>/dev/null | sort -V | tail -n1 || true)"
+        if [ -n "$LATEST_DIR" ]; then
+            BASE_DETECT="$(basename "$LATEST_DIR")"
+        else
+            BASE_DETECT="6.8.79resolute1"
+        fi
     fi
     TARGET_INPUT="$BASE_DETECT"
 fi

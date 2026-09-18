@@ -82,13 +82,23 @@ print(f"  Injected attr: {injected} file(s)")
 PYEOF
 
 
-# 3. Ensure Session Cookie Compatibility in api.php
+# 3. Ensure Session Cookie Compatibility in api.php and functions.php
 API_PHP="/opt/unetlab/html/api.php"
 if [ -f "$API_PHP" ]; then
     sed -i 's/"secure" *=> *true/"secure" => (!empty($_SERVER["HTTPS"]) \&\& $_SERVER["HTTPS"] !== "off")/g' "$API_PHP" 2>/dev/null || true
     sed -i 's/"samesite" *=> *"Strict"/"samesite" => "Lax"/g' "$API_PHP" 2>/dev/null || true
     echo "      -> Modernized session cookie attributes in api.php"
 fi
+FUNCS_PHP="/opt/unetlab/html/includes/functions.php"
+if [ -f "$FUNCS_PHP" ]; then
+    sed -i 's/"secure" *=> *true/"secure" => (!empty($_SERVER["HTTPS"]) \&\& $_SERVER["HTTPS"] !== "off")/g' "$FUNCS_PHP" 2>/dev/null || true
+    sed -i 's/"samesite" *=> *"Strict"/"samesite" => "Lax"/g' "$FUNCS_PHP" 2>/dev/null || true
+    echo "      -> Modernized session cookie attributes in functions.php"
+fi
+
+# Ensure PHP-FPM FastCGI is registered with Apache
+a2enmod proxy_fcgi setenvif rewrite ssl headers 2>/dev/null || true
+a2enconf "php${PHP_VER}-fpm" 2>/dev/null || a2enconf php-fpm 2>/dev/null || true
 
 # 4. Tune PHP-FPM and PHP CLI Configurations
 for conf in /etc/php/${PHP_VER}/fpm/php.ini /etc/php/${PHP_VER}/cli/php.ini /etc/php/*/*/php.ini; do

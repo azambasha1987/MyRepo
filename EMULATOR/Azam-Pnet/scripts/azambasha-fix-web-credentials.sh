@@ -49,10 +49,68 @@ rm -rf /dev/shm/pnet-authfail* /tmp/pnet-authfail* 2>/dev/null || true
 if [ "$IS_SATELLITE" -eq 0 ]; then
     log_info "Detected Master Node — Performing authoritative Web-GUI credential reset..."
 
-    # Ensure MySQL service is running
-    systemctl start mysql 2>/dev/null || systemctl start mariadb 2>/dev/null || systemctl start mysqld 2>/dev/null || true
+    # Ensure MySQL packages are installed
+    if ! command -v mysqld >/dev/null 2>&1 && ! command -v mariadbd >/dev/null 2>&1; then
+        log_info "MySQL server binary not found; installing mysql-server..."
+        DEBIAN_FRONTEND=noninteractive apt-get update -qq 2>/dev/null || true
+        DEBIAN_FRONTEND=noninteractive apt-get install -y -qq mysql-server 2>/dev/null || true
+    fi
 
-    # Comprehensive MySQL client candidate probe
+    # ── MySQL Daemon & Socket Recovery ────────────────────────────────────────
+    # 1. Ensure runtime directories exist with appropriate ownership
+    mkdir -p /var/run/mysqld /run/mysqld /var/log/mysql /var/lib/mysql
+    chown -R mysql:mysql /var/run/mysqld /run/mysqld /var/log/mysql 2>/dev/null || true
+    chmod 0755 /var/run/mysqld /run/mysqld 2>/dev/null || true
+
+    # 2. Check for incompatible MySQL 8.0/8.4 configuration directives
+    # In MySQL 8.0, 'mysql_native_password=ON' is an unknown variable that causes immediate crash on startup
+    if [ -f /etc/mysql/mysql.conf.d/zz-pnetlab-native-pw.cnf ]; then
+        if mysqld --validate-config 2>&1 | grep -qi "unknown variable 'mysql_native_password"; then
+            log_warn "Detected incompatible 'mysql_native_password=ON' in configuration; removing to allow clean startup..."
+            mv -f /etc/mysql/mysql.conf.d/zz-pnetlab-native-pw.cnf /etc/mysql/mysql.conf.d/zz-pnetlab-native-pw.cnf.bak 2>/dev/null || true
+        fi
+    fi
+
+    # 3. Clean stale PID and socket lock files
+    rm -f /var/run/mysqld/mysqld.sock.lock /var/run/mysqld/mysqld.pid /run/mysqld/mysqld.sock.lock /run/mysqld/mysqld.pid 2>/dev/null || true
+
+    # 4. Check if MySQL datadir is initialized
+    if [ ! -d /var/lib/mysql/mysql ]; then
+        log_info "Initializing MySQL datadir (/var/lib/mysql)..."
+        mysqld --initialize-insecure --user=mysql 2>/dev/null || true
+    fi
+
+    # 5. Start MySQL service
+    systemctl unmask mysql 2>/dev/null || true
+    systemctl unmask mariadb 2>/dev/null || true
+    systemctl daemon-reload 2>/dev/null || true
+
+    systemctl restart mysql 2>/dev/null || systemctl start mysql 2>/dev/null \
+        || systemctl restart mariadb 2>/dev/null || systemctl start mariadb 2>/dev/null \
+        || systemctl start mysqld 2>/dev/null || true
+
+    # Wait up to 10 seconds for socket to become ready
+    SOCKET_FOUND=0
+    for _ in $(seq 1 10); do
+        if [ -S /var/run/mysqld/mysqld.sock ] || [ -S /run/mysqld/mysqld.sock ]; then
+            SOCKET_FOUND=1
+            break
+        fi
+        sleep 1
+    done
+
+    # If socket is still missing, attempt emergency fallback start
+    if [ "$SOCKET_FOUND" -eq 0 ]; then
+        log_warn "Socket not created by systemd service; testing direct mysqld start..."
+        # Remove any broken config preventing startup
+        if [ -f /etc/mysql/mysql.conf.d/zz-pnetlab-native-pw.cnf ]; then
+            mv -f /etc/mysql/mysql.conf.d/zz-pnetlab-native-pw.cnf /etc/mysql/mysql.conf.d/zz-pnetlab-native-pw.cnf.bak 2>/dev/null || true
+            systemctl restart mysql 2>/dev/null || true
+        fi
+        sleep 2
+    fi
+
+    # ── Multi-Tier Credential & Socket Probe ──────────────────────────────────
     CANDIDATES=(
         "mysql"
         "mysql -u root"
@@ -73,7 +131,6 @@ if [ "$IS_SATELLITE" -eq 0 ]; then
     )
 
     MYSQL_CMD=""
-    LAST_ERROR=""
 
     for cand in "${CANDIDATES[@]}"; do
         if $cand -N -e "SELECT 1;" >/dev/null 2>&1; then
@@ -82,29 +139,19 @@ if [ "$IS_SATELLITE" -eq 0 ]; then
         fi
     done
 
-    # If initial probe failed, retry once after restarting service
-    if [ -z "$MYSQL_CMD" ]; then
-        log_warn "MySQL not responding to direct probes; restarting MySQL service..."
-        systemctl restart mysql 2>/dev/null || systemctl restart mariadb 2>/dev/null || true
-        sleep 2
-        for cand in "${CANDIDATES[@]}"; do
-            if $cand -N -e "SELECT 1;" >/dev/null 2>&1; then
-                MYSQL_CMD="$cand"
-                break
-            fi
-        done
-    fi
-
+    # If still not connecting, output detailed service diagnostics
     if [ -z "$MYSQL_CMD" ]; then
         log_err "Could not connect to MySQL using any known credential or socket method."
         echo "" >&2
-        echo "Diagnostics:" >&2
-        for cand in "mysql -u root" "mysql -u root -ppnetlab" "mysql -u root -pazam" "mysql --defaults-file=/etc/mysql/debian.cnf"; do
-            err=$($cand -N -e "SELECT 1;" 2>&1 || true)
-            echo "  $cand -> $err" >&2
-        done
-        echo "" >&2
+        echo "=== MySQL Service Status ===" >&2
         systemctl status mysql --no-pager 2>/dev/null || systemctl status mariadb --no-pager 2>/dev/null || true
+        echo "" >&2
+        echo "=== Recent MySQL Error Logs ===" >&2
+        if [ -f /var/log/mysql/error.log ]; then
+            tail -n 25 /var/log/mysql/error.log >&2 || true
+        else
+            journalctl -u mysql -n 25 --no-pager 2>/dev/null || true
+        fi
         exit 1
     fi
 

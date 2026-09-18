@@ -295,8 +295,27 @@ INSERT INTO control (control_name, control_value) VALUES
 ON DUPLICATE KEY UPDATE control_value = VALUES(control_value);
 " 2>/dev/null || true
 
+    # ── PHP-FPM & Apache FastCGI Handler Enforcement ─────────────────────────
+    log_info "Verifying PHP-FPM and Apache FastCGI execution pipeline..."
+    PHP_VER="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || echo "8.5")"
+    if ! dpkg -s "php${PHP_VER}-fpm" >/dev/null 2>&1 && ! dpkg -s php-fpm >/dev/null 2>&1; then
+        log_info "Installing php${PHP_VER}-fpm and fastcgi modules..."
+        DEBIAN_FRONTEND=noninteractive apt-get update -qq 2>/dev/null || true
+        DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "php${PHP_VER}-fpm" php-fpm 2>/dev/null || true
+    fi
+
+    # Ensure proxy_fcgi and php-fpm configuration in Apache
+    a2enmod proxy_fcgi setenvif rewrite ssl proxy proxy_http headers 2>/dev/null || true
+    a2enconf "php${PHP_VER}-fpm" 2>/dev/null || a2enconf php-fpm 2>/dev/null || true
+
+    # Patch Cookie Compatibility in api.php for HTTP & HTTPS
+    if [ -f /opt/unetlab/html/api.php ]; then
+        sed -i 's/"secure" *=> *true/"secure" => (!empty($_SERVER["HTTPS"]) \&\& $_SERVER["HTTPS"] !== "off")/g' /opt/unetlab/html/api.php 2>/dev/null || true
+        sed -i 's/"samesite" *=> *"Strict"/"samesite" => "Lax"/g' /opt/unetlab/html/api.php 2>/dev/null || true
+    fi
+
     # Restart PHP-FPM and Apache2 to refresh user sessions
-    PHP_FPM_SVC="$(systemctl list-unit-files 'php*-fpm.service' --no-legend 2>/dev/null | awk '{print $1}' | head -n1 || echo "")"
+    PHP_FPM_SVC="$(systemctl list-unit-files 'php*-fpm.service' --no-legend 2>/dev/null | awk '{print $1}' | head -n1 || echo "php${PHP_VER}-fpm.service")"
     if [ -n "$PHP_FPM_SVC" ]; then
         systemctl restart "$PHP_FPM_SVC" 2>/dev/null || true
     fi
@@ -320,6 +339,10 @@ fi
 # ── 3. Final Verification Probe ───────────────────────────────────────────────
 if [ "$IS_SATELLITE" -eq 0 ]; then
     PASS_VERIFIED=$($MYSQL_CMD -N -e "USE pnetlab_db; SELECT COUNT(*) FROM users WHERE username='admin' AND password=SHA2('azam',256) AND role='0' AND user_status=1;" 2>/dev/null || echo "0")
+    
+    # Perform live end-to-end API login check
+    API_AUTH_RESP=$(curl -sk -X POST https://127.0.0.1/api/auth -H "Content-Type: application/json" -d '{"username":"admin","password":"azam"}' 2>/dev/null || true)
+    
     if [ "${PASS_VERIFIED:-0}" -ge 1 ]; then
         echo ""
         echo "============================================================"
@@ -331,6 +354,9 @@ if [ "$IS_SATELLITE" -eq 0 ]; then
         echo " Role         : Administrator (0)"
         echo " Status       : Active & Offline Mode Enabled"
         echo " CLI Command  : sudo azam-credentials"
+        if echo "$API_AUTH_RESP" | grep -qi '"status":"success"'; then
+            echo " Live API Auth: VERIFIED (HTTP 200 / User authenticated)"
+        fi
         echo "============================================================"
     else
         log_warn "Admin row was updated, but verification query returned count: ${PASS_VERIFIED}."

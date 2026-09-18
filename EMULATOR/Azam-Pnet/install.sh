@@ -682,6 +682,13 @@ echo "[5/8] Configuring Apache2 Web Server, SSL and PHP-FPM..."
 PHP_VER="$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;' 2>/dev/null || echo "8.5")"
 PHP_FPM_SOCK="/run/php/php${PHP_VER}-fpm.sock"
 
+# Ensure PHP-FPM runtime package is installed
+if ! dpkg -s "php${PHP_VER}-fpm" >/dev/null 2>&1 && ! dpkg -s php-fpm >/dev/null 2>&1; then
+    echo "      -> Installing php${PHP_VER}-fpm and FastCGI runtime..."
+    DEBIAN_FRONTEND=noninteractive apt-get update -qq 2>/dev/null || true
+    DEBIAN_FRONTEND=noninteractive apt-get install -y -qq "php${PHP_VER}-fpm" php-fpm 2>/dev/null || true
+fi
+
 # 2-Tier Enterprise Root CA & Multi-IP Server Certificate Generation
 CA_CERT="/etc/ssl/certs/pnetlab-ca.crt"
 CA_KEY="/etc/ssl/private/pnetlab-ca.key"
@@ -899,7 +906,7 @@ a2enmod rewrite ssl proxy proxy_http proxy_wstunnel headers http2 mpm_event prox
 if [ -x /opt/unetlab/scripts/enable-php-fpm.sh ]; then
     bash /opt/unetlab/scripts/enable-php-fpm.sh 2>/dev/null || true
 fi
-a2enconf "php${PHP_VER}-fpm" 2>/dev/null || true
+a2enconf "php${PHP_VER}-fpm" 2>/dev/null || a2enconf php-fpm 2>/dev/null || true
 a2dissite 000-default default-ssl pnetlabs 2>/dev/null || true
 a2ensite pnetlab pnetlab-ssl 2>/dev/null || true
 

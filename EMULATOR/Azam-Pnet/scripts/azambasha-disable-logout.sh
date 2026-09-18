@@ -118,7 +118,7 @@ if target in content:
     idx = content.find(target)
     brace_idx = content.find("{", idx)
     if brace_idx != -1:
-        injection = '\n        // Never-Logout Sliding Cookie\n        if (!headers_sent()) {\n            @setcookie("token", $cookie, [\n                "expires"  => time() + 315360000,\n                "path"     => "/",\n                "secure"   => true,\n                "httponly" => true,\n                "samesite" => "Strict",\n            ]);\n        }\n'
+        injection = '\n        // Never-Logout Sliding Cookie\n        if (!headers_sent()) {\n            @setcookie("token", $cookie, [\n                "expires"  => time() + 315360000,\n                "path"     => "/",\n                "secure"   => (!empty($_SERVER["HTTPS"]) && $_SERVER["HTTPS"] !== "off"),\n                "httponly" => true,\n                "samesite" => "Lax",\n            ]);\n        }\n'
         content = content[:brace_idx+1] + injection + content[brace_idx+1:]
         with open(functions_file, "w", encoding="utf-8") as f:
             f.write(content)

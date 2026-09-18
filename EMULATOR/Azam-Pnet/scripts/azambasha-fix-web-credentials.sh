@@ -308,10 +308,14 @@ ON DUPLICATE KEY UPDATE control_value = VALUES(control_value);
     a2enmod proxy_fcgi setenvif rewrite ssl proxy proxy_http headers 2>/dev/null || true
     a2enconf "php${PHP_VER}-fpm" 2>/dev/null || a2enconf php-fpm 2>/dev/null || true
 
-    # Patch Cookie Compatibility in api.php for HTTP & HTTPS
+    # Patch Cookie Compatibility in api.php and functions.php for HTTP & HTTPS
     if [ -f /opt/unetlab/html/api.php ]; then
         sed -i 's/"secure" *=> *true/"secure" => (!empty($_SERVER["HTTPS"]) \&\& $_SERVER["HTTPS"] !== "off")/g' /opt/unetlab/html/api.php 2>/dev/null || true
         sed -i 's/"samesite" *=> *"Strict"/"samesite" => "Lax"/g' /opt/unetlab/html/api.php 2>/dev/null || true
+    fi
+    if [ -f /opt/unetlab/html/includes/functions.php ]; then
+        sed -i 's/"secure" *=> *true/"secure" => (!empty($_SERVER["HTTPS"]) \&\& $_SERVER["HTTPS"] !== "off")/g' /opt/unetlab/html/includes/functions.php 2>/dev/null || true
+        sed -i 's/"samesite" *=> *"Strict"/"samesite" => "Lax"/g' /opt/unetlab/html/includes/functions.php 2>/dev/null || true
     fi
 
     # Restart PHP-FPM and Apache2 to refresh user sessions

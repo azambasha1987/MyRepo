@@ -78,6 +78,28 @@ COMMANDS = {
     "cloud-status":       ["python3", "/opt/azambasha/scripts/azambasha-cloud-backup.py", "--status"],
     "cloud-sync":         ["python3", "/opt/azambasha/scripts/azambasha-cloud-backup.py", "--sync"],
     "cloud-list":         ["python3", "/opt/azambasha/scripts/azambasha-cloud-backup.py", "--list-remote"],
+
+    # Exam & Quiz Grader
+    "grader-run":         None,
+    "grader-quizzes":     ["python3", "/opt/azambasha/scripts/azambasha-lab-grader.py", "--quizzes"],
+
+    # Web Wireshark Sniffer
+    "sniffer-capture":    None,
+    "sniffer-interfaces": ["python3", "/opt/azambasha/scripts/azambasha-sniffer.py", "--interfaces"],
+
+    # Cloud & Real-LAN Transit
+    "bridge-status":      ["python3", "/opt/azambasha/scripts/azambasha-cloud-bridge.py", "--status"],
+    "bridge-enable-nat":  ["python3", "/opt/azambasha/scripts/azambasha-cloud-bridge.py", "--enable-nat"],
+    "bridge-disable-nat": ["python3", "/opt/azambasha/scripts/azambasha-cloud-bridge.py", "--disable-nat"],
+    "bridge-wireguard-up":["python3", "/opt/azambasha/scripts/azambasha-cloud-bridge.py", "--wireguard-up"],
+    "bridge-wireguard-down":["python3", "/opt/azambasha/scripts/azambasha-cloud-bridge.py", "--wireguard-down"],
+
+    # Golden Image Shrinker
+    "image-audit":        ["python3", "/opt/azambasha/scripts/azambasha-image-shrink.py", "--audit"],
+    "image-shrink-all":   ["python3", "/opt/azambasha/scripts/azambasha-image-shrink.py", "--shrink-all"],
+
+    # Automatic Topology Documentation
+    "topology-doc":       None,
 }
 
 def get_cluster_stats():
@@ -271,6 +293,48 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
             except Exception as e:
                 self.reply_json({"error": str(e)})
 
+        elif parsed.path == "/azam-ops/api/grader/quizzes":
+            try:
+                r = subprocess.run(["python3", "/opt/azambasha/scripts/azambasha-lab-grader.py", "--quizzes", "--json"],
+                                   capture_output=True, text=True, timeout=10)
+                self.reply_json(json.loads(r.stdout))
+            except Exception as e:
+                self.reply_json({"quizzes": [], "error": str(e)})
+
+        elif parsed.path == "/azam-ops/api/sniffer/interfaces":
+            try:
+                r = subprocess.run(["python3", "/opt/azambasha/scripts/azambasha-sniffer.py", "--interfaces", "--json"],
+                                   capture_output=True, text=True, timeout=10)
+                self.reply_json(json.loads(r.stdout))
+            except Exception as e:
+                self.reply_json({"interfaces": [], "error": str(e)})
+
+        elif parsed.path == "/azam-ops/api/bridge/status":
+            try:
+                r = subprocess.run(["python3", "/opt/azambasha/scripts/azambasha-cloud-bridge.py", "--status", "--json"],
+                                   capture_output=True, text=True, timeout=10)
+                self.reply_json(json.loads(r.stdout))
+            except Exception as e:
+                self.reply_json({"error": str(e)})
+
+        elif parsed.path == "/azam-ops/api/images/audit":
+            try:
+                r = subprocess.run(["python3", "/opt/azambasha/scripts/azambasha-image-shrink.py", "--audit", "--json"],
+                                   capture_output=True, text=True, timeout=15)
+                self.reply_json(json.loads(r.stdout))
+            except Exception as e:
+                self.reply_json({"images": [], "error": str(e)})
+
+        elif parsed.path == "/azam-ops/api/doc/export":
+            lab = params.get("lab", ["default_lab"])[0]
+            fmt = params.get("format", ["all"])[0]
+            try:
+                r = subprocess.run(["python3", "/opt/azambasha/scripts/azambasha-topology-doc.py", "--lab", lab, "--format", fmt, "--json"],
+                                   capture_output=True, text=True, timeout=10)
+                self.reply_json(json.loads(r.stdout))
+            except Exception as e:
+                self.reply_json({"error": str(e)})
+
         else:
             self.send_response(404)
             self.end_headers()
@@ -349,6 +413,18 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
                     rate = str(params.get("rate", "5"))
                     dur = str(params.get("duration", "5"))
                     cmd = ["python3", "/opt/azambasha/scripts/azambasha-ping-mesh.py", "--traffic-gen", "--target", target, "--rate", rate, "--duration", dur]
+                elif tool == "grader-run":
+                    quiz = params.get("quiz", "ccna_ospf_basics")
+                    lab = params.get("lab", "default_lab")
+                    cmd = ["python3", "/opt/azambasha/scripts/azambasha-lab-grader.py", "--grade", "--quiz", quiz, "--lab", lab]
+                elif tool == "sniffer-capture":
+                    iface = params.get("interface", "eth0")
+                    count = str(params.get("count", "15"))
+                    cmd = ["python3", "/opt/azambasha/scripts/azambasha-sniffer.py", "--interface", iface, "--count", count]
+                elif tool == "topology-doc":
+                    lab = params.get("lab", "default_lab")
+                    fmt = params.get("format", "all")
+                    cmd = ["python3", "/opt/azambasha/scripts/azambasha-topology-doc.py", "--lab", lab, "--format", fmt]
                 else:
                     self.reply_json({"error": "Command not configured"}, status=400)
                     return

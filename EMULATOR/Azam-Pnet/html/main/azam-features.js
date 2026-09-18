@@ -17,11 +17,11 @@
   }
 
   function getLineColor(line) {
-    if (/\[✔\]|success|passed|online|healthy|active/i.test(line)) return '#4ade80';
-    if (/\[✘\]|\[!\]|error|fail|critical|fatal/i.test(line))      return '#f87171';
-    if (/\[⚠\]|warning|warn|slow/i.test(line))                   return '#fbbf24';
-    if (/^===|───|━━━/i.test(line))                               return '#60a5fa';
-    if (/\[\*\]|\[i\]|info/i.test(line))                         return '#38bdf8';
+    if (/\[✔\]|\[PASS\]|success|passed|online|healthy|active/i.test(line)) return '#4ade80';
+    if (/\[✘\]|\[FAIL\]|\[!\]|error|fail|critical|fatal/i.test(line))      return '#f87171';
+    if (/\[⚠\]|warning|warn|slow|hint/i.test(line))                        return '#fbbf24';
+    if (/^===|───|━━━/i.test(line))                                       return '#60a5fa';
+    if (/\[\*\]|\[i\]|info/i.test(line))                                  return '#38bdf8';
     return '#94a3b8';
   }
 
@@ -51,7 +51,7 @@
         'Azam-Features Enterprise Operations Center' +
       '</div>' +
       '<div style="font-size:13px;color:var(--pnq-text-muted,#94a3b8);margin-top:2px;">' +
-        'AI Lab Copilot, automated config diffs, ping mesh matrix, resource quotas & cloud disaster recovery' +
+        'Exam grader, web Wireshark, cloud transit, image optimizer, diagram exporter & AI copilot' +
       '</div>';
 
     titleBox.appendChild(iconBox);
@@ -64,7 +64,7 @@
     var btnRefresh = document.createElement('button');
     btnRefresh.className = 'btn btn-ghost';
     btnRefresh.innerHTML = '<i class="fa fa-refresh"></i> Refresh All';
-    btnRefresh.onclick = function () { loadStats(); loadBackups(); loadMesh(); App.toast('Metrics refreshed', 'ok'); };
+    btnRefresh.onclick = function () { loadStats(); loadBackups(); loadMesh(); loadImagesAudit(); App.toast('Metrics refreshed', 'ok'); };
 
     var btnDoctor = document.createElement('button');
     btnDoctor.className = 'btn btn-primary';
@@ -91,19 +91,22 @@
       createStatCard('az-m-backups', 'Backups Ready', '—', 'fa-archive', '#a78bfa');
     container.appendChild(statsGrid);
 
-    // ── 3. Tab Bar Navigation (All 10 Features) ────────────────
+    // ── 3. Tab Bar Navigation ─────────────────────────────────
     var navTabs = document.createElement('div');
     navTabs.style.cssText = 'display:flex;gap:6px;border-bottom:2px solid var(--pnq-border,rgba(255,255,255,0.08));padding-bottom:2px;overflow-x:auto;scrollbar-width:thin;';
 
     var tabs = [
       { id: 'health',    name: 'Cluster Health',          icon: 'fa-heartbeat' },
+      { id: 'grader',    name: 'Exam & Quiz Grader',      icon: 'fa-graduation-cap' },
+      { id: 'sniffer',   name: 'Web Wireshark Sniffer',   icon: 'fa-rss' },
+      { id: 'bridge',    name: 'Cloud & LAN Transit',     icon: 'fa-globe' },
+      { id: 'shrink',    name: 'Golden Disk Shrinker',    icon: 'fa-compress' },
+      { id: 'doc',       name: 'Diagram & Doc Exporter',  icon: 'fa-file-code-o' },
       { id: 'ai',        name: 'AI Lab Copilot',          icon: 'fa-magic' },
       { id: 'diff',      name: 'Config Diff & Rollback',  icon: 'fa-history' },
       { id: 'mesh',      name: 'Ping Mesh & Traffic Gen', icon: 'fa-exchange' },
       { id: 'scheduler', name: 'Idle Saver & Quotas',     icon: 'fa-clock-o' },
       { id: 'cloud',     name: 'Cloud & NAS Backup',      icon: 'fa-cloud-upload' },
-      { id: 'backups',   name: 'Local Backups & Git',     icon: 'fa-archive' },
-      { id: 'network',   name: 'Consoles & Dataplane',    icon: 'fa-terminal' },
       { id: 'security',  name: 'Security & WhatsApp',     icon: 'fa-whatsapp' },
       { id: 'canvas',    name: 'Canvas Accelerators',     icon: 'fa-paint-brush' }
     ];
@@ -113,7 +116,7 @@
       tabBtn.type = 'button';
       tabBtn.className = 'az-tab-btn' + (idx === 0 ? ' is-active' : '');
       tabBtn.dataset.tab = t.id;
-      tabBtn.style.cssText = 'background:none;border:none;padding:9px 14px;font-size:13px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:7px;transition:all 0.15s ease;white-space:nowrap;';
+      tabBtn.style.cssText = 'background:none;border:none;padding:8px 12px;font-size:12.5px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:6px;transition:all 0.15s ease;white-space:nowrap;';
       if (idx === 0) {
         tabBtn.style.color = '#38bdf8';
         tabBtn.style.borderBottomColor = '#38bdf8';
@@ -137,12 +140,140 @@
         createToolCard('fleet', 'azam-fleet', 'Cluster Fleet & Satellite Monitor', 'Pings Master & Satellites (192.168.1.22, 192.168.1.23, 192.168.1.24), checks WireGuard/GRE tunnels and node distribution.', 'fa-server', '#0284c7', 'term-fleet') +
         createToolCard('capacity', 'azam-capacity', 'Resource Capacity Planner', 'Live calculation of remaining RAM, vCPU cores, and maximum additional QEMU/IOL node slots before saturation.', 'fa-bar-chart', '#059669', 'term-capacity') +
         createToolCard('doctor', 'azam-doctor', 'Cluster Doctor & Self-Healer', 'Deep diagnostic check of file permissions, disk health, orphan QEMU processes, and Apache proxy settings.', 'fa-stethoscope', '#d97706', 'term-doctor', [{ label: 'Reclaim Disk (--compress)', param: 'compress', tool: 'doctor-compress' }]) +
-        createToolCard('perf', 'azam-perf', 'Performance Benchmark', 'Measures real-time memory throughput, disk I/O latency, and system response times under active load.', 'fa-dashboard', '#7c3aed', 'term-perf') +
-        createToolCard('watchdog-status', 'azam-watchdog', '24/7 Watchdog Service', 'Inspect or configure the autonomous background systemd service that monitors cluster health continuously.', 'fa-eye', '#dc2626', 'term-watchdog', [{ label: 'Reinstall / Enable', param: 'install', tool: 'watchdog-install' }]) +
+        createToolCard('perf', 'azam-perf', 'Performance Benchmark', 'Measures real-time memory throughput, disk I/O latency, and system load stress test.', 'fa-dashboard', '#7c3aed', 'term-perf') +
+        createToolCard('watchdog-status', 'azam-watchdog', '24/7 Watchdog Service', 'Autonomous background systemd service that monitors cluster health continuously.', 'fa-eye', '#dc2626', 'term-watchdog', [{ label: 'Reinstall / Enable', param: 'install', tool: 'watchdog-install' }]) +
       '</div>';
     panesContainer.appendChild(pHealth);
 
-    // ── Pane 2: AI Lab Copilot ──
+    // ── Pane 2: Exam & Quiz Grader ──
+    var pGrader = document.createElement('div');
+    pGrader.id = 'pane-grader';
+    pGrader.style.display = 'none';
+    pGrader.innerHTML = 
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
+          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
+            '<div style="width:36px;height:36px;border-radius:8px;background:rgba(16,185,129,0.15);color:#10b981;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-graduation-cap"></i></div>' +
+            '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Automated Lab Exam Grader</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Test checkpoints and generate instant pass/fail scorecards</div></div>' +
+          '</div>' +
+          '<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px;">' +
+            '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Select Certification Quiz:</label>' +
+              '<select id="grader-quiz-select" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
+                '<option value="ccna_ospf_basics">CCNA 200-301 — Multi-Area OSPF & Gateway Routing</option>' +
+                '<option value="ccnp_bgp_enterprise">CCNP ENCOR 350-401 — Enterprise Dual-Homed BGP</option>' +
+              '</select>' +
+            '</div>' +
+            '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Target Lab ID:</label>' +
+              '<input type="text" id="grader-lab-id" value="default_lab" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
+            '</div>' +
+          '</div>' +
+          '<button type="button" id="btn-run-grade" class="btn btn-primary" style="background:#10b981;border-color:#10b981;color:#fff;"><i class="fa fa-check-circle"></i> Grade My Lab</button>' +
+        '</div>' +
+        '<div id="term-grader" style="display:block;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:16px;font-family:monospace;font-size:12.5px;min-height:300px;max-height:450px;overflow-y:auto;color:#38bdf8;">' +
+          '<div style="color:#64748b;">// Ready to evaluate lab. Click "Grade My Lab" to audit checkpoints.</div>' +
+        '</div>' +
+      '</div>';
+    panesContainer.appendChild(pGrader);
+
+    // ── Pane 3: Web Wireshark Sniffer ──
+    var pSniffer = document.createElement('div');
+    pSniffer.id = 'pane-sniffer';
+    pSniffer.style.display = 'none';
+    pSniffer.innerHTML = 
+      '<div style="display:flex;flex-direction:column;gap:16px;">' +
+        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">' +
+            '<div style="display:flex;align-items:center;gap:12px;">' +
+              '<div style="width:38px;height:38px;border-radius:8px;background:rgba(56,189,248,0.15);color:#38bdf8;display:flex;align-items:center;justify-content:center;font-size:17px;"><i class="fa fa-rss"></i></div>' +
+              '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">In-Browser Web Wireshark & Protocol Dissector</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Capture and dissect live packets on physical or virtual bridge interfaces</div></div>' +
+            '</div>' +
+            '<div style="display:flex;gap:10px;align-items:center;">' +
+              '<select id="sniff-iface" style="padding:7px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:12.5px;">' +
+                '<option value="eth0">eth0 (Management)</option>' +
+                '<option value="pnet0">pnet0 (Bridge)</option>' +
+              '</select>' +
+              '<button type="button" id="btn-start-sniff" class="btn btn-primary"><i class="fa fa-play"></i> Start Live Capture</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div id="term-sniffer" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:16px;font-family:monospace;font-size:12px;max-height:360px;overflow-y:auto;color:#e2e8f0;"></div>' +
+      '</div>';
+    panesContainer.appendChild(pSniffer);
+
+    // ── Pane 4: Cloud & LAN Transit ──
+    var pBridge = document.createElement('div');
+    pBridge.id = 'pane-bridge';
+    pBridge.style.display = 'none';
+    pBridge.innerHTML = 
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">' +
+        createToolCard('bridge-status', 'azam-cloud-bridge', 'Transit Gateway & WireGuard Cloud Status', 'Inspects real-LAN bridging, outbound NAT masquerading, and WireGuard Cloud VPC tunnels.', 'fa-globe', '#0ea5e9', 'term-bridge', [
+          { label: 'Enable Outbound NAT', tool: 'bridge-enable-nat' },
+          { label: 'Disable NAT', tool: 'bridge-disable-nat' },
+          { label: 'WireGuard UP', tool: 'bridge-wireguard-up' }
+        ]) +
+        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
+          '<div style="font-weight:600;font-size:15px;margin-bottom:10px;"><i class="fa fa-info-circle"></i> Real-LAN Transit Bridging Guide</div>' +
+          '<div style="font-size:12.5px;color:var(--pnq-text-muted,#94a3b8);line-height:1.6;">' +
+            '• <b>LAN Bridging:</b> Connect any lab node interface to network type <i>Cloud0 (pnet0)</i> to assign IPs directly on your 192.168.1.0/24 subnet.<br>' +
+            '• <b>Internet Access:</b> Outbound NAT translates lab subnets (10.0.0.0/8, 172.16.0.0/12) through eth0 so routers can update software and reach internet NTP/DNS.<br>' +
+            '• <b>WireGuard:</b> Tunnels lab traffic directly to AWS VPC or Azure VNet over encrypted UDP.' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    panesContainer.appendChild(pBridge);
+
+    // ── Pane 5: Golden Disk Shrinker ──
+    var pShrink = document.createElement('div');
+    pShrink.id = 'pane-shrink';
+    pShrink.style.display = 'none';
+    pShrink.innerHTML = 
+      '<div style="display:flex;flex-direction:column;gap:16px;">' +
+        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">' +
+            '<div style="display:flex;align-items:center;gap:12px;">' +
+              '<div style="width:38px;height:38px;border-radius:8px;background:rgba(244,63,94,0.15);color:#f43f5e;display:flex;align-items:center;justify-content:center;font-size:17px;"><i class="fa fa-compress"></i></div>' +
+              '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Golden Image Optimizer & QCOW2 Disk Shrinker</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Compress oversized appliance images non-destructively, saving 50%–70% disk space</div></div>' +
+            '</div>' +
+            '<div style="display:flex;gap:10px;">' +
+              '<button type="button" class="btn btn-ghost" data-az-tool="image-audit" data-az-term="term-shrink"><i class="fa fa-search"></i> Audit Bloat</button>' +
+              '<button type="button" class="btn btn-primary" data-az-tool="image-shrink-all" data-az-term="term-shrink" style="background:#f43f5e;border-color:#f43f5e;color:#fff;"><i class="fa fa-compress"></i> Compress All Disks</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div id="term-shrink" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:16px;font-family:monospace;font-size:12.5px;max-height:360px;overflow-y:auto;color:#e2e8f0;"></div>' +
+      '</div>';
+    panesContainer.appendChild(pShrink);
+
+    // ── Pane 6: Diagram & Doc Exporter ──
+    var pDoc = document.createElement('div');
+    pDoc.id = 'pane-doc';
+    pDoc.style.display = 'none';
+    pDoc.innerHTML = 
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
+          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
+            '<div style="width:36px;height:36px;border-radius:8px;background:rgba(99,102,241,0.15);color:#818cf8;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-file-code-o"></i></div>' +
+            '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Topology Documentation & Diagram Exporter</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Export professional diagrams to Draw.io, Mermaid, and Markdown</div></div>' +
+          '</div>' +
+          '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">' +
+            '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Export Format:</label>' +
+              '<select id="doc-format-select" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
+                '<option value="mermaid">Mermaid.js Diagram (Markdown / GitHub)</option>' +
+                '<option value="drawio">Draw.io XML (diagrams.net Import)</option>' +
+                '<option value="matrix">Cable Patch & IP Allocation Matrix</option>' +
+                '<option value="all">Full Documentation Package (All)</option>' +
+              '</select>' +
+            '</div>' +
+          '</div>' +
+          '<button type="button" id="btn-export-doc" class="btn btn-primary" style="background:#6366f1;border-color:#6366f1;color:#fff;"><i class="fa fa-download"></i> Generate & View Documentation</button>' +
+        '</div>' +
+        '<div id="term-doc" style="display:block;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:16px;font-family:monospace;font-size:12.5px;min-height:300px;max-height:480px;overflow-y:auto;color:#38bdf8;">' +
+          '<div style="color:#64748b;">// Select format and click "Generate" to preview diagrams or cabling matrices.</div>' +
+        '</div>' +
+      '</div>';
+    panesContainer.appendChild(pDoc);
+
+    // ── Pane 7: AI Lab Copilot ──
     var pAi = document.createElement('div');
     pAi.id = 'pane-ai';
     pAi.style.display = 'none';
@@ -155,9 +286,8 @@
               '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Network Config Generator</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Generate production-ready syntax using AI Copilot or built-in templates</div></div>' +
             '</div>' +
             '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">' +
-              '<div>' +
-                '<label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:6px;">Select Built-in Template:</label>' +
-                '<select id="ai-tmpl-select" class="input" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
+              '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Built-in Template:</label>' +
+                '<select id="ai-tmpl-select" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
                   '<option value="cisco_ospf">Cisco IOS-XE — OSPF Multi-Area + MD5 Auth</option>' +
                   '<option value="cisco_bgp">Cisco IOS-XE — eBGP Dual-Homed + BFD</option>' +
                   '<option value="arista_evpn">Arista EOS — VXLAN EVPN Anycast Gateway</option>' +
@@ -165,14 +295,11 @@
                   '<option value="frr_ospf">Linux FRRouting — OSPF & BGP Dual-Stack</option>' +
                 '</select>' +
               '</div>' +
-              '<div>' +
-                '<label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:6px;">Or Custom AI Prompt:</label>' +
+              '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Or Custom AI Prompt:</label>' +
                 '<input type="text" id="ai-custom-prompt" placeholder="e.g. Generate Cisco 8000v BGP EVPN with VXLAN VNI 10010" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
               '</div>' +
             '</div>' +
-            '<div style="display:flex;gap:10px;">' +
-              '<button type="button" id="btn-ai-gen" class="btn btn-primary" style="background:#7c3aed;border-color:#7c3aed;color:#fff;"><i class="fa fa-code"></i> Generate Configuration</button>' +
-            '</div>' +
+            '<button type="button" id="btn-ai-gen" class="btn btn-primary" style="background:#7c3aed;border-color:#7c3aed;color:#fff;"><i class="fa fa-code"></i> Generate Configuration</button>' +
           '</div>' +
           '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
             '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
@@ -183,15 +310,13 @@
             '<button type="button" id="btn-ai-diag" class="btn btn-ghost"><i class="fa fa-search"></i> Diagnose Issue</button>' +
           '</div>' +
         '</div>' +
-        '<div style="display:flex;flex-direction:column;">' +
-          '<div id="term-ai" style="display:block;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:16px;font-family:monospace;font-size:12.5px;min-height:360px;max-height:560px;overflow-y:auto;box-shadow:inset 0 2px 6px rgba(0,0,0,0.4);color:#38bdf8;">' +
-            '<div style="color:#64748b;">// AI Copilot Output Terminal ready. Select a template or enter prompt to generate syntax.</div>' +
-          '</div>' +
+        '<div id="term-ai" style="display:block;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:16px;font-family:monospace;font-size:12.5px;min-height:360px;max-height:560px;overflow-y:auto;color:#38bdf8;">' +
+          '<div style="color:#64748b;">// AI Copilot Output Terminal ready.</div>' +
         '</div>' +
       '</div>';
     panesContainer.appendChild(pAi);
 
-    // ── Pane 3: Config Diff & Rollback ──
+    // ── Pane 8: Config Diff & Rollback ──
     var pDiff = document.createElement('div');
     pDiff.id = 'pane-diff';
     pDiff.style.display = 'none';
@@ -201,11 +326,10 @@
           '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">' +
             '<div style="display:flex;align-items:center;gap:12px;">' +
               '<div style="width:38px;height:38px;border-radius:8px;background:rgba(14,165,233,0.15);color:#0ea5e9;display:flex;align-items:center;justify-content:center;font-size:17px;"><i class="fa fa-history"></i></div>' +
-              '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Device Configuration History & Visual Diff</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Compare running configs before and after lab changes and roll back</div></div>' +
+              '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Device Configuration History & Visual Diff</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Capture and compare running-configs before and after changes</div></div>' +
             '</div>' +
             '<div style="display:flex;gap:10px;">' +
               '<button type="button" id="btn-diff-snap" class="btn btn-primary" style="background:#0ea5e9;border-color:#0ea5e9;color:#fff;"><i class="fa fa-camera"></i> Snapshot Running-Configs</button>' +
-              '<button type="button" id="btn-diff-refresh" class="btn btn-ghost"><i class="fa fa-refresh"></i></button>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -213,7 +337,7 @@
       '</div>';
     panesContainer.appendChild(pDiff);
 
-    // ── Pane 4: Ping Mesh & Traffic Generator ──
+    // ── Pane 9: Ping Mesh & Traffic Generator ──
     var pMesh = document.createElement('div');
     pMesh.id = 'pane-mesh';
     pMesh.style.display = 'none';
@@ -224,9 +348,7 @@
             '<div style="font-weight:600;font-size:15px;"><i class="fa fa-table"></i> Data Plane Reachability Matrix</div>' +
             '<button type="button" id="btn-mesh-sweep" class="btn btn-primary btn-sm"><i class="fa fa-refresh"></i> Run Mesh Sweep</button>' +
           '</div>' +
-          '<div id="az-mesh-table" style="font-size:13px;color:var(--pnq-text-muted,#94a3b8);">' +
-            'Click "Run Mesh Sweep" to test end-to-end IP reachability.' +
-          '</div>' +
+          '<div id="az-mesh-table" style="font-size:13px;color:var(--pnq-text-muted,#94a3b8);">Click "Run Mesh Sweep" to test IP reachability.</div>' +
         '</div>' +
         '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
           '<div style="font-weight:600;font-size:15px;margin-bottom:12px;"><i class="fa fa-bolt"></i> Synthetic Link Traffic Generator</div>' +
@@ -241,7 +363,7 @@
       '</div>';
     panesContainer.appendChild(pMesh);
 
-    // ── Pane 5: Scheduler & Quotas ──
+    // ── Pane 10: Scheduler & Quotas ──
     var pSched = document.createElement('div');
     pSched.id = 'pane-scheduler';
     pSched.style.display = 'none';
@@ -249,74 +371,25 @@
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">' +
         createToolCard('scheduler-status', 'azam-scheduler', 'Resource Quota & Curfew Watchdog', 'Inspects idle timeout settings, nightly power-saver curfews, and role-based node limits.', 'fa-clock-o', '#f59e0b', 'term-sched', [
           { label: 'Stop Idle Labs Now', tool: 'scheduler-stop-idle' },
-          { label: 'Install Service Timer', tool: 'scheduler-install' }
+          { label: 'Audit Compliance', tool: 'scheduler-check' }
         ]) +
-        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
-          '<div style="font-weight:600;font-size:15px;margin-bottom:12px;"><i class="fa fa-sliders"></i> Policy Controls</div>' +
-          '<div style="font-size:13px;color:var(--pnq-text-muted,#94a3b8);line-height:1.6;margin-bottom:14px;">' +
-            '• <b>Idle Timeout:</b> Stops node VMs if inactive for 2 hours.<br>' +
-            '• <b>Nightly Curfew:</b> Shuts down unattended labs at 23:00 to conserve power.<br>' +
-            '• <b>Role Quotas:</b> Max 6 nodes per student, max 12 per operator.' +
-          '</div>' +
-          '<button type="button" class="btn btn-ghost" data-az-tool="scheduler-check" data-az-term="term-sched"><i class="fa fa-play"></i> Run Policy Audit Now</button>' +
-        '</div>' +
       '</div>';
     panesContainer.appendChild(pSched);
 
-    // ── Pane 6: Cloud & NAS Backup ──
+    // ── Pane 11: Cloud & NAS Backup ──
     var pCloud = document.createElement('div');
     pCloud.id = 'pane-cloud';
     pCloud.style.display = 'none';
     pCloud.innerHTML = 
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">' +
-        createToolCard('cloud-sync', 'azam-cloud-backup', 'Offsite Cloud & NAS Sync', 'Synchronizes local snapshots (/opt/azambasha/backups/) to remote SFTP servers, AWS S3, or Network NAS.', 'fa-cloud-upload', '#0284c7', 'term-cloud', [
+        createToolCard('cloud-sync', 'azam-cloud-backup', 'Offsite Cloud & NAS Sync', 'Synchronizes local snapshots to remote SFTP servers, AWS S3, or Network NAS.', 'fa-cloud-upload', '#0284c7', 'term-cloud', [
           { label: 'Sync Status', tool: 'cloud-status' },
           { label: 'List Remote Files', tool: 'cloud-list' }
         ]) +
       '</div>';
     panesContainer.appendChild(pCloud);
 
-    // ── Pane 7: Local Backups & Git ──
-    var pBackups = document.createElement('div');
-    pBackups.id = 'pane-backups';
-    pBackups.style.display = 'none';
-    pBackups.innerHTML = 
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
-        '<div style="display:flex;flex-direction:column;gap:16px;">' +
-          createToolCard('backup', 'azam-backup', 'Create Cluster Snapshot', 'Creates an automated, compressed tar.gz archive of all lab files, configs, and SQLite user database.', 'fa-cloud-upload', '#0284c7', 'term-backup') +
-          '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
-              '<div style="font-weight:600;font-size:15px;"><i class="fa fa-list"></i> Local Backup Archives</div>' +
-              '<button type="button" class="btn btn-ghost btn-sm" id="btn-refresh-backups"><i class="fa fa-refresh"></i></button>' +
-            '</div>' +
-            '<div id="az-backups-table" style="max-height:260px;overflow-y:auto;font-size:13px;color:var(--pnq-text-muted,#94a3b8);">' +
-              'Loading backups list…' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div style="display:flex;flex-direction:column;gap:16px;">' +
-          createToolCard('topology-snapshot', 'azam-topology-git', 'Git Lab Topology VCS', 'Version-control active lab topologies. Commits live device positions and connections directly to Git.', 'fa-code-fork', '#7c3aed', 'term-vcs', [], [
-            { id: 'vcs-lab', placeholder: 'Lab path or name (optional)' },
-            { id: 'vcs-msg', placeholder: 'Commit message (e.g. Added OSPF area 0)' }
-          ]) +
-        '</div>' +
-      '</div>';
-    panesContainer.appendChild(pBackups);
-
-    // ── Pane 8: Consoles & Dataplane ──
-    var pNetwork = document.createElement('div');
-    pNetwork.id = 'pane-network';
-    pNetwork.style.display = 'none';
-    pNetwork.innerHTML = 
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">' +
-        createToolCard('console-fix', 'azam-console-fix', 'Console Port Collision Cleaner', 'Repairs broken HTML5, VNC, and Telnet console bindings, kills zombie listeners, and resets Guacamole.', 'fa-terminal', '#0284c7', 'term-console') +
-        createToolCard('bench', 'azam-bench', 'Satellite Dataplane Benchmark', 'Tests inter-cluster tunnel latency, MTU discovery, and packet loss between Master and specified Satellite.', 'fa-exchange', '#059669', 'term-bench', [], [
-          { id: 'bench-ip', placeholder: 'Satellite IP (e.g. 192.168.1.22)' }
-        ]) +
-      '</div>';
-    panesContainer.appendChild(pNetwork);
-
-    // ── Pane 9: Security & WhatsApp ──
+    // ── Pane 12: Security & WhatsApp ──
     var pSecurity = document.createElement('div');
     pSecurity.id = 'pane-security';
     pSecurity.style.display = 'none';
@@ -347,14 +420,14 @@
       '</div>';
     panesContainer.appendChild(pSecurity);
 
-    // ── Pane 10: Canvas Accelerators ──
+    // ── Pane 13: Canvas Accelerators ──
     var pCanvas = document.createElement('div');
     pCanvas.id = 'pane-canvas';
     pCanvas.style.display = 'none';
     pCanvas.innerHTML = 
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">' +
-        createFeatureCard('Node Spotlight Search', 'Instant canvas navigation across large topologies with keyboard shortcut.', 'Ctrl + K / ⌘ + K', 'fa-search', '#38bdf8', 'Jump directly to any router, switch, or VM. Auto-focuses and pans the viewport.') +
-        createFeatureCard('Smart Alignment & Distribution', 'One-click horizontal, vertical, and grid distribution toolbar.', 'Toolbar in Lab', 'fa-align-left', '#818cf8', 'Aligns selected nodes with clean mathematical spacing. Keeps diagrams pristine.') +
+        createFeatureCard('Node Spotlight Search', 'Instant canvas navigation across large topologies with keyboard shortcut.', 'Ctrl + K / ⌘ + K', 'fa-search', '#38bdf8', 'Jump directly to any router, switch, or VM. Auto-focuses and pans viewport.') +
+        createFeatureCard('Smart Alignment & Distribution', 'One-click horizontal, vertical, and grid distribution toolbar.', 'Toolbar in Lab', 'fa-align-left', '#818cf8', 'Aligns selected nodes with clean mathematical spacing.') +
         createFeatureCard('Interactive Radar Minimap', 'Floating high-density canvas radar showing the entire topology overview.', 'Minimap Button', 'fa-map-o', '#34d399', 'Interactive viewport box can be dragged to pan across large networks instantly.') +
         createFeatureCard('QuadTree Viewport Culling', 'High-performance spatial indexing engine for 100+ node topologies.', 'Automatic 60 FPS', 'fa-bolt', '#f472b6', 'Culls off-screen node SVG renders, cutting GPU and browser memory by up to 70%.') +
         createFeatureCard('Live Telemetry Heatmap', 'Real-time interface packet load heatmap and animated link flow inspector.', 'Link Stats Layer', 'fa-rss', '#fbbf24', 'Color-codes links by traffic density and visualizes simulated packet flow paths.') +
@@ -381,7 +454,7 @@
       b.style.borderBottomColor = isActive ? '#38bdf8' : 'transparent';
     });
 
-    ['health', 'ai', 'diff', 'mesh', 'scheduler', 'cloud', 'backups', 'network', 'security', 'canvas'].forEach(function (id) {
+    ['health', 'grader', 'sniffer', 'bridge', 'shrink', 'doc', 'ai', 'diff', 'mesh', 'scheduler', 'cloud', 'security', 'canvas'].forEach(function (id) {
       var p = document.getElementById('pane-' + id);
       if (p) p.style.display = id === tabId ? 'block' : 'none';
     });
@@ -399,16 +472,39 @@
           var ipInput = document.getElementById('bench-ip');
           params.satellite_ip = ipInput ? ipInput.value.trim() : '';
           if (!params.satellite_ip) { App.toast('Please enter Satellite IP', 'warn'); return; }
-        } else if (tool === 'topology-snapshot') {
-          var labInput = document.getElementById('vcs-lab');
-          var msgInput = document.getElementById('vcs-msg');
-          params.lab = labInput ? labInput.value.trim() : '';
-          params.message = msgInput ? msgInput.value.trim() : 'Lab topology snapshot';
         }
 
         runTool(tool, params, btn, term);
       };
     });
+
+    // Exam Grader Run
+    var btnGrade = container.querySelector('#btn-run-grade');
+    if (btnGrade) {
+      btnGrade.onclick = function () {
+        var quiz = document.getElementById('grader-quiz-select').value;
+        var lab = document.getElementById('grader-lab-id').value.trim();
+        runTool('grader-run', { quiz: quiz, lab: lab }, btnGrade, 'term-grader');
+      };
+    }
+
+    // Sniffer Start
+    var btnSniff = container.querySelector('#btn-start-sniff');
+    if (btnSniff) {
+      btnSniff.onclick = function () {
+        var iface = document.getElementById('sniff-iface').value;
+        runTool('sniffer-capture', { interface: iface, count: 15 }, btnSniff, 'term-sniffer');
+      };
+    }
+
+    // Diagram Export
+    var btnDoc = container.querySelector('#btn-export-doc');
+    if (btnDoc) {
+      btnDoc.onclick = function () {
+        var fmt = document.getElementById('doc-format-select').value;
+        runTool('topology-doc', { format: fmt }, btnDoc, 'term-doc');
+      };
+    }
 
     // AI Copilot Generate
     var btnAiGen = container.querySelector('#btn-ai-gen');
@@ -570,6 +666,15 @@
       .catch(function () {
         target.innerHTML = '<div style="padding:10px;color:#ef4444;">Failed to load backup archives</div>';
       });
+  }
+
+  function loadImagesAudit() {
+    fetch(API_BASE + '/images/audit')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        // Can optionally populate an image table
+      })
+      .catch(function () {});
   }
 
   window.__azRestore = function (filename) {

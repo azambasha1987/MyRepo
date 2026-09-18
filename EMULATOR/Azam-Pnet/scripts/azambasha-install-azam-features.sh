@@ -34,17 +34,23 @@ echo -e "\n${CYAN}[1/7]${RESET} Setting up Azam-Ops backend API service…"
 chmod +x "${SCRIPTS}"/azambasha-*.py 2>/dev/null || true
 chmod +x "${SCRIPTS}"/azambasha-*.sh 2>/dev/null || true
 
-# Symlinks for 5 new tools
+# Symlinks for CLI tools
 ln -sf "${SCRIPTS}/azambasha-ai-copilot.py"   /usr/local/bin/azam-ai
 ln -sf "${SCRIPTS}/azambasha-config-diff.py"  /usr/local/bin/azam-config-diff
 ln -sf "${SCRIPTS}/azambasha-ping-mesh.py"    /usr/local/bin/azam-ping-mesh
 ln -sf "${SCRIPTS}/azambasha-scheduler.py"    /usr/local/bin/azam-scheduler
 ln -sf "${SCRIPTS}/azambasha-cloud-backup.py" /usr/local/bin/azam-cloud-backup
+ln -sf "${SCRIPTS}/azambasha-lab-grader.py"   /usr/local/bin/azam-grader
+ln -sf "${SCRIPTS}/azambasha-sniffer.py"      /usr/local/bin/azam-sniffer
+ln -sf "${SCRIPTS}/azambasha-cloud-bridge.py" /usr/local/bin/azam-cloud-bridge
+ln -sf "${SCRIPTS}/azambasha-image-shrink.py" /usr/local/bin/azam-image-shrink
+ln -sf "${SCRIPTS}/azambasha-topology-doc.py" /usr/local/bin/azam-topology-doc
 
 # Install scheduler timer
 python3 "${SCRIPTS}/azambasha-scheduler.py" --install 2>/dev/null || true
 
 python3 "${SCRIPTS}/azambasha-ops-api.py" --install
+systemctl restart azam-ops-api.service 2>/dev/null || true
 echo -e "  ${GREEN}[✔]${RESET} azam-ops-api.service installed and running on port ${API_PORT}."
 
 # ── 2. Configure Apache proxy for /azam-ops/api/ ────────────────────────────

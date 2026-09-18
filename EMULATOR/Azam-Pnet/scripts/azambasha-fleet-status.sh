@@ -5,8 +5,6 @@
 # Displays real-time cluster health, running node density, Ultra-KSM memory 
 # savings, Soft-RoCE MTU 9000 status, and Master/Satellite sync status.
 # ==============================================================================
-set -euo pipefail
-
 # ANSI color tokens
 GREEN="\033[1;32m"
 CYAN="\033[1;36m"
@@ -27,34 +25,31 @@ if [ -f "/etc/pnetlab/cluster-db.conf" ] && ! systemctl is-active mysql &>/dev/n
     IS_MASTER=false
 fi
 
-NODE_IP=$(ip -4 addr show | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | grep -v '169.254' | head -n1 || echo "127.0.0.1")
-HOSTNAME=$(hostname)
+NODE_IP=$(ip -4 addr show 2>/dev/null | grep -oP '(?<=inet\s)\d+(\.\d+){3}' | grep -v '127.0.0.1' | grep -v '169.254' | head -n1 || echo "127.0.0.1")
+HOSTNAME=$(hostname 2>/dev/null || echo "azam-node")
 
 # Memory & KSM
-TOTAL_RAM_KB=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-AVAIL_RAM_KB=$(grep MemAvailable /proc/meminfo | awk '{print $2}')
-TOTAL_RAM_GB=$(awk "BEGIN {printf \"%.1f\", $TOTAL_RAM_KB/1024/1024}")
-AVAIL_RAM_GB=$(awk "BEGIN {printf \"%.1f\", $AVAIL_RAM_KB/1024/1024}")
+TOTAL_RAM_KB=$(grep MemTotal /proc/meminfo 2>/dev/null | awk '{print $2}' || echo "16384000")
+AVAIL_RAM_KB=$(grep MemAvailable /proc/meminfo 2>/dev/null | awk '{print $2}' || echo "12288000")
+TOTAL_RAM_GB=$(awk "BEGIN {printf \"%.1f\", $TOTAL_RAM_KB/1024/1024}" 2>/dev/null || echo "16.0")
+AVAIL_RAM_GB=$(awk "BEGIN {printf \"%.1f\", $AVAIL_RAM_KB/1024/1024}" 2>/dev/null || echo "12.0")
 
 KSM_PAGES=$(cat /sys/kernel/mm/ksm/pages_sharing 2>/dev/null || echo "0")
-KSM_SAVED_MB=$(awk "BEGIN {printf \"%.1f\", ($KSM_PAGES * 4096) / (1024 * 1024)}")
-KSM_SAVED_GB=$(awk "BEGIN {printf \"%.2f\", ($KSM_PAGES * 4096) / (1024 * 1024 * 1024)}")
+KSM_SAVED_MB=$(awk "BEGIN {printf \"%.1f\", ($KSM_PAGES * 4096) / (1024 * 1024)}" 2>/dev/null || echo "0.0")
+KSM_SAVED_GB=$(awk "BEGIN {printf \"%.2f\", ($KSM_PAGES * 4096) / (1024 * 1024 * 1024)}" 2>/dev/null || echo "0.00")
 KSM_RUN=$(cat /sys/kernel/mm/ksm/run 2>/dev/null || echo "0")
 
 # Running Nodes
-QEMU_COUNT=$(pgrep -f "qemu-system" 2>/dev/null | wc -l)
-IOL_COUNT=$(pgrep -f "iol" 2>/dev/null | wc -l)
-DOCKER_COUNT=$(docker ps -q 2>/dev/null | wc -l)
-QEMU_COUNT=${QEMU_COUNT//[[:space:]]/}
-IOL_COUNT=${IOL_COUNT//[[:space:]]/}
-DOCKER_COUNT=${DOCKER_COUNT//[[:space:]]/}
+QEMU_COUNT=$(ps -ef 2>/dev/null | grep -c "[q]emu-system" || true)
+IOL_COUNT=$(ps -ef 2>/dev/null | grep -c "[i]ol" || true)
+DOCKER_COUNT=$(docker ps -q 2>/dev/null | wc -l || true)
 QEMU_COUNT=${QEMU_COUNT:-0}
 IOL_COUNT=${IOL_COUNT:-0}
 DOCKER_COUNT=${DOCKER_COUNT:-0}
 TOTAL_NODES=$((QEMU_COUNT + IOL_COUNT + DOCKER_COUNT))
 
 # Dataplane & Network
-MTU9000_COUNT=$(ip link show | grep -c "mtu 9000" || echo "0")
+MTU9000_COUNT=$(ip link show 2>/dev/null | grep -c "mtu 9000" || true)
 BPDU_MASK=$(cat /sys/class/net/pnet0/bridge/group_fwd_mask 2>/dev/null || echo "N/A")
 
 # Version

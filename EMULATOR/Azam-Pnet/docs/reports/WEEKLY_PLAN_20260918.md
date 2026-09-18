@@ -1,6 +1,6 @@
 # Weekly Upstream Intelligence & Implementation Plan: Week 37 (September 2026)
 
-*Scan Timestamp: 2026-09-18 19:45:27* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*
+*Scan Timestamp: 2026-09-18 19:54:42* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*
 
 ## Mandatory Production Safeguards (Zero-Glitch Protocol)
 
@@ -51,6 +51,41 @@ Whenever new features or bug fixes from higher upstream versions are integrated,
 
 ---
 
+## Dual Node Architecture: Master vs Satellite Remediation Matrix
+
+Every feature addition, bug fix, and performance hyper-tuning in Azam-Pnet is explicitly engineered for both Master Controller and Satellite Worker nodes:
+
+| Subsystem / Issue Fix | Master Node (Controller) | Satellite Node (Worker) | Target Scripts & Engines |
+|---|:---:|:---:|---|
+| **OS Prerequisites (`swtpm`, `ovmf`, `rdma-core`, `nodejs`)** | Active | Active | `azambasha-os-prerequisites.sh`, `install-satellite.sh` |
+| **Bridge LACP BPDU Forwarding (`group_fwd_mask = 0xffff`)** | Configured | Configured | `azambasha-system-and-console-fix.sh`, `install-satellite.sh` |
+| **Soft-RoCE (RXE) Dataplane Engine & MTU 9000** | Configured | Configured | `azambasha-roce-engine.sh`, `azambasha-dataplane-engine.sh` |
+| **Ultra-KSM 4KB RAM Deduplication & CPU Governor** | Active | Active | `azambasha-speed-optimizer.sh`, `pnetlab-ksm.service` |
+| **Node Templates (`win11.yml`, `xrd.yml`, `virtioc` multi-disk)** | Applied | Applied | `azambasha-fix-node-startup.sh`, `install-satellite.sh` |
+| **High-Density Heavy Node Optimizer** | Master Mode | Worker Mode (`--satellite`) | `apply-heavy-node-optimizer.sh` |
+| **Dual Wireshark Capture Permissions & Stale TPM Cleaner** | Active | Active | `azambasha-system-and-console-fix.sh`, `azambasha-fix-permissions.sh` |
+| **Authoritative Identity (`root:azam`) & APT Self-Healing Hook** | Enforced | Enforced | `/etc/apt/apt.conf.d/99pnetlab-credentials` |
+| **Satellite Cluster Interconnect & Tri-Tier Password Fallback** | Cluster DB Host | Worker Client (`0600`) | `azambasha-fix-cluster.sh`, `extracted_pnet-satdeploy.sh` |
+| **Dynamic Web-GUI Version Synchronization (`v6.8.79`)** | Active (`v6.8.79`) | N/A (Headless Worker) | `azambasha-sync-gui-version.sh` |
+| **Apache Event FastCGI, PHP-FPM & Session Cookies** | Active | N/A (Headless Worker) | `azambasha-fix-web-credentials.sh` |
+
+
+---
+
+## Satellite Cluster Deployment & Resiliency Safeguards
+
+> [!TIP]
+> ### Satellite Installation & Mid-Way Failure Protection (Issues #33, #32, #23)
+> Upstream satellite deployment scripts frequently fail mid-way because upstream `.deb` post-install scripts forcefully re-hash the root password to `"pnet"`. When subsequent deployment scripts send `$SSHPASS`, the connection drops with exit code 5 (Authentication failure).
+>
+> **Azam-Pnet Dual-Node Protocol**:
+> 1. **Tri-Tier Password Auto-Negotiation**: Automatically cycles `$SSHPASS` -> `azam` -> `pnet`, detects authentication, and immediately normalizes `root:azam`.
+> 2. **Cluster DB Configuration Permissions**: Enforces `0600` permissions on `/etc/pnetlab/cluster-db.conf` on Satellite nodes to guarantee secure Master communications.
+> 3. **Inter-Node Dataplane MTU Alignment**: Master and Satellites operate in lockstep with MTU 9000 jumbo frames and RoCEv2 RXE interfaces for zero packet-fragmentation cross-cluster links.
+
+
+---
+
 ## Upstream Issues Audit & Azam-Pnet Alignment Ledger
 
 | Issue # | State | Severity | Title | Azam-Pnet Resolution Status |
@@ -94,15 +129,34 @@ Whenever new features or bug fixes from higher upstream versions are integrated,
 
 ## Ready-to-Apply Action Plan for Azam Basha
 
-To push and apply all verified updates, fixes, and version synchronization safely to your Azam-Pnet VM, run:
+Run the corresponding runbook below based on the target node type:
+
+### A. Master Node Deployment & Optimization
 
 ```bash
-# 1. Synchronize Web-GUI Version to latest implemented release (v6.8.79):
-sudo bash scripts/azambasha-sync-gui-version.sh 6.8.79 6.8.79resolute1
+# Option 1: Remote deployment from Windows host (full Master pipeline):
+python scripts/deploy-to-vm.py -H <MASTER_IP> -p azam --apply-all
 
-# 2. Push changes and run all essential fixes on target VM:
-python scripts/deploy-to-vm.py -H <VM_IP> -p azam --apply-all
+# Option 2: Direct execution on Master node:
+sudo bash scripts/azambasha-apply-all-fixes.sh 19
+```
 
-# 3. Execute non-regression sanity verification:
-python scripts/deploy-to-vm.py -H <VM_IP> -p azam --verify
+### B. Satellite Worker Node Deployment & Optimization
+
+```bash
+# Option 1: Provision fresh Satellite Worker and join to Master:
+python scripts/deploy-to-vm.py -H <SATELLITE_IP> -p azam --satellite --join-master <MASTER_IP> --cluster-id 1 --cluster-psk <PSK_HEX>
+
+# Option 2: Apply full optimization & issue remediation suite to existing Satellite Worker:
+python scripts/deploy-to-vm.py -H <SATELLITE_IP> -p azam --satellite-fixes
+
+# Option 3: Direct execution on Satellite Worker node:
+sudo bash scripts/azambasha-apply-all-fixes.sh 25
+```
+
+### C. Cluster-Wide Sanity Health Probes
+
+```bash
+# Execute non-regression health verification across Master and Satellite:
+python scripts/deploy-to-vm.py -H <MASTER_IP> <SATELLITE_IP> -p azam --verify
 ```

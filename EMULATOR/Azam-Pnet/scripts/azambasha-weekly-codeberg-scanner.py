@@ -207,6 +207,37 @@ def main():
 
     md.append("\n---\n")
 
+    # Dual Node Architecture: Master vs Satellite Remediation Matrix
+    md.append("## Dual Node Architecture: Master vs Satellite Remediation Matrix\n")
+    md.append("Every feature addition, bug fix, and performance hyper-tuning in Azam-Pnet is explicitly engineered for both Master Controller and Satellite Worker nodes:\n")
+    md.append("| Subsystem / Issue Fix | Master Node (Controller) | Satellite Node (Worker) | Target Scripts & Engines |")
+    md.append("|---|:---:|:---:|---|")
+    md.append("| **OS Prerequisites (`swtpm`, `ovmf`, `rdma-core`, `nodejs`)** | Active | Active | `azambasha-os-prerequisites.sh`, `install-satellite.sh` |")
+    md.append("| **Bridge LACP BPDU Forwarding (`group_fwd_mask = 0xffff`)** | Configured | Configured | `azambasha-system-and-console-fix.sh`, `install-satellite.sh` |")
+    md.append("| **Soft-RoCE (RXE) Dataplane Engine & MTU 9000** | Configured | Configured | `azambasha-roce-engine.sh`, `azambasha-dataplane-engine.sh` |")
+    md.append("| **Ultra-KSM 4KB RAM Deduplication & CPU Governor** | Active | Active | `azambasha-speed-optimizer.sh`, `pnetlab-ksm.service` |")
+    md.append("| **Node Templates (`win11.yml`, `xrd.yml`, `virtioc` multi-disk)** | Applied | Applied | `azambasha-fix-node-startup.sh`, `install-satellite.sh` |")
+    md.append("| **High-Density Heavy Node Optimizer** | Master Mode | Worker Mode (`--satellite`) | `apply-heavy-node-optimizer.sh` |")
+    md.append("| **Dual Wireshark Capture Permissions & Stale TPM Cleaner** | Active | Active | `azambasha-system-and-console-fix.sh`, `azambasha-fix-permissions.sh` |")
+    md.append("| **Authoritative Identity (`root:azam`) & APT Self-Healing Hook** | Enforced | Enforced | `/etc/apt/apt.conf.d/99pnetlab-credentials` |")
+    md.append("| **Satellite Cluster Interconnect & Tri-Tier Password Fallback** | Cluster DB Host | Worker Client (`0600`) | `azambasha-fix-cluster.sh`, `extracted_pnet-satdeploy.sh` |")
+    md.append(f"| **Dynamic Web-GUI Version Synchronization (`v{latest_rel_ver}`)** | Active (`v{latest_rel_ver}`) | N/A (Headless Worker) | `azambasha-sync-gui-version.sh` |")
+    md.append("| **Apache Event FastCGI, PHP-FPM & Session Cookies** | Active | N/A (Headless Worker) | `azambasha-fix-web-credentials.sh` |\n")
+
+    md.append("\n---\n")
+
+    # Satellite Cluster Deployment Safeguards
+    md.append("## Satellite Cluster Deployment & Resiliency Safeguards\n")
+    md.append("> [!TIP]")
+    md.append("> ### Satellite Installation & Mid-Way Failure Protection (Issues #33, #32, #23)")
+    md.append("> Upstream satellite deployment scripts frequently fail mid-way because upstream `.deb` post-install scripts forcefully re-hash the root password to `\"pnet\"`. When subsequent deployment scripts send `$SSHPASS`, the connection drops with exit code 5 (Authentication failure).")
+    md.append(">\n> **Azam-Pnet Dual-Node Protocol**:")
+    md.append("> 1. **Tri-Tier Password Auto-Negotiation**: Automatically cycles `$SSHPASS` -> `azam` -> `pnet`, detects authentication, and immediately normalizes `root:azam`.")
+    md.append("> 2. **Cluster DB Configuration Permissions**: Enforces `0600` permissions on `/etc/pnetlab/cluster-db.conf` on Satellite nodes to guarantee secure Master communications.")
+    md.append("> 3. **Inter-Node Dataplane MTU Alignment**: Master and Satellites operate in lockstep with MTU 9000 jumbo frames and RoCEv2 RXE interfaces for zero packet-fragmentation cross-cluster links.\n")
+
+    md.append("\n---\n")
+
     # Issue Ledger Table
     md.append("## Upstream Issues Audit & Azam-Pnet Alignment Ledger\n")
     md.append("| Issue # | State | Severity | Title | Azam-Pnet Resolution Status |")
@@ -236,16 +267,32 @@ def main():
 
     # Ready-to-apply action plan
     md.append("## Ready-to-Apply Action Plan for Azam Basha\n")
-    md.append("To push and apply all verified updates, fixes, and version synchronization safely to your Azam-Pnet VM, run:\n")
+    md.append("Run the corresponding runbook below based on the target node type:\n")
+    md.append("### A. Master Node Deployment & Optimization\n")
     md.append("```bash")
-    md.append(f"# 1. Synchronize Web-GUI Version to latest implemented release (v{latest_rel_ver}):")
-    md.append(f"sudo bash scripts/azambasha-sync-gui-version.sh {latest_rel_ver} {latest_pkg_ver}")
+    md.append(f"# Option 1: Remote deployment from Windows host (full Master pipeline):")
+    md.append("python scripts/deploy-to-vm.py -H <MASTER_IP> -p azam --apply-all")
     md.append("")
-    md.append("# 2. Push changes and run all essential fixes on target VM:")
-    md.append("python scripts/deploy-to-vm.py -H <VM_IP> -p azam --apply-all")
+    md.append(f"# Option 2: Direct execution on Master node:")
+    md.append("sudo bash scripts/azambasha-apply-all-fixes.sh 19")
+    md.append("```\n")
+
+    md.append("### B. Satellite Worker Node Deployment & Optimization\n")
+    md.append("```bash")
+    md.append("# Option 1: Provision fresh Satellite Worker and join to Master:")
+    md.append("python scripts/deploy-to-vm.py -H <SATELLITE_IP> -p azam --satellite --join-master <MASTER_IP> --cluster-id 1 --cluster-psk <PSK_HEX>")
     md.append("")
-    md.append("# 3. Execute non-regression sanity verification:")
-    md.append("python scripts/deploy-to-vm.py -H <VM_IP> -p azam --verify")
+    md.append("# Option 2: Apply full optimization & issue remediation suite to existing Satellite Worker:")
+    md.append("python scripts/deploy-to-vm.py -H <SATELLITE_IP> -p azam --satellite-fixes")
+    md.append("")
+    md.append("# Option 3: Direct execution on Satellite Worker node:")
+    md.append("sudo bash scripts/azambasha-apply-all-fixes.sh 25")
+    md.append("```\n")
+
+    md.append("### C. Cluster-Wide Sanity Health Probes\n")
+    md.append("```bash")
+    md.append("# Execute non-regression health verification across Master and Satellite:")
+    md.append("python scripts/deploy-to-vm.py -H <MASTER_IP> <SATELLITE_IP> -p azam --verify")
     md.append("```\n")
 
     md_content = "\n".join(md)

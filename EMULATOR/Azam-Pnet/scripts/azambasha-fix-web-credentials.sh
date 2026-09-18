@@ -28,10 +28,17 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-# ── Self-Register CLI Commands ────────────────────────────────────────────────
+# ── Self-Register CLI Commands & APT Post-Invoke Anti-Regression Hook ────────
 ln -sfn "${BASH_SOURCE[0]}" /usr/local/bin/azam-credentials 2>/dev/null || true
 ln -sfn "${BASH_SOURCE[0]}" /usr/local/bin/pnet-credentials 2>/dev/null || true
 ln -sfn "${BASH_SOURCE[0]}" /usr/local/bin/azambasha-credentials 2>/dev/null || true
+
+# Register APT Post-Invoke hook so any future package upgrade/installation automatically preserves credentials
+if [ -d /etc/apt/apt.conf.d ]; then
+    cat << 'APTEOF' > /etc/apt/apt.conf.d/99pnetlab-credentials 2>/dev/null || true
+DPkg::Post-Invoke {"if [ -x /usr/local/bin/azam-credentials ]; then /usr/local/bin/azam-credentials --silent >/dev/null 2>&1 || true; fi";};
+APTEOF
+fi
 
 # Detect Node Role (Master vs Satellite)
 IS_SATELLITE=0
@@ -348,20 +355,22 @@ if [ "$IS_SATELLITE" -eq 0 ]; then
     API_AUTH_RESP=$(curl -sk -X POST https://127.0.0.1/api/auth -H "Content-Type: application/json" -d '{"username":"admin","password":"azam"}' 2>/dev/null || true)
     
     if [ "${PASS_VERIFIED:-0}" -ge 1 ]; then
-        echo ""
-        echo "============================================================"
-        echo " [SUCCESS] WEB-GUI CREDENTIALS FULLY RESTORED & VERIFIED!   "
-        echo "============================================================"
-        echo " Web UI Access: https://$(hostname -I 2>/dev/null | awk '{print $1}' || echo 'YOUR_SERVER_IP')/"
-        echo " Username     : admin"
-        echo " Password     : azam"
-        echo " Role         : Administrator (0)"
-        echo " Status       : Active & Offline Mode Enabled"
-        echo " CLI Command  : sudo azam-credentials"
-        if echo "$API_AUTH_RESP" | grep -qi '"status":"success"'; then
-            echo " Live API Auth: VERIFIED (HTTP 200 / User authenticated)"
+        if [ "$SILENT" -eq 0 ]; then
+            echo ""
+            echo "============================================================"
+            echo " [SUCCESS] WEB-GUI CREDENTIALS FULLY RESTORED & VERIFIED!   "
+            echo "============================================================"
+            echo " Web UI Access: https://$(hostname -I 2>/dev/null | awk '{print $1}' || echo 'YOUR_SERVER_IP')/"
+            echo " Username     : admin"
+            echo " Password     : azam"
+            echo " Role         : Administrator (0)"
+            echo " Status       : Active & Offline Mode Enabled"
+            echo " CLI Command  : sudo azam-credentials"
+            if echo "$API_AUTH_RESP" | grep -qi '"status":"success"'; then
+                echo " Live API Auth: VERIFIED (HTTP 200 / User authenticated)"
+            fi
+            echo "============================================================"
         fi
-        echo "============================================================"
     else
         log_warn "Admin row was updated, but verification query returned count: ${PASS_VERIFIED}."
         log_info "Testing database direct check:"

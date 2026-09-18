@@ -1,6 +1,6 @@
 {
-  "last_run_utc": "2026-09-17T02:42:25Z",
-  "git_head": "375dd61f93f32c6035ff22be886bad9c70960ac3",
+  "last_run_utc": "2026-09-18T02:29:49Z",
+  "git_head": "62948c88d82c65238e11a6daf05121c362608edd",
   "files": {
     "debian/pool/resolute/main/pnetlab_6.8.78resolute1_amd64.deb": {
       "sha256": "088426541ac429a19e9417655b7570773d55c776caa7fd6afc0c209d88af974d",
@@ -75,24 +75,96 @@
       "size": 120
     },
     "generic/0.channel/pnetlab-latest.json": {
-      "sha256": "dfc833d5811ce58fcbdf6d170722f961e6126e707b8bbca252062e111d4cb649",
+      "sha256": "5d00a5812b0def440421bf997498ca61d6e9ca1f04d89deea5276506ba30b764",
       "size": 205
     },
     "generic/0.channel/pnetlab-latest.json.sha256": {
-      "sha256": "13fbcdf5e7ea5e4f1c20f2af46f12f458f9d0966b851344b9f3a81bab67a856c",
+      "sha256": "2d1c07365968cc2901b4acdce5df36b39ebc7485cf406b4cf1076f3e61c7ba25",
       "size": 86
     },
     "generic/0.channel/pnetlab-latest.json.sig": {
-      "sha256": "a30deafa17c364cb8f6a11b7db6772d326b12aa6838f9a80d5356cfb4ff125e2",
+      "sha256": "d0d37b3ef6aa36b42c87a5f36d5b6650ebf92ac75bcdcd144e59aa9434f9571c",
       "size": 566
     },
     "generic/0.channel/pnetlab-network-install-latest.sh": {
-      "sha256": "6f9b3c24d4975a60e3cc64aa11cc0c60d83699e4938bee340953c52549242262",
-      "size": 174477
+      "sha256": "b6b3c8b0e81f1a2ac2b2d1af37f4261ec76d5bfd8e9c98045390137efb74f37a",
+      "size": 176628
     },
     "generic/0.channel/pnetlab-network-install-latest.sh.sha256": {
-      "sha256": "6ba4056de4ea3205b57544dd55d9621f7ca24bdd4d7c853a71b8741eaa0e0fd4",
+      "sha256": "c09eccbaf0b0e4c922e4fc38a0675cd47a98f0771ba257ef56bb77bb66c13dd2",
       "size": 100
+    },
+    "debian/pool/resolute/main/pnetlab_6.8.79resolute1_amd64.deb": {
+      "sha256": "543ec692ef4b5e95520424bf03c9eaebbdb6fc5cbe19e861db12a9e182a3274e",
+      "size": 15536812
+    },
+    "debian/pool/resolute/main/pnetlab-docker_6.8.79resolute1_amd64.deb": {
+      "sha256": "a825c368a569f749f80e93d37216d6e7104133b85c79865c15600ad8deaa049b",
+      "size": 3616
+    },
+    "debian/pool/resolute/main/pnetlab-guacd_6.8.79resolute1_amd64.deb": {
+      "sha256": "8348f84d756273b592ec1ce184c2be573607086d3baf07a66d9cf06e31bd3455",
+      "size": 463132
+    },
+    "debian/pool/resolute/main/pnetlab-qemu_6.8.79resolute1_amd64.deb": {
+      "sha256": "03090de077cd596318b55b3c47eb7f9030beffd7b89a6b59105eecca45ea3a7c",
+      "size": 1275538
+    },
+    "debian/pool/resolute/main/pnetlab-satellite_6.8.79resolute1_amd64.deb": {
+      "sha256": "02fb08c36d030c6b03ef67e2da1ae5563c027605605ec271fa13985f7e4c3870",
+      "size": 9981780
+    },
+    "debian/pool/resolute/main/pnetlab-schema_6.8.79resolute1_amd64.deb": {
+      "sha256": "be1c7cd96670e664ce48b3ac8a1b7cf31e33a9db9163080d2060630369ff3527",
+      "size": 9104
+    },
+    "debian/pool/resolute/main/pnetlab-vpcs_6.8.79resolute1_amd64.deb": {
+      "sha256": "6d986a6b4c8cedfb38fdc7d8a9305f87b7bf5c26dd6eb9ffdd6dac1c270dc214",
+      "size": 90324
+    },
+    "debian/pool/resolute/main/pnetlab-bridge-dkms_6.8.79resolute1_all.deb": {
+      "sha256": "f93c80e78df04ddcd77dcaed417fce5f6982a8f2175a27fa7ef0d49a55f26300",
+      "size": 142686
+    },
+    "generic/6.8.79resolute1/pnetlab-core-assets-6.8.79resolute1.tar.zst": {
+      "sha256": "b36bc01d72c33e69d97122e37f25eaf58476ae7d1af442a9473c1f42a2a1ad9d",
+      "size": 75116436
+    },
+    "generic/6.8.79resolute1/pnetlab-core-assets-6.8.79resolute1.tar.zst.sha256": {
+      "sha256": "3a5dbb5a347a9f5e07263ee40a0a8017fe7afeea3eb52b4581ed1754700cb43a",
+      "size": 110
+    },
+    "generic/6.8.79resolute1/pnetlab-core-assets-6.8.79resolute1.tar.zst.sig": {
+      "sha256": "691e7b08153f8dc1972ad9e9af03535aa97021c20e2eb6497b3357a4938b2326",
+      "size": 566
+    },
+    "generic/6.8.79resolute1/pnetlab-6.8.79resolute1-manifest.json": {
+      "sha256": "bbf5879a4506d78f458cdfb9b8560075b6b65822515e546fab31b0bdc3371629",
+      "size": 1826
+    },
+    "generic/6.8.79resolute1/pnetlab-6.8.79resolute1-manifest.json.sha256": {
+      "sha256": "fd7c469cc3b9b2c12c19567fddf68e49ffa2293ee1d6f445667c9182bd7bd75e",
+      "size": 104
+    },
+    "generic/6.8.79resolute1/pnetlab-6.8.79resolute1-manifest.json.sig": {
+      "sha256": "91f21ce160d3ed5a793f8dab8ef5c133b0d6d429177746d3067e8031c0ab3197",
+      "size": 566
+    },
+    "generic/6.8.79resolute1/pnetlab-network-install-6.8.79resolute1.sh": {
+      "sha256": "b6b3c8b0e81f1a2ac2b2d1af37f4261ec76d5bfd8e9c98045390137efb74f37a",
+      "size": 176628
+    },
+    "generic/6.8.79resolute1/pnetlab-network-install-6.8.79resolute1.sh.sha256": {
+      "sha256": "4f4cd8d193f939cf0e6e37481c2d964b517f47085f45e54364b25c39ade436db",
+      "size": 109
+    },
+    "generic/6.8.79resolute1/pnetlab-install-resolute-satellite-6.8.79resolute1.sh": {
+      "sha256": "6e6469593a7a42519939b076cfed55ea3017fc107e38db0d7080d96674e4c751",
+      "size": 15185
+    },
+    "generic/6.8.79resolute1/pnetlab-install-resolute-satellite-6.8.79resolute1.sh.sha256": {
+      "sha256": "c99831f9cf7c4e35bd3028c01aadc38c170d34adeebbe4f4a510d822976875e5",
+      "size": 120
     }
   }
 }

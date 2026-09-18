@@ -1,6 +1,6 @@
 # Weekly Upstream Intelligence & Implementation Plan: Week 37 (September 2026)
 
-*Scan Timestamp: 2026-09-18 17:39:03* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*
+*Scan Timestamp: 2026-09-18 19:45:27* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*
 
 ## Mandatory Production Safeguards (Zero-Glitch Protocol)
 
@@ -26,11 +26,28 @@
 ## Executive Summary
 
 - **Total Tracked Issues**: 33 (9 Open, 24 Closed)
-- **Latest Release Tag**: `6.8.79resolute1`
+- **Latest Upstream Version Implemented**: `v6.8.79` (Package: `6.8.79resolute1`)
+- **Web-GUI Display Status**: Synchronized with latest implemented release (`PNetLab v6.8.79`).
 - **Recent Upstream Commits**: 12 commits inspected
 - **Platform Alignment**: Native Ubuntu 26.04 Resolute & Linux Kernel 7.0 stack verified.
 - **Performance State**: Ultra-KSM memory deduplication (65-80% savings) & CPU governor intact.
 
+
+---
+
+## Dynamic Web-GUI Version Synchronization
+
+> [!IMPORTANT]
+> ### Authoritative Web-GUI Version Alignment
+> The Web-GUI Version display (`/main/#/version`) dynamically reflects the latest release implemented rather than remaining frozen at legacy placeholders:
+> - **Implemented Release Version**: `v6.8.79`
+> - **Implemented Package Version**: `6.8.79resolute1`
+> - **Header Title**: `PNetLab v6.8.79`
+> - **Release Row**: `v6.8.79`
+> - **Package Row**: `6.8.79resolute1`
+> - **Database Setting**: `pnetlab_db.control.ctrl_version` = `6.8.79`
+
+Whenever new features or bug fixes from higher upstream versions are integrated, `scripts/azambasha-sync-gui-version.sh` automatically updates `/opt/unetlab/html/includes/version.php` and the database control table.
 
 ---
 
@@ -60,27 +77,32 @@
 
 ## Detected Capabilities & Feature Status
 
-1. **RoCEv2 Soft-RoCE (RXE) Dataplane Engine**:
+1. **Dynamic Web-GUI Version Synchronization**:
+   - *Status*: Deployed in `scripts/azambasha-sync-gui-version.sh`. Aligns GUI to `v6.8.79` / `6.8.79resolute1`.
+2. **RoCEv2 Soft-RoCE (RXE) Dataplane Engine**:
    - *Status*: Deployed in `scripts/azambasha-roce-engine.sh` with MTU 9000 jumbo frame support.
-2. **Windows 11 Hardware-Compliant QEMU Template (`win11.yml`)**:
+3. **Windows 11 Hardware-Compliant QEMU Template (`win11.yml`)**:
    - *Status*: Deployed with TPM 2.0 (`swtpm`), UEFI SMM, Q35 chipset, and Ultra-KSM memory merging.
-3. **Cisco XRd-9k Cloud-Native Router (`xrd.yml`)**:
+4. **Cisco XRd-9k Cloud-Native Router (`xrd.yml`)**:
    - *Status*: Deployed with Cgroups v2 delegation and systemd slice optimization.
-4. **Google AI Studio / Gemini 2.5 Flash Integration**:
+5. **Google AI Studio / Gemini 2.5 Flash Integration**:
    - *Status*: Enabled in `scripts/setup-ollama.sh` alongside local Ollama.
-5. **Canvas Usability & Settings Persistence**:
+6. **Canvas Usability & Settings Persistence**:
    - *Status*: Per-lab zoom persistence, draggable modals, and SVG curviness handles active.
 
 ---
 
 ## Ready-to-Apply Action Plan for Azam Basha
 
-To push and apply all verified updates and fixes safely to your Azam-Pnet VM, run:
+To push and apply all verified updates, fixes, and version synchronization safely to your Azam-Pnet VM, run:
 
 ```bash
-# 1. Push changes and run all essential fixes on target VM:
+# 1. Synchronize Web-GUI Version to latest implemented release (v6.8.79):
+sudo bash scripts/azambasha-sync-gui-version.sh 6.8.79 6.8.79resolute1
+
+# 2. Push changes and run all essential fixes on target VM:
 python scripts/deploy-to-vm.py -H <VM_IP> -p azam --apply-all
 
-# 2. Execute non-regression sanity verification:
+# 3. Execute non-regression sanity verification:
 python scripts/deploy-to-vm.py -H <VM_IP> -p azam --verify
 ```

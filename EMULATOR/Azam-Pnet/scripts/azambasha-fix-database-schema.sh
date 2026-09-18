@@ -321,7 +321,7 @@ CREATE TABLE IF NOT EXISTS `if_sessions` (
 INSERT INTO control (control_name, control_value) VALUES
   ('ctrl_offline_mode','1'), ('ctrl_online_mode','0'),
   ('ctrl_default_mode','offline'), ('ctrl_captcha','0'),
-  ('ctrl_version','1.0.0')
+  ('ctrl_version','6.8.79')
 ON DUPLICATE KEY UPDATE control_value = VALUES(control_value);
 
 DELETE FROM users WHERE username = 'admin';

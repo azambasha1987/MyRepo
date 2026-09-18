@@ -93,15 +93,16 @@ echo "23) Soft-RoCE (RXE) & RDMA Dataplane Controller"
 echo "24) Run Weekly Codeberg Intelligence Scan & Implementation Plan"
 echo "25) Apply Full SATELLITE Worker Node Optimization Suite"
 echo "26) Reset Web-GUI & Cluster Database Credentials (admin / azam)"
-echo "27) Exit"
+echo "27) Synchronize Web-GUI Version to Latest Release (v6.8.79)"
+echo "28) Exit"
 echo "============================================================"
 
 # Handle interactive /dev/tty or non-interactive argument/fallback
 if [ -z "${CHOICE:-}" ]; then
-    if [ -n "${1:-}" ] && [[ "$1" =~ ^([1-9]|1[0-9]|2[0-7])$ ]]; then
+    if [ -n "${1:-}" ] && [[ "$1" =~ ^([1-9]|1[0-9]|2[0-8])$ ]]; then
         CHOICE="$1"
     elif [ -e /dev/tty ]; then
-        read -rp "Select an option [1-27, default: 19]: " USER_INPUT < /dev/tty || true
+        read -rp "Select an option [1-28, default: 19]: " USER_INPUT < /dev/tty || true
         CHOICE="${USER_INPUT:-19}"
     else
         CHOICE="19"
@@ -341,6 +342,9 @@ case "$CHOICE" in
         if [ -f "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" ]; then
             bash "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" || true
         fi
+        if [ -f "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" auto || true
+        fi
         echo ""
         echo "============================================================"
         echo "  [SUCCESS] ALL ESSENTIAL ENHANCEMENTS APPLIED SUCCESSFULLY! "
@@ -459,6 +463,13 @@ case "$CHOICE" in
         fi
         ;;
     27)
+        if [ -f "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" "${2:-auto}"
+        else
+            echo "[!] azambasha-sync-gui-version.sh not found." >&2
+        fi
+        ;;
+    28)
         echo "Exiting."
         exit 0
         ;;

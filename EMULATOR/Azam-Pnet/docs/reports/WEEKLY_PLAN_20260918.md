@@ -1,6 +1,6 @@
 # Weekly Upstream Intelligence & Implementation Plan: Week 37 (September 2026)
 
-*Scan Timestamp: 2026-09-18 20:31:12* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*
+*Scan Timestamp: 2026-09-18 20:45:03* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*
 
 ## Mandatory Production Safeguards (Zero-Glitch Protocol)
 
@@ -168,6 +168,8 @@ Instant 1-command repair and rollback actions for individual subsystems:
 | **File Permissions & Sockets** | Permission denied on images/nodes | `sudo bash scripts/azambasha-fix-permissions.sh` |
 | **HTML5 Console / Guacamole** | Console disconnects or WebSocket drop | `sudo azam-console-fix` |
 | **Lab Topology Backup** | Lab lost / corrupted .unl file | `sudo azam-backup --backup` |
+| **HTTPS Browser Warnings** | NET::ERR_CERT_AUTHORITY_INVALID | `sudo azam-ssl --generate` |
+| **Node Silent Crash** | Node shows Running but console dead | `sudo systemctl status azam-watchdog` |
 
 
 ---
@@ -178,15 +180,20 @@ Production utilities installed across Master and Satellite nodes:
 
 | Tool / Command | Subsystem | Purpose & Usage |
 |---|---|---|
-| `azam-fleet` | Multi-Node Health | 1-Click live dashboard displaying RAM, KSM savings, active nodes, and satellite links. |
-| `azam-capacity` | Density Modeling | Hardware capacity estimator calculating node ceilings factoring in Ultra-KSM deduplication. |
-| `azam-doctor` | Disk & Appliance | Validates QEMU templates, generates offline IOL iourc licenses, and reclaims 50-75% disk space (`--compress`). |
-| `azam-notify` | Alert Dispatcher | Dispatches instant alerts and weekly digests directly to WhatsApp (CallMeBot API) and Webhooks. |
-| `azam-bench <SAT_IP>` | Dataplane QoS | Probes MTU 9000 non-fragmented delivery, RDMA RXE counters, and iperf3 throughput to Satellite. |
-| `azam-bootstorm --lab <PATH>` | Boot Orchestrator | Staggered anti-bootstorm node startup: heavy -> medium -> light batches with configurable delay. |
-| `azam-console-fix` | HTML5 Consoles | Repairs Apache WebSocket tunnel, guacd health, stale pipes, and generates Windows .reg URL handlers. |
-| `azam-backup` | Lab Backup/Restore | Snapshot of all .unl topologies, device configs, and MySQL lab hierarchy with 1-command restore. |
-| `azambasha-setup-scheduler.sh` | Automation | Automated systemd timer & cron job running scans every Monday at 06:00 UTC with WhatsApp alerts. |
+| `azam-fleet` | Multi-Node Health | 1-Click live dashboard: RAM, KSM savings, active nodes, and satellite link health. |
+| `azam-capacity` | Density Modeling | Hardware capacity estimator with Ultra-KSM deduplication node ceiling calculation. |
+| `azam-doctor` | Disk & Appliance | QEMU template auditor, IOL iourc license generator, and 50-75% disk compressor. |
+| `azam-notify` | Alert Dispatcher | Instant WhatsApp (CallMeBot) and webhook alerts for weekly scans and crash events. |
+| `azam-bench <SAT_IP>` | Dataplane QoS | MTU 9000 jumbo frame probe, Soft-RoCE RXE counter audit, and iperf3 throughput test. |
+| `azam-bootstorm --lab <PATH>` | Boot Orchestrator | Anti-bootstorm: staggers heavy → medium → light node boot batches with configurable delays. |
+| `azam-console-fix` | HTML5 Consoles | WebSocket tunnel repair, guacd health check, stale pipe cleanup, Windows .reg generator. |
+| `azam-backup / azam-restore` | Lab Backup/Restore | Timestamped .unl + device config + MySQL snapshot with 1-command full restore. |
+| `azam-watchdog --install` | Node Auto-Recovery | Systemd daemon: detects QEMU/IOL silent crashes, auto-restarts nodes, alerts WhatsApp. |
+| `azam-perf` | Hot-Node Profiler | Live color-coded CPU/RAM/IO ranking table. `--kill-hot` pauses top CPU offender. |
+| `azam-ssl --generate` | HTTPS Trust | 5-year SAN cert + Windows CA trust package eliminating all browser security warnings. |
+| `azam-templates deploy <name>` | Lab Marketplace | 14-topology catalog: CCNA, BGP, MPLS, CCIE, VXLAN. 1-command deploy to PNetLab. |
+| `azam-topology-git --install` | Topology VCS | Git-backed .unl version control: auto-snapshot, XML diff, and per-commit restore. |
+| `azambasha-setup-scheduler.sh` | Automation | Systemd timer & cron for Monday 06:00 UTC weekly scan with WhatsApp digest. |
 
 
 ---

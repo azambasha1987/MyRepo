@@ -865,6 +865,11 @@ fi
 
 # Authoritative password realignment to "azam" (Issue #33 Remediation)
 echo "root:azam" | chpasswd 2>/dev/null || true
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-web-credentials.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-fix-web-credentials.sh" --silent 2>/dev/null || true
+elif [ -f "/opt/unetlab/scripts/azambasha-fix-web-credentials.sh" ]; then
+    bash "/opt/unetlab/scripts/azambasha-fix-web-credentials.sh" --silent 2>/dev/null || true
+fi
 
 # ── Dynamic Console Banner & Live IP Hook for Satellite Worker ───────────────
 echo "satellite" > /etc/pnetlab-role
@@ -919,6 +924,9 @@ mkdir -p /opt/unetlab/scripts 2>/dev/null || true
 cp -f "${SCRIPT_DIR}"/scripts/azambasha-*.sh /opt/unetlab/scripts/ 2>/dev/null || true
 cp -f "${SCRIPT_DIR}"/scripts/azambasha-*.py /opt/unetlab/scripts/ 2>/dev/null || true
 cp -f "${SCRIPT_DIR}"/scripts/apply-heavy-node-optimizer.sh /usr/local/bin/ 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/azambasha-credentials 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/azam-credentials 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/pnet-credentials 2>/dev/null || true
 chmod +x /opt/unetlab/scripts/* /usr/local/bin/apply-heavy-node-optimizer.sh 2>/dev/null || true
 
 OPT_TOOL="${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh"

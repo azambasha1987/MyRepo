@@ -222,6 +222,9 @@ def deploy_host(host, user, password, port, args):
         elif args.satellite_fixes:
             log_info("Executing Satellite Worker Fix & Optimization Suite...")
             execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-apply-all-fixes.sh 25")
+        elif args.fix_credentials:
+            log_info("Restoring Web-GUI admin credentials (admin / azam) and clearing login throttles...")
+            execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-fix-web-credentials.sh")
         elif args.test:
             log_info("Running Automated Node & Virtualization Test Suite...")
             execute_remote_cmd(client, f"cd {remote_base} && python3 scripts/azambasha-node-test-suite.py --all")
@@ -273,6 +276,7 @@ def main():
     parser.add_argument("--cluster-name", help="Satellite display name (default: Satellite <id>)")
     parser.add_argument("--cluster-psk", help="Cluster 64-hex PSK key from Master")
     parser.add_argument("--join-only", action="store_true", help="Run satellite cluster join utility without full re-install")
+    parser.add_argument("--fix-credentials", action="store_true", help="Restore Web-GUI admin credentials (admin / azam) and clear login throttles")
     parser.add_argument("--dry-run", action="store_true", help="Simulate sync without uploading")
 
     args = parser.parse_args()

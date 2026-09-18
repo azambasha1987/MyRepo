@@ -606,39 +606,70 @@ GRANT ALL PRIVILEGES ON guacdb.* TO 'guacuser'@'localhost';
 FLUSH PRIVILEGES;
 EOF
 )"
-    echo "$_DB_INIT_SQL" | mysql 2>/dev/null \
-        || echo "$_DB_INIT_SQL" | mysql -u root 2>/dev/null \
-        || true
+    # Multi-tier database execution helper for guaranteed reliability
+    _run_db_sql() {
+        local sql="$1"
+        mysql --defaults-file=/etc/mysql/debian.cnf -e "$sql" 2>/dev/null \
+            || mysql -u root -ppnetlab -e "$sql" 2>/dev/null \
+            || mysql -u root -pazam -e "$sql" 2>/dev/null \
+            || mysql -u pnetlab -ppnetlab -e "$sql" 2>/dev/null \
+            || mysql -e "$sql" 2>/dev/null \
+            || mysql -u root -e "$sql" 2>/dev/null \
+            || true
+    }
+
+    _run_db_sql "$_DB_INIT_SQL"
 
     if [ -f "${SCRIPT_DIR}/schema/pnetlab_db.sql" ]; then
-        mysql -u pnetlab -ppnetlab pnetlab_db < "${SCRIPT_DIR}/schema/pnetlab_db.sql" 2>/dev/null || mysql pnetlab_db < "${SCRIPT_DIR}/schema/pnetlab_db.sql" 2>/dev/null || true
+        mysql --defaults-file=/etc/mysql/debian.cnf pnetlab_db < "${SCRIPT_DIR}/schema/pnetlab_db.sql" 2>/dev/null \
+            || mysql -u root -ppnetlab pnetlab_db < "${SCRIPT_DIR}/schema/pnetlab_db.sql" 2>/dev/null \
+            || mysql -u pnetlab -ppnetlab pnetlab_db < "${SCRIPT_DIR}/schema/pnetlab_db.sql" 2>/dev/null \
+            || mysql pnetlab_db < "${SCRIPT_DIR}/schema/pnetlab_db.sql" 2>/dev/null \
+            || true
     fi
     if [ -f "${SCRIPT_DIR}/schema/guacdb.sql" ]; then
-        mysql -u guacuser -ppnetlab guacdb < "${SCRIPT_DIR}/schema/guacdb.sql" 2>/dev/null || mysql guacdb < "${SCRIPT_DIR}/schema/guacdb.sql" 2>/dev/null || true
+        mysql --defaults-file=/etc/mysql/debian.cnf guacdb < "${SCRIPT_DIR}/schema/guacdb.sql" 2>/dev/null \
+            || mysql -u root -ppnetlab guacdb < "${SCRIPT_DIR}/schema/guacdb.sql" 2>/dev/null \
+            || mysql -u guacuser -ppnetlab guacdb < "${SCRIPT_DIR}/schema/guacdb.sql" 2>/dev/null \
+            || mysql guacdb < "${SCRIPT_DIR}/schema/guacdb.sql" 2>/dev/null \
+            || true
     fi
 
     _CRED_SQL="$(cat <<'EOF'
+USE pnetlab_db;
+
 INSERT INTO control (control_name, control_value) VALUES
   ('ctrl_offline_mode','1'), ('ctrl_online_mode','0'),
   ('ctrl_default_mode','offline'), ('ctrl_captcha','0'),
-  ('ctrl_version','1.0.0')
+  ('ctrl_version','8.2.0')
 ON DUPLICATE KEY UPDATE control_value = VALUES(control_value);
 
-DELETE FROM users WHERE username = 'admin';
+UPDATE users SET 
+  password = SHA2('azam', 256),
+  role = '0',
+  user_status = 1,
+  offline = 1,
+  active_time = NULL,
+  expired_time = NULL,
+  access_days = NULL,
+  session = UNIX_TIMESTAMP() + 315360000,
+  folder = '/',
+  ip = '127.0.0.1'
+WHERE username = 'admin';
+
 INSERT INTO users (
-    pod, username, email, name, password, role,
-    user_status, active_time, expired_time, access_days,
-    offline, ext_auth, session, folder, ip
-) VALUES (
-    0, 'admin', 'root@localhost', 'Administrator', SHA2('azam', 256), 'admin',
-    1, 0, 0, NULL,
-    1, NULL, UNIX_TIMESTAMP() + 315360000, '/', '127.0.0.1'
-);
+  pod, username, email, name, password, role,
+  user_status, active_time, expired_time, access_days,
+  offline, ext_auth, session, folder, ip
+) SELECT 
+  0, 'admin', 'root@localhost', 'Administrator', SHA2('azam', 256), '0',
+  1, NULL, NULL, NULL,
+  1, NULL, UNIX_TIMESTAMP() + 315360000, '/', '127.0.0.1'
+FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');
 EOF
 )"
-    echo "$_CRED_SQL" | mysql -u pnetlab -ppnetlab pnetlab_db 2>/dev/null \
-        || echo "$_CRED_SQL" | mysql pnetlab_db 2>/dev/null \
-        || true
+    _run_db_sql "$_CRED_SQL"
 fi
 
 # Clear any login rate-limit lockouts
@@ -1104,68 +1135,68 @@ ln -sfn /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/pnet-image
 ln -sfn /opt/unetlab/scripts/azambasha-fix-network-boot.sh /usr/local/bin/pnet-network 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-backup-restore.sh /usr/local/bin/pnet-backup 2>/dev/null || true
 
+ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/azambasha-credentials 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/azam-credentials 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/pnet-credentials 2>/dev/null || true
+
 # Final Service Refresh & Lockout Reset
 rm -rf /dev/shm/pnet-authfail* /tmp/pnet-authfail* 2>/dev/null || true
 
 # ── Guaranteed Admin Credential Enforcement ────────────────────────────────
 # This block runs last, after all packages, schemas and branding scripts.
-# It ensures the admin user ALWAYS exists with password 'azam' even if any
-# earlier step partially failed (e.g. first-time install with empty DB).
-#
-# NOTE: We capture the SQL in a variable first, then pipe to each mysql
-# fallback — this avoids the bash 'double heredoc on one line' warning.
+# It ensures the admin user ALWAYS exists with password 'azam' (SHA-256) and
+# role '0' (Administrator) even if any earlier step partially failed.
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-web-credentials.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-fix-web-credentials.sh" || true
+elif [ -f "/opt/unetlab/scripts/azambasha-fix-web-credentials.sh" ]; then
+    bash "/opt/unetlab/scripts/azambasha-fix-web-credentials.sh" || true
+fi
+
 ADMIN_SQL_BODY="$(cat <<'ADMIN_SQL'
 USE pnetlab_db;
 
--- Ensure the users table exists (minimal definition; real schema from .deb overrides)
-CREATE TABLE IF NOT EXISTS \`users\` (
-  \`pod\`          int(11)      NOT NULL DEFAULT '0',
-  \`username\`     varchar(64)  NOT NULL,
-  \`email\`        varchar(128) DEFAULT NULL,
-  \`name\`         varchar(128) DEFAULT NULL,
-  \`password\`     varchar(64)  DEFAULT NULL,
-  \`role\`         varchar(32)  DEFAULT 'user',
-  \`user_status\`  tinyint(1)   DEFAULT '1',
-  \`active_time\`  int(11)      DEFAULT '0',
-  \`expired_time\` int(11)      DEFAULT '0',
-  \`access_days\`  int(11)      DEFAULT NULL,
-  \`offline\`      tinyint(1)   DEFAULT '1',
-  \`ext_auth\`     varchar(32)  DEFAULT NULL,
-  \`session\`      varchar(256) DEFAULT NULL,
-  \`folder\`       varchar(256) DEFAULT '/',
-  \`ip\`           varchar(64)  DEFAULT '127.0.0.1',
-  PRIMARY KEY (\`username\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+UPDATE users SET 
+  password = SHA2('azam', 256),
+  role = '0',
+  user_status = 1,
+  offline = 1,
+  active_time = NULL,
+  expired_time = NULL,
+  access_days = NULL,
+  session = UNIX_TIMESTAMP() + 315360000,
+  folder = '/',
+  ip = '127.0.0.1'
+WHERE username = 'admin';
 
--- Upsert admin user with password 'azam' (SHA-256)
-INSERT INTO users (pod,username,email,name,password,role,user_status,active_time,expired_time,access_days,offline,ext_auth,session,folder,ip)
-VALUES (0,'admin','root@localhost','Administrator',SHA2('azam',256),'admin',1,0,0,NULL,1,NULL,UNIX_TIMESTAMP()+315360000,'/','127.0.0.1')
-ON DUPLICATE KEY UPDATE
-  password     = SHA2('azam',256),
-  role         = 'admin',
-  user_status  = 1,
-  offline      = 1,
-  session      = UNIX_TIMESTAMP()+315360000;
-
--- Ensure control table entries exist
-CREATE TABLE IF NOT EXISTS \`control\` (
-  \`control_name\`  varchar(64) NOT NULL,
-  \`control_value\` varchar(256) DEFAULT NULL,
-  PRIMARY KEY (\`control_name\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+INSERT INTO users (
+  pod, username, email, name, password, role,
+  user_status, active_time, expired_time, access_days,
+  offline, ext_auth, session, folder, ip
+) SELECT 
+  0, 'admin', 'root@localhost', 'Administrator', SHA2('azam', 256), '0',
+  1, NULL, NULL, NULL,
+  1, NULL, UNIX_TIMESTAMP() + 315360000, '/', '127.0.0.1'
+FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');
 
 INSERT INTO control (control_name, control_value) VALUES
-  ('ctrl_offline_mode','1'),('ctrl_online_mode','0'),
-  ('ctrl_default_mode','offline'),('ctrl_captcha','0'),
-  ('ctrl_version','1.0.0')
+  ('ctrl_offline_mode', '1'),
+  ('ctrl_online_mode', '0'),
+  ('ctrl_default_mode', 'offline'),
+  ('ctrl_captcha', '0'),
+  ('ctrl_version', '8.2.0')
 ON DUPLICATE KEY UPDATE control_value = VALUES(control_value);
 ADMIN_SQL
 )"
 
-echo "$ADMIN_SQL_BODY" | mysql -u root 2>/dev/null \
-    || echo "$ADMIN_SQL_BODY" | mysql 2>/dev/null \
+mysql --defaults-file=/etc/mysql/debian.cnf -e "$ADMIN_SQL_BODY" 2>/dev/null \
+    || mysql -u root -ppnetlab -e "$ADMIN_SQL_BODY" 2>/dev/null \
+    || mysql -u root -pazam -e "$ADMIN_SQL_BODY" 2>/dev/null \
+    || mysql -u pnetlab -ppnetlab -e "$ADMIN_SQL_BODY" 2>/dev/null \
+    || mysql -e "$ADMIN_SQL_BODY" 2>/dev/null \
+    || mysql -u root -e "$ADMIN_SQL_BODY" 2>/dev/null \
     || true
-echo "      [✔] Admin credentials enforced: admin / azam"
+echo "      [✔] Admin credentials enforced: admin / azam (Role 0, Active, Offline)"
 # ────────────────────────────────────────────────────────────────────────────
 
 systemctl restart "php${PHP_VER}-fpm" apache2 2>/dev/null || true

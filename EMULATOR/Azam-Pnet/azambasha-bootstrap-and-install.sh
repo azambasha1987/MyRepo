@@ -77,6 +77,9 @@ fi
 if [ -n "$STATIC_IP" ] && [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-fix-network-boot.sh" "$STATIC_IP" "255.255.255.0" "$STATIC_GW" || true
 fi
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-web-credentials.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-fix-web-credentials.sh" || true
+fi
 
 echo ""
 echo "============================================================"

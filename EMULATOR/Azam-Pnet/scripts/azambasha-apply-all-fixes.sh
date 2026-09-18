@@ -92,15 +92,16 @@ echo "22) High-Density Heavy Node Optimizer (Cat8000, Cisco 8000, Cat9000)"
 echo "23) Soft-RoCE (RXE) & RDMA Dataplane Controller"
 echo "24) Run Weekly Codeberg Intelligence Scan & Implementation Plan"
 echo "25) Apply Full SATELLITE Worker Node Optimization Suite"
-echo "26) Exit"
+echo "26) Reset Web-GUI & Cluster Database Credentials (admin / azam)"
+echo "27) Exit"
 echo "============================================================"
 
 # Handle interactive /dev/tty or non-interactive argument/fallback
 if [ -z "${CHOICE:-}" ]; then
-    if [ -n "${1:-}" ] && [[ "$1" =~ ^([1-9]|1[0-9]|2[0-6])$ ]]; then
+    if [ -n "${1:-}" ] && [[ "$1" =~ ^([1-9]|1[0-9]|2[0-7])$ ]]; then
         CHOICE="$1"
     elif [ -e /dev/tty ]; then
-        read -rp "Select an option [1-26, default: 19]: " USER_INPUT < /dev/tty || true
+        read -rp "Select an option [1-27, default: 19]: " USER_INPUT < /dev/tty || true
         CHOICE="${USER_INPUT:-19}"
     else
         CHOICE="19"
@@ -331,9 +332,14 @@ case "$CHOICE" in
             bash "${SCRIPT_DIR}/azambasha-gui-enhancements.sh" || true
         fi
         echo ""
-        echo "--> [21/21] Running Non-Regression Pre/Post Sanity Health Probe..."
+        echo "--> [21/22] Running Non-Regression Pre/Post Sanity Health Probe..."
         if [ -f "${SCRIPT_DIR}/azambasha-fix-permissions.sh" ]; then
             bash "${SCRIPT_DIR}/azambasha-fix-permissions.sh" --check || true
+        fi
+        echo ""
+        echo "--> [22/22] Resetting Web-GUI & Cluster Database Credentials (admin / azam)..."
+        if [ -f "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" || true
         fi
         echo ""
         echo "============================================================"
@@ -430,10 +436,15 @@ case "$CHOICE" in
             bash "${SCRIPT_DIR}/azambasha-fix-permissions.sh" || true
         fi
         echo ""
-        echo "--> [11/11] Confirming Authoritative Credentials (azam) & Banner..."
+        echo "--> [11/12] Confirming Authoritative Credentials (azam) & Banner..."
         echo "root:azam" | chpasswd 2>/dev/null || true
         if [ -f "${SCRIPT_DIR}/azambasha-update-banner.sh" ]; then
             bash "${SCRIPT_DIR}/azambasha-update-banner.sh" || true
+        fi
+        echo ""
+        echo "--> [12/12] Synchronizing Satellite Root Credentials & Cluster DB Access..."
+        if [ -f "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" || true
         fi
         echo ""
         echo "============================================================"
@@ -441,6 +452,13 @@ case "$CHOICE" in
         echo "============================================================"
         ;;
     26)
+        if [ -f "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh"
+        else
+            echo "[!] azambasha-fix-web-credentials.sh not found." >&2
+        fi
+        ;;
+    27)
         echo "Exiting."
         exit 0
         ;;

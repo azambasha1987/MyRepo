@@ -2190,18 +2190,18 @@ SQL_USERS
         "${mysql[@]}" guacdb <"$guac_schema" >>"$LOG" 2>&1 || die 'guacamole schema import failed'
     fi
 
-    password_hash=$(printf '%s' pnet | sha256sum | awk '{print $1}')
+    password_hash=$(printf '%s' azam | sha256sum | awk '{print $1}')
     "${mysql[@]}" pnetlab_db >>"$LOG" 2>&1 <<SQL_ADMIN
 INSERT INTO control (control_name, control_value) VALUES
-  ('ctrl_offline_mode','0'), ('ctrl_online_mode','1'),
-  ('ctrl_default_mode','online'), ('ctrl_captcha','0'),
+  ('ctrl_offline_mode','1'), ('ctrl_online_mode','0'),
+  ('ctrl_default_mode','offline'), ('ctrl_captcha','0'),
   ('ctrl_version','8.2.0')
 ON DUPLICATE KEY UPDATE control_value = VALUES(control_value);
 INSERT INTO users (username,password,role,offline,user_status,online_time)
-  SELECT 'admin','$password_hash','0',0,1,UNIX_TIMESTAMP()
+  SELECT 'admin','$password_hash','0',1,1,UNIX_TIMESTAMP()
   WHERE NOT EXISTS (SELECT 1 FROM users WHERE username='admin');
-UPDATE users SET password='$password_hash', role='0', offline=0,
-  user_status=1, online_time=UNIX_TIMESTAMP(), active_time=NULL, expired_time=NULL
+UPDATE users SET password='$password_hash', role='0', offline=1,
+  user_status=1, online_time=UNIX_TIMESTAMP(), active_time=NULL, expired_time=NULL, access_days=NULL
   WHERE username='admin';
 DELETE u FROM users u,
   (SELECT MIN(pod) AS keep FROM users WHERE username='admin') m

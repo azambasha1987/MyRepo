@@ -1,6 +1,10 @@
 # PNetLab Artifacts & Releases Verification Report
 
+<<<<<<< HEAD
 Last updated: 2026-09-18 11:16:20 UTC
+=======
+Last updated: 2026-09-18 02:29:48 UTC
+>>>>>>> 188caf78290a0041106f0c10fb1d8c194f4ce4ef
 
 ## Step 1: Git Repository Verification
 
@@ -19,6 +23,7 @@ Last updated: 2026-09-18 11:16:20 UTC
 | :--- | :--- | :--- | :--- | :--- |
 | Debian (pnetlab-bridge-dkms v6.8.78resolute1) | `debian/pool/resolute/main/pnetlab-bridge-dkms_6.8.78resolute1_all.deb` | 142,698 | ✅ VERIFIED | `8066b5796736d4c1c423be392867cb6142080cf6bfd5f4e4967e12469f7e7cb7` |
 | Debian (pnetlab-bridge-dkms v6.8.79resolute1) | `debian/pool/resolute/main/pnetlab-bridge-dkms_6.8.79resolute1_all.deb` | 142,686 | ✅ VERIFIED | `f93c80e78df04ddcd77dcaed417fce5f6982a8f2175a27fa7ef0d49a55f26300` |
+<<<<<<< HEAD
 | Debian (pnetlab-bridge-dkms v6.8.80resolute1) | `debian/pool/resolute/main/pnetlab-bridge-dkms_6.8.80resolute1_all.deb` | 142,784 | ✅ VERIFIED | `6e29e360ae344dd2cb673b16d29402363672e02f59c78b4ccb60984dfe0dcb3f` |
 | Debian (pnetlab-docker v6.8.78resolute1) | `debian/pool/resolute/main/pnetlab-docker_6.8.78resolute1_amd64.deb` | 3,618 | ✅ VERIFIED | `ff6609c4bdefcce6c4962a8f25e4b06fa2dbcf8e027b47a6d84f2fa0bfea64a7` |
 | Debian (pnetlab-docker v6.8.79resolute1) | `debian/pool/resolute/main/pnetlab-docker_6.8.79resolute1_amd64.deb` | 3,616 | ✅ VERIFIED | `a825c368a569f749f80e93d37216d6e7104133b85c79865c15600ad8deaa049b` |
@@ -44,6 +49,25 @@ Last updated: 2026-09-18 11:16:20 UTC
 | Generic (pnetlab-core-assets @ 0.channel) | `generic/0.channel/pnetlab-latest.json` | 205 | ✅ VERIFIED | `0aab09817d13048b9e62a25f62239f94a119787152057cddf093a107f3303831` |
 | Generic (pnetlab-core-assets @ 0.channel) | `generic/0.channel/pnetlab-latest.json.sha256` | 86 | ✅ VERIFIED | `c5a9f00dfbabd8838016c3a88c1a1372fe4d6986bef0152f03c528ecbd0a8ed2` |
 | Generic (pnetlab-core-assets @ 0.channel) | `generic/0.channel/pnetlab-latest.json.sig` | 566 | ✅ VERIFIED | `2c43ace7e73e3de7134d1f4b74748ca21ed9ba5714f86475e17217d8684d0d88` |
+=======
+| Debian (pnetlab-docker v6.8.78resolute1) | `debian/pool/resolute/main/pnetlab-docker_6.8.78resolute1_amd64.deb` | 3,618 | ✅ VERIFIED | `ff6609c4bdefcce6c4962a8f25e4b06fa2dbcf8e027b47a6d84f2fa0bfea64a7` |
+| Debian (pnetlab-docker v6.8.79resolute1) | `debian/pool/resolute/main/pnetlab-docker_6.8.79resolute1_amd64.deb` | 3,616 | ✅ VERIFIED | `a825c368a569f749f80e93d37216d6e7104133b85c79865c15600ad8deaa049b` |
+| Debian (pnetlab-guacd v6.8.78resolute1) | `debian/pool/resolute/main/pnetlab-guacd_6.8.78resolute1_amd64.deb` | 463,070 | ✅ VERIFIED | `ba7435f00e015efd828cef8eedfb050fbd20261c0a91f4b8ccd284232b37fe10` |
+| Debian (pnetlab-guacd v6.8.79resolute1) | `debian/pool/resolute/main/pnetlab-guacd_6.8.79resolute1_amd64.deb` | 463,132 | ✅ VERIFIED | `8348f84d756273b592ec1ce184c2be573607086d3baf07a66d9cf06e31bd3455` |
+| Debian (pnetlab-qemu v6.8.78resolute1) | `debian/pool/resolute/main/pnetlab-qemu_6.8.78resolute1_amd64.deb` | 1,275,462 | ✅ VERIFIED | `382da8190a386e3984855f0aaa96ecb5f32a2ff53993eac824a33434ef4920bc` |
+| Debian (pnetlab-qemu v6.8.79resolute1) | `debian/pool/resolute/main/pnetlab-qemu_6.8.79resolute1_amd64.deb` | 1,275,538 | ✅ VERIFIED | `03090de077cd596318b55b3c47eb7f9030beffd7b89a6b59105eecca45ea3a7c` |
+| Debian (pnetlab-satellite v6.8.78resolute1) | `debian/pool/resolute/main/pnetlab-satellite_6.8.78resolute1_amd64.deb` | 82,378,066 | ✅ VERIFIED | `bc7422cf64f2fdee24302cb3b0a5f170679caf27a64ecc18e98a190432bfd596` |
+| Debian (pnetlab-satellite v6.8.79resolute1) | `debian/pool/resolute/main/pnetlab-satellite_6.8.79resolute1_amd64.deb` | 9,981,780 | ✅ VERIFIED | `02fb08c36d030c6b03ef67e2da1ae5563c027605605ec271fa13985f7e4c3870` |
+| Debian (pnetlab-schema v6.8.78resolute1) | `debian/pool/resolute/main/pnetlab-schema_6.8.78resolute1_amd64.deb` | 9,066 | ✅ VERIFIED | `8b55771279f3cfbe132b658ca331ca9d40161021456f7a435f153f80a85825fc` |
+| Debian (pnetlab-schema v6.8.79resolute1) | `debian/pool/resolute/main/pnetlab-schema_6.8.79resolute1_amd64.deb` | 9,104 | ✅ VERIFIED | `be1c7cd96670e664ce48b3ac8a1b7cf31e33a9db9163080d2060630369ff3527` |
+| Debian (pnetlab-vpcs v6.8.78resolute1) | `debian/pool/resolute/main/pnetlab-vpcs_6.8.78resolute1_amd64.deb` | 90,288 | ✅ VERIFIED | `4fff6ca5c74c11a09566e6c4d7ada2c81bf847f2daf38d33b7a83a57f8131734` |
+| Debian (pnetlab-vpcs v6.8.79resolute1) | `debian/pool/resolute/main/pnetlab-vpcs_6.8.79resolute1_amd64.deb` | 90,324 | ✅ VERIFIED | `6d986a6b4c8cedfb38fdc7d8a9305f87b7bf5c26dd6eb9ffdd6dac1c270dc214` |
+| Debian (pnetlab v6.8.78resolute1) | `debian/pool/resolute/main/pnetlab_6.8.78resolute1_amd64.deb` | 87,935,844 | ✅ VERIFIED | `088426541ac429a19e9417655b7570773d55c776caa7fd6afc0c209d88af974d` |
+| Debian (pnetlab v6.8.79resolute1) | `debian/pool/resolute/main/pnetlab_6.8.79resolute1_amd64.deb` | 15,536,812 | ✅ VERIFIED | `543ec692ef4b5e95520424bf03c9eaebbdb6fc5cbe19e861db12a9e182a3274e` |
+| Generic (pnetlab-core-assets @ 0.channel) | `generic/0.channel/pnetlab-latest.json` | 205 | ✅ VERIFIED | `5d00a5812b0def440421bf997498ca61d6e9ca1f04d89deea5276506ba30b764` |
+| Generic (pnetlab-core-assets @ 0.channel) | `generic/0.channel/pnetlab-latest.json.sha256` | 86 | ✅ VERIFIED | `2d1c07365968cc2901b4acdce5df36b39ebc7485cf406b4cf1076f3e61c7ba25` |
+| Generic (pnetlab-core-assets @ 0.channel) | `generic/0.channel/pnetlab-latest.json.sig` | 566 | ✅ VERIFIED | `d0d37b3ef6aa36b42c87a5f36d5b6650ebf92ac75bcdcd144e59aa9434f9571c` |
+>>>>>>> 188caf78290a0041106f0c10fb1d8c194f4ce4ef
 | Generic (pnetlab-core-assets @ 0.channel) | `generic/0.channel/pnetlab-network-install-latest.sh` | 176,628 | ✅ VERIFIED | `b6b3c8b0e81f1a2ac2b2d1af37f4261ec76d5bfd8e9c98045390137efb74f37a` |
 | Generic (pnetlab-core-assets @ 0.channel) | `generic/0.channel/pnetlab-network-install-latest.sh.sha256` | 100 | ✅ VERIFIED | `c09eccbaf0b0e4c922e4fc38a0675cd47a98f0771ba257ef56bb77bb66c13dd2` |
 | Generic (pnetlab-core-assets @ 6.8.78resolute1) | `generic/6.8.78resolute1/pnetlab-6.8.78resolute1-manifest.json` | 1,513 | ✅ VERIFIED | `289945b0ea1e6d364d5c892f17945ec4ac5e042b57b65724d250329b5950f8c3` |
@@ -66,6 +90,7 @@ Last updated: 2026-09-18 11:16:20 UTC
 | Generic (pnetlab-core-assets @ 6.8.79resolute1) | `generic/6.8.79resolute1/pnetlab-install-resolute-satellite-6.8.79resolute1.sh.sha256` | 120 | ✅ VERIFIED | `c99831f9cf7c4e35bd3028c01aadc38c170d34adeebbe4f4a510d822976875e5` |
 | Generic (pnetlab-core-assets @ 6.8.79resolute1) | `generic/6.8.79resolute1/pnetlab-network-install-6.8.79resolute1.sh` | 176,628 | ✅ VERIFIED | `b6b3c8b0e81f1a2ac2b2d1af37f4261ec76d5bfd8e9c98045390137efb74f37a` |
 | Generic (pnetlab-core-assets @ 6.8.79resolute1) | `generic/6.8.79resolute1/pnetlab-network-install-6.8.79resolute1.sh.sha256` | 109 | ✅ VERIFIED | `4f4cd8d193f939cf0e6e37481c2d964b517f47085f45e54364b25c39ade436db` |
+<<<<<<< HEAD
 | Generic (pnetlab-core-assets @ 6.8.80resolute1) | `generic/6.8.80resolute1/pnetlab-6.8.80resolute1-manifest.json` | 1,826 | ✅ VERIFIED | `f2cb7e54c4bc803d5a9d19e8556a4be3e805f76faed732b69ae4f0d892b46207` |
 | Generic (pnetlab-core-assets @ 6.8.80resolute1) | `generic/6.8.80resolute1/pnetlab-6.8.80resolute1-manifest.json.sha256` | 104 | ✅ VERIFIED | `7a381625d425ddf0eb51f861eafdfd4e2ddb9b6ebe1082c6c8b74012fb39e91c` |
 | Generic (pnetlab-core-assets @ 6.8.80resolute1) | `generic/6.8.80resolute1/pnetlab-6.8.80resolute1-manifest.json.sig` | 566 | ✅ VERIFIED | `aeaded2a8d77dd718e5fdd5728284dbb4ae450f9f903cd9fc9e8049ed65aea72` |
@@ -81,3 +106,10 @@ Last updated: 2026-09-18 11:16:20 UTC
 | Metadata Index | `metadata/dists-resolute-Release` | 2,633 | ✅ VERIFIED | `9a14ca06373a248a21b6700ce405c9560b491086ec95d2e0b76cca47141194a9` |
 | Metadata Index | `metadata/generic-package-details.json` | 17,282 | ✅ VERIFIED | `3e97c04236f3364b957d429178855061de977a0ffd55eb4f12395d877ce064ae` |
 | Metadata Index | `metadata/packages-api-response.json` | 53,495 | ✅ VERIFIED | `85c654f840712ef196546fd283b92e88716af1b5c3839bd36df3e13e2bb2ea0d` |
+=======
+| Metadata Index | `metadata/binary-all-Packages` | 3,655 | ✅ VERIFIED | `2eb2d96e45eb225184b796e18b3a33ce0bb309f2214d2ef7d8395b96dae4d9fd` |
+| Metadata Index | `metadata/binary-amd64-Packages` | 27,856 | ✅ VERIFIED | `56b7a6dcf5b849b9c02bd1c5b8a685d1b87b3c67d0c3b7acc88cceede5dbd7cb` |
+| Metadata Index | `metadata/dists-resolute-Release` | 2,633 | ✅ VERIFIED | `473fb5f5ba8e221b5bdff2db2b9760426e89e928d96736979f894a04c9e74221` |
+| Metadata Index | `metadata/generic-package-details.json` | 12,087 | ✅ VERIFIED | `23de71d06b4218a18465287947771c12e8d9160fd9003592b369e36a414ade5a` |
+| Metadata Index | `metadata/packages-api-response.json` | 35,141 | ✅ VERIFIED | `0641f4005c9d1394722b9f8a1f6cc98fdc123e19faa2f70ca8a3165eb838a1f5` |
+>>>>>>> 188caf78290a0041106f0c10fb1d8c194f4ce4ef

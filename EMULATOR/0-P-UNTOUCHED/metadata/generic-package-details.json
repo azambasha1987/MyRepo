@@ -1,6 +1,7 @@
 [
   {
     "name": "pnetlab-core-assets",
+<<<<<<< HEAD
     "version": "6.8.80resolute1",
     "files": [
       {
@@ -97,6 +98,8 @@
   },
   {
     "name": "pnetlab-core-assets",
+=======
+>>>>>>> 188caf78290a0041106f0c10fb1d8c194f4ce4ef
     "version": "6.8.79resolute1",
     "files": [
       {
@@ -292,6 +295,36 @@
     "version": "0.channel",
     "files": [
       {
+<<<<<<< HEAD
+=======
+        "id": 16195768,
+        "Size": 205,
+        "name": "pnetlab-latest.json",
+        "md5": "b75b8d726cf09d462d68bd649d3838ba",
+        "sha1": "2351a62edcf4ca5db401e708e84c1e912b9cd1f6",
+        "sha256": "5d00a5812b0def440421bf997498ca61d6e9ca1f04d89deea5276506ba30b764",
+        "sha512": "789ef6efa531d32ce706fcc906ae4d2731bb79136c05857fe9eb9940200b5ae23c4d92ed0a758894977067dae52f3b1f3647888c613cc4591b651da9ec977afb"
+      },
+      {
+        "id": 16195771,
+        "Size": 86,
+        "name": "pnetlab-latest.json.sha256",
+        "md5": "19007686073f5110b21c4debbd52a39d",
+        "sha1": "bed2b7432fbee918ca7f6b64499ed0959b331cbd",
+        "sha256": "2d1c07365968cc2901b4acdce5df36b39ebc7485cf406b4cf1076f3e61c7ba25",
+        "sha512": "eb3f47a2e281b82685791894dc754e4271190ccc88465ba92d00bde1fe89ad142111e6135f6c04039890cfa1b8188e348417438bebd47b99a4f574307522c4c8"
+      },
+      {
+        "id": 16195795,
+        "Size": 566,
+        "name": "pnetlab-latest.json.sig",
+        "md5": "b04a70c700f1701b4d665f797fd23e2b",
+        "sha1": "7ab733132c5f5d9a01670eeb3602d2864e10ec31",
+        "sha256": "d0d37b3ef6aa36b42c87a5f36d5b6650ebf92ac75bcdcd144e59aa9434f9571c",
+        "sha512": "784f27d39f78678a82533a84dda76f77a66740105cb9aac624305ecfaa4b129ed5e46d45123abf6566fad780e12536f8f18dceaf3896b7c299469c449ab3bee8"
+      },
+      {
+>>>>>>> 188caf78290a0041106f0c10fb1d8c194f4ce4ef
         "id": 16195798,
         "Size": 176628,
         "name": "pnetlab-network-install-latest.sh",
@@ -308,6 +341,7 @@
         "sha1": "611859afd9519c6188041a066a16ae539a1fbe33",
         "sha256": "c09eccbaf0b0e4c922e4fc38a0675cd47a98f0771ba257ef56bb77bb66c13dd2",
         "sha512": "1de8734eff7db04d331ffd017619dadd34ca47b363bea8474f0707611d2e8e45db0a5c97ef51dcc6ef33d0cc83d91f3c443fa3a2a8770b5573ec020ee8b206a8"
+<<<<<<< HEAD
       },
       {
         "id": 16224733,
@@ -335,6 +369,8 @@
         "sha1": "81f270953ed09abccb949f67ae895b51a925b7f2",
         "sha256": "2c43ace7e73e3de7134d1f4b74748ca21ed9ba5714f86475e17217d8684d0d88",
         "sha512": "edb89118ad6292b6e01f1b73973cf2fdfcf621317073d1325704ce33e5f31116ad3137caeb861c1991e4c157e644c2d71f4a4341b6b7a62db7a7c9f5de9dfba6"
+=======
+>>>>>>> 188caf78290a0041106f0c10fb1d8c194f4ce4ef
       }
     ]
   }

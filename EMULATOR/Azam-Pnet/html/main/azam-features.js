@@ -1,5 +1,5 @@
 /* ============================================================================
-   PNetLab Main Dashboard — Azam-Features Operations Center View
+   PNetLab Main Dashboard — Azam-Features Enterprise Operations Center
    Integrated into /main/ as the primary "Azam-Features" navigation tab.
    Communicates with the backend API service on /azam-ops/api/
    ============================================================================ */
@@ -29,7 +29,6 @@
   function render(view) {
     view.innerHTML = '';
 
-    // Container with modern dark styling & spacing
     var container = document.createElement('div');
     container.className = 'azam-features-container';
     container.style.cssText = 'display:flex;flex-direction:column;gap:20px;max-width:1440px;margin:0 auto;color:var(--pnq-text,#f1f5f9);';
@@ -49,10 +48,10 @@
     var titleText = document.createElement('div');
     titleText.innerHTML = 
       '<div style="font-size:22px;font-weight:700;letter-spacing:-0.02em;background:linear-gradient(90deg,#38bdf8,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">' +
-        'Azam-Features Operations Center' +
+        'Azam-Features Enterprise Operations Center' +
       '</div>' +
       '<div style="font-size:13px;color:var(--pnq-text-muted,#94a3b8);margin-top:2px;">' +
-        'Unified cluster intelligence, real-time diagnostic suite, automated backup & canvas accelerators' +
+        'AI Lab Copilot, automated config diffs, ping mesh matrix, resource quotas & cloud disaster recovery' +
       '</div>';
 
     titleBox.appendChild(iconBox);
@@ -64,8 +63,8 @@
 
     var btnRefresh = document.createElement('button');
     btnRefresh.className = 'btn btn-ghost';
-    btnRefresh.innerHTML = '<i class="fa fa-refresh"></i> Refresh';
-    btnRefresh.onclick = function () { loadStats(); loadBackups(); App.toast('Metrics refreshed', 'ok'); };
+    btnRefresh.innerHTML = '<i class="fa fa-refresh"></i> Refresh All';
+    btnRefresh.onclick = function () { loadStats(); loadBackups(); loadMesh(); App.toast('Metrics refreshed', 'ok'); };
 
     var btnDoctor = document.createElement('button');
     btnDoctor.className = 'btn btn-primary';
@@ -89,19 +88,24 @@
       createStatCard('az-m-nodes', 'Active QEMU Nodes', '—', 'fa-cubes', '#34d399') +
       createStatCard('az-m-watchdog', '24/7 Watchdog', '—', 'fa-shield', '#fbbf24') +
       createStatCard('az-m-disk', 'Storage (/)', '—', 'fa-hdd-o', '#f472b6') +
-      createStatCard('az-m-backups', 'Backups Count', '—', 'fa-archive', '#a78bfa');
+      createStatCard('az-m-backups', 'Backups Ready', '—', 'fa-archive', '#a78bfa');
     container.appendChild(statsGrid);
 
-    // ── 3. Tab Bar Navigation ─────────────────────────────────
+    // ── 3. Tab Bar Navigation (All 10 Features) ────────────────
     var navTabs = document.createElement('div');
-    navTabs.style.cssText = 'display:flex;gap:8px;border-bottom:2px solid var(--pnq-border,rgba(255,255,255,0.08));padding-bottom:2px;overflow-x:auto;';
+    navTabs.style.cssText = 'display:flex;gap:6px;border-bottom:2px solid var(--pnq-border,rgba(255,255,255,0.08));padding-bottom:2px;overflow-x:auto;scrollbar-width:thin;';
 
     var tabs = [
-      { id: 'health',   name: 'Cluster Health & Diagnostic', icon: 'fa-heartbeat' },
-      { id: 'backups',  name: 'Backups & Git VCS',          icon: 'fa-archive' },
-      { id: 'network',  name: 'Consoles & Dataplane',       icon: 'fa-sitemap' },
-      { id: 'security', name: 'Security & WhatsApp Alerts', icon: 'fa-shield' },
-      { id: 'canvas',   name: 'Canvas Accelerators',        icon: 'fa-paint-brush' }
+      { id: 'health',    name: 'Cluster Health',          icon: 'fa-heartbeat' },
+      { id: 'ai',        name: 'AI Lab Copilot',          icon: 'fa-magic' },
+      { id: 'diff',      name: 'Config Diff & Rollback',  icon: 'fa-history' },
+      { id: 'mesh',      name: 'Ping Mesh & Traffic Gen', icon: 'fa-exchange' },
+      { id: 'scheduler', name: 'Idle Saver & Quotas',     icon: 'fa-clock-o' },
+      { id: 'cloud',     name: 'Cloud & NAS Backup',      icon: 'fa-cloud-upload' },
+      { id: 'backups',   name: 'Local Backups & Git',     icon: 'fa-archive' },
+      { id: 'network',   name: 'Consoles & Dataplane',    icon: 'fa-terminal' },
+      { id: 'security',  name: 'Security & WhatsApp',     icon: 'fa-whatsapp' },
+      { id: 'canvas',    name: 'Canvas Accelerators',     icon: 'fa-paint-brush' }
     ];
 
     tabs.forEach(function (t, idx) {
@@ -109,7 +113,7 @@
       tabBtn.type = 'button';
       tabBtn.className = 'az-tab-btn' + (idx === 0 ? ' is-active' : '');
       tabBtn.dataset.tab = t.id;
-      tabBtn.style.cssText = 'background:none;border:none;padding:10px 16px;font-size:13.5px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:8px;transition:all 0.15s ease;white-space:nowrap;';
+      tabBtn.style.cssText = 'background:none;border:none;padding:9px 14px;font-size:13px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:7px;transition:all 0.15s ease;white-space:nowrap;';
       if (idx === 0) {
         tabBtn.style.color = '#38bdf8';
         tabBtn.style.borderBottomColor = '#38bdf8';
@@ -138,7 +142,141 @@
       '</div>';
     panesContainer.appendChild(pHealth);
 
-    // ── Pane 2: Backups & Git VCS ──
+    // ── Pane 2: AI Lab Copilot ──
+    var pAi = document.createElement('div');
+    pAi.id = 'pane-ai';
+    pAi.style.display = 'none';
+    pAi.innerHTML = 
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+        '<div style="display:flex;flex-direction:column;gap:16px;">' +
+          '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
+              '<div style="width:36px;height:36px;border-radius:8px;background:rgba(124,58,237,0.15);color:#a78bfa;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-magic"></i></div>' +
+              '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Network Config Generator</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Generate production-ready syntax using AI Copilot or built-in templates</div></div>' +
+            '</div>' +
+            '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">' +
+              '<div>' +
+                '<label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:6px;">Select Built-in Template:</label>' +
+                '<select id="ai-tmpl-select" class="input" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
+                  '<option value="cisco_ospf">Cisco IOS-XE — OSPF Multi-Area + MD5 Auth</option>' +
+                  '<option value="cisco_bgp">Cisco IOS-XE — eBGP Dual-Homed + BFD</option>' +
+                  '<option value="arista_evpn">Arista EOS — VXLAN EVPN Anycast Gateway</option>' +
+                  '<option value="juniper_bgp">Juniper Junos — BGP Peering + Import/Export</option>' +
+                  '<option value="frr_ospf">Linux FRRouting — OSPF & BGP Dual-Stack</option>' +
+                '</select>' +
+              '</div>' +
+              '<div>' +
+                '<label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:6px;">Or Custom AI Prompt:</label>' +
+                '<input type="text" id="ai-custom-prompt" placeholder="e.g. Generate Cisco 8000v BGP EVPN with VXLAN VNI 10010" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
+              '</div>' +
+            '</div>' +
+            '<div style="display:flex;gap:10px;">' +
+              '<button type="button" id="btn-ai-gen" class="btn btn-primary" style="background:#7c3aed;border-color:#7c3aed;color:#fff;"><i class="fa fa-code"></i> Generate Configuration</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
+              '<div style="width:36px;height:36px;border-radius:8px;background:rgba(234,179,8,0.15);color:#eab308;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-stethoscope"></i></div>' +
+              '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Routing Diagnostics Analyzer</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Paste show output or syslog errors for root-cause analysis</div></div>' +
+            '</div>' +
+            '<textarea id="ai-diag-log" rows="4" placeholder="Paste show ip route, show ip ospf neighbor, or BGP flap logs..." style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:12px;font-family:monospace;margin-bottom:12px;"></textarea>' +
+            '<button type="button" id="btn-ai-diag" class="btn btn-ghost"><i class="fa fa-search"></i> Diagnose Issue</button>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;flex-direction:column;">' +
+          '<div id="term-ai" style="display:block;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:16px;font-family:monospace;font-size:12.5px;min-height:360px;max-height:560px;overflow-y:auto;box-shadow:inset 0 2px 6px rgba(0,0,0,0.4);color:#38bdf8;">' +
+            '<div style="color:#64748b;">// AI Copilot Output Terminal ready. Select a template or enter prompt to generate syntax.</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    panesContainer.appendChild(pAi);
+
+    // ── Pane 3: Config Diff & Rollback ──
+    var pDiff = document.createElement('div');
+    pDiff.id = 'pane-diff';
+    pDiff.style.display = 'none';
+    pDiff.innerHTML = 
+      '<div style="display:flex;flex-direction:column;gap:16px;">' +
+        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">' +
+            '<div style="display:flex;align-items:center;gap:12px;">' +
+              '<div style="width:38px;height:38px;border-radius:8px;background:rgba(14,165,233,0.15);color:#0ea5e9;display:flex;align-items:center;justify-content:center;font-size:17px;"><i class="fa fa-history"></i></div>' +
+              '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Device Configuration History & Visual Diff</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Compare running configs before and after lab changes and roll back</div></div>' +
+            '</div>' +
+            '<div style="display:flex;gap:10px;">' +
+              '<button type="button" id="btn-diff-snap" class="btn btn-primary" style="background:#0ea5e9;border-color:#0ea5e9;color:#fff;"><i class="fa fa-camera"></i> Snapshot Running-Configs</button>' +
+              '<button type="button" id="btn-diff-refresh" class="btn btn-ghost"><i class="fa fa-refresh"></i></button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div id="term-diff" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:16px;font-family:monospace;font-size:12.5px;max-height:360px;overflow-y:auto;color:#e2e8f0;"></div>' +
+      '</div>';
+    panesContainer.appendChild(pDiff);
+
+    // ── Pane 4: Ping Mesh & Traffic Generator ──
+    var pMesh = document.createElement('div');
+    pMesh.id = 'pane-mesh';
+    pMesh.style.display = 'none';
+    pMesh.innerHTML = 
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">' +
+            '<div style="font-weight:600;font-size:15px;"><i class="fa fa-table"></i> Data Plane Reachability Matrix</div>' +
+            '<button type="button" id="btn-mesh-sweep" class="btn btn-primary btn-sm"><i class="fa fa-refresh"></i> Run Mesh Sweep</button>' +
+          '</div>' +
+          '<div id="az-mesh-table" style="font-size:13px;color:var(--pnq-text-muted,#94a3b8);">' +
+            'Click "Run Mesh Sweep" to test end-to-end IP reachability.' +
+          '</div>' +
+        '</div>' +
+        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
+          '<div style="font-weight:600;font-size:15px;margin-bottom:12px;"><i class="fa fa-bolt"></i> Synthetic Link Traffic Generator</div>' +
+          '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">' +
+            '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Target Host IP:</label><input type="text" id="traffic-target" value="192.168.1.22" style="width:100%;padding:7px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:12.5px;"></div>' +
+            '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Burst Rate (Mbps):</label><input type="number" id="traffic-rate" value="10" min="1" max="1000" style="width:100%;padding:7px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:12.5px;"></div>' +
+            '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Duration (Seconds):</label><input type="number" id="traffic-dur" value="5" min="1" max="60" style="width:100%;padding:7px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:12.5px;"></div>' +
+          '</div>' +
+          '<button type="button" id="btn-traffic-start" class="btn btn-primary" style="background:#10b981;border-color:#10b981;color:#fff;"><i class="fa fa-play"></i> Inject Traffic Burst</button>' +
+          '<div id="term-traffic" style="display:none;margin-top:12px;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;font-family:monospace;font-size:12px;max-height:160px;overflow-y:auto;"></div>' +
+        '</div>' +
+      '</div>';
+    panesContainer.appendChild(pMesh);
+
+    // ── Pane 5: Scheduler & Quotas ──
+    var pSched = document.createElement('div');
+    pSched.id = 'pane-scheduler';
+    pSched.style.display = 'none';
+    pSched.innerHTML = 
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">' +
+        createToolCard('scheduler-status', 'azam-scheduler', 'Resource Quota & Curfew Watchdog', 'Inspects idle timeout settings, nightly power-saver curfews, and role-based node limits.', 'fa-clock-o', '#f59e0b', 'term-sched', [
+          { label: 'Stop Idle Labs Now', tool: 'scheduler-stop-idle' },
+          { label: 'Install Service Timer', tool: 'scheduler-install' }
+        ]) +
+        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
+          '<div style="font-weight:600;font-size:15px;margin-bottom:12px;"><i class="fa fa-sliders"></i> Policy Controls</div>' +
+          '<div style="font-size:13px;color:var(--pnq-text-muted,#94a3b8);line-height:1.6;margin-bottom:14px;">' +
+            '• <b>Idle Timeout:</b> Stops node VMs if inactive for 2 hours.<br>' +
+            '• <b>Nightly Curfew:</b> Shuts down unattended labs at 23:00 to conserve power.<br>' +
+            '• <b>Role Quotas:</b> Max 6 nodes per student, max 12 per operator.' +
+          '</div>' +
+          '<button type="button" class="btn btn-ghost" data-az-tool="scheduler-check" data-az-term="term-sched"><i class="fa fa-play"></i> Run Policy Audit Now</button>' +
+        '</div>' +
+      '</div>';
+    panesContainer.appendChild(pSched);
+
+    // ── Pane 6: Cloud & NAS Backup ──
+    var pCloud = document.createElement('div');
+    pCloud.id = 'pane-cloud';
+    pCloud.style.display = 'none';
+    pCloud.innerHTML = 
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">' +
+        createToolCard('cloud-sync', 'azam-cloud-backup', 'Offsite Cloud & NAS Sync', 'Synchronizes local snapshots (/opt/azambasha/backups/) to remote SFTP servers, AWS S3, or Network NAS.', 'fa-cloud-upload', '#0284c7', 'term-cloud', [
+          { label: 'Sync Status', tool: 'cloud-status' },
+          { label: 'List Remote Files', tool: 'cloud-list' }
+        ]) +
+      '</div>';
+    panesContainer.appendChild(pCloud);
+
+    // ── Pane 7: Local Backups & Git ──
     var pBackups = document.createElement('div');
     pBackups.id = 'pane-backups';
     pBackups.style.display = 'none';
@@ -148,7 +286,7 @@
           createToolCard('backup', 'azam-backup', 'Create Cluster Snapshot', 'Creates an automated, compressed tar.gz archive of all lab files, configs, and SQLite user database.', 'fa-cloud-upload', '#0284c7', 'term-backup') +
           '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
             '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
-              '<div style="font-weight:600;font-size:15px;"><i class="fa fa-list"></i> Backup Archives</div>' +
+              '<div style="font-weight:600;font-size:15px;"><i class="fa fa-list"></i> Local Backup Archives</div>' +
               '<button type="button" class="btn btn-ghost btn-sm" id="btn-refresh-backups"><i class="fa fa-refresh"></i></button>' +
             '</div>' +
             '<div id="az-backups-table" style="max-height:260px;overflow-y:auto;font-size:13px;color:var(--pnq-text-muted,#94a3b8);">' +
@@ -165,7 +303,7 @@
       '</div>';
     panesContainer.appendChild(pBackups);
 
-    // ── Pane 3: Consoles & Dataplane ──
+    // ── Pane 8: Consoles & Dataplane ──
     var pNetwork = document.createElement('div');
     pNetwork.id = 'pane-network';
     pNetwork.style.display = 'none';
@@ -178,7 +316,7 @@
       '</div>';
     panesContainer.appendChild(pNetwork);
 
-    // ── Pane 4: Security & WhatsApp Alerts ──
+    // ── Pane 9: Security & WhatsApp ──
     var pSecurity = document.createElement('div');
     pSecurity.id = 'pane-security';
     pSecurity.style.display = 'none';
@@ -191,27 +329,13 @@
         '<div style="display:flex;flex-direction:column;gap:16px;">' +
           '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
             '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
-              '<div style="width:36px;height:36px;border-radius:8px;background:rgba(37,211,102,0.15);display:flex;align-items:center;justify-content:center;color:#25d366;font-size:18px;">' +
-                '<i class="fa fa-whatsapp"></i>' +
-              '</div>' +
-              '<div>' +
-                '<div style="font-weight:600;font-size:15px;color:#f1f5f9;">WhatsApp & Webhook Alert Engine</div>' +
-                '<div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Dispatches critical cluster alerts & scan reports straight to your phone</div>' +
-              '</div>' +
+              '<div style="width:36px;height:36px;border-radius:8px;background:rgba(37,211,102,0.15);display:flex;align-items:center;justify-content:center;color:#25d366;font-size:18px;"><i class="fa fa-whatsapp"></i></div>' +
+              '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">WhatsApp & Webhook Alert Engine</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Dispatches critical cluster alerts & scan reports straight to your phone</div></div>' +
             '</div>' +
             '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">' +
-              '<div>' +
-                '<label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">WhatsApp Phone (with country code):</label>' +
-                '<input type="text" id="wa-phone" class="input" placeholder="e.g. 919876543210" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
-              '</div>' +
-              '<div>' +
-                '<label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">CallMeBot API Key (Free):</label>' +
-                '<input type="password" id="wa-key" class="input" placeholder="Enter API key" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
-              '</div>' +
-              '<div>' +
-                '<label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Custom Alert Message:</label>' +
-                '<input type="text" id="wa-msg" class="input" value="⚡ Hello Azam! Test alert from PNetLab Master Cluster (192.168.1.23)" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
-              '</div>' +
+              '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">WhatsApp Phone (with country code):</label><input type="text" id="wa-phone" placeholder="e.g. 919876543210" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;"></div>' +
+              '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">CallMeBot API Key (Free):</label><input type="password" id="wa-key" placeholder="Enter API key" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;"></div>' +
+              '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Custom Alert Message:</label><input type="text" id="wa-msg" value="⚡ Hello Azam! Test alert from PNetLab Master Cluster (192.168.1.23)" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;"></div>' +
             '</div>' +
             '<div style="display:flex;gap:10px;align-items:center;">' +
               '<button type="button" id="btn-wa-save" class="btn btn-primary" style="background:#25d366;border-color:#25d366;color:#052e16;font-weight:700;"><i class="fa fa-paper-plane"></i> Save & Send Test Alert</button>' +
@@ -223,7 +347,7 @@
       '</div>';
     panesContainer.appendChild(pSecurity);
 
-    // ── Pane 5: Canvas Accelerators ──
+    // ── Pane 10: Canvas Accelerators ──
     var pCanvas = document.createElement('div');
     pCanvas.id = 'pane-canvas';
     pCanvas.style.display = 'none';
@@ -244,7 +368,7 @@
     wirePanes(container);
     loadStats();
     loadBackups();
-    loadNotifyConfig();
+    loadMesh();
   }
 
   /* ── Tab Switching Helper ───────────────────────────────── */
@@ -257,7 +381,7 @@
       b.style.borderBottomColor = isActive ? '#38bdf8' : 'transparent';
     });
 
-    ['health', 'backups', 'network', 'security', 'canvas'].forEach(function (id) {
+    ['health', 'ai', 'diff', 'mesh', 'scheduler', 'cloud', 'backups', 'network', 'security', 'canvas'].forEach(function (id) {
       var p = document.getElementById('pane-' + id);
       if (p) p.style.display = id === tabId ? 'block' : 'none';
     });
@@ -286,9 +410,51 @@
       };
     });
 
-    var btnRefreshBackups = container.querySelector('#btn-refresh-backups');
-    if (btnRefreshBackups) btnRefreshBackups.onclick = loadBackups;
+    // AI Copilot Generate
+    var btnAiGen = container.querySelector('#btn-ai-gen');
+    if (btnAiGen) {
+      btnAiGen.onclick = function () {
+        var tmpl = document.getElementById('ai-tmpl-select').value;
+        var custom = document.getElementById('ai-custom-prompt').value.trim();
+        runTool('ai-generate', { template: tmpl, prompt: custom }, btnAiGen, 'term-ai');
+      };
+    }
 
+    // AI Copilot Diagnose
+    var btnAiDiag = container.querySelector('#btn-ai-diag');
+    if (btnAiDiag) {
+      btnAiDiag.onclick = function () {
+        var log = document.getElementById('ai-diag-log').value.trim();
+        runTool('ai-diagnose', { log: log }, btnAiDiag, 'term-ai');
+      };
+    }
+
+    // Config Snapshot
+    var btnDiffSnap = container.querySelector('#btn-diff-snap');
+    if (btnDiffSnap) {
+      btnDiffSnap.onclick = function () {
+        runTool('config-snapshot', {}, btnDiffSnap, 'term-diff');
+      };
+    }
+
+    // Ping Mesh Sweep
+    var btnMesh = container.querySelector('#btn-mesh-sweep');
+    if (btnMesh) {
+      btnMesh.onclick = loadMesh;
+    }
+
+    // Traffic Generator
+    var btnTraffic = container.querySelector('#btn-traffic-start');
+    if (btnTraffic) {
+      btnTraffic.onclick = function () {
+        var tgt = document.getElementById('traffic-target').value.trim();
+        var rate = document.getElementById('traffic-rate').value.trim();
+        var dur = document.getElementById('traffic-dur').value.trim();
+        runTool('mesh-traffic', { target: tgt, rate: rate, duration: dur }, btnTraffic, 'term-traffic');
+      };
+    }
+
+    // WhatsApp Alert Save
     var btnWaSave = container.querySelector('#btn-wa-save');
     if (btnWaSave) {
       btnWaSave.onclick = function () {
@@ -300,6 +466,7 @@
       };
     }
 
+    // WhatsApp Quick Test
     var btnWaQuick = container.querySelector('#btn-wa-quick');
     if (btnWaQuick) {
       btnWaQuick.onclick = function () {
@@ -333,6 +500,43 @@
       if (customColor) vEl.style.color = customColor;
     }
     if (sEl && sub) sEl.textContent = sub;
+  }
+
+  /* ── Mesh Loader ────────────────────────────────────────── */
+  function loadMesh() {
+    var target = document.getElementById('az-mesh-table');
+    if (!target) return;
+    target.innerHTML = '<div style="padding:10px;"><i class="fa fa-spinner fa-spin"></i> Testing ping reachability across cluster endpoints…</div>';
+
+    fetch(API_BASE + '/mesh/sweep')
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        var list = res.mesh || [];
+        if (!list.length) {
+          target.innerHTML = '<div style="padding:10px;color:#64748b;">No reachability data returned.</div>';
+          return;
+        }
+        var html = '<table class="table" style="width:100%;">';
+        html += '<thead><tr><th>Target Endpoint</th><th>IP Address</th><th>Status</th><th>Latency</th></tr></thead><tbody>';
+        list.forEach(function (m) {
+          var isUp = m.status === 'online';
+          var statBadge = isUp 
+            ? '<span style="color:#4ade80;font-weight:700;">● ONLINE</span>' 
+            : '<span style="color:#f87171;font-weight:700;">○ OFFLINE</span>';
+          var lat = m.latency_ms != null ? m.latency_ms + ' ms' : 'Timeout';
+          html += '<tr>' +
+            '<td style="font-weight:600;color:#f1f5f9;">' + m.name + '</td>' +
+            '<td style="font-family:monospace;color:#38bdf8;">' + m.ip + '</td>' +
+            '<td>' + statBadge + '</td>' +
+            '<td style="font-family:monospace;font-weight:600;">' + lat + '</td>' +
+          '</tr>';
+        });
+        html += '</tbody></table>';
+        target.innerHTML = html;
+      })
+      .catch(function () {
+        target.innerHTML = '<div style="padding:10px;color:#ef4444;">Failed to execute ping mesh sweep.</div>';
+      });
   }
 
   /* ── Backups Loader ─────────────────────────────────────── */
@@ -372,23 +576,6 @@
     if (!confirm('Are you sure you want to restore cluster backup:\n' + filename + '\n\nThis will restore configurations and labs.')) return;
     runTool('backup-list', { restore_file: filename }, null, 'term-backup');
   };
-
-  /* ── WhatsApp Config Loader ─────────────────────────────── */
-  function loadNotifyConfig() {
-    fetch(API_BASE + '/notify-config')
-      .then(function (r) { return r.json(); })
-      .then(function (conf) {
-        if (conf.whatsapp_phone) {
-          var pInput = document.getElementById('wa-phone');
-          if (pInput && !pInput.value) pInput.value = conf.whatsapp_phone;
-        }
-        if (conf.whatsapp_apikey) {
-          var kInput = document.getElementById('wa-key');
-          if (kInput && !kInput.value) kInput.placeholder = 'Configured (' + conf.whatsapp_apikey + ')';
-        }
-      })
-      .catch(function () {});
-  }
 
   /* ── Tool Runner with Live Stream ───────────────────────── */
   function runTool(tool, params, btn, termId) {
@@ -448,7 +635,7 @@
                 term.appendChild(doneRow);
                 term.scrollTop = term.scrollHeight;
                 if (btn) btn.disabled = false;
-                App.toast(obj.code === 0 ? '✔ Execution finished successfully' : '⚠ Execution exited with code ' + obj.code, obj.code === 0 ? 'ok' : 'err');
+                App.toast(obj.code === 0 ? '✔ Execution finished' : '⚠ Execution exited with code ' + obj.code, obj.code === 0 ? 'ok' : 'err');
                 loadStats();
               }
             } catch (e) {}

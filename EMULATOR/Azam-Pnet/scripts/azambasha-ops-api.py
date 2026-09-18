@@ -52,6 +52,32 @@ COMMANDS = {
     # Notifications
     "notify-test":   ["python3", "/usr/local/bin/azam-notify", "--test"],
     "notify-send":   None,
+
+    # AI Lab Copilot
+    "ai-generate":        None,
+    "ai-diagnose":        None,
+    "ai-templates":       ["python3", "/opt/azambasha/scripts/azambasha-ai-copilot.py", "--list-templates"],
+
+    # Config Diff & Rollback
+    "config-snapshot":    ["python3", "/opt/azambasha/scripts/azambasha-config-diff.py", "--snapshot"],
+    "config-nodes":       ["python3", "/opt/azambasha/scripts/azambasha-config-diff.py", "--nodes"],
+    "config-diff":        None,
+    "config-rollback":    None,
+
+    # Ping Mesh & Traffic Gen
+    "mesh-sweep":         ["python3", "/opt/azambasha/scripts/azambasha-ping-mesh.py", "--sweep"],
+    "mesh-traffic":       None,
+
+    # Scheduler & Quotas
+    "scheduler-status":   ["python3", "/opt/azambasha/scripts/azambasha-scheduler.py", "--status"],
+    "scheduler-check":    ["python3", "/opt/azambasha/scripts/azambasha-scheduler.py", "--check"],
+    "scheduler-stop-idle":["python3", "/opt/azambasha/scripts/azambasha-scheduler.py", "--stop-idle"],
+    "scheduler-install":  ["python3", "/opt/azambasha/scripts/azambasha-scheduler.py", "--install"],
+
+    # Cloud & Offsite Backup
+    "cloud-status":       ["python3", "/opt/azambasha/scripts/azambasha-cloud-backup.py", "--status"],
+    "cloud-sync":         ["python3", "/opt/azambasha/scripts/azambasha-cloud-backup.py", "--sync"],
+    "cloud-list":         ["python3", "/opt/azambasha/scripts/azambasha-cloud-backup.py", "--list-remote"],
 }
 
 def get_cluster_stats():
@@ -205,6 +231,46 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
                     pass
             self.reply_json(conf)
 
+        elif parsed.path == "/azam-ops/api/mesh/sweep":
+            try:
+                r = subprocess.run(["python3", "/opt/azambasha/scripts/azambasha-ping-mesh.py", "--sweep", "--json"],
+                                   capture_output=True, text=True, timeout=15)
+                self.reply_json(json.loads(r.stdout))
+            except Exception as e:
+                self.reply_json({"mesh": [], "error": str(e)})
+
+        elif parsed.path == "/azam-ops/api/ai/templates":
+            try:
+                r = subprocess.run(["python3", "/opt/azambasha/scripts/azambasha-ai-copilot.py", "--list-templates", "--json"],
+                                   capture_output=True, text=True, timeout=10)
+                self.reply_json(json.loads(r.stdout))
+            except Exception as e:
+                self.reply_json({"templates": [], "error": str(e)})
+
+        elif parsed.path == "/azam-ops/api/config/nodes":
+            try:
+                r = subprocess.run(["python3", "/opt/azambasha/scripts/azambasha-config-diff.py", "--nodes", "--json"],
+                                   capture_output=True, text=True, timeout=10)
+                self.reply_json(json.loads(r.stdout))
+            except Exception as e:
+                self.reply_json({"nodes": [], "error": str(e)})
+
+        elif parsed.path == "/azam-ops/api/scheduler/status":
+            try:
+                r = subprocess.run(["python3", "/opt/azambasha/scripts/azambasha-scheduler.py", "--status", "--json"],
+                                   capture_output=True, text=True, timeout=10)
+                self.reply_json(json.loads(r.stdout))
+            except Exception as e:
+                self.reply_json({"error": str(e)})
+
+        elif parsed.path == "/azam-ops/api/cloud/status":
+            try:
+                r = subprocess.run(["python3", "/opt/azambasha/scripts/azambasha-cloud-backup.py", "--status", "--json"],
+                                   capture_output=True, text=True, timeout=10)
+                self.reply_json(json.loads(r.stdout))
+            except Exception as e:
+                self.reply_json({"error": str(e)})
+
         else:
             self.send_response(404)
             self.end_headers()
@@ -257,6 +323,32 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
                         cmd.extend(["--lab", lab])
                     if msg:
                         cmd.extend(["--message", msg])
+                elif tool == "ai-generate":
+                    tmpl = params.get("template", "")
+                    prompt = params.get("prompt", "")
+                    if tmpl:
+                        cmd = ["python3", "/opt/azambasha/scripts/azambasha-ai-copilot.py", "--template", tmpl]
+                    elif prompt:
+                        cmd = ["python3", "/opt/azambasha/scripts/azambasha-ai-copilot.py", "--prompt", prompt]
+                    else:
+                        cmd = ["python3", "/opt/azambasha/scripts/azambasha-ai-copilot.py", "--template", "cisco_ospf"]
+                elif tool == "ai-diagnose":
+                    log_txt = params.get("log", "").strip()
+                    cmd = ["python3", "/opt/azambasha/scripts/azambasha-ai-copilot.py", "--diagnose", log_txt or "show ip ospf neighbor"]
+                elif tool == "config-diff":
+                    rev_a = params.get("rev_a", "")
+                    rev_b = params.get("rev_b", "")
+                    cmd = ["python3", "/opt/azambasha/scripts/azambasha-config-diff.py", "--diff", rev_a, rev_b]
+                elif tool == "config-rollback":
+                    lab = params.get("lab", "default_lab")
+                    node = params.get("node", "R1-Border-Gateway")
+                    rev = params.get("revision", "")
+                    cmd = ["python3", "/opt/azambasha/scripts/azambasha-config-diff.py", "--lab", lab, "--node", node, "--rollback", rev]
+                elif tool == "mesh-traffic":
+                    target = params.get("target", "192.168.1.1")
+                    rate = str(params.get("rate", "5"))
+                    dur = str(params.get("duration", "5"))
+                    cmd = ["python3", "/opt/azambasha/scripts/azambasha-ping-mesh.py", "--traffic-gen", "--target", target, "--rate", rate, "--duration", dur]
                 else:
                     self.reply_json({"error": "Command not configured"}, status=400)
                     return

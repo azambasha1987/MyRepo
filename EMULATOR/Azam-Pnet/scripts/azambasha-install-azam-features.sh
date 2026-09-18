@@ -31,7 +31,19 @@ echo -e "${CYAN}================================================================
 
 # ── 1. Copy Backend API and Install Service ─────────────────────────────────
 echo -e "\n${CYAN}[1/7]${RESET} Setting up Azam-Ops backend API service…"
-chmod +x "${SCRIPTS}/azambasha-ops-api.py" 2>/dev/null || true
+chmod +x "${SCRIPTS}"/azambasha-*.py 2>/dev/null || true
+chmod +x "${SCRIPTS}"/azambasha-*.sh 2>/dev/null || true
+
+# Symlinks for 5 new tools
+ln -sf "${SCRIPTS}/azambasha-ai-copilot.py"   /usr/local/bin/azam-ai
+ln -sf "${SCRIPTS}/azambasha-config-diff.py"  /usr/local/bin/azam-config-diff
+ln -sf "${SCRIPTS}/azambasha-ping-mesh.py"    /usr/local/bin/azam-ping-mesh
+ln -sf "${SCRIPTS}/azambasha-scheduler.py"    /usr/local/bin/azam-scheduler
+ln -sf "${SCRIPTS}/azambasha-cloud-backup.py" /usr/local/bin/azam-cloud-backup
+
+# Install scheduler timer
+python3 "${SCRIPTS}/azambasha-scheduler.py" --install 2>/dev/null || true
+
 python3 "${SCRIPTS}/azambasha-ops-api.py" --install
 echo -e "  ${GREEN}[✔]${RESET} azam-ops-api.service installed and running on port ${API_PORT}."
 

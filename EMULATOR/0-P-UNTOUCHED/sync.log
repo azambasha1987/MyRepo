@@ -637,3 +637,135 @@ error: Please commit or stash them.
 [2026-09-14 02:40:19] Sync finished. New/Changed files downloaded: 0, Unchanged skipped: 23
 [2026-09-14 02:40:19] ============================================================
 >>>>>>> 52d20c714c372bdc576b53c74107001ae0ac43e4
+[2026-09-15 10:22:45] ============================================================
+[2026-09-15 10:22:45] STARTING 24-HOUR DIFFERENTIAL CHANGE-DETECTION SYNC
+[2026-09-15 10:22:45] ============================================================
+[2026-09-15 10:22:45] [GitHub Sync] Checking for GitHub updates on parent repository (e:\Git)...
+[2026-09-15 10:22:45] [GitHub Sync] Notice: error: cannot pull with rebase: You have unstaged changes.
+error: Please commit or stash them.
+[2026-09-15 10:22:45] [Track 1] Checking Git Commits & Repository Source...
+[2026-09-15 10:22:46] [Track 1] Up to date (HEAD: 375dd61f93f32c6035ff22be886bad9c70960ac3)
+[2026-09-15 10:22:46] [Track 2] Checking Codeberg Package API & Debian Releases...
+[2026-09-15 10:22:51] [Track 2] All 23 files are unchanged. 0 bytes downloaded.
+[2026-09-15 10:22:51] Sync finished. New/Changed files downloaded: 0, Unchanged skipped: 23
+[2026-09-15 10:22:51] ============================================================
+[2026-09-16 10:11:11] ============================================================
+[2026-09-16 10:11:11] STARTING 24-HOUR DIFFERENTIAL CHANGE-DETECTION SYNC
+[2026-09-16 10:11:11] ============================================================
+[2026-09-16 10:11:11] [GitHub Sync] Checking for GitHub updates on parent repository (e:\Git)...
+[2026-09-16 10:11:11] [GitHub Sync] Notice: error: cannot pull with rebase: You have unstaged changes.
+error: Please commit or stash them.
+[2026-09-16 10:11:11] [Track 1] Checking Git Commits & Repository Source...
+[2026-09-16 10:11:12] [Track 1] Up to date (HEAD: 375dd61f93f32c6035ff22be886bad9c70960ac3)
+[2026-09-16 10:11:12] [Track 2] Checking Codeberg Package API & Debian Releases...
+[2026-09-16 10:11:17] [Track 2] All 23 files are unchanged. 0 bytes downloaded.
+[2026-09-16 10:11:18] Sync finished. New/Changed files downloaded: 0, Unchanged skipped: 23
+[2026-09-16 10:11:18] ============================================================
+[2026-09-17 14:56:12] ============================================================
+[2026-09-17 14:56:12] STARTING 24-HOUR DIFFERENTIAL CHANGE-DETECTION SYNC
+[2026-09-17 14:56:12] ============================================================
+[2026-09-17 14:56:12] [GitHub Sync] Checking for GitHub updates on parent repository (e:\Git)...
+[2026-09-17 14:56:13] [GitHub Sync] Notice: error: cannot pull with rebase: You have unstaged changes.
+error: Please commit or stash them.
+[2026-09-17 14:56:13] [Track 1] Checking Git Commits & Repository Source...
+[2026-09-17 14:56:15] [Track 1] Up to date (HEAD: 375dd61f93f32c6035ff22be886bad9c70960ac3)
+[2026-09-17 14:56:15] [Track 2] Checking Codeberg Package API & Debian Releases...
+[2026-09-17 14:56:22] [Track 2] All 23 files are unchanged. 0 bytes downloaded.
+[2026-09-17 14:56:22] Sync finished. New/Changed files downloaded: 0, Unchanged skipped: 23
+[2026-09-17 14:56:22] ============================================================
+[2026-09-18 16:45:32] ============================================================
+[2026-09-18 16:45:32] STARTING 24-HOUR DIFFERENTIAL CHANGE-DETECTION SYNC
+[2026-09-18 16:45:32] ============================================================
+[2026-09-18 16:45:32] [GitHub Sync] Checking for GitHub updates on parent repository (e:\Git)...
+[2026-09-18 16:45:32] [GitHub Sync] Notice: error: cannot pull with rebase: You have unstaged changes.
+error: Please commit or stash them.
+[2026-09-18 16:45:32] [Track 1] Checking Git Commits & Repository Source...
+[2026-09-18 16:45:34] [Track 1] Remote updates detected! Pulling latest commits...
+[2026-09-18 16:45:35] [Track 1] Updated: Updated from 375dd61f to 62948c88. Changed files:
+M	README.md
+[2026-09-18 16:45:35] [Track 2] Checking Codeberg Package API & Debian Releases...
+[2026-09-18 16:45:40] [Track 2] New file detected: debian/pool/resolute/main/pnetlab_6.8.79resolute1_amd64.deb
+[2026-09-18 16:45:40] [Track 2] New file detected: debian/pool/resolute/main/pnetlab_6.8.80resolute1_amd64.deb
+[2026-09-18 16:45:40] [Track 2] New file detected: debian/pool/resolute/main/pnetlab-docker_6.8.79resolute1_amd64.deb
+[2026-09-18 16:45:40] [Track 2] New file detected: debian/pool/resolute/main/pnetlab-docker_6.8.80resolute1_amd64.deb
+[2026-09-18 16:45:40] [Track 2] New file detected: debian/pool/resolute/main/pnetlab-guacd_6.8.79resolute1_amd64.deb
+[2026-09-18 16:45:40] [Track 2] New file detected: debian/pool/resolute/main/pnetlab-guacd_6.8.80resolute1_amd64.deb
+[2026-09-18 16:45:40] [Track 2] New file detected: debian/pool/resolute/main/pnetlab-qemu_6.8.79resolute1_amd64.deb
+[2026-09-18 16:45:40] [Track 2] New file detected: debian/pool/resolute/main/pnetlab-qemu_6.8.80resolute1_amd64.deb
+[2026-09-18 16:45:40] [Track 2] New file detected: debian/pool/resolute/main/pnetlab-satellite_6.8.79resolute1_amd64.deb
+[2026-09-18 16:45:40] [Track 2] New file detected: debian/pool/resolute/main/pnetlab-satellite_6.8.80resolute1_amd64.deb
+[2026-09-18 16:45:40] [Track 2] New file detected: debian/pool/resolute/main/pnetlab-schema_6.8.79resolute1_amd64.deb
+[2026-09-18 16:45:40] [Track 2] New file detected: debian/pool/resolute/main/pnetlab-schema_6.8.80resolute1_amd64.deb
+[2026-09-18 16:45:40] [Track 2] New file detected: debian/pool/resolute/main/pnetlab-vpcs_6.8.79resolute1_amd64.deb
+[2026-09-18 16:45:40] [Track 2] New file detected: debian/pool/resolute/main/pnetlab-vpcs_6.8.80resolute1_amd64.deb
+[2026-09-18 16:45:40] [Track 2] New file detected: debian/pool/resolute/main/pnetlab-bridge-dkms_6.8.79resolute1_all.deb
+[2026-09-18 16:45:40] [Track 2] New file detected: debian/pool/resolute/main/pnetlab-bridge-dkms_6.8.80resolute1_all.deb
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.80resolute1/pnetlab-core-assets-6.8.80resolute1.tar.zst
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.80resolute1/pnetlab-core-assets-6.8.80resolute1.tar.zst.sha256
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.80resolute1/pnetlab-core-assets-6.8.80resolute1.tar.zst.sig
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.80resolute1/pnetlab-6.8.80resolute1-manifest.json
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.80resolute1/pnetlab-6.8.80resolute1-manifest.json.sha256
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.80resolute1/pnetlab-6.8.80resolute1-manifest.json.sig
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.80resolute1/pnetlab-network-install-6.8.80resolute1.sh
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.80resolute1/pnetlab-network-install-6.8.80resolute1.sh.sha256
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.80resolute1/pnetlab-install-resolute-satellite-6.8.80resolute1.sh
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.80resolute1/pnetlab-install-resolute-satellite-6.8.80resolute1.sh.sha256
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.79resolute1/pnetlab-core-assets-6.8.79resolute1.tar.zst
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.79resolute1/pnetlab-core-assets-6.8.79resolute1.tar.zst.sha256
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.79resolute1/pnetlab-core-assets-6.8.79resolute1.tar.zst.sig
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.79resolute1/pnetlab-6.8.79resolute1-manifest.json
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.79resolute1/pnetlab-6.8.79resolute1-manifest.json.sha256
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.79resolute1/pnetlab-6.8.79resolute1-manifest.json.sig
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.79resolute1/pnetlab-network-install-6.8.79resolute1.sh
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.79resolute1/pnetlab-network-install-6.8.79resolute1.sh.sha256
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.79resolute1/pnetlab-install-resolute-satellite-6.8.79resolute1.sh
+[2026-09-18 16:45:40] [Track 2] New file detected: generic/6.8.79resolute1/pnetlab-install-resolute-satellite-6.8.79resolute1.sh.sha256
+[2026-09-18 16:45:40] [Track 2] File size change detected: generic/0.channel/pnetlab-network-install-latest.sh
+[2026-09-18 16:45:40] [Track 2] Checksum change detected: generic/0.channel/pnetlab-network-install-latest.sh.sha256
+[2026-09-18 16:45:40] [Track 2] Checksum change detected: generic/0.channel/pnetlab-latest.json
+[2026-09-18 16:45:40] [Track 2] Checksum change detected: generic/0.channel/pnetlab-latest.json.sha256
+[2026-09-18 16:45:40] [Track 2] Checksum change detected: generic/0.channel/pnetlab-latest.json.sig
+[2026-09-18 16:45:40] [Track 2] Downloading 41 changed/new files...
+[2026-09-18 16:45:43] [Track 2] DOWNLOADED & VERIFIED: pnetlab_6.8.79resolute1_amd64.deb (15,536,812 bytes | SHA256: 543ec692ef4b5e95...)
+[2026-09-18 16:45:45] [Track 2] DOWNLOADED & VERIFIED: pnetlab_6.8.80resolute1_amd64.deb (15,536,528 bytes | SHA256: 9e606f4c38ecf574...)
+[2026-09-18 16:45:45] [Track 2] DOWNLOADED & VERIFIED: pnetlab-docker_6.8.79resolute1_amd64.deb (3,616 bytes | SHA256: a825c368a569f749...)
+[2026-09-18 16:45:46] [Track 2] DOWNLOADED & VERIFIED: pnetlab-docker_6.8.80resolute1_amd64.deb (3,616 bytes | SHA256: ace5a1826ad06b77...)
+[2026-09-18 16:45:47] [Track 2] DOWNLOADED & VERIFIED: pnetlab-guacd_6.8.79resolute1_amd64.deb (463,132 bytes | SHA256: 8348f84d756273b5...)
+[2026-09-18 16:45:48] [Track 2] DOWNLOADED & VERIFIED: pnetlab-guacd_6.8.80resolute1_amd64.deb (463,150 bytes | SHA256: 4259ace7332e5e8b...)
+[2026-09-18 16:45:49] [Track 2] DOWNLOADED & VERIFIED: pnetlab-qemu_6.8.79resolute1_amd64.deb (1,275,538 bytes | SHA256: 03090de077cd5963...)
+[2026-09-18 16:45:50] [Track 2] DOWNLOADED & VERIFIED: pnetlab-qemu_6.8.80resolute1_amd64.deb (1,275,566 bytes | SHA256: 5e59014f5a24a03f...)
+[2026-09-18 16:45:52] [Track 2] DOWNLOADED & VERIFIED: pnetlab-satellite_6.8.79resolute1_amd64.deb (9,981,780 bytes | SHA256: 02fb08c36d030c6b...)
+[2026-09-18 16:45:54] [Track 2] DOWNLOADED & VERIFIED: pnetlab-satellite_6.8.80resolute1_amd64.deb (9,982,868 bytes | SHA256: 8b7ec963e1ffbd3e...)
+[2026-09-18 16:45:55] [Track 2] DOWNLOADED & VERIFIED: pnetlab-schema_6.8.79resolute1_amd64.deb (9,104 bytes | SHA256: be1c7cd96670e664...)
+[2026-09-18 16:45:55] [Track 2] DOWNLOADED & VERIFIED: pnetlab-schema_6.8.80resolute1_amd64.deb (9,184 bytes | SHA256: f705a9d0f8cdc997...)
+[2026-09-18 16:45:56] [Track 2] DOWNLOADED & VERIFIED: pnetlab-vpcs_6.8.79resolute1_amd64.deb (90,324 bytes | SHA256: 6d986a6b4c8cedfb...)
+[2026-09-18 16:45:57] [Track 2] DOWNLOADED & VERIFIED: pnetlab-vpcs_6.8.80resolute1_amd64.deb (90,386 bytes | SHA256: 4bd717e3ef14266b...)
+[2026-09-18 16:45:58] [Track 2] DOWNLOADED & VERIFIED: pnetlab-bridge-dkms_6.8.79resolute1_all.deb (142,686 bytes | SHA256: f93c80e78df04ddc...)
+[2026-09-18 16:45:59] [Track 2] DOWNLOADED & VERIFIED: pnetlab-bridge-dkms_6.8.80resolute1_all.deb (142,784 bytes | SHA256: 6e29e360ae344dd2...)
+[2026-09-18 16:46:03] [Track 2] DOWNLOADED & VERIFIED: pnetlab-core-assets-6.8.80resolute1.tar.zst (75,116,436 bytes | SHA256: b36bc01d72c33e69...)
+[2026-09-18 16:46:04] [Track 2] DOWNLOADED & VERIFIED: pnetlab-core-assets-6.8.80resolute1.tar.zst.sha256 (110 bytes | SHA256: 283b7c9a7d969629...)
+[2026-09-18 16:46:04] [Track 2] DOWNLOADED & VERIFIED: pnetlab-core-assets-6.8.80resolute1.tar.zst.sig (566 bytes | SHA256: d8ddade415116cc3...)
+[2026-09-18 16:46:05] [Track 2] DOWNLOADED & VERIFIED: pnetlab-6.8.80resolute1-manifest.json (1,826 bytes | SHA256: f2cb7e54c4bc803d...)
+[2026-09-18 16:46:05] [Track 2] DOWNLOADED & VERIFIED: pnetlab-6.8.80resolute1-manifest.json.sha256 (104 bytes | SHA256: 7a381625d425ddf0...)
+[2026-09-18 16:46:06] [Track 2] DOWNLOADED & VERIFIED: pnetlab-6.8.80resolute1-manifest.json.sig (566 bytes | SHA256: aeaded2a8d77dd71...)
+[2026-09-18 16:46:07] [Track 2] DOWNLOADED & VERIFIED: pnetlab-network-install-6.8.80resolute1.sh (176,628 bytes | SHA256: b6b3c8b0e81f1a2a...)
+[2026-09-18 16:46:07] [Track 2] DOWNLOADED & VERIFIED: pnetlab-network-install-6.8.80resolute1.sh.sha256 (109 bytes | SHA256: 6ee809f986094c3d...)
+[2026-09-18 16:46:08] [Track 2] DOWNLOADED & VERIFIED: pnetlab-install-resolute-satellite-6.8.80resolute1.sh (15,266 bytes | SHA256: 59c676866bf9b49a...)
+[2026-09-18 16:46:08] [Track 2] DOWNLOADED & VERIFIED: pnetlab-install-resolute-satellite-6.8.80resolute1.sh.sha256 (120 bytes | SHA256: af450569754f3a07...)
+[2026-09-18 16:46:13] [Track 2] DOWNLOADED & VERIFIED: pnetlab-core-assets-6.8.79resolute1.tar.zst (75,116,436 bytes | SHA256: b36bc01d72c33e69...)
+[2026-09-18 16:46:13] [Track 2] DOWNLOADED & VERIFIED: pnetlab-core-assets-6.8.79resolute1.tar.zst.sha256 (110 bytes | SHA256: 3a5dbb5a347a9f5e...)
+[2026-09-18 16:46:14] [Track 2] DOWNLOADED & VERIFIED: pnetlab-core-assets-6.8.79resolute1.tar.zst.sig (566 bytes | SHA256: 691e7b08153f8dc1...)
+[2026-09-18 16:46:14] [Track 2] DOWNLOADED & VERIFIED: pnetlab-6.8.79resolute1-manifest.json (1,826 bytes | SHA256: bbf5879a4506d78f...)
+[2026-09-18 16:46:15] [Track 2] DOWNLOADED & VERIFIED: pnetlab-6.8.79resolute1-manifest.json.sha256 (104 bytes | SHA256: fd7c469cc3b9b2c1...)
+[2026-09-18 16:46:15] [Track 2] DOWNLOADED & VERIFIED: pnetlab-6.8.79resolute1-manifest.json.sig (566 bytes | SHA256: 91f21ce160d3ed5a...)
+[2026-09-18 16:46:16] [Track 2] DOWNLOADED & VERIFIED: pnetlab-network-install-6.8.79resolute1.sh (176,628 bytes | SHA256: b6b3c8b0e81f1a2a...)
+[2026-09-18 16:46:17] [Track 2] DOWNLOADED & VERIFIED: pnetlab-network-install-6.8.79resolute1.sh.sha256 (109 bytes | SHA256: 4f4cd8d193f939cf...)
+[2026-09-18 16:46:17] [Track 2] DOWNLOADED & VERIFIED: pnetlab-install-resolute-satellite-6.8.79resolute1.sh (15,185 bytes | SHA256: 6e6469593a7a4251...)
+[2026-09-18 16:46:18] [Track 2] DOWNLOADED & VERIFIED: pnetlab-install-resolute-satellite-6.8.79resolute1.sh.sha256 (120 bytes | SHA256: c99831f9cf7c4e35...)
+[2026-09-18 16:46:19] [Track 2] DOWNLOADED & VERIFIED: pnetlab-network-install-latest.sh (176,628 bytes | SHA256: b6b3c8b0e81f1a2a...)
+[2026-09-18 16:46:19] [Track 2] DOWNLOADED & VERIFIED: pnetlab-network-install-latest.sh.sha256 (100 bytes | SHA256: c09eccbaf0b0e4c9...)
+[2026-09-18 16:46:19] [Track 2] DOWNLOADED & VERIFIED: pnetlab-latest.json (205 bytes | SHA256: 0aab09817d13048b...)
+[2026-09-18 16:46:20] [Track 2] DOWNLOADED & VERIFIED: pnetlab-latest.json.sha256 (86 bytes | SHA256: c5a9f00dfbabd883...)
+[2026-09-18 16:46:20] [Track 2] DOWNLOADED & VERIFIED: pnetlab-latest.json.sig (566 bytes | SHA256: 2c43ace7e73e3de7...)
+[2026-09-18 16:46:21] Sync finished. New/Changed files downloaded: 41, Unchanged skipped: 18
+[2026-09-18 16:46:21] ============================================================

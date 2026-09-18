@@ -30,3 +30,69 @@ MD5sum: 59e8973ea039fc1ba996ca907db02391
 SHA1: 87f96c72e6d8d512c60e9fcf4accb3c2a07a7e88
 SHA256: 8066b5796736d4c1c423be392867cb6142080cf6bfd5f4e4967e12469f7e7cb7
 SHA512: 2eefafbad0f5b50663f5982ffee36bfde5b9875489740c79f3a93acfba004de32baafe88831cce33f58adfc6d2aa68c48d302ead05d45382975dc957580eb2e3
+
+Package: pnetlab-bridge-dkms
+Version: 6.8.79resolute1
+Architecture: all
+Maintainer: PNetLab Noble Port <noble@pnetlab.local>
+Installed-Size: 865
+Depends: dkms (>= 2.1.0.0), build-essential, iproute2, kmod
+Section: kernel
+Priority: optional
+Homepage: http://www.pnetlab.com/
+Description: PNetLab patched bridge module (group-MAC forwarding)
+ Rebuilds the kernel bridge module via DKMS with BR_GROUPFWD_RESTRICTED
+ cleared, so a bridge's group_fwd_mask can forward all 01:80:c2:00:00:0X
+ reserved group MACs (STP, MAC pause, LACP/slow protocols). This lets
+ emulated switches connected through the host Linux bridges that PNetLab
+ builds per lab network form LACP EtherChannels and exchange pause frames —
+ impossible with the stock module, which hard-restricts those bits.
+ .
+ The module installs under updates/ (outranking the in-tree bridge.ko) and
+ is rebuilt automatically on every kernel upgrade. The engine writes
+ group_fwd_mask 65535 with a 65528 fallback, so labs work with or without it.
+ A boot-time self-check records whether the running bridge module actually
+ accepts the full mask, making future kernel/DKMS incompatibilities visible.
+ Runtime results are retained per kernel and can be reviewed with
+ pnetlab-bridge-dkms-status. Rollback guidance uses only the shipped registry
+ of fully gated kernels that are actually installed; it never treats a mask
+ pass as release confirmation or changes GRUB/unloads an active bridge.
+Filename: pool/resolute/main/pnetlab-bridge-dkms_6.8.79resolute1_all.deb
+Size: 142686
+MD5sum: a239bc029f4fd6c453f5114739128263
+SHA1: 1f186cb7bcdab00c2831a4e451a1b8b5a0a14aa9
+SHA256: f93c80e78df04ddcd77dcaed417fce5f6982a8f2175a27fa7ef0d49a55f26300
+SHA512: 4295f8f7fb439127663c091aa9db9f0a379a9e9c60bc8ab205f5fb31b96292e5b6e88f3bf10a5b5695121933551c23b461a84e19d5e25ca7903c5f1dd67b0ab9
+
+Package: pnetlab-bridge-dkms
+Version: 6.8.80resolute1
+Architecture: all
+Maintainer: PNetLab Noble Port <noble@pnetlab.local>
+Installed-Size: 865
+Depends: dkms (>= 2.1.0.0), build-essential, iproute2, kmod
+Section: kernel
+Priority: optional
+Homepage: http://www.pnetlab.com/
+Description: PNetLab patched bridge module (group-MAC forwarding)
+ Rebuilds the kernel bridge module via DKMS with BR_GROUPFWD_RESTRICTED
+ cleared, so a bridge's group_fwd_mask can forward all 01:80:c2:00:00:0X
+ reserved group MACs (STP, MAC pause, LACP/slow protocols). This lets
+ emulated switches connected through the host Linux bridges that PNetLab
+ builds per lab network form LACP EtherChannels and exchange pause frames —
+ impossible with the stock module, which hard-restricts those bits.
+ .
+ The module installs under updates/ (outranking the in-tree bridge.ko) and
+ is rebuilt automatically on every kernel upgrade. The engine writes
+ group_fwd_mask 65535 with a 65528 fallback, so labs work with or without it.
+ A boot-time self-check records whether the running bridge module actually
+ accepts the full mask, making future kernel/DKMS incompatibilities visible.
+ Runtime results are retained per kernel and can be reviewed with
+ pnetlab-bridge-dkms-status. Rollback guidance uses only the shipped registry
+ of fully gated kernels that are actually installed; it never treats a mask
+ pass as release confirmation or changes GRUB/unloads an active bridge.
+Filename: pool/resolute/main/pnetlab-bridge-dkms_6.8.80resolute1_all.deb
+Size: 142784
+MD5sum: b1917ec124d2c866c11d52941011a343
+SHA1: f6e9eeba56e50e11e0ada44b764ebb078e9c1586
+SHA256: 6e29e360ae344dd2cb673b16d29402363672e02f59c78b4ccb60984dfe0dcb3f
+SHA512: 25b3523668ee0f95ac2b4232cee000fadd383d65fe3affc5e4790999191a58d09061f9107b2368543ec778e56c60f3aa6f5ef95d818bb9b64537d9c4096070e2

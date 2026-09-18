@@ -646,7 +646,8 @@ required = {
     "debs", "generated_utc", "install_profiles", "min_bootstrap_version",
     "not_valid_after", "oci", "reissue", "release", "schema", "sequence",
 }
-if not isinstance(manifest, dict) or set(manifest) != required:
+allowed = required | {"satellite_installer"}
+if not isinstance(manifest, dict) or set(manifest) not in (required, allowed):
     reject("top-level keys differ from schema 1")
 if type(manifest["schema"]) is not int or manifest["schema"] != 1:
     reject("unknown schema")
@@ -687,6 +688,16 @@ for map_name in ("debs", "best_effort_debs"):
         reject(f"{map_name} contains invalid package/version")
 if set(manifest["best_effort_debs"]) != {"pnetlab-bridge-dkms"}:
     reject("best_effort_debs must contain only pnetlab-bridge-dkms")
+
+installer = manifest.get("satellite_installer")
+if installer is not None:
+    expected_name = "pnetlab-install-resolute-satellite-" + manifest["release"] + ".sh"
+    if not isinstance(installer, dict) or set(installer) != {"name", "sha256", "url"}:
+        reject("invalid satellite_installer object")
+    if installer["name"] != expected_name or not re.fullmatch(r"[0-9a-f]{64}", installer["sha256"]):
+        reject("invalid satellite installer name or sha256")
+    if not isinstance(installer["url"], str) or not installer["url"].startswith("https://"):
+        reject("satellite installer URL must use HTTPS")
 
 profiles = manifest["install_profiles"]
 if not isinstance(profiles, dict) or set(profiles) != {"master", "satellite"}:
@@ -956,7 +967,7 @@ reap_satellite_tombstones() {
     done < <(find "$releases" -mindepth 1 -maxdepth 1 -name '*.superseded.*' -print0 2>/dev/null)
 }
 
-stage_satellite_bundle() {
+stage_satellite_bundle_legacy() {
     # Master-only convenience: pre-stage the satellite deb + installer script
     # at /opt/unetlab/cluster-bundle/ (the exact layout System -> Cluster ->
     # "Deploy a satellite" push-deploy expects, normally only populated by
@@ -1233,6 +1244,39 @@ stage_satellite_bundle() {
     flock -u 7 || true
     exec 7>&-
     return "$publish_status"
+}
+
+stage_satellite_bundle() {
+    # The package-shipped publisher is shared with pnetlab-update. The older
+    # implementation above remains in this bootstrap for compatibility with
+    # extracted historical fixtures, but this definition is the one used by
+    # main() and keeps current-pointer publication in one place.
+    local helper="${PNETLAB_SATELLITE_BUNDLE_HELPER:-/opt/unetlab/scripts/pnetlab-satellite-bundle}"
+    log '=== staging satellite bundle through the shared publisher (best effort) ==='
+    [ -f "$helper" ] || {
+        warn "shared satellite bundle publisher is missing: $helper; using legacy staging path"
+        stage_satellite_bundle_legacy
+        return $?
+    }
+    [ -n "$CLUSTER_ASSET_CACHE" ] || {
+        warn 'verified core-assets did not produce a satellite asset cache'
+        return 1
+    }
+    bash "$helper" prepare \
+        --manifest "$MANIFEST_FILE" \
+        --release "$MANIFEST_RELEASE" \
+        --manifest-sequence "$MANIFEST_SEQUENCE" \
+        --manifest-reissue "$(manifest_field reissue)" \
+        --manifest-sha256 "$(sha256sum "$MANIFEST_FILE" | awk '{print $1}')" \
+        --asset-cache "$CLUSTER_ASSET_CACHE" \
+        --source netinstall \
+        --source-list "$CODEBERG_SOURCE" \
+        --repository "$CODEBERG_REPOSITORY" \
+        --log "$LOG" || return 1
+    bash "$helper" activate \
+        --release "$MANIFEST_RELEASE" \
+        --bundle-root /opt/unetlab/cluster-bundle \
+        --log "$LOG"
 }
 
 p2_path() {

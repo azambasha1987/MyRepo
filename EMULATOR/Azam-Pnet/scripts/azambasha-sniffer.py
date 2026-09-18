@@ -128,7 +128,7 @@ def write_pcap_packet(f, raw_data):
     f.write(raw_data)
 
 
-def capture_stream(interface="eth0", count=20, pcap_out=None):
+def capture_stream(interface="eth0", count=20, pcap_out=None, timeout_sec=10):
     """Capture raw packets and stream dissected lines."""
     ensure_capture_dir()
     if not pcap_out:
@@ -139,8 +139,7 @@ def capture_stream(interface="eth0", count=20, pcap_out=None):
     write_pcap_header(pcap_file)
 
     captured = 0
-    print(f"[*] Starting live packet capture on interface '{interface}' (Limit: {count} packets)...")
-    print(f"[*] Saving PCAP to: {pcap_out}\n")
+    start_time = time.time()
 
     # Try raw socket (requires root)
     try:
@@ -149,6 +148,9 @@ def capture_stream(interface="eth0", count=20, pcap_out=None):
         sock.settimeout(2.0)
 
         while captured < count:
+            if time.time() - start_time > timeout_sec:
+                print(f"\n[*] Capture timeout ({timeout_sec}s reached). Processed {captured} packets.")
+                break
             try:
                 raw_data, _ = sock.recvfrom(65535)
                 write_pcap_packet(pcap_file, raw_data)
@@ -186,8 +188,9 @@ def capture_stream(interface="eth0", count=20, pcap_out=None):
 
 def main():
     parser = argparse.ArgumentParser(description="Azam-Pnet Web Wireshark Sniffer")
-    parser.add_argument("--interface", type=str, default="eth0", help="Interface name (e.g. eth0, pnet0)")
-    parser.add_argument("--count", type=int, default=20, help="Number of packets to capture (default 20)")
+    parser.add_argument("-i", "--interface", type=str, default="eth0", help="Interface name (e.g. eth0, pnet0)")
+    parser.add_argument("-c", "--count", type=int, default=20, help="Number of packets to capture (default 20)")
+    parser.add_argument("-t", "--timeout", type=int, default=10, help="Capture timeout in seconds (default 10)")
     parser.add_argument("--pcap", type=str, help="Output PCAP file path")
     parser.add_argument("--interfaces", action="store_true", help="List available capture interfaces")
     parser.add_argument("--json", action="store_true", help="Output in JSON format")
@@ -203,7 +206,7 @@ def main():
                 print(f"  • {i['interface'].ljust(15)} ({i['status']})")
         return
 
-    capture_stream(args.interface, args.count, args.pcap)
+    capture_stream(args.interface, args.count, args.pcap, args.timeout)
 
 
 if __name__ == "__main__":

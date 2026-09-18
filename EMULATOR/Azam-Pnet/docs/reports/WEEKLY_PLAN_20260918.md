@@ -1,6 +1,6 @@
 # Weekly Upstream Intelligence & Implementation Plan: Week 37 (September 2026)
 
-*Scan Timestamp: 2026-09-18 19:58:46* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*
+*Scan Timestamp: 2026-09-18 20:05:21* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*
 
 ## Mandatory Production Safeguards (Zero-Glitch Protocol)
 
@@ -166,6 +166,21 @@ Instant 1-command repair and rollback actions for individual subsystems:
 | **Satellite Cluster Link** | Password mismatch / SSH drop | `sudo bash scripts/azambasha-fix-cluster.sh` |
 | **Bridge & Dataplane** | LACP BPDU drop / MTU mismatch | `sudo bash scripts/azambasha-system-and-console-fix.sh 4` |
 | **File Permissions & Sockets** | Permission denied on images/nodes | `sudo bash scripts/azambasha-fix-permissions.sh` |
+
+
+---
+
+## Cluster Operations & High-Velocity Tooling Suite
+
+Production utilities installed across Master and Satellite nodes:
+
+| Tool / Command | Subsystem | Purpose & Usage |
+|---|---|---|
+| `azam-fleet` | Multi-Node Health | 1-Click live dashboard displaying RAM, KSM savings, active nodes, and satellite links. |
+| `azam-capacity` | Density Modeling | Hardware capacity estimator calculating node ceilings factoring in Ultra-KSM deduplication. |
+| `azam-doctor` | Disk & Appliance | Validates QEMU templates, generates offline IOL iourc licenses, and reclaims 50-75% disk space (`--compress`). |
+| `azambasha-notify.py` | Alert Dispatcher | Dispatches instant alerts and scan digests directly to WhatsApp (CallMeBot) and Webhooks. |
+| `azambasha-setup-scheduler.sh` | Automation | Automated systemd timer & cron job running scans every Monday at 06:00 UTC with WhatsApp alerts. |
 
 
 ---

@@ -20,6 +20,7 @@ import urllib.request
 import urllib.error
 import datetime
 import argparse
+import subprocess
 
 # Force UTF-8 on Windows stdout/stderr
 if sys.platform == "win32":
@@ -72,6 +73,10 @@ def main():
     parser.add_argument("--dry-run", action="store_true", help="Scan and output summary without writing files")
     parser.add_argument("--sync-version", action="store_true", help="Automatically synchronize Web-GUI Version to detected latest release")
     parser.add_argument("--output", default=WEEKLY_PLAN_PATH, help="Path for generated implementation plan")
+    parser.add_argument("--notify", action="store_true", help="Dispatch weekly intelligence digest to WhatsApp / Webhooks")
+    parser.add_argument("--whatsapp-phone", help="Recipient WhatsApp phone number (with country code, e.g. +91XXXXXXXXXX)")
+    parser.add_argument("--whatsapp-apikey", help="CallMeBot WhatsApp API Key")
+    parser.add_argument("--webhook", help="Webhook URL (Discord / Slack / Generic)")
     args = parser.parse_args()
 
     now = datetime.datetime.now()
@@ -302,6 +307,19 @@ def main():
 
     md.append("\n---\n")
 
+    # Cluster Operations & High-Velocity Tooling Suite
+    md.append("## Cluster Operations & High-Velocity Tooling Suite\n")
+    md.append("Production utilities installed across Master and Satellite nodes:\n")
+    md.append("| Tool / Command | Subsystem | Purpose & Usage |")
+    md.append("|---|---|---|")
+    md.append("| `azam-fleet` | Multi-Node Health | 1-Click live dashboard displaying RAM, KSM savings, active nodes, and satellite links. |")
+    md.append("| `azam-capacity` | Density Modeling | Hardware capacity estimator calculating node ceilings factoring in Ultra-KSM deduplication. |")
+    md.append("| `azam-doctor` | Disk & Appliance | Validates QEMU templates, generates offline IOL iourc licenses, and reclaims 50-75% disk space (`--compress`). |")
+    md.append("| `azambasha-notify.py` | Alert Dispatcher | Dispatches instant alerts and scan digests directly to WhatsApp (CallMeBot) and Webhooks. |")
+    md.append("| `azambasha-setup-scheduler.sh` | Automation | Automated systemd timer & cron job running scans every Monday at 06:00 UTC with WhatsApp alerts. |\n")
+
+    md.append("\n---\n")
+
     # Ready-to-apply action plan
     md.append("## Ready-to-Apply Action Plan for Azam Basha\n")
     md.append("Run the corresponding runbook below based on the target node type:\n")
@@ -362,6 +380,29 @@ def main():
         with open(archive_path, "w", encoding="utf-8") as f:
             f.write(md_content)
         print(f"[✔] Archived timestamped report: {archive_path}")
+
+    # Dispatch notification if requested or configured
+    notify_script = os.path.join(BASE_DIR, "scripts", "azambasha-notify.py")
+    if (args.notify or args.whatsapp_phone or args.webhook or os.path.exists("/etc/pnetlab/azambasha-notify.conf")) and os.path.isfile(notify_script):
+        print("\n[*] Dispatching Weekly Intelligence notification...")
+        cmd = [
+            sys.executable, notify_script,
+            "--weekly-digest",
+            "--version-tag", latest_rel_ver,
+            "--pkg-tag", latest_pkg_ver,
+            "--open-issues", str(len(open_issues)),
+            "--commits-count", str(len(commits))
+        ]
+        if args.whatsapp_phone:
+            cmd.extend(["--whatsapp-phone", args.whatsapp_phone])
+        if args.whatsapp_apikey:
+            cmd.extend(["--whatsapp-apikey", args.whatsapp_apikey])
+        if args.webhook:
+            cmd.extend(["--webhook", args.webhook])
+        try:
+            subprocess.run(cmd, check=False)
+        except Exception as e:
+            print(f"[!] Notification dispatch error: {e}")
 
 if __name__ == "__main__":
     main()

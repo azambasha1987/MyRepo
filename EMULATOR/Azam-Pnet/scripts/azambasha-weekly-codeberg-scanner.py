@@ -303,7 +303,9 @@ def main():
     md.append("| **Web-GUI Version** | Stuck on legacy placeholder | `sudo bash scripts/azambasha-sync-gui-version.sh auto` |")
     md.append("| **Satellite Cluster Link** | Password mismatch / SSH drop | `sudo bash scripts/azambasha-fix-cluster.sh` |")
     md.append("| **Bridge & Dataplane** | LACP BPDU drop / MTU mismatch | `sudo bash scripts/azambasha-system-and-console-fix.sh 4` |")
-    md.append("| **File Permissions & Sockets** | Permission denied on images/nodes | `sudo bash scripts/azambasha-fix-permissions.sh` |\n")
+    md.append("| **File Permissions & Sockets** | Permission denied on images/nodes | `sudo bash scripts/azambasha-fix-permissions.sh` |")
+    md.append("| **HTML5 Console / Guacamole** | Console disconnects or WebSocket drop | `sudo azam-console-fix` |")
+    md.append("| **Lab Topology Backup** | Lab lost / corrupted .unl file | `sudo azam-backup --backup` |\n")
 
     md.append("\n---\n")
 
@@ -315,7 +317,11 @@ def main():
     md.append("| `azam-fleet` | Multi-Node Health | 1-Click live dashboard displaying RAM, KSM savings, active nodes, and satellite links. |")
     md.append("| `azam-capacity` | Density Modeling | Hardware capacity estimator calculating node ceilings factoring in Ultra-KSM deduplication. |")
     md.append("| `azam-doctor` | Disk & Appliance | Validates QEMU templates, generates offline IOL iourc licenses, and reclaims 50-75% disk space (`--compress`). |")
-    md.append("| `azambasha-notify.py` | Alert Dispatcher | Dispatches instant alerts and scan digests directly to WhatsApp (CallMeBot) and Webhooks. |")
+    md.append("| `azam-notify` | Alert Dispatcher | Dispatches instant alerts and weekly digests directly to WhatsApp (CallMeBot API) and Webhooks. |")
+    md.append("| `azam-bench <SAT_IP>` | Dataplane QoS | Probes MTU 9000 non-fragmented delivery, RDMA RXE counters, and iperf3 throughput to Satellite. |")
+    md.append("| `azam-bootstorm --lab <PATH>` | Boot Orchestrator | Staggered anti-bootstorm node startup: heavy -> medium -> light batches with configurable delay. |")
+    md.append("| `azam-console-fix` | HTML5 Consoles | Repairs Apache WebSocket tunnel, guacd health, stale pipes, and generates Windows .reg URL handlers. |")
+    md.append("| `azam-backup` | Lab Backup/Restore | Snapshot of all .unl topologies, device configs, and MySQL lab hierarchy with 1-command restore. |")
     md.append("| `azambasha-setup-scheduler.sh` | Automation | Automated systemd timer & cron job running scans every Monday at 06:00 UTC with WhatsApp alerts. |\n")
 
     md.append("\n---\n")

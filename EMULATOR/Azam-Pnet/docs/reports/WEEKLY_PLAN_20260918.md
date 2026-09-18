@@ -1,6 +1,6 @@
 # Weekly Upstream Intelligence & Implementation Plan: Week 37 (September 2026)
 
-*Scan Timestamp: 2026-09-18 20:09:29* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*
+*Scan Timestamp: 2026-09-18 20:31:12* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*
 
 ## Mandatory Production Safeguards (Zero-Glitch Protocol)
 
@@ -166,6 +166,8 @@ Instant 1-command repair and rollback actions for individual subsystems:
 | **Satellite Cluster Link** | Password mismatch / SSH drop | `sudo bash scripts/azambasha-fix-cluster.sh` |
 | **Bridge & Dataplane** | LACP BPDU drop / MTU mismatch | `sudo bash scripts/azambasha-system-and-console-fix.sh 4` |
 | **File Permissions & Sockets** | Permission denied on images/nodes | `sudo bash scripts/azambasha-fix-permissions.sh` |
+| **HTML5 Console / Guacamole** | Console disconnects or WebSocket drop | `sudo azam-console-fix` |
+| **Lab Topology Backup** | Lab lost / corrupted .unl file | `sudo azam-backup --backup` |
 
 
 ---
@@ -179,7 +181,11 @@ Production utilities installed across Master and Satellite nodes:
 | `azam-fleet` | Multi-Node Health | 1-Click live dashboard displaying RAM, KSM savings, active nodes, and satellite links. |
 | `azam-capacity` | Density Modeling | Hardware capacity estimator calculating node ceilings factoring in Ultra-KSM deduplication. |
 | `azam-doctor` | Disk & Appliance | Validates QEMU templates, generates offline IOL iourc licenses, and reclaims 50-75% disk space (`--compress`). |
-| `azambasha-notify.py` | Alert Dispatcher | Dispatches instant alerts and scan digests directly to WhatsApp (CallMeBot) and Webhooks. |
+| `azam-notify` | Alert Dispatcher | Dispatches instant alerts and weekly digests directly to WhatsApp (CallMeBot API) and Webhooks. |
+| `azam-bench <SAT_IP>` | Dataplane QoS | Probes MTU 9000 non-fragmented delivery, RDMA RXE counters, and iperf3 throughput to Satellite. |
+| `azam-bootstorm --lab <PATH>` | Boot Orchestrator | Staggered anti-bootstorm node startup: heavy -> medium -> light batches with configurable delay. |
+| `azam-console-fix` | HTML5 Consoles | Repairs Apache WebSocket tunnel, guacd health, stale pipes, and generates Windows .reg URL handlers. |
+| `azam-backup` | Lab Backup/Restore | Snapshot of all .unl topologies, device configs, and MySQL lab hierarchy with 1-command restore. |
 | `azambasha-setup-scheduler.sh` | Automation | Automated systemd timer & cron job running scans every Monday at 06:00 UTC with WhatsApp alerts. |
 
 

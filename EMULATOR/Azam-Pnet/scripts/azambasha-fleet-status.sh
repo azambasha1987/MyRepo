@@ -42,9 +42,15 @@ KSM_SAVED_GB=$(awk "BEGIN {printf \"%.2f\", ($KSM_PAGES * 4096) / (1024 * 1024 *
 KSM_RUN=$(cat /sys/kernel/mm/ksm/run 2>/dev/null || echo "0")
 
 # Running Nodes
-QEMU_COUNT=$(pgrep -c -f "qemu-system" 2>/dev/null || echo "0")
-IOL_COUNT=$(pgrep -c -f "iol" 2>/dev/null || echo "0")
-DOCKER_COUNT=$(docker ps -q 2>/dev/null | wc -l || echo "0")
+QEMU_COUNT=$(pgrep -f "qemu-system" 2>/dev/null | wc -l)
+IOL_COUNT=$(pgrep -f "iol" 2>/dev/null | wc -l)
+DOCKER_COUNT=$(docker ps -q 2>/dev/null | wc -l)
+QEMU_COUNT=${QEMU_COUNT//[[:space:]]/}
+IOL_COUNT=${IOL_COUNT//[[:space:]]/}
+DOCKER_COUNT=${DOCKER_COUNT//[[:space:]]/}
+QEMU_COUNT=${QEMU_COUNT:-0}
+IOL_COUNT=${IOL_COUNT:-0}
+DOCKER_COUNT=${DOCKER_COUNT:-0}
 TOTAL_NODES=$((QEMU_COUNT + IOL_COUNT + DOCKER_COUNT))
 
 # Dataplane & Network
@@ -54,8 +60,12 @@ BPDU_MASK=$(cat /sys/class/net/pnet0/bridge/group_fwd_mask 2>/dev/null || echo "
 # Version
 VERSION_STR="v6.8.79 (6.8.79resolute1)"
 if [ -f "/opt/unetlab/html/includes/version.php" ]; then
-    VERSION_VAL=$(grep "PNET_RELEASE" /opt/unetlab/html/includes/version.php | cut -d"'" -f4 2>/dev/null || echo "6.8.79")
-    VERSION_STR="v${VERSION_VAL}"
+    VERSION_VAL=$(grep "PNET_RELEASE" /opt/unetlab/html/includes/version.php | head -n1 | grep -oP "(?<=')[^']+(?=')" | tail -n1 || echo "6.8.79")
+    if [[ "$VERSION_VAL" == v* ]]; then
+        VERSION_STR="${VERSION_VAL}"
+    else
+        VERSION_STR="v${VERSION_VAL}"
+    fi
 fi
 
 echo -e "${CYAN}================================================================================"

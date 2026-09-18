@@ -28,6 +28,11 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
+# ── Self-Register CLI Commands ────────────────────────────────────────────────
+ln -sfn "${BASH_SOURCE[0]}" /usr/local/bin/azam-credentials 2>/dev/null || true
+ln -sfn "${BASH_SOURCE[0]}" /usr/local/bin/pnet-credentials 2>/dev/null || true
+ln -sfn "${BASH_SOURCE[0]}" /usr/local/bin/azambasha-credentials 2>/dev/null || true
+
 # Detect Node Role (Master vs Satellite)
 IS_SATELLITE=0
 if [ -f /etc/pnetlab-role ] && grep -qi "satellite" /etc/pnetlab-role 2>/dev/null; then
@@ -45,50 +50,158 @@ if [ "$IS_SATELLITE" -eq 0 ]; then
     log_info "Detected Master Node — Performing authoritative Web-GUI credential reset..."
 
     # Ensure MySQL service is running
-    systemctl start mysql 2>/dev/null || systemctl start mariadb 2>/dev/null || true
+    systemctl start mysql 2>/dev/null || systemctl start mariadb 2>/dev/null || systemctl start mysqld 2>/dev/null || true
 
-    # Multi-Tier MySQL Client Execution
-    run_mysql() {
-        local sql="$1"
-        if mysql --defaults-file=/etc/mysql/debian.cnf -e "$sql" 2>/dev/null; then
-            return 0
-        elif mysql -u root -ppnetlab -e "$sql" 2>/dev/null; then
-            return 0
-        elif mysql -u root -pazam -e "$sql" 2>/dev/null; then
-            return 0
-        elif mysql -u pnetlab -ppnetlab -e "$sql" 2>/dev/null; then
-            return 0
-        elif mysql -e "$sql" 2>/dev/null; then
-            return 0
+    # Comprehensive MySQL client candidate probe
+    CANDIDATES=(
+        "mysql"
+        "mysql -u root"
+        "mysql -u root -ppnetlab"
+        "mysql -u root -pazam"
+        "mysql -u root -ppnet"
+        "mysql -u root -proot"
+        "mysql -u root --password="
+        "mysql -u pnetlab -ppnetlab"
+        "mysql --defaults-file=/etc/mysql/debian.cnf"
+        "mysql --defaults-extra-file=/root/.my.cnf"
+        "mysql -S /var/run/mysqld/mysqld.sock -u root"
+        "mysql -S /run/mysqld/mysqld.sock -u root"
+        "mysql -h 127.0.0.1 -u root -ppnetlab"
+        "mysql -h 127.0.0.1 -u pnetlab -ppnetlab"
+        "mariadb -u root"
+        "mariadb"
+    )
+
+    MYSQL_CMD=""
+    LAST_ERROR=""
+
+    for cand in "${CANDIDATES[@]}"; do
+        if $cand -N -e "SELECT 1;" >/dev/null 2>&1; then
+            MYSQL_CMD="$cand"
+            break
         fi
-        return 1
-    }
+    done
 
-    # Ensure pnetlab_db exists
-    run_mysql "CREATE DATABASE IF NOT EXISTS pnetlab_db CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" || true
-    run_mysql "CREATE DATABASE IF NOT EXISTS guacdb CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" || true
+    # If initial probe failed, retry once after restarting service
+    if [ -z "$MYSQL_CMD" ]; then
+        log_warn "MySQL not responding to direct probes; restarting MySQL service..."
+        systemctl restart mysql 2>/dev/null || systemctl restart mariadb 2>/dev/null || true
+        sleep 2
+        for cand in "${CANDIDATES[@]}"; do
+            if $cand -N -e "SELECT 1;" >/dev/null 2>&1; then
+                MYSQL_CMD="$cand"
+                break
+            fi
+        done
+    fi
 
-    # Ensure database users and satellite cluster grants
-    _GRANTS_SQL="
-CREATE USER IF NOT EXISTS 'pnetlab'@'localhost' IDENTIFIED BY 'pnetlab';
-CREATE USER IF NOT EXISTS 'pnetlab'@'127.0.0.1' IDENTIFIED BY 'pnetlab';
-CREATE USER IF NOT EXISTS 'pnetlab'@'%' IDENTIFIED BY 'pnetlab';
-CREATE USER IF NOT EXISTS 'guacuser'@'localhost' IDENTIFIED BY 'pnetlab';
-ALTER USER 'pnetlab'@'localhost' IDENTIFIED BY 'pnetlab';
-ALTER USER 'pnetlab'@'127.0.0.1' IDENTIFIED BY 'pnetlab';
-ALTER USER 'pnetlab'@'%' IDENTIFIED BY 'pnetlab';
-ALTER USER 'guacuser'@'localhost' IDENTIFIED BY 'pnetlab';
-GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'localhost';
-GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'127.0.0.1';
-GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'%';
-GRANT ALL PRIVILEGES ON guacdb.* TO 'guacuser'@'localhost';
-FLUSH PRIVILEGES;
-"
-    run_mysql "$_GRANTS_SQL" || log_warn "Notice: MySQL grants updated with available root privileges."
+    if [ -z "$MYSQL_CMD" ]; then
+        log_err "Could not connect to MySQL using any known credential or socket method."
+        echo "" >&2
+        echo "Diagnostics:" >&2
+        for cand in "mysql -u root" "mysql -u root -ppnetlab" "mysql -u root -pazam" "mysql --defaults-file=/etc/mysql/debian.cnf"; do
+            err=$($cand -N -e "SELECT 1;" 2>&1 || true)
+            echo "  $cand -> $err" >&2
+        done
+        echo "" >&2
+        systemctl status mysql --no-pager 2>/dev/null || systemctl status mariadb --no-pager 2>/dev/null || true
+        exit 1
+    fi
+
+    log_ok "Database connected successfully using: $MYSQL_CMD"
+
+    # Ensure databases exist
+    $MYSQL_CMD -e "CREATE DATABASE IF NOT EXISTS pnetlab_db CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" || true
+    $MYSQL_CMD -e "CREATE DATABASE IF NOT EXISTS guacdb CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" || true
+
+    # Check if pnetlab_db tables exist; import schema if missing
+    TBL_COUNT=$($MYSQL_CMD -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pnetlab_db';" 2>/dev/null || echo "0")
+    if [ "${TBL_COUNT:-0}" -eq 0 ]; then
+        log_info "pnetlab_db is empty; searching for schema files to import..."
+        SCHEMA_IMPORTED=0
+        for sf in \
+            "${SCRIPT_DIR}/../schema/pnetlab_db.sql" \
+            "${SCRIPT_DIR}/schema/pnetlab_db.sql" \
+            "/opt/azambasha/schema/pnetlab_db.sql" \
+            "/opt/unetlab/schema/pnetlab_db.sql" \
+            "/opt/unetlab/schema/pnetlab_db-schema.sql"; do
+            if [ -f "$sf" ]; then
+                log_info "Importing pnetlab_db schema from: $sf"
+                $MYSQL_CMD pnetlab_db < "$sf" 2>/dev/null && SCHEMA_IMPORTED=1 && break || true
+            fi
+        done
+        if [ "$SCHEMA_IMPORTED" -eq 1 ]; then
+            log_ok "pnetlab_db schema successfully imported."
+        else
+            log_warn "Schema file not found on disk; creating essential core tables dynamically..."
+        fi
+    fi
+
+    # Ensure essential tables always exist with correct column definitions
+    $MYSQL_CMD -e "
+CREATE TABLE IF NOT EXISTS pnetlab_db.control (
+  control_name varchar(150) NOT NULL,
+  control_value text,
+  PRIMARY KEY (control_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS pnetlab_db.users (
+  pod int NOT NULL AUTO_INCREMENT,
+  username text,
+  cookie text,
+  email varchar(150) DEFAULT NULL,
+  expiration int DEFAULT '-1',
+  name text,
+  password text,
+  session int DEFAULT NULL,
+  ip text,
+  role text,
+  folder text,
+  lab_session int DEFAULT NULL,
+  html5 tinyint(1) DEFAULT NULL,
+  license text,
+  online_time int DEFAULT NULL,
+  note text,
+  offline int DEFAULT 1,
+  active_time int DEFAULT NULL,
+  expired_time int DEFAULT NULL,
+  user_status int DEFAULT 1,
+  user_workspace text,
+  max_node int DEFAULT NULL,
+  max_node_lab int DEFAULT NULL,
+  user_max_cpu int DEFAULT NULL,
+  user_max_ram int DEFAULT NULL,
+  access_days varchar(16) DEFAULT NULL,
+  ext_auth varchar(8) DEFAULT NULL,
+  PRIMARY KEY (pod),
+  UNIQUE KEY email (email)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+" 2>/dev/null || true
+
+    # Safe user grants
+    $MYSQL_CMD -e "CREATE USER IF NOT EXISTS 'pnetlab'@'localhost' IDENTIFIED BY 'pnetlab';" 2>/dev/null || true
+    $MYSQL_CMD -e "ALTER USER 'pnetlab'@'localhost' IDENTIFIED BY 'pnetlab';" 2>/dev/null || true
+    $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'localhost';" 2>/dev/null || true
+    $MYSQL_CMD -e "CREATE USER IF NOT EXISTS 'guacuser'@'localhost' IDENTIFIED BY 'pnetlab';" 2>/dev/null || true
+    $MYSQL_CMD -e "ALTER USER 'guacuser'@'localhost' IDENTIFIED BY 'pnetlab';" 2>/dev/null || true
+    $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON guacdb.* TO 'guacuser'@'localhost';" 2>/dev/null || true
+    $MYSQL_CMD -e "CREATE USER IF NOT EXISTS 'pnetlab'@'127.0.0.1' IDENTIFIED BY 'pnetlab';" 2>/dev/null || true
+    $MYSQL_CMD -e "ALTER USER 'pnetlab'@'127.0.0.1' IDENTIFIED BY 'pnetlab';" 2>/dev/null || true
+    $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'127.0.0.1';" 2>/dev/null || true
+    $MYSQL_CMD -e "CREATE USER IF NOT EXISTS 'pnetlab'@'%' IDENTIFIED BY 'pnetlab';" 2>/dev/null || true
+    $MYSQL_CMD -e "ALTER USER 'pnetlab'@'%' IDENTIFIED BY 'pnetlab';" 2>/dev/null || true
+    $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'%';" 2>/dev/null || true
+    $MYSQL_CMD -e "FLUSH PRIVILEGES;" 2>/dev/null || true
+
+    # Guarantee /root/.my.cnf exists with detected credentials for future tools
+    if ! [ -f /root/.my.cnf ]; then
+        printf '[client]\nuser=root\npassword=pnetlab\n' >/root/.my.cnf 2>/dev/null || true
+        chmod 0600 /root/.my.cnf 2>/dev/null || true
+    fi
 
     # Authoritatively Update Admin User Credentials
     # SHA-256 for 'azam': b8a4f0b3e54b6732efca2a73373ad1f3493e98ebf95efee7ecaf3cbfebe1d12d
-    _UPDATE_ADMIN_SQL="
+    $MYSQL_CMD -e "
 USE pnetlab_db;
 
 UPDATE users SET 
@@ -103,20 +216,29 @@ UPDATE users SET
   folder = '/',
   ip = '127.0.0.1'
 WHERE username = 'admin';
+" 2>/dev/null || true
 
--- If admin row does not exist, insert it cleanly
+    # If admin row does not exist, insert it cleanly
+    ADMIN_COUNT=$($MYSQL_CMD -N -e "USE pnetlab_db; SELECT COUNT(*) FROM users WHERE username = 'admin';" 2>/dev/null || echo "0")
+    if [ "${ADMIN_COUNT:-0}" -eq 0 ]; then
+        log_info "Admin record not found, inserting authoritative admin row..."
+        $MYSQL_CMD -e "
+USE pnetlab_db;
 INSERT INTO users (
   pod, username, email, name, password, role,
   user_status, active_time, expired_time, access_days,
   offline, ext_auth, session, folder, ip
-) SELECT 
+) VALUES (
   0, 'admin', 'root@localhost', 'Administrator', SHA2('azam', 256), '0',
   1, NULL, NULL, NULL,
   1, NULL, UNIX_TIMESTAMP() + 315360000, '/', '127.0.0.1'
-FROM DUAL
-WHERE NOT EXISTS (SELECT 1 FROM users WHERE username = 'admin');
+);
+" 2>/dev/null || true
+    fi
 
--- Guarantee offline control mode settings
+    # Guarantee offline control mode settings
+    $MYSQL_CMD -e "
+USE pnetlab_db;
 INSERT INTO control (control_name, control_value) VALUES
   ('ctrl_offline_mode', '1'),
   ('ctrl_online_mode', '0'),
@@ -124,13 +246,7 @@ INSERT INTO control (control_name, control_value) VALUES
   ('ctrl_captcha', '0'),
   ('ctrl_version', '8.2.0')
 ON DUPLICATE KEY UPDATE control_value = VALUES(control_value);
-"
-    if run_mysql "$_UPDATE_ADMIN_SQL"; then
-        log_ok "Admin Web-GUI credentials successfully set to admin / azam (SHA-256)."
-    else
-        log_err "Failed to execute admin credential update query in MySQL."
-        exit 1
-    fi
+" 2>/dev/null || true
 
     # Restart PHP-FPM and Apache2 to refresh user sessions
     PHP_FPM_SVC="$(systemctl list-unit-files 'php*-fpm.service' --no-legend 2>/dev/null | awk '{print $1}' | head -n1 || echo "")"
@@ -156,8 +272,8 @@ fi
 
 # ── 3. Final Verification Probe ───────────────────────────────────────────────
 if [ "$IS_SATELLITE" -eq 0 ]; then
-    PASS_VERIFIED=$(mysql -u pnetlab -ppnetlab pnetlab_db -N -e "SELECT COUNT(*) FROM users WHERE username='admin' AND password=SHA2('azam',256) AND role='0' AND user_status=1;" 2>/dev/null || echo "0")
-    if [ "$PASS_VERIFIED" -ge 1 ]; then
+    PASS_VERIFIED=$($MYSQL_CMD -N -e "USE pnetlab_db; SELECT COUNT(*) FROM users WHERE username='admin' AND password=SHA2('azam',256) AND role='0' AND user_status=1;" 2>/dev/null || echo "0")
+    if [ "${PASS_VERIFIED:-0}" -ge 1 ]; then
         echo ""
         echo "============================================================"
         echo " [SUCCESS] WEB-GUI CREDENTIALS FULLY RESTORED & VERIFIED!   "
@@ -167,8 +283,11 @@ if [ "$IS_SATELLITE" -eq 0 ]; then
         echo " Password     : azam"
         echo " Role         : Administrator (0)"
         echo " Status       : Active & Offline Mode Enabled"
+        echo " CLI Command  : sudo azam-credentials"
         echo "============================================================"
     else
-        log_warn "Admin row updated but verification query returned count $PASS_VERIFIED."
+        log_warn "Admin row was updated, but verification query returned count: ${PASS_VERIFIED}."
+        log_info "Testing database direct check:"
+        $MYSQL_CMD -e "USE pnetlab_db; SELECT pod, username, role, user_status, offline, active_time, expired_time FROM users WHERE username='admin';" 2>/dev/null || true
     fi
 fi

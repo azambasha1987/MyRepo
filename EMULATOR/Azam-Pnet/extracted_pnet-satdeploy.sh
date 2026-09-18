@@ -78,19 +78,34 @@ SSHOPT="ssh ${SSH_ARGS[*]}"
 # single-quote an argument for the remote shell
 qq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 
+# Tri-Tier Password Fallback Engine (Issue #33 Remediation):
+# Automatically recovers from upstream satellite postinst scripts resetting root password to "pnet"
+# by trying: 1) Active $SSHPASS, 2) Azam-Pnet standard "azam", 3) Upstream default "pnet".
 run_remote() {   # plain command as the login user
-    sshpass -e ssh "${SSH_ARGS[@]}" -- "${SUSER}@${IP}" "$@" </dev/null
+    if sshpass -e ssh "${SSH_ARGS[@]}" -- "${SUSER}@${IP}" "$@" </dev/null; then
+        return 0
+    fi
+    # Fallback 1: Test Azam-Pnet default password "azam"
+    if SSHPASS="azam" sshpass -e ssh "${SSH_ARGS[@]}" -- "${SUSER}@${IP}" "$@" </dev/null; then
+        export SSHPASS="azam"
+        return 0
+    fi
+    # Fallback 2: Test upstream default password "pnet"
+    if SSHPASS="pnet" sshpass -e ssh "${SSH_ARGS[@]}" -- "${SUSER}@${IP}" "$@" </dev/null; then
+        export SSHPASS="pnet"
+        return 0
+    fi
+    return 1
 }
-run_root() {     # command as root; non-root wrapper consumes the password line
-    if [ "$SUSER" = "root" ]; then
-        sshpass -e ssh "${SSH_ARGS[@]}" -- "root@${IP}" "$1"
-    else
-        local remote_cmd
 
-        # The remote wrapper consumes only the password line before sudo starts;
-        # the remaining stdin belongs exclusively to the wrapped command. Keep
-        # the password out of remote command strings/argv and disk.
-        remote_cmd="set -eu
+run_root() {     # command as root; non-root wrapper consumes the password line
+    local cmd="$1"
+    _exec_root_with_pass() {
+        local pass="$1"
+        if [ "$SUSER" = "root" ]; then
+            SSHPASS="$pass" sshpass -e ssh "${SSH_ARGS[@]}" -- "root@${IP}" "$cmd"
+        else
+            local remote_cmd="set -eu
 umask 077
 d=\$(mktemp -d /dev/shm/.pnetlab-sudo-askpass.XXXXXX)
 cleanup() {
@@ -103,11 +118,28 @@ export PNETLAB_SUDO_PASS
 printf '%s\n' '#!/bin/sh' \
     'printf \"%s\" \"\$PNETLAB_SUDO_PASS\"' > \"\$d/askpass\"
 chmod 700 \"\$d/askpass\"
-SUDO_ASKPASS=\"\$d/askpass\" sudo -A -p '' bash -c $(qq "$1")"
+SUDO_ASKPASS=\"\$d/askpass\" sudo -A -p '' bash -c $(qq "$cmd")"
 
-        { printf '%s\n' "$SUDO_PASS"; cat; } | \
-            sshpass -e ssh "${SSH_ARGS[@]}" -- "${SUSER}@${IP}" "$remote_cmd"
+            { printf '%s\n' "$SUDO_PASS"; cat; } | \
+                SSHPASS="$pass" sshpass -e ssh "${SSH_ARGS[@]}" -- "${SUSER}@${IP}" "$remote_cmd"
+        fi
+    }
+
+    # Attempt 1: Current active SSHPASS
+    if _exec_root_with_pass "${SSHPASS:-azam}"; then
+        return 0
     fi
+    # Attempt 2: Azam-Pnet standard credential "azam"
+    if _exec_root_with_pass "azam"; then
+        export SSHPASS="azam"
+        return 0
+    fi
+    # Attempt 3: Upstream fallback credential "pnet"
+    if _exec_root_with_pass "pnet"; then
+        export SSHPASS="pnet"
+        return 0
+    fi
+    return 1
 }
 
 # ── 1. sanity checks ──────────────────────────────────────────────────────────
@@ -657,6 +689,21 @@ run_root 'bash /tmp/pnet-satellite-bundle/install-resolute-satellite.sh --no-reb
     </dev/null >> "$LOG" 2>&1 \
     || fail "satellite installer failed — see cluster/jobs/${JOB}.log on the master"
 chmod 644 "$LOG" 2>/dev/null
+
+# Authoritative password realignment to "azam" (Issue #33 Remediation):
+# Guarantees that even if install-resolute-satellite.sh or satellite deb postinst reset root:pnet,
+# the satellite is immediately restored to Azam-Pnet standard credentials ("azam") before post-checks.
+run_root 'echo "root:azam" | chpasswd 2>/dev/null || true' </dev/null >> "$LOG" 2>&1 || true
+export SSHPASS="azam"
+
+# Synchronize Azam-Pnet optimization suite to satellite worker
+if [ -d "/opt/unetlab/scripts" ]; then
+    upd "running" 85 "syncing Azam-Pnet optimization stack to $IP"
+    sshpass -e scp "${SSH_ARGS[@]}" /opt/unetlab/scripts/azambasha-* "${SUSER}@${IP}:/opt/unetlab/scripts/" 2>/dev/null || true
+    run_root 'chmod +x /opt/unetlab/scripts/azambasha-*.sh /opt/unetlab/scripts/azambasha-*.py 2>/dev/null || true' </dev/null >> "$LOG" 2>&1 || true
+    run_root 'for s in azambasha-os-prerequisites.sh azambasha-system-and-console-fix.sh azambasha-dataplane-engine.sh azambasha-speed-optimizer.sh azambasha-cgroups-v2-engine.sh azambasha-roce-engine.sh azambasha-fix-node-startup.sh azambasha-fix-permissions.sh; do [ -f "/opt/unetlab/scripts/$s" ] && bash "/opt/unetlab/scripts/$s" 2>/dev/null || true; done' </dev/null >> "$LOG" 2>&1 || true
+fi
+
 run_root 'set -e; dpkg --configure -a; audit=$(dpkg --audit); [ -z "$audit" ]; apt-get check; for p in pnetlab-satellite pnetlab-qemu pnetlab-vpcs; do status="$(dpkg-query -W -f="\${db:Status-Abbrev}" "$p" 2>/dev/null)"; case "$status" in ii\ |hi\ ) ;; *) exit 1 ;; esac; done; systemctl is-active --quiet pnetlab-brokerd.service' \
     </dev/null >> "$LOG" 2>&1 \
     || fail "satellite package or broker checks failed; refusing to join"

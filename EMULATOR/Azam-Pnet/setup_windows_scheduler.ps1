@@ -37,5 +37,29 @@ Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Se
 
 Write-Host ""
 Write-Host "SUCCESS: Task '$TaskName' is registered to run daily at 03:00 AM with Highest Privileges." -ForegroundColor Green
+
+# ------------------------------------------------------------------------------
+# Task 2: Weekly Codeberg Intelligence Scan & Implementation Plan Generator
+# ------------------------------------------------------------------------------
+$WeeklyTaskName = "AzamBasha-Weekly-Codeberg-Scan"
+$WeeklyScriptPath = Join-Path (Join-Path $ScriptDir "scripts") "azambasha-weekly-codeberg-scanner.py"
+
+Write-Host ""
+Write-Host "==========================================================" -ForegroundColor Cyan
+Write-Host "Registering Windows Scheduled Task: $WeeklyTaskName" -ForegroundColor Cyan
+Write-Host "==========================================================" -ForegroundColor Cyan
+Write-Host "Target Script: $WeeklyScriptPath"
+
+$WeeklyAction = New-ScheduledTaskAction -Execute $PythonExe -Argument "`"$WeeklyScriptPath`"" -WorkingDirectory "$ScriptDir"
+$WeeklyTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 04:00AM
+
+Unregister-ScheduledTask -TaskName $WeeklyTaskName -Confirm:$false -ErrorAction SilentlyContinue
+
+Register-ScheduledTask -TaskName $WeeklyTaskName -Action $WeeklyAction -Trigger $WeeklyTrigger -Settings $Settings -Principal $Principal -Description "Weekly Codeberg issues/PR/release intelligence audit generating docs/WEEKLY_IMPLEMENTATION_PLAN.md" | Out-Null
+
+Write-Host "SUCCESS: Task '$WeeklyTaskName' is registered to run weekly every Sunday at 04:00 AM." -ForegroundColor Green
+Write-Host ""
 Write-Host "To test or trigger manually now, run:" -ForegroundColor Yellow
 Write-Host "  Start-ScheduledTask -TaskName '$TaskName'" -ForegroundColor White
+Write-Host "  Start-ScheduledTask -TaskName '$WeeklyTaskName'" -ForegroundColor White
+

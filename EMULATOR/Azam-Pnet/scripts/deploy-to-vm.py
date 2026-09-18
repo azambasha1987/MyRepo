@@ -219,9 +219,28 @@ def deploy_host(host, user, password, port, args):
         elif args.apply_all:
             log_info("Executing Master Fix & Optimization Suite...")
             execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-apply-all-fixes.sh 19")
+        elif args.satellite_fixes:
+            log_info("Executing Satellite Worker Fix & Optimization Suite...")
+            execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-apply-all-fixes.sh 25")
         elif args.test:
             log_info("Running Automated Node & Virtualization Test Suite...")
             execute_remote_cmd(client, f"cd {remote_base} && python3 scripts/azambasha-node-test-suite.py --all")
+        elif args.weekly_scan:
+            log_info("Executing Weekly Codeberg Intelligence Scan remotely...")
+            execute_remote_cmd(client, f"cd {remote_base} && python3 scripts/azambasha-weekly-codeberg-scanner.py")
+            try:
+                sftp = client.open_sftp()
+                remote_report = f"{remote_base}/docs/WEEKLY_IMPLEMENTATION_PLAN.md"
+                local_report = os.path.join(BASE_DIR, "docs", "WEEKLY_IMPLEMENTATION_PLAN.md")
+                os.makedirs(os.path.dirname(local_report), exist_ok=True)
+                sftp.get(remote_report, local_report)
+                sftp.close()
+                log_ok(f"Fetched remote weekly plan to local workspace: {local_report}")
+            except Exception as e:
+                log_warn(f"Could not retrieve remote plan file via SFTP: {e}")
+        elif args.verify:
+            log_info("Running Remote Non-Regression Health Probe...")
+            execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-fix-permissions.sh --check && sudo bash scripts/azambasha-system-and-console-fix.sh --check")
             
         client.close()
         log_ok(f"Deployment on {host} completed successfully!\n")
@@ -243,8 +262,11 @@ def main():
     parser.add_argument("--remote-dir", default="/opt/azambasha", help="Remote base directory (default: /opt/azambasha)")
     parser.add_argument("--apply-all", action="store_true", help="Apply all fixes and speed optimizations on targets")
     parser.add_argument("--test", action="store_true", help="Run node validation test suite on targets")
+    parser.add_argument("--weekly-scan", action="store_true", help="Run weekly Codeberg scanner remotely and fetch report")
+    parser.add_argument("--verify", action="store_true", help="Run remote non-regression health probes across fleet")
     parser.add_argument("--install", action="store_true", help="Run master installer on targets")
     parser.add_argument("--satellite", action="store_true", help="Run satellite worker installer on targets")
+    parser.add_argument("--satellite-fixes", action="store_true", help="Apply full optimization & issue remediation suite to a satellite worker node")
     parser.add_argument("--fix-cluster", action="store_true", help="Stage cluster bundle and configure remote DB on Master")
     parser.add_argument("--join-master", help="Master node IP address for satellite cluster join")
     parser.add_argument("--cluster-id", type=int, choices=[1, 2, 3, 4, 5], default=1, help="Satellite slot ID (default: 1)")

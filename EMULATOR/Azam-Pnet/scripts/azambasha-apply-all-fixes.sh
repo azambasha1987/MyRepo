@@ -35,10 +35,17 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
     echo "  19   Apply ALL Essential Fixes & Dark Mode Suite"
     echo "  20   Deploy Home Screen Avatar Logo Everywhere"
     echo "  21   Repair Cluster & Stage Satellite Deploy Bundle"
-    echo "  22   High-Density Heavy Node Optimizer (Cat8000, Cisco 8000, Cat9000)"
-    echo "  23   Exit"
-    echo "  --check  Run non-destructive diagnostic health check"
+    echo "  23   Soft-RoCE (RXE) & RDMA Dataplane Controller"
+    echo "  24   Run Weekly Codeberg Intelligence Scan & Implementation Plan"
+    echo "  25   Apply Full SATELLITE Worker Node Optimization Suite"
+    echo "  26   Exit"
+    echo "  --satellite  Apply full optimization suite directly in satellite worker mode"
+    echo "  --check      Run non-destructive diagnostic health check"
     exit 0
+fi
+
+if [[ "${1:-}" =~ ^(--satellite)$ ]]; then
+    CHOICE="25"
 fi
 
 if [[ "${1:-}" =~ ^(--check|--status)$ ]]; then
@@ -82,18 +89,22 @@ echo "19) Apply ALL Essential Fixes & Dark Mode Suite"
 echo "20) Deploy Home Screen Avatar Logo Everywhere"
 echo "21) Repair Cluster & Stage Satellite Deploy Bundle"
 echo "22) High-Density Heavy Node Optimizer (Cat8000, Cisco 8000, Cat9000)"
-echo "23) Exit"
+echo "23) Soft-RoCE (RXE) & RDMA Dataplane Controller"
+echo "24) Run Weekly Codeberg Intelligence Scan & Implementation Plan"
+echo "25) Apply Full SATELLITE Worker Node Optimization Suite"
+echo "26) Exit"
 echo "============================================================"
 
 # Handle interactive /dev/tty or non-interactive argument/fallback
-CHOICE=""
-if [ -n "${1:-}" ] && [[ "$1" =~ ^([1-9]|1[0-9]|2[0-3])$ ]]; then
-    CHOICE="$1"
-elif [ -e /dev/tty ]; then
-    read -rp "Select an option [1-23, default: 19]: " USER_INPUT < /dev/tty || true
-    CHOICE="${USER_INPUT:-19}"
-else
-    CHOICE="19"
+if [ -z "${CHOICE:-}" ]; then
+    if [ -n "${1:-}" ] && [[ "$1" =~ ^([1-9]|1[0-9]|2[0-6])$ ]]; then
+        CHOICE="$1"
+    elif [ -e /dev/tty ]; then
+        read -rp "Select an option [1-26, default: 19]: " USER_INPUT < /dev/tty || true
+        CHOICE="${USER_INPUT:-19}"
+    else
+        CHOICE="19"
+    fi
 fi
 
 case "$CHOICE" in
@@ -165,11 +176,84 @@ case "$CHOICE" in
         fi
         ;;
     19)
-        echo "--> [1/15] Applying Permanent Session Fix..."
-        bash "${SCRIPT_DIR}/azambasha-disable-logout.sh"
-        echo ""
-        echo "--> [2/15] Applying Lab Export & APT Fix..."
-        bash "${SCRIPT_DIR}/azambasha-fix-export-and-apt.sh"
+        # Check node role (Master vs Satellite)
+        IS_SATELLITE=0
+        if [ -f /etc/pnetlab-role ] && grep -q "satellite" /etc/pnetlab-role 2>/dev/null; then
+            IS_SATELLITE=1
+        elif dpkg -s pnetlab-satellite >/dev/null 2>&1 && ! dpkg -s pnetlab >/dev/null 2>&1; then
+            IS_SATELLITE=1
+        fi
+
+        if [ "$IS_SATELLITE" -eq 1 ]; then
+            echo "============================================================"
+            echo " [*] Detected Node Role: SATELLITE (Worker Node)"
+            echo " [*] Applying Full Satellite Optimization & Upstream Suite"
+            echo "============================================================"
+            echo "--> [1/11] Installing OS Prerequisites (OVMF, TPM, RoCE, Node.js)..."
+            if [ -f "${SCRIPT_DIR}/azambasha-os-prerequisites.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-os-prerequisites.sh" || true
+            fi
+            echo ""
+            echo "--> [2/11] Applying Bridge LACP BPDU, Wireshark & Store Fixes..."
+            if [ -f "${SCRIPT_DIR}/azambasha-system-and-console-fix.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-system-and-console-fix.sh" || true
+            fi
+            echo ""
+            echo "--> [3/11] Activating Silicon Dataplane Fast-Path Accelerator (MTU 9000)..."
+            if [ -f "${SCRIPT_DIR}/azambasha-dataplane-engine.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-dataplane-engine.sh" || true
+            fi
+            echo ""
+            echo "--> [4/11] Applying High-Performance Speed Optimizer & Ultra-KSM..."
+            if [ -f "${SCRIPT_DIR}/azambasha-speed-optimizer.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-speed-optimizer.sh" || true
+            fi
+            echo ""
+            echo "--> [5/11] Applying Cgroups v2 & System Limits..."
+            if [ -f "${SCRIPT_DIR}/azambasha-cgroups-v2-engine.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-cgroups-v2-engine.sh" || true
+            fi
+            echo ""
+            echo "--> [6/11] Applying Node Startup, Win11 SMM & Cisco IOSv Engine..."
+            if [ -f "${SCRIPT_DIR}/azambasha-fix-node-startup.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-fix-node-startup.sh" || true
+            fi
+            echo ""
+            echo "--> [7/11] Configuring Soft-RoCE (RXE) & RDMA Dataplane Drivers..."
+            if [ -f "${SCRIPT_DIR}/azambasha-roce-engine.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-roce-engine.sh" || true
+            fi
+            echo ""
+            echo "--> [8/11] Applying High-Density Heavy Node Optimizer (Worker Mode)..."
+            if [ -f "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" --satellite || true
+            fi
+            echo ""
+            echo "--> [9/11] Auditing Virtual Disks with Image Doctor..."
+            if [ -f "${SCRIPT_DIR}/azambasha-image-doctor.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-image-doctor.sh" --fix || true
+            fi
+            echo ""
+            echo "--> [10/11] Fixing File Permissions, TPM Sockets & Node Locks..."
+            if [ -f "${SCRIPT_DIR}/azambasha-fix-permissions.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-fix-permissions.sh" || true
+            fi
+            echo ""
+            echo "--> [11/11] Confirming Authoritative Credentials (azam) & Banner..."
+            echo "root:azam" | chpasswd 2>/dev/null || true
+            if [ -f "${SCRIPT_DIR}/azambasha-update-banner.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-update-banner.sh" || true
+            fi
+            echo ""
+            echo "============================================================"
+            echo " [SUCCESS] SATELLITE WORKER NODE ENHANCEMENTS APPLIED!      "
+            echo "============================================================"
+        else
+            echo "--> [1/15] Applying Permanent Session Fix..."
+            bash "${SCRIPT_DIR}/azambasha-disable-logout.sh"
+            echo ""
+            echo "--> [2/15] Applying Lab Export & APT Fix..."
+            bash "${SCRIPT_DIR}/azambasha-fix-export-and-apt.sh"
         echo ""
         echo "--> [3/15] Applying 512MB Upload Limits & Docker Routing..."
         bash "${SCRIPT_DIR}/azambasha-upload-and-docker-fix.sh"
@@ -232,14 +316,30 @@ case "$CHOICE" in
             bash "${SCRIPT_DIR}/azambasha-fix-cluster.sh" || true
         fi
         echo ""
-        echo "--> [18/18] Applying High-Density Heavy Node Optimizer (Cat8000, Cisco 8000, Cat9000)..."
+        echo "--> [18/21] Applying High-Density Heavy Node Optimizer (Cat8000, Cisco 8000, Cat9000)..."
         if [ -f "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" ]; then
             bash "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" || true
+        fi
+        echo ""
+        echo "--> [19/21] Verifying Soft-RoCE (RXE) & RDMA Dataplane Drivers..."
+        if [ -f "${SCRIPT_DIR}/azambasha-roce-engine.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-roce-engine.sh" --status || true
+        fi
+        echo ""
+        echo "--> [20/21] Applying Web UI Usability, Canvas Settings & Draggable Modals..."
+        if [ -f "${SCRIPT_DIR}/azambasha-gui-enhancements.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-gui-enhancements.sh" || true
+        fi
+        echo ""
+        echo "--> [21/21] Running Non-Regression Pre/Post Sanity Health Probe..."
+        if [ -f "${SCRIPT_DIR}/azambasha-fix-permissions.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-fix-permissions.sh" --check || true
         fi
         echo ""
         echo "============================================================"
         echo "  [SUCCESS] ALL ESSENTIAL ENHANCEMENTS APPLIED SUCCESSFULLY! "
         echo "============================================================"
+        fi
         ;;
     20)
         if [ -f "${SCRIPT_DIR}/azambasha-deploy-homelogo.sh" ]; then
@@ -263,6 +363,84 @@ case "$CHOICE" in
         fi
         ;;
     23)
+        if [ -f "${SCRIPT_DIR}/azambasha-roce-engine.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-roce-engine.sh" --status
+        else
+            echo "[!] azambasha-roce-engine.sh not found." >&2
+        fi
+        ;;
+    24)
+        if [ -f "${SCRIPT_DIR}/azambasha-weekly-codeberg-scanner.py" ]; then
+            python3 "${SCRIPT_DIR}/azambasha-weekly-codeberg-scanner.py"
+        else
+            echo "[!] azambasha-weekly-codeberg-scanner.py not found." >&2
+        fi
+        ;;
+    25)
+        echo "============================================================"
+        echo " [*] Running Dedicated Satellite Worker Optimization Suite   "
+        echo "============================================================"
+        echo "--> [1/11] Installing OS Prerequisites (OVMF, TPM, RoCE, Node.js)..."
+        if [ -f "${SCRIPT_DIR}/azambasha-os-prerequisites.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-os-prerequisites.sh" || true
+        fi
+        echo ""
+        echo "--> [2/11] Applying Bridge LACP BPDU, Wireshark & Store Fixes..."
+        if [ -f "${SCRIPT_DIR}/azambasha-system-and-console-fix.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-system-and-console-fix.sh" || true
+        fi
+        echo ""
+        echo "--> [3/11] Activating Silicon Dataplane Fast-Path Accelerator (MTU 9000)..."
+        if [ -f "${SCRIPT_DIR}/azambasha-dataplane-engine.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-dataplane-engine.sh" || true
+        fi
+        echo ""
+        echo "--> [4/11] Applying High-Performance Speed Optimizer & Ultra-KSM..."
+        if [ -f "${SCRIPT_DIR}/azambasha-speed-optimizer.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-speed-optimizer.sh" || true
+        fi
+        echo ""
+        echo "--> [5/11] Applying Cgroups v2 & System Limits..."
+        if [ -f "${SCRIPT_DIR}/azambasha-cgroups-v2-engine.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-cgroups-v2-engine.sh" || true
+        fi
+        echo ""
+        echo "--> [6/11] Applying Node Startup, Win11 SMM & Cisco IOSv Engine..."
+        if [ -f "${SCRIPT_DIR}/azambasha-fix-node-startup.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-fix-node-startup.sh" || true
+        fi
+        echo ""
+        echo "--> [7/11] Configuring Soft-RoCE (RXE) & RDMA Dataplane Drivers..."
+        if [ -f "${SCRIPT_DIR}/azambasha-roce-engine.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-roce-engine.sh" || true
+        fi
+        echo ""
+        echo "--> [8/11] Applying High-Density Heavy Node Optimizer (Worker Mode)..."
+        if [ -f "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" --satellite || true
+        fi
+        echo ""
+        echo "--> [9/11] Auditing Virtual Disks with Image Doctor..."
+        if [ -f "${SCRIPT_DIR}/azambasha-image-doctor.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-image-doctor.sh" --fix || true
+        fi
+        echo ""
+        echo "--> [10/11] Fixing File Permissions, TPM Sockets & Node Locks..."
+        if [ -f "${SCRIPT_DIR}/azambasha-fix-permissions.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-fix-permissions.sh" || true
+        fi
+        echo ""
+        echo "--> [11/11] Confirming Authoritative Credentials (azam) & Banner..."
+        echo "root:azam" | chpasswd 2>/dev/null || true
+        if [ -f "${SCRIPT_DIR}/azambasha-update-banner.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-update-banner.sh" || true
+        fi
+        echo ""
+        echo "============================================================"
+        echo " [SUCCESS] SATELLITE WORKER NODE ENHANCEMENTS APPLIED!      "
+        echo "============================================================"
+        ;;
+    26)
         echo "Exiting."
         exit 0
         ;;

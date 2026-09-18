@@ -514,6 +514,16 @@ SATELLITE_DEPS=(
     chrony
     openssh-server
     openssl
+    swtpm
+    swtpm-tools
+    ovmf
+    nodejs
+    rdma-core
+    ibverbs-providers
+    infiniband-diags
+    perftest
+    wireshark-common
+    tshark
 )
 
 for pkg in "${SATELLITE_DEPS[@]}"; do
@@ -821,6 +831,14 @@ fi
 # ── Step 9: Azam – Basha Performance Acceleration Stack ───────────────────────
 echo "[9/10] Applying Azam – Basha Silicon Dataplane & Speed Optimizations..."
 
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-os-prerequisites.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-os-prerequisites.sh" 2>/dev/null || true
+fi
+
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-system-and-console-fix.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-system-and-console-fix.sh" 2>/dev/null || true
+fi
+
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-dataplane-engine.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-dataplane-engine.sh" 2>/dev/null || true
 fi
@@ -833,6 +851,10 @@ if [ -f "${SCRIPT_DIR}/scripts/azambasha-cgroups-v2-engine.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-cgroups-v2-engine.sh" 2>/dev/null || true
 fi
 
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-roce-engine.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-roce-engine.sh" 2>/dev/null || true
+fi
+
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-permissions.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-fix-permissions.sh" 2>/dev/null || true
 fi
@@ -840,6 +862,9 @@ fi
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-block-updates.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-block-updates.sh" 2>/dev/null || true
 fi
+
+# Authoritative password realignment to "azam" (Issue #33 Remediation)
+echo "root:azam" | chpasswd 2>/dev/null || true
 
 # ── Dynamic Console Banner & Live IP Hook for Satellite Worker ───────────────
 echo "satellite" > /etc/pnetlab-role

@@ -88,6 +88,11 @@ KERNEL_MODULES=(
     ip_tables
     iptable_filter
     iptable_nat
+    rdma_rxe
+    ib_core
+    ib_uverbs
+    mac80211_hwsim
+    cfg80211
 )
 [ -n "$KVM_MOD" ] && KERNEL_MODULES+=("$KVM_MOD")
 
@@ -112,6 +117,11 @@ sch_fq_codel
 ip_tables
 iptable_filter
 iptable_nat
+rdma_rxe
+ib_core
+ib_uverbs
+mac80211_hwsim
+cfg80211
 EOF
 [ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/pnetlab.conf
 
@@ -261,6 +271,14 @@ MASTER_PREREQUISITES=(
     open-vm-tools
     qemu-guest-agent
     keyboard-configuration
+    swtpm
+    swtpm-tools
+    ovmf
+    nodejs
+    rdma-core
+    ibverbs-providers
+    infiniband-diags
+    perftest
 )
 
 FAILED_PKGS=()
@@ -350,6 +368,24 @@ if systemd-detect-virt >/dev/null 2>&1; then
     echo "vm" > /opt/unetlab/hypervisor
 else
     echo "none" > /opt/unetlab/hypervisor
+fi
+
+# Issue #10: UEFI OVMF 4M Firmware Symlinks (Ubuntu 26 compatibility)
+mkdir -p /usr/share/OVMF
+if [ -f /usr/share/OVMF/OVMF_CODE_4M.secboot.fd ] && [ ! -f /usr/share/OVMF/OVMF_CODE.fd ]; then
+    ln -sfn /usr/share/OVMF/OVMF_CODE_4M.secboot.fd /usr/share/OVMF/OVMF_CODE.fd 2>/dev/null || true
+    echo "      -> Linked /usr/share/OVMF/OVMF_CODE.fd -> OVMF_CODE_4M.secboot.fd"
+fi
+if [ -f /usr/share/OVMF/OVMF_VARS_4M.ms.fd ] && [ ! -f /usr/share/OVMF/OVMF_VARS.fd ]; then
+    ln -sfn /usr/share/OVMF/OVMF_VARS_4M.ms.fd /usr/share/OVMF/OVMF_VARS.fd 2>/dev/null || true
+    echo "      -> Linked /usr/share/OVMF/OVMF_VARS.fd -> OVMF_VARS_4M.ms.fd"
+fi
+
+# Issue #19: Fix pnet-guac-lite.service restart loop (guac.env permissions)
+if [ -f /etc/pnet-webconsole/guac.env ]; then
+    chown root:www-data /etc/pnet-webconsole/guac.env 2>/dev/null || true
+    chmod 0640 /etc/pnet-webconsole/guac.env 2>/dev/null || true
+    echo "      -> Hardened /etc/pnet-webconsole/guac.env permissions (0640 root:www-data)"
 fi
 
 # --- Phase 6: Verification & Summary ---

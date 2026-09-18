@@ -127,8 +127,24 @@ if [ -f "$LABS_JS" ]; then
     echo "  [✔] Export dialog natural sort patched in labs.js"
 fi
 
-# 6. Restart Apache
-echo "[6/6] Restarting Apache service..."
+# 6. Issue #31: Fix pnetlab-update Manifest Semantics Failed on 6.8.79+
+echo "[6/7] Patching /usr/sbin/pnetlab-update manifest semantics (Issue #31 Remediation)..."
+UPDATER_BIN="/usr/sbin/pnetlab-update"
+if [ -f "$UPDATER_BIN" ]; then
+    cp -p "$UPDATER_BIN" "${UPDATER_BIN}.bak.${TIMESTAMP}" 2>/dev/null || true
+    # Change strict set equality check to subset check so added upstream manifest keys don't break updates
+    sed -i 's/set(manifest) != required/not required.issubset(set(manifest))/' "$UPDATER_BIN" 2>/dev/null || true
+    echo "  [✔] Manifest semantics patched in /usr/sbin/pnetlab-update"
+fi
+
+# Issue #7 & #18: Configure APT to allow held package changes during updates and simulations
+cat << 'EOF' > /etc/apt/apt.conf.d/99pnetlab-held
+DPkg::options { "--force-confdef"; "--force-confold"; };
+APT::Get::allow-change-held-packages "true";
+EOF
+
+# 7. Restart Apache
+echo "[7/7] Restarting Apache service..."
 systemctl restart apache2 || service apache2 restart || true
 
 echo "=== [SUCCESS] Lab Export and APT sources fixed successfully! ==="

@@ -35,23 +35,63 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-echo "=== PNETLab AI Lab Builder & Ollama Setup ==="
+echo "=== PNETLab AI Lab Builder (Ollama & Google AI Studio Engine) ==="
 
-HOST_IP="${1:-}"
-if [[ -z "$HOST_IP" ]]; then
-    DEFAULT_GW=$(ip route | grep default | awk '{print $3}' | head -n1 || true)
-    if [ -e /dev/tty ]; then
-        read -rp "Windows Host IP [Default: ${DEFAULT_GW}]: " INPUT_IP < /dev/tty || true
-        HOST_IP="${INPUT_IP:-$DEFAULT_GW}"
-    else
-        HOST_IP="$DEFAULT_GW"
+AI_PROVIDER="ollama"
+GEMINI_KEY="${GEMINI_API_KEY:-}"
+HOST_IP=""
+OLLAMA_MODEL="qwen2.5:14b-instruct"
+
+# Parse arguments
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --gemini|-g)
+            AI_PROVIDER="gemini"
+            GEMINI_KEY="${2:-}"
+            shift 2 2>/dev/null || shift
+            ;;
+        --ollama|-o)
+            AI_PROVIDER="ollama"
+            HOST_IP="${2:-}"
+            shift 2 2>/dev/null || shift
+            ;;
+        --model|-m)
+            OLLAMA_MODEL="${2:-qwen2.5:14b-instruct}"
+            shift 2 2>/dev/null || shift
+            ;;
+        *)
+            if [ -z "$HOST_IP" ] && [[ "$1" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                HOST_IP="$1"
+            elif [ -n "$1" ]; then
+                OLLAMA_MODEL="$1"
+            fi
+            shift
+            ;;
+    esac
+done
+
+if [ "$AI_PROVIDER" = "gemini" ]; then
+    if [ -z "$GEMINI_KEY" ] && [ -e /dev/tty ]; then
+        read -rsp "Enter Google AI Studio (Gemini) API Key: " INPUT_KEY < /dev/tty || true
+        echo ""
+        GEMINI_KEY="$INPUT_KEY"
     fi
+    echo "[*] Provider   : Google AI Studio (Gemini)"
+    echo "[*] Model      : gemini-2.5-flash"
+else
+    if [[ -z "$HOST_IP" ]]; then
+        DEFAULT_GW=$(ip route | grep default | awk '{print $3}' | head -n1 || true)
+        if [ -e /dev/tty ]; then
+            read -rp "Windows Host IP [Default: ${DEFAULT_GW}]: " INPUT_IP < /dev/tty || true
+            HOST_IP="${INPUT_IP:-$DEFAULT_GW}"
+        else
+            HOST_IP="$DEFAULT_GW"
+        fi
+    fi
+    echo "[*] Provider       : Local/Host Ollama"
+    echo "[*] Windows Host IP: ${HOST_IP}"
+    echo "[*] Ollama Model   : ${OLLAMA_MODEL}"
 fi
-
-OLLAMA_MODEL="${2:-qwen2.5:14b-instruct}"
-
-echo "[*] Windows/Host IP: ${HOST_IP}"
-echo "[*] Ollama Model:   ${OLLAMA_MODEL}"
 
 # 1. System Account & Permissions
 echo "[1/5] Setting up system account and permissions..."
@@ -109,10 +149,17 @@ if not cfg["mcp"].get("bridge_secret"):
 with open(secret_path, "w") as f:
     f.write(cfg["mcp"]["bridge_secret"])
 
-cfg["provider"]["provider"] = "local"
-cfg["provider"]["base_url"] = "http://${HOST_IP}:11434/v1"
-cfg["provider"]["model"] = "${OLLAMA_MODEL}"
-cfg["provider"]["api_key"] = "ollama"
+ai_provider = "${AI_PROVIDER}"
+if ai_provider == "gemini":
+    cfg["provider"]["provider"] = "google"
+    cfg["provider"]["base_url"] = "https://generativelanguage.googleapis.com/v1beta/openai/"
+    cfg["provider"]["model"] = "gemini-2.5-flash"
+    cfg["provider"]["api_key"] = "${GEMINI_KEY}"
+else:
+    cfg["provider"]["provider"] = "local"
+    cfg["provider"]["base_url"] = "http://${HOST_IP}:11434/v1"
+    cfg["provider"]["model"] = "${OLLAMA_MODEL}"
+    cfg["provider"]["api_key"] = "ollama"
 
 tok_hash = hashlib.sha256("pnetlab_secret_token".encode()).hexdigest()
 if not cfg["mcp"].get("tokens"):

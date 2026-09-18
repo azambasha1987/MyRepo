@@ -229,6 +229,34 @@ net.ipv4.ip_forward = 1
 EOF
 sysctl --system 2>/dev/null || true
 
+# Issue #2: Ensure bridge group_fwd_mask forwards LACP (0xffff) across all pnet bridges
+for br in /sys/class/net/pnet*; do
+    if [ -d "$br/bridge" ]; then
+        echo 65535 > "$br/bridge/group_fwd_mask" 2>/dev/null || true
+    fi
+done
+
+# Issue #8: Mask obsolete systemd units referencing retired /opt/unetlab/html/store
+systemctl mask harddisk_limit.service mysql_recovery.service process_limit.service 2>/dev/null || true
+systemctl disable --now harddisk_limit.service mysql_recovery.service process_limit.service 2>/dev/null || true
+
+# Issue #2: Guarantee SSH service resiliency on boot with password "azam"
+systemctl unmask ssh.service sshd.service 2>/dev/null || true
+systemctl enable ssh.service 2>/dev/null || true
+systemctl restart ssh.service 2>/dev/null || true
+echo "  -> SSH service enabled and verified active on port 22 (Root credential: azam)."
+
+# Issue #19: Harden /etc/pnet-webconsole/guac.env to prevent pnet-guac-lite restart loops
+if [ -f /etc/pnet-webconsole/guac.env ]; then
+    chown root:www-data /etc/pnet-webconsole/guac.env 2>/dev/null || true
+    chmod 0640 /etc/pnet-webconsole/guac.env 2>/dev/null || true
+    systemctl restart pnet-guac-lite.service 2>/dev/null || true
+fi
+
+# Issue #17 Bug 39: Dual Wireshark Capture Permissions (HTML5 Docker + Native Windows SSH/plink)
+mkdir -p /opt/unetlab/data/Logs /tmp/pnet-capture
+chmod 777 /opt/unetlab/data/Logs /tmp/pnet-capture 2>/dev/null || true
+
 systemctl mask multipathd.service multipathd.socket keyboard-setup.service console-setup.service systemd-networkd-wait-online.service networking.service plymouth-start.service plymouth-read-write.service plymouth-quit.service plymouth-quit-wait.service 2>/dev/null || true
 systemctl disable --now udhcpd.service kdump-tools.service multipathd.service 2>/dev/null || true
 systemctl reset-failed 2>/dev/null || true

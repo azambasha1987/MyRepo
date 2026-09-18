@@ -94,7 +94,7 @@ else
 fi
 
 # 4. Clean Orphaned Node Locks & Stale Tap Devices
-echo "[4/5] Cleaning stale locks and orphaned node sockets..."
+echo "[4/5] Cleaning stale locks, orphaned node sockets & dead TPM sockets..."
 if [ -d /opt/unetlab/tmp ]; then
     find /opt/unetlab/tmp -name "*.lock" -delete 2>/dev/null || true
     find /opt/unetlab/tmp -name "*.socket" -delete 2>/dev/null || true
@@ -102,11 +102,21 @@ fi
 rm -f /tmp/netio*/*.lck 2>/dev/null || true
 chmod 777 /tmp/netio* 2>/dev/null || true
 
+# Suggestion D: Clean orphaned swtpm sockets from stopped Windows 11/TPM nodes
+for sock_dir in /tmp/*_swtpm-sock; do
+    if [ -d "$sock_dir" ]; then
+        if ! fuser "$sock_dir" >/dev/null 2>&1 && ! lsof +D "$sock_dir" >/dev/null 2>&1; then
+            rm -rf "$sock_dir" 2>/dev/null || true
+        fi
+    fi
+done
+
 # Prune orphaned TAP interfaces if no emulation processes are running
 if ! pgrep -f 'iol_wrapper|qemu-system|dynamips' >/dev/null 2>&1; then
     for dev in $(ip -o link show 2>/dev/null | awk -F': ' '{print $2}' | grep -E '^(vunl|ser)[0-9]+_[0-9]+' || true); do
         ip link delete "$dev" 2>/dev/null || true
     done
+    find /opt/unetlab/tmp -mindepth 2 -type f -name "*.pid" -delete 2>/dev/null || true
 fi
 
 # 5. Verify & Symlink/Generate Cisco IOL License

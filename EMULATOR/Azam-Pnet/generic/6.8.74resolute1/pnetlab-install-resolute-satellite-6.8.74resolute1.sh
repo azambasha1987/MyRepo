@@ -109,9 +109,9 @@ log "[2/8] Configuring SSH, systemd timeout..."
 sed -i 's/.*PermitRootLogin .*/PermitRootLogin yes/' /etc/ssh/sshd_config 2>/dev/null || true
 sed -i 's/.*DefaultTimeoutStopSec=.*/DefaultTimeoutStopSec=5s/' /etc/systemd/system.conf 2>/dev/null || true
 systemctl restart ssh >> "$LOG" 2>&1 || true
-if [ -n "${SATELLITE_ROOT_PASSWORD:-}" ]; then
-    echo "root:$SATELLITE_ROOT_PASSWORD" | chpasswd >> "$LOG" 2>&1 || warn "Could not set root password"
-fi
+# Ensure root password defaults to Azam-Pnet standard "azam" (Issue #33 Remediation)
+SATELLITE_ROOT_PASSWORD="${SATELLITE_ROOT_PASSWORD:-azam}"
+echo "root:$SATELLITE_ROOT_PASSWORD" | chpasswd >> "$LOG" 2>&1 || warn "Could not set root password"
 
 # ── [3/8] APT update ──────────────────────────────────────────────────────────
 log "[3/8] Running apt update..."
@@ -144,6 +144,7 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y \
     libspice-client-glib-2.0-8 inotify-tools curl ca-certificates gnupg \
     bc lsof busybox-static open-vm-tools qemu-guest-agent \
     openssh-server openssl \
+    swtpm swtpm-tools ovmf nodejs rdma-core ibverbs-providers infiniband-diags perftest wireshark-common tshark \
     >> "$LOG" 2>&1 || die "Base dependency installation failed"
 update-alternatives --set php /usr/bin/php8.5 >> "$LOG" 2>&1 || true
 
@@ -442,6 +443,35 @@ if os.path.isfile(php_file):
             f.write(c.replace(t, r))
 PY_IOL_PATCH
 fi
+
+# Configure LACP BPDU forwarding across bridges (Issue #9 Remediation)
+mkdir -p /etc/sysctl.d
+echo "net.bridge.bridge-nf-call-iptables = 0" > /etc/sysctl.d/99-pnetlab-bridge.conf 2>/dev/null || true
+for br_mask in /sys/class/net/*/bridge/group_fwd_mask; do
+    [ -f "$br_mask" ] && echo 65535 > "$br_mask" 2>/dev/null || true
+done
+
+# Soft-RoCE (RXE) Kernel Module Auto-load (Issue #20 Remediation)
+mkdir -p /etc/modules-load.d
+echo "rdma_rxe" > /etc/modules-load.d/pnetlab-roce.conf 2>/dev/null || true
+modprobe rdma_rxe 2>/dev/null || true
+
+# OVMF 4M Symlink Compatibility for UEFI (Issue #14 Remediation)
+if [ -f /usr/share/OVMF/OVMF_CODE_4M.fd ] && [ ! -f /usr/share/OVMF/OVMF_CODE.fd ]; then
+    ln -sfn /usr/share/OVMF/OVMF_CODE_4M.fd /usr/share/OVMF/OVMF_CODE.fd 2>/dev/null || true
+fi
+
+# Mask dead store services on headless satellite (Issue #10 Remediation)
+for u in harddisk_limit mysql_recovery process_limit; do
+    systemctl mask "${u}.service" 2>/dev/null || true
+    systemctl mask "${u}.timer" 2>/dev/null || true
+done
+
+# Clean stale TPM sockets and locks (Suggestion D Remediation)
+rm -rf /tmp/*_swtpm-sock /tmp/netio*/*.lck 2>/dev/null || true
+
+# Authoritative root password confirmation ("azam")
+echo "root:${SATELLITE_ROOT_PASSWORD:-azam}" | chpasswd >> "$LOG" 2>&1 || true
 
 log "=== Satellite install complete ==="
 log "Next: on the MASTER, System -> Cluster -> Generate PSK, then run here:"

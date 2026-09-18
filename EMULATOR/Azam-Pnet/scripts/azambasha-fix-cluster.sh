@@ -231,6 +231,11 @@ log_ok "Master MySQL configured on 0.0.0.0:3306 with remote satellite grants."
 log_info "[5/7] Patching Master push-deployer (/opt/unetlab/scripts/pnet-satdeploy.sh)..."
 SATDEPLOY_SCRIPT="/opt/unetlab/scripts/pnet-satdeploy.sh"
 if [ -f "$SATDEPLOY_SCRIPT" ]; then
+    # Automated Non-Regression Rollback Checkpoint
+    TS_BACKUP="${SATDEPLOY_SCRIPT}.bak.$(date +%Y%m%d%H%M%S)"
+    cp -p "$SATDEPLOY_SCRIPT" "$TS_BACKUP" 2>/dev/null || true
+    log_info "Created automated rollback backup: $TS_BACKUP"
+
     python3 - << 'PYSAT'
 import os
 import sys
@@ -240,7 +245,123 @@ try:
     with open(satdeploy, "r", encoding="utf-8", errors="replace") as f:
         code = f.read()
 
-    # 1. Allow assets=none in required_keys and bypass zoo asset checks if no zoo assets
+    # 1. Tri-Tier Password Fallback Engine (Issue #33 Remediation)
+    # Replaces default run_remote and run_root with fallback logic:
+    # 1) Current $SSHPASS, 2) "azam", 3) "pnet"
+    old_run_remote = """run_remote() {   # plain command as the login user
+    sshpass -e ssh "${SSH_ARGS[@]}" -- "${SUSER}@${IP}" "$@" </dev/null
+}"""
+    new_run_remote = """# Tri-Tier Password Fallback (Issue #33 Remediation)
+run_remote() {   # plain command as the login user
+    if sshpass -e ssh "${SSH_ARGS[@]}" -- "${SUSER}@${IP}" "$@" </dev/null; then
+        return 0
+    fi
+    if SSHPASS="azam" sshpass -e ssh "${SSH_ARGS[@]}" -- "${SUSER}@${IP}" "$@" </dev/null; then
+        export SSHPASS="azam"
+        return 0
+    fi
+    if SSHPASS="pnet" sshpass -e ssh "${SSH_ARGS[@]}" -- "${SUSER}@${IP}" "$@" </dev/null; then
+        export SSHPASS="pnet"
+        return 0
+    fi
+    return 1
+}"""
+    if old_run_remote in code:
+        code = code.replace(old_run_remote, new_run_remote)
+
+    old_run_root = """run_root() {     # command as root; non-root wrapper consumes the password line
+    if [ "$SUSER" = "root" ]; then
+        sshpass -e ssh "${SSH_ARGS[@]}" -- "root@${IP}" "$1"
+    else
+        local remote_cmd
+
+        # The remote wrapper consumes only the password line before sudo starts;
+        # the remaining stdin belongs exclusively to the wrapped command. Keep
+        # the password out of remote command strings/argv and disk.
+        remote_cmd="set -eu
+umask 077
+d=\$(mktemp -d /dev/shm/.pnetlab-sudo-askpass.XXXXXX)
+cleanup() {
+    rm -f -- \"\$d/askpass\"
+    rmdir -- \"\$d\" 2>/dev/null || true
+}
+trap cleanup EXIT
+IFS= read -r PNETLAB_SUDO_PASS
+export PNETLAB_SUDO_PASS
+printf '%s\n' '#!/bin/sh' \
+    'printf \"%s\" \"\$PNETLAB_SUDO_PASS\"' > \"\$d/askpass\"
+chmod 700 \"\$d/askpass\"
+SUDO_ASKPASS=\"\$d/askpass\" sudo -A -p '' bash -c $(qq "$1")"
+
+        { printf '%s\n' "$SUDO_PASS"; cat; } | \
+            sshpass -e ssh "${SSH_ARGS[@]}" -- "${SUSER}@${IP}" "$remote_cmd"
+    fi
+}"""
+
+    new_run_root = """run_root() {     # command as root with tri-tier fallback ("azam" / "pnet")
+    local cmd="$1"
+    _exec_root_with_pass() {
+        local pass="$1"
+        if [ "$SUSER" = "root" ]; then
+            SSHPASS="$pass" sshpass -e ssh "${SSH_ARGS[@]}" -- "root@${IP}" "$cmd"
+        else
+            local remote_cmd="set -eu
+umask 077
+d=\$(mktemp -d /dev/shm/.pnetlab-sudo-askpass.XXXXXX)
+cleanup() {
+    rm -f -- \"\$d/askpass\"
+    rmdir -- \"\$d\" 2>/dev/null || true
+}
+trap cleanup EXIT
+IFS= read -r PNETLAB_SUDO_PASS
+export PNETLAB_SUDO_PASS
+printf '%s\n' '#!/bin/sh' \
+    'printf \"%s\" \"\$PNETLAB_SUDO_PASS\"' > \"\$d/askpass\"
+chmod 700 \"\$d/askpass\"
+SUDO_ASKPASS=\"\$d/askpass\" sudo -A -p '' bash -c $(qq "$cmd")"
+
+            { printf '%s\n' "$SUDO_PASS"; cat; } | \
+                SSHPASS="$pass" sshpass -e ssh "${SSH_ARGS[@]}" -- "${SUSER}@${IP}" "$remote_cmd"
+        fi
+    }
+
+    if _exec_root_with_pass "${SSHPASS:-azam}"; then
+        return 0
+    fi
+    if _exec_root_with_pass "azam"; then
+        export SSHPASS="azam"
+        return 0
+    fi
+    if _exec_root_with_pass "pnet"; then
+        export SSHPASS="pnet"
+        return 0
+    fi
+    return 1
+}"""
+    if old_run_root in code:
+        code = code.replace(old_run_root, new_run_root)
+
+    # 2. Authoritative password realignment to "azam" post-install
+    old_post_install = """run_root 'bash /tmp/pnet-satellite-bundle/install-resolute-satellite.sh --no-reboot' \\
+    </dev/null >> "$LOG" 2>&1 \\
+    || fail "satellite installer failed — see cluster/jobs/${JOB}.log on the master"
+chmod 644 "$LOG" 2>/dev/null
+run_root 'set -e; dpkg --configure -a"""
+
+    new_post_install = """run_root 'bash /tmp/pnet-satellite-bundle/install-resolute-satellite.sh --no-reboot' \\
+    </dev/null >> "$LOG" 2>&1 \\
+    || fail "satellite installer failed — see cluster/jobs/${JOB}.log on the master"
+chmod 644 "$LOG" 2>/dev/null
+
+# Authoritative password realignment to "azam" (Issue #33 Remediation):
+run_root 'echo "root:azam" | chpasswd 2>/dev/null || true' </dev/null >> "$LOG" 2>&1 || true
+export SSHPASS="azam"
+
+run_root 'set -e; dpkg --configure -a"""
+    if old_post_install in code:
+        code = code.replace(old_post_install, new_post_install)
+
+    # 3. Allow assets=none in required_keys and bypass zoo asset checks if no zoo assets
     old1 = """required_keys = {'format', 'release', 'packages', 'optional_packages', 'assets', 'inventory_sha256', 'asset_inventory_sha256'}
 if set(values) != required_keys or values['format'] != '1' or values['release'] != release:
     reject('COMPLETE is absent, incomplete, or release-mismatched')
@@ -269,7 +390,7 @@ if has_zoo_assets and values['assets'] != ','.join(['qemu-compat-libs.tgz'] + zo
     if old1 in code:
         code = code.replace(old1, new1)
 
-    # 2. Asset inventory block: guard entire section with if has_zoo_assets
+    # 4. Asset inventory block: guard entire section with if has_zoo_assets
     old_asset_block = """asset_inventory = release_dir / 'asset-inventory.tsv'
 owned_mode(asset_inventory, 0o644, 'asset inventory')
 if not re.fullmatch(r'[0-9a-f]{64}', values['asset_inventory_sha256']):
@@ -332,7 +453,7 @@ if has_zoo_assets:
     if old_asset_block in code:
         code = code.replace(old_asset_block, new_asset_block)
 
-    # 3. TSV header: support both 5-column and 6-column formats
+    # 5. TSV header: support both 5-column and 6-column formats
     old_hdr = """if not rows or rows[0] != ['package', 'architecture', 'version', 'sha256', 'size', 'filename']:
     reject('package inventory header is invalid')
 parsed = {}
@@ -394,13 +515,13 @@ if set(actual_debs) != expected_debs:
     if old_hdr in code:
         code = code.replace(old_hdr, new_hdr)
 
-    # 4. Digest compare fallback
+    # 6. Digest compare fallback
     old_digest_chk = "if hashlib.sha256(deb.read_bytes()).hexdigest() != digest or deb.stat().st_size != size:"
     new_digest_chk = "if (digest and hashlib.sha256(deb.read_bytes()).hexdigest() != digest) or deb.stat().st_size != size:"
     if old_digest_chk in code:
         code = code.replace(old_digest_chk, new_digest_chk)
 
-    # 5. Deps and zoo asset checking block: guard entire section with if has_zoo_assets
+    # 7. Deps and zoo asset checking block: guard entire section with if has_zoo_assets
     old_zoo_block = """deps = release_dir / 'deps'
 zoo_dir = release_dir / 'qemu-zoo'
 owned_mode(deps, 0o755, 'satellite deps directory')
@@ -431,12 +552,12 @@ for asset, (digest, size, path) in asset_parsed.items():
 
     with open(satdeploy, "w", encoding="utf-8") as f:
         f.write(code)
-    print("pnet-satdeploy.sh patched successfully.")
+    print("pnet-satdeploy.sh patched successfully with Tri-Tier Password Fallback.")
 except Exception as e:
     print(f"pnet-satdeploy.sh patch warning: {e}", file=sys.stderr)
 PYSAT
     chmod 0755 "$SATDEPLOY_SCRIPT"
-    log_ok "pnet-satdeploy.sh updated for resolute bundle compatibility."
+    log_ok "pnet-satdeploy.sh updated with Tri-Tier Fallback and Resolute bundle compatibility."
 else
     log_info "pnet-satdeploy.sh not found at standard path — skipping patch."
 fi

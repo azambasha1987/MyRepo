@@ -172,9 +172,87 @@ cat << 'JSEOF' > "${THEMES_JS}/pnetlab-smart-align.js"
         });
     }
 
-    $(document).ready(initToolbar);
+    // --- Lab Canvas Settings & Zoom Persistence (Issues #28 & #30 Remediation) ---
+    function initLabPersistence() {
+        var labKey = 'pnet_lab_pref_' + (window.lab_filename || window.location.pathname);
+        try {
+            var saved = localStorage.getItem(labKey);
+            if (saved) {
+                var pref = JSON.parse(saved);
+                if (pref.zoom && window.setCanvasZoom) {
+                    window.setCanvasZoom(pref.zoom);
+                }
+                if (pref.minimap === false && $('#pnq-minimap-content').length) {
+                    $('#pnq-minimap-content').hide();
+                }
+            }
+        } catch(e) {}
+
+        $(window).on('beforeunload', function() {
+            try {
+                var pref = {
+                    zoom: window.canvasZoom || 1.0,
+                    minimap: $('#pnq-minimap-content').is(':visible'),
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(labKey, JSON.stringify(pref));
+            } catch(e) {}
+        });
+    }
+
+    // --- Draggable Edit Modals & WAN Netem Panels (Issue #17 Bugs 10 & 23 Remediation) ---
+    function initDraggableModals() {
+        $(document).on('shown.bs.modal', '.modal', function() {
+            var $modal = $(this).find('.modal-dialog');
+            if ($.fn.draggable && !$modal.hasClass('ui-draggable')) {
+                $modal.draggable({
+                    handle: '.modal-header, .panel-heading',
+                    cursor: 'move',
+                    scroll: false
+                });
+            }
+        });
+
+        // WAN Impairment panel localStorage persistence
+        $(document).on('change', '#wan_impairment_form input, .wan-impairment input', function() {
+            var formVals = {};
+            $(this).closest('form').find('input').each(function() {
+                if (this.name) formVals[this.name] = $(this).val();
+            });
+            localStorage.setItem('pnet_wan_impairment_cache', JSON.stringify(formVals));
+        });
+    }
+
+    // --- Canvas Lock Disables Node Resizing (Issue #17 Bug 30 Remediation) ---
+    function initCanvasLockWatcher() {
+        var observer = new MutationObserver(function() {
+            var isLocked = $('body').hasClass('canvas-locked') || $('#lock_canvas').hasClass('active') || window.canvasLocked;
+            if (isLocked) {
+                $('.ui-resizable-handle').hide();
+            } else {
+                $('.ui-resizable-handle').show();
+            }
+        });
+        observer.observe(document.body, { attributes: true, subtree: true, attributeFilter: ['class'] });
+    }
+
+    // --- Non-Admin Management Cloud Isolation (Issue #17 Bug 3 Remediation) ---
+    function initCloudIsolation() {
+        if (window.user_role && window.user_role !== 'admin') {
+            $('select[name="network_type"] option[value="pnet0"], select[name="network_type"] option[value="management"]').remove();
+        }
+    }
+
+    $(document).ready(function() {
+        initToolbar();
+        initLabPersistence();
+        initDraggableModals();
+        initCanvasLockWatcher();
+        initCloudIsolation();
+    });
+
     window.pnqAlign = applyAlignment;
-    console.log('[Azam-Basha] Smart Node Alignment & Auto-Layout Toolbar Active.');
+    console.log('[Azam-Basha] Smart Alignment, Canvas Persistence & Modal Controller Active.');
 })();
 JSEOF
 
@@ -560,6 +638,32 @@ if [ -f "${THEMES_CSS}/azambasha-dark.css" ] && ! grep -q "radial-gradient" "${T
 .node_frame[data-status="0"] .node_icon {
   box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.12) !important;
   border-radius: 8px !important;
+}
+
+/* Issue #17 Bug 24: Remove white line between canvas and side panel */
+#sidebar-wrapper, .sidebar-wrapper, #wrapper {
+  border-right: none !important;
+  box-shadow: none !important;
+}
+
+/* Issue #17 Bug 26: Canvas scrollbars visible, smooth, and styled */
+#canvas-parent, #canvas, body.lab-canvas {
+  overflow: auto !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: #3b82f6 #0f172a !important;
+}
+
+/* Issue #17 Bug 22: Connection label and node name collision offsets */
+.jtk-overlay.jtk-label {
+  pointer-events: none !important;
+  font-size: 11px !important;
+  background: rgba(15, 23, 42, 0.75) !important;
+  padding: 1px 4px !important;
+  border-radius: 3px !important;
+}
+.node_frame .node_name {
+  margin-top: 4px !important;
+  z-index: 20 !important;
 }
 CSSEOF
 fi

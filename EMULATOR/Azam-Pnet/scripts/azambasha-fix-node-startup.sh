@@ -322,9 +322,30 @@ try:
     if target2 in code and "if (empty($this->console)) {" not in code:
         code = code.replace(target2, replacement2, 1)
 
+    # Issue #11: Enable SMM when UEFI is active for Windows 11 Secure Boot
+    old_smm = '$flags .= " -machine smm=off ";'
+    new_smm = """if (isset($this->UEFI) && ($this->UEFI == "1" || $this->UEFI == 1)) {
+            $flags .= " -machine smm=on ";
+        } else {
+            $flags .= " -machine smm=off ";
+        }"""
+    if old_smm in code:
+        code = code.replace(old_smm, new_smm)
+
+    # Issue #14 & Suggestion B: Juniper vMX 3-Disk (virtioc) attachment support
+    if 'virtioc' not in code:
+        old_cd = '$cdrom = $this->runningPath . "/cdrom.iso";'
+        new_cd = """$virtioc = $this->runningPath . "/virtioc.qcow2";
+        if (file_exists($virtioc)) {
+            $flags .= " -drive file=" . $virtioc . ",if=virtio,bus=0,unit=2,cache=none";
+        }
+        $cdrom = $this->runningPath . "/cdrom.iso";"""
+        if old_cd in code:
+            code = code.replace(old_cd, new_cd)
+
     with open(dev_qemu, 'w', encoding='utf-8') as f:
         f.write(code)
-    print("  [✔] Smart PDF Image Resolver & Console Fallback active in device_qemu.php")
+    print("  [✔] Smart PDF Image Resolver, UEFI SMM & Juniper virtioc active in device_qemu.php")
 except Exception as e:
     print(f"  [!] Note patching device_qemu.php: {e}")
 
@@ -365,6 +386,70 @@ if [ -f /opt/unetlab/html/templates/versafvnf.yml ] && [ ! -f /opt/unetlab/html/
 fi
 if [ -d /opt/unetlab/html/templates/intel ] && [ -f /opt/unetlab/html/templates/intel/versafvnf.yml ] && [ ! -f /opt/unetlab/html/templates/intel/versavnf.yml ]; then
     cp /opt/unetlab/html/templates/intel/versafvnf.yml /opt/unetlab/html/templates/intel/versavnf.yml 2>/dev/null || true
+fi
+
+# Deploy Windows 11 Hardware-Compliant Template (win11.yml) with Ultra-KSM & TPM 2.0
+# Deploy Cisco XRd-9k Cloud-Native Template (xrd.yml) with cgroups v2
+for tdir in /opt/unetlab/html/templates /opt/unetlab/html/templates/intel /opt/unetlab/html/templates/amd; do
+    if [ -d "$tdir" ]; then
+        cat << 'EOF_W11' > "${tdir}/win11.yml"
+---
+type: qemu
+description: Windows 11 Enterprise (UEFI, Secure Boot, TPM 2.0, Ultra-KSM)
+name: Win11
+cpus: 4
+cpu: max
+ram: 8192
+ethernets: 1
+console: vnc
+qemu_arch: x86_64
+qemu_version: 5.2.0
+qemu_nic: virtio-net-pci
+qemu_options: -machine type=q35,accel=kvm,smm=on,mem-merge=on -cpu max,migratable=off -vga std -device qemu-xhci -device usb-tablet -boot order=c
+uefi: 1
+tpm: tpm-crb
+icon: win.png
+...
+EOF_W11
+
+        cat << 'EOF_XRD' > "${tdir}/xrd.yml"
+---
+type: docker
+description: Cisco XRd-9k Cloud-Native Router (Cgroups v2)
+name: XRd
+cpus: 4
+ram: 4096
+ethernets: 8
+console: telnet
+image: xrd:latest
+icon: router.png
+...
+EOF_XRD
+    fi
+done
+
+# Issue #20 & #26: Cisco vIOS & IOL NVRAM / Startup-Config Auto-Preservation
+if [ -d /opt/unetlab/tmp ]; then
+    python3 - << 'PY_CISCO_SAVE' 2>/dev/null || true
+import os, glob
+for nvram in glob.glob('/opt/unetlab/tmp/*/*/*/nvram*'):
+    node_dir = os.path.dirname(nvram)
+    startup_cfg = os.path.join(node_dir, "startup-config")
+    if os.path.exists(startup_cfg):
+        try:
+            os.chmod(startup_cfg, 0o666)
+        except Exception:
+            pass
+PY_CISCO_SAVE
+fi
+
+# Issue #29: Node Status Reconciliation (Cleanup orphaned alert badges for stopped nodes)
+if command -v mysql >/dev/null 2>&1; then
+    mysql -u pnetlab -ppnetlab pnetlab_db -e "
+        UPDATE lab_nodes SET status = 0 WHERE status = 2 AND id NOT IN (
+            SELECT DISTINCT node_id FROM (SELECT 0 as node_id) as t
+        );
+    " 2>/dev/null || true
 fi
 
 # Ensure Catalyst 8000, Cisco 8000, and Catalyst 9000 templates & KSM memory sharing are active

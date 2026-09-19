@@ -8,7 +8,7 @@ and streams real-time output via Server-Sent Events (SSE).
 ==============================================================================
 """
 import os, sys, json, subprocess, threading, queue, time, signal, shutil, re
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
 PORT = 8889
@@ -221,9 +221,11 @@ def get_cluster_stats():
 def stream_command(cmd: list, out_queue: queue.Queue):
     """Run cmd in subprocess and push lines to out_queue."""
     try:
+        sub_env = os.environ.copy()
+        sub_env["PYTHONUNBUFFERED"] = "1"
         proc = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, bufsize=1, universal_newlines=True
+            text=True, bufsize=1, universal_newlines=True, env=sub_env
         )
         for line in proc.stdout:
             out_queue.put({"type": "line", "data": line.rstrip()})
@@ -846,7 +848,7 @@ print("[*] Azam-Pnet Python SDK Loaded.")
                 self.reply_json(res_data, status=200 if res_data.get("success") else 500)
             return
 
-        if parsed.path == "/azam-ops/api/run":
+        if parsed.path in ("/azam-ops/api/run", "/api/azam/run", "/run"):
             tool = body.get("tool", "")
             params = body.get("params", {})
 
@@ -1014,7 +1016,7 @@ print("[*] Azam-Pnet Python SDK Loaded.")
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream")
             self.send_header("Cache-Control", "no-cache")
-            self.send_header("Connection", "keep-alive")
+            self.send_header("Connection", "close")
             self.send_cors()
             self.end_headers()
 
@@ -1036,6 +1038,8 @@ print("[*] Azam-Pnet Python SDK Loaded.")
                         self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
                 pass
+            finally:
+                self.close_connection = True
 
         elif parsed.path == "/azam-ops/api/restore":
             fname = body.get("filename", "")
@@ -1342,7 +1346,8 @@ def main():
     signal.signal(signal.SIGTERM, lambda s, f: sys.exit(0))
 
     port = args.port or PORT
-    server = HTTPServer(("127.0.0.1", port), AzamOpsHandler)
+    server = ThreadingHTTPServer(("127.0.0.1", port), AzamOpsHandler)
+    server.daemon_threads = True
     print(f"[*] Azam-Ops API listening on 127.0.0.1:{port}")
     try:
         server.serve_forever()

@@ -90,7 +90,7 @@ echo "20) Deploy Home Screen Avatar Logo Everywhere"
 echo "21) Repair Cluster & Stage Satellite Deploy Bundle"
 echo "22) High-Density Heavy Node Optimizer (Cat8000, Cisco 8000, Cat9000)"
 echo "23) Soft-RoCE (RXE) & RDMA Dataplane Controller"
-echo "24) Run Weekly Codeberg Intelligence Scan & Implementation Plan"
+echo "24) [Retired] Upstream Codeberg Intelligence Scanner"
 echo "25) Apply Full SATELLITE Worker Node Optimization Suite"
 echo "26) Reset Web-GUI & Cluster Database Credentials (admin / azam)"
 echo "27) Synchronize Web-GUI Version to Latest Release (v6.8.79)"
@@ -380,11 +380,7 @@ case "$CHOICE" in
         fi
         ;;
     24)
-        if [ -f "${SCRIPT_DIR}/azambasha-weekly-codeberg-scanner.py" ]; then
-            python3 "${SCRIPT_DIR}/azambasha-weekly-codeberg-scanner.py"
-        else
-            echo "[!] azambasha-weekly-codeberg-scanner.py not found." >&2
-        fi
+        echo "[*] Upstream Codeberg scanner feature has been retired per user directive."
         ;;
     25)
         echo "============================================================"

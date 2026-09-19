@@ -45,9 +45,6 @@ COMMANDS = {
     # Topology Git
     "topology-snapshot": ["python3", "/usr/local/bin/azam-topology-git", "--snapshot"],
 
-    # Scanner
-    "scanner":       ["python3", "/opt/azambasha/scripts/azambasha-weekly-codeberg-scanner.py"],
-
     # Notifications
     "notify-test":   ["python3", "/usr/local/bin/azam-notify", "--test"],
     "notify-send":   None,

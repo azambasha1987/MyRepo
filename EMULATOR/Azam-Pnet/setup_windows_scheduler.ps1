@@ -39,32 +39,14 @@ Write-Host ""
 Write-Host "SUCCESS: Task '$TaskName' is registered to run daily at 03:00 AM with Highest Privileges." -ForegroundColor Green
 
 # ------------------------------------------------------------------------------
-# Task 2: 3-Months (Quarterly) Codeberg Intelligence Scan & Update Check Plan
+# Cleanup Retired Scanner Tasks
 # ------------------------------------------------------------------------------
-$QuarterlyTaskName = "AzamBasha-Quarterly-Codeberg-Scan"
-$WeeklyTaskName = "AzamBasha-Weekly-Codeberg-Scan"
-$QuarterlyScriptPath = Join-Path (Join-Path $ScriptDir "scripts") "azambasha-weekly-codeberg-scanner.py"
+Unregister-ScheduledTask -TaskName "AzamBasha-Weekly-Codeberg-Scan" -Confirm:$false -ErrorAction SilentlyContinue
+Unregister-ScheduledTask -TaskName "AzamBasha-Quarterly-Codeberg-Scan" -Confirm:$false -ErrorAction SilentlyContinue
 
-Write-Host ""
-Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "Registering Windows Scheduled Task: $QuarterlyTaskName" -ForegroundColor Cyan
-Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "Target Script: $QuarterlyScriptPath"
-
-$QuarterlyAction = New-ScheduledTaskAction -Execute $PythonExe -Argument "`"$QuarterlyScriptPath`"" -WorkingDirectory "$ScriptDir"
-# Runs quarterly every 3 months at 09:00 AM IST
-$QuarterlyTrigger = New-ScheduledTaskTrigger -Once -At "09:00AM" -RepetitionInterval (New-TimeSpan -Days 91)
-
-# Unregister legacy weekly task and previous quarterly task
-Unregister-ScheduledTask -TaskName $WeeklyTaskName -Confirm:$false -ErrorAction SilentlyContinue
-Unregister-ScheduledTask -TaskName $QuarterlyTaskName -Confirm:$false -ErrorAction SilentlyContinue
-
-Register-ScheduledTask -TaskName $QuarterlyTaskName -Action $QuarterlyAction -Trigger $QuarterlyTrigger -Settings $Settings -Principal $Principal -Description "Quarterly 3-month Codeberg issues/PR/release intelligence audit generating docs/3_MONTHS_UPDATE_CHECK_PLAN.md" | Out-Null
-
-Write-Host "SUCCESS: Task '$QuarterlyTaskName' is registered for quarterly execution at 09:00 AM IST." -ForegroundColor Green
 Write-Host ""
 Write-Host "To test or trigger manually now, run:" -ForegroundColor Yellow
 Write-Host "  Start-ScheduledTask -TaskName '$TaskName'" -ForegroundColor White
-Write-Host "  Start-ScheduledTask -TaskName '$QuarterlyTaskName'" -ForegroundColor White
+
 
 

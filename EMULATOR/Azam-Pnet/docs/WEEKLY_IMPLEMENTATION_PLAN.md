@@ -279,7 +279,7 @@ Production utilities installed across Master and Satellite nodes:
 | `azam-ssl --generate` | HTTPS Trust | 5-year SAN cert + Windows CA trust package eliminating all browser security warnings. |
 | `azam-templates deploy <name>` | Lab Marketplace | 14-topology catalog: CCNA, BGP, MPLS, CCIE, VXLAN. 1-command deploy to PNetLab. |
 | `azam-topology-git --install` | Topology VCS | Git-backed .unl version control: auto-snapshot, XML diff, and per-commit restore. |
-| `azambasha-setup-scheduler.sh` | Automation | Systemd timer & cron for quarterly IST scans (every 3 months on the 19th at 09:00 IST). |
+| `azambasha-setup-scheduler.sh` | Automation | Scheduled task & daemon cleanup utility (upstream scanner retired per user directive). |
 
 
 ---

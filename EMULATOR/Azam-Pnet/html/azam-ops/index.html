@@ -317,9 +317,8 @@ main{padding:28px;max-width:1400px;margin:0 auto;width:100%}
   <button class="tab"        data-tab="backup"       onclick="switchTab('backup',this)">     <span class="tab-icon">💾</span> Backup & Restore</button>
   <button class="tab"        data-tab="network"      onclick="switchTab('network',this)">    <span class="tab-icon">🌐</span> Network & Console</button>
   <button class="tab"        data-tab="security"     onclick="switchTab('security',this)">   <span class="tab-icon">🔒</span> Security & SSL</button>
-  <button class="tab"        data-tab="templates"    onclick="switchTab('templates',this)">  <span class="tab-icon">📦</span> Lab Templates <span class="badge">14</span></button>
   <button class="tab"        data-tab="vcs"          onclick="switchTab('vcs',this)">        <span class="tab-icon">🕰️</span> Topology VCS</button>
-  <button class="tab"        data-tab="alerts"       onclick="switchTab('alerts',this)">     <span class="tab-icon">🔔</span> Alerts & Scans</button>
+  <button class="tab"        data-tab="alerts"       onclick="switchTab('alerts',this)">     <span class="tab-icon">🔔</span> Alerts & Notifications</button>
 </nav>
 
 <!-- ── Main ────────────────────────────────────────────────── -->
@@ -426,21 +425,6 @@ main{padding:28px;max-width:1400px;margin:0 auto;width:100%}
       <div class="tool-body">
         <div class="tool-actions"><button class="btn btn-primary" onclick="runTool('capacity',{},this)">▶ Estimate Capacity</button></div>
         <div class="terminal" id="term-capacity"></div>
-      </div>
-    </div>
-
-    <div class="tool-card">
-      <div class="tool-card-head">
-        <div class="tool-icon cyan">🔄</div>
-        <div class="tool-meta">
-          <div class="tool-name">Weekly Scanner</div>
-          <div class="tool-cli">azambasha-weekly-codeberg-scanner.py</div>
-          <div class="tool-desc">Run the intelligence scan now — pulls issues, commits, and regenerates the weekly implementation plan.</div>
-        </div>
-      </div>
-      <div class="tool-body">
-        <div class="tool-actions"><button class="btn btn-primary" onclick="runTool('scanner',{},this)">▶ Run Scan Now</button></div>
-        <div class="terminal" id="term-scanner"></div>
       </div>
     </div>
 
@@ -716,21 +700,6 @@ main{padding:28px;max-width:1400px;margin:0 auto;width:100%}
   </div>
 </div>
 
-<!-- ── TEMPLATES ─────────────────────────────────────────────── -->
-<div class="section" id="tab-templates">
-  <div class="section-title"><span>📦</span> Lab Template Marketplace</div>
-  <div class="flex gap-2 items-center" style="margin-bottom:18px">
-    <button class="btn btn-secondary" onclick="loadTemplates()">🔄 Refresh Catalog</button>
-    <span class="text-dim text-sm">Click any topology card to deploy it instantly</span>
-  </div>
-  <div class="tmpl-grid" id="tmpl-grid">
-    <div style="color:var(--text-faint);padding:20px">Loading template catalog…</div>
-  </div>
-  <div class="mt-6">
-    <div class="terminal" id="term-deploy"></div>
-  </div>
-</div>
-
 <!-- ── VCS ──────────────────────────────────────────────────── -->
 <div class="section" id="tab-vcs">
   <div class="section-title"><span>🕰️</span> Topology Version Control</div>
@@ -772,7 +741,7 @@ main{padding:28px;max-width:1400px;margin:0 auto;width:100%}
 
 <!-- ── ALERTS ─────────────────────────────────────────────────── -->
 <div class="section" id="tab-alerts">
-  <div class="section-title"><span>🔔</span> Alerts & Weekly Intelligence</div>
+  <div class="section-title"><span>🔔</span> Alerts & Notifications</div>
   <div class="tool-grid">
 
     <div class="tool-card">
@@ -787,21 +756,6 @@ main{padding:28px;max-width:1400px;margin:0 auto;width:100%}
       <div class="tool-body">
         <div class="tool-actions"><button class="btn btn-primary" onclick="runTool('notify-test',{},this)">📱 Send Test Alert</button></div>
         <div class="terminal" id="term-notify"></div>
-      </div>
-    </div>
-
-    <div class="tool-card">
-      <div class="tool-card-head">
-        <div class="tool-icon blue">🔍</div>
-        <div class="tool-meta">
-          <div class="tool-name">Run Weekly Intelligence Scan</div>
-          <div class="tool-cli">azambasha-weekly-codeberg-scanner.py</div>
-          <div class="tool-desc">Pulls open/closed issues and recent commits from Codeberg, generates the Weekly Implementation Plan, and dispatches a WhatsApp digest.</div>
-        </div>
-      </div>
-      <div class="tool-body">
-        <div class="tool-actions"><button class="btn btn-primary" onclick="runTool('scanner',{},this)">▶ Run Scan Now</button></div>
-        <div class="terminal" id="term-scanner-a"></div>
       </div>
     </div>
 

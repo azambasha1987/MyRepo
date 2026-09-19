@@ -38,61 +38,18 @@ EOF
     echo "[✔] Credentials saved."
 fi
 
-# 1. Create Systemd Service
-SERVICE_FILE="/etc/systemd/system/azambasha-scanner.service"
-echo "[*] Installing systemd service: $SERVICE_FILE..."
-cat > "$SERVICE_FILE" << 'EOF'
-[Unit]
-Description=Azam-Pnet 3 Months Upstream Intelligence Scanner
-After=network-online.target
-Wants=network-online.target
+# 1. Cleanup / Decommission Scanner Service and Timer
+echo "[*] Decommissioning Upstream Scanner systemd units and cron jobs..."
+systemctl stop azambasha-scanner.timer 2>/dev/null || true
+systemctl disable azambasha-scanner.timer 2>/dev/null || true
+systemctl stop azambasha-scanner.service 2>/dev/null || true
+rm -f /etc/systemd/system/azambasha-scanner.service /etc/systemd/system/azambasha-scanner.timer
+rm -f /etc/cron.d/azambasha-quarterly-scanner /etc/cron.weekly/azambasha-scanner
 
-[Service]
-Type=oneshot
-WorkingDirectory=/opt/azambasha
-ExecStart=/usr/bin/python3 /opt/azambasha/scripts/azambasha-weekly-codeberg-scanner.py --output /opt/azambasha/docs/3_MONTHS_UPDATE_CHECK_PLAN.md --notify
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# 2. Create Systemd Timer (Every 3 Months on the 19th at 09:00 IST = 03:30 UTC)
-TIMER_FILE="/etc/systemd/system/azambasha-scanner.timer"
-echo "[*] Installing systemd timer: $TIMER_FILE..."
-cat > "$TIMER_FILE" << 'EOF'
-[Unit]
-Description=Run Azam-Pnet Upstream Intelligence Scan Every 3 Months on the 19th at 09:00 IST (03:30 UTC)
-
-[Timer]
-OnCalendar=*-03,06,09,12-19 03:30:00 UTC
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-EOF
-
-# 3. Create Cron Fallback in /etc/cron.d/
-CRON_FILE="/etc/cron.d/azambasha-quarterly-scanner"
-echo "[*] Installing cron fallback: $CRON_FILE..."
-cat > "$CRON_FILE" << 'EOF'
-# Run on the 19th of March, June, September, and December at 03:30 UTC (09:00 AM IST)
-30 3 19 3,6,9,12 * root if [ -d "/opt/azambasha" ]; then cd /opt/azambasha && python3 scripts/azambasha-weekly-codeberg-scanner.py --output docs/3_MONTHS_UPDATE_CHECK_PLAN.md --notify >/dev/null 2>&1; fi
-EOF
-chmod 0644 "$CRON_FILE"
-
-# Clean up legacy weekly cron if present
-rm -f /etc/cron.weekly/azambasha-scanner 2>/dev/null || true
-
-# 4. Enable and start timer
 systemctl daemon-reload
-systemctl enable --now azambasha-scanner.timer
 
 echo "================================================================================"
-echo "[✔] Automated 3-Months Scanner Scheduler successfully installed & activated!"
-echo "    - Timer Schedule: Every 3 Months on the 19th at 09:00 IST (03:30 UTC)"
-echo "    - Next Runs:      19 Dec 2026, 19 Mar 2027, 19 Jun 2027, 19 Sep 2027"
-echo "    - Manual Trigger: sudo systemctl start azambasha-scanner.service"
-echo "    - Configuration:  $NOTIFY_CONF"
+echo "[✔] Scanner systemd services and timers have been completely removed."
+echo "    - Configuration preserved: $NOTIFY_CONF"
 echo "================================================================================"
+

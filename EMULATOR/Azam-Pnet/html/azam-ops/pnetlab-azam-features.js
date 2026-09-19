@@ -225,9 +225,6 @@
       azRunTool('ssl-generate', { ip: ip }, sslBtn, 'az-term-ssl-gen');
     });
 
-    // Wire templates
-    overlay.querySelector('#az-tmpl-refresh').addEventListener('click', azLoadTemplates);
-
     // Wire backup list
     overlay.querySelector('#az-backup-refresh').addEventListener('click', azLoadBackups);
 
@@ -241,7 +238,6 @@
     // Load initial data
     azLoadStats();
     setInterval(azLoadStats, 20000);
-    azLoadTemplates();
     azLoadBackups();
 
     // Open to overview tab
@@ -378,73 +374,6 @@
     if (l.includes('[✘]') || l.includes('fail') || l.includes('error') || l.includes('critical')) return '#ef4444';
     if (l.includes('===') || l.includes('[*]') || l.includes('[1/') || l.includes('[2/') || l.includes('[3/') || l.includes('[4/') || l.includes('[5/') || l.includes('[6/')) return '#60a5fa';
     return '#94a3b8';
-  }
-
-  /* ── Templates ──────────────────────────────────────────── */
-  function azLoadTemplates() {
-    fetch(API_BASE + '/templates')
-      .then(function (r) { return r.json(); })
-      .then(function (d) {
-        var grid = document.getElementById('az-tmpl-grid');
-        if (!grid || !d.templates) return;
-        var CAT_COLORS = {
-          ccna:'#22c55e', bgp:'#f59e0b', mpls:'#06b6d4', ospf:'#a855f7',
-          isis:'#ec4899', sdwan:'#3b82f6', datacenter:'#ef4444',
-          security:'#f97316', ccie:'#dc2626', custom:'#94a3b8'
-        };
-        grid.innerHTML = d.templates.map(function (t) {
-          var col = CAT_COLORS[t.category] || '#94a3b8';
-          return '<div onclick="azDeployTemplate(\'' + t.name + '\')" style="' +
-            'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);' +
-            'border-radius:10px;padding:14px;cursor:pointer;transition:all .2s;' +
-            'display:flex;flex-direction:column;gap:6px" ' +
-            'onmouseover="this.style.borderColor=\'rgba(99,179,237,0.3)\';this.style.background=\'rgba(255,255,255,0.07)\'" ' +
-            'onmouseout="this.style.borderColor=\'rgba(255,255,255,0.08)\';this.style.background=\'rgba(255,255,255,0.04)\'">' +
-              '<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:' + col + '">' + t.category + '</div>' +
-              '<div style="font-size:13px;font-weight:600">' + t.name + '</div>' +
-              '<div style="font-size:11px;color:#64748b;line-height:1.5">' + t.desc + '</div>' +
-              '<div style="font-size:11px;color:#475569;margin-top:4px">⬡ ' + t.nodes + ' nodes</div>' +
-          '</div>';
-        }).join('');
-        window.azDeployTemplate = function (name) {
-          if (!confirm('Deploy "' + name + '" to PNetLab?')) return;
-          var term = document.getElementById('az-term-deploy');
-          if (term) {
-            term.style.display = 'block';
-            term.innerHTML = '<div style="color:#60a5fa">Deploying ' + name + '…</div>';
-          }
-          fetch(API_BASE + '/run', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ tool: 'templates-list', params: { deploy: name } })
-          }).then(function (res) {
-            var reader = res.body.getReader(); var dec = new TextDecoder(); var buf = '';
-            function pump() {
-              reader.read().then(function (r) {
-                if (r.done) return;
-                buf += dec.decode(r.value, { stream: true });
-                var lines = buf.split('\n'); buf = lines.pop();
-                lines.forEach(function (line) {
-                  if (!line.startsWith('data:')) return;
-                  try {
-                    var obj = JSON.parse(line.slice(5).trim());
-                    if (obj.type === 'line' && term) {
-                      var d = document.createElement('div');
-                      d.style.color = azLineColor(azStripAnsi(obj.data));
-                      d.textContent = azStripAnsi(obj.data);
-                      term.appendChild(d);
-                    } else if (obj.type === 'done') {
-                      azToast(obj.code === 0 ? '"' + name + '" deployed!' : 'Deploy had issues',
-                              obj.code === 0 ? 'ok' : 'err');
-                    }
-                  } catch (e) {}
-                });
-                pump();
-              });
-            }
-            pump();
-          });
-        };
-      }).catch(function () {});
   }
 
   /* ── Backups ────────────────────────────────────────────── */
@@ -590,7 +519,6 @@
       ['🖥️','#06b6d4','HTML5 Console Auto-Fix','azam-console-fix --fix','Repairs WebSocket tunnel, guacd, stale pipes, generates Windows .reg handlers.','console-fix','az-term-console'],
       ['📸','#8b5cf6','Topology Git Snapshot','azam-topology-git --snapshot','Commit all changed .unl topology files to the local Git version history.','topology-snapshot','az-term-topo'],
       ['📱','#22c55e','Send WhatsApp Test Alert','azam-notify --test','Verify the WhatsApp (CallMeBot) + webhook notification pipeline is working.','notify-test','az-term-notify'],
-      ['🔍','#3b82f6','Run Weekly Intelligence Scan','azam-weekly-scanner','Pull issues/commits from Codeberg, regenerate weekly plan, send WhatsApp digest.','scanner','az-term-scanner'],
     ];
 
     var allToolCards = TOOL_DEFS.map(function (t) {
@@ -668,7 +596,7 @@
       '<div style="display:flex;gap:2px;padding:0 20px;background:rgba(8,12,24,0.7);border-bottom:1px solid rgba(56,189,248,0.15);flex-shrink:0;overflow-x:auto">' +
         [['overview','🏠 Overview'],['health','📊 Health'],['backup','💾 Backup & Restore'],
          ['network','🌐 Network'],['security','🔒 SSL & Security'],
-         ['templates','📦 Templates'],['vcs','🕰️ Topology VCS'],['alerts','🔔 Alerts']
+         ['vcs','🕰️ Topology VCS'],['alerts','🔔 Alerts']
         ].map(function (t) {
           return '<button data-az-tab="' + t[0] + '" style="' +
             'display:flex;align-items:center;gap:6px;padding:12px 16px;border:none;background:none;' +
@@ -777,17 +705,6 @@
         '</div>' +
       '</div>' +
 
-      /* ─ TEMPLATES ─ */
-      '<div data-az-section="templates" style="display:none">' +
-        '<div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">' +
-          '<div style="font-size:16px;font-weight:700">📦 Lab Template Marketplace</div>' +
-          '<button id="az-tmpl-refresh" style="'+BTN_SM+'">🔄 Refresh</button>' +
-          '<span style="font-size:12px;color:#475569">Click any card to deploy instantly</span>' +
-        '</div>' +
-        '<div id="az-tmpl-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">Loading…</div>' +
-        '<div id="az-term-deploy" style="'+TERM_STYLE+';margin-top:16px"></div>' +
-      '</div>' +
-
       /* ─ VCS ─ */
       '<div data-az-section="vcs" style="display:none">' +
         '<div style="font-size:16px;font-weight:700;margin-bottom:16px">🕰️ Topology Version Control</div>' +
@@ -806,10 +723,9 @@
 
       /* ─ ALERTS ─ */
       '<div data-az-section="alerts" style="display:none">' +
-        '<div style="font-size:16px;font-weight:700;margin-bottom:16px">🔔 Alerts & Weekly Intelligence</div>' +
+        '<div style="font-size:16px;font-weight:700;margin-bottom:16px">🔔 Alerts & Notification Pipeline</div>' +
         '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">' +
           toolCard('📱','#22c55e','Send WhatsApp Test Alert','azam-notify --test','Verify the CallMeBot WhatsApp + webhook pipeline.','<button style="'+BTN_PRI+'" data-az-tool="notify-test" data-az-term="az-term-ntfy">📱 Send Test</button><div id="az-term-ntfy" style="'+TERM_STYLE+'"></div>') +
-          toolCard('🔍','#3b82f6','Run Weekly Intelligence Scan','azambasha-weekly-codeberg-scanner.py','Pull issues + commits from Codeberg, regenerate weekly plan, send WhatsApp digest.','<button style="'+BTN_PRI+'" data-az-tool="scanner" data-az-term="az-term-scan2">▶ Run Scan</button><div id="az-term-scan2" style="'+TERM_STYLE+'"></div>') +
         '</div>' +
       '</div>' +
 

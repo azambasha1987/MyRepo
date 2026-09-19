@@ -233,18 +233,7 @@ def deploy_host(host, user, password, port, args):
             log_info("Running Automated Node & Virtualization Test Suite...")
             execute_remote_cmd(client, f"cd {remote_base} && python3 scripts/azambasha-node-test-suite.py --all")
         elif args.weekly_scan:
-            log_info("Executing Weekly Codeberg Intelligence Scan remotely...")
-            execute_remote_cmd(client, f"cd {remote_base} && python3 scripts/azambasha-weekly-codeberg-scanner.py")
-            try:
-                sftp = client.open_sftp()
-                remote_report = f"{remote_base}/docs/WEEKLY_IMPLEMENTATION_PLAN.md"
-                local_report = os.path.join(BASE_DIR, "docs", "WEEKLY_IMPLEMENTATION_PLAN.md")
-                os.makedirs(os.path.dirname(local_report), exist_ok=True)
-                sftp.get(remote_report, local_report)
-                sftp.close()
-                log_ok(f"Fetched remote weekly plan to local workspace: {local_report}")
-            except Exception as e:
-                log_warn(f"Could not retrieve remote plan file via SFTP: {e}")
+            log_warn("The Weekly Codeberg Intelligence Scan feature has been retired.")
         elif args.install_features:
             log_info("Executing Azam Features Installer & Symlink Generator...")
             execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-install-azam-features.sh")

@@ -4,12 +4,9 @@ Azam-Pnet Enterprise Operations Manual - PDF Generator
 Generates a comprehensive, professional operations manual detailing:
 - Executive Architectural Taxonomy & Feature Placements
 - Master vs. Satellite Dual-Plane Architecture & Alignment Matrix
-- Exact UI & System Placements
-- Step-by-Step Operator Usage Workflows ("How to use")
-- Step-by-Step Under-the-Hood Technical Lifecycles ("What happens in the background")
+- Detailed Documentation of All Enterprise Features (GUI vs Non-GUI, Exact Placement, Step-by-Step Workflows, Under-the-Hood Lifecycles)
 - Enterprise CLI Command-Line Reference
-- Future VM Provisioning & Verification
-for all 25 Enterprise features + 9 advanced enhancements of Azam-Pnet.
+- Future VM Provisioning & Verification Guide
 """
 
 import os
@@ -19,10 +16,9 @@ from datetime import datetime
 
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
-from reportlab.lib.units import inch
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, KeepTogether, HRFlowable
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, HRFlowable
 )
 from reportlab.pdfgen import canvas
 
@@ -99,8 +95,8 @@ def build_pdf(filename_dest):
         'DocTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=24,
-        leading=30,
+        fontSize=22,
+        leading=28,
         textColor=c_primary,
         alignment=0,
         spaceAfter=6
@@ -110,21 +106,21 @@ def build_pdf(filename_dest):
         'DocSubtitle',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=12,
-        leading=16,
+        fontSize=11,
+        leading=15,
         textColor=c_muted,
         alignment=0,
-        spaceAfter=16
+        spaceAfter=14
     )
 
     section_heading = ParagraphStyle(
         'SecHeading',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=15,
-        leading=20,
+        fontSize=14,
+        leading=18,
         textColor=c_secondary,
-        spaceBefore=12,
+        spaceBefore=14,
         spaceAfter=6,
         keepWithNext=True
     )
@@ -133,8 +129,8 @@ def build_pdf(filename_dest):
         'FeatHeading',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=11.5,
-        leading=15,
+        fontSize=11,
+        leading=14,
         textColor=c_primary,
         spaceBefore=8,
         spaceAfter=3,
@@ -195,7 +191,7 @@ def build_pdf(filename_dest):
     placement_box_text = ParagraphStyle(
         'PlacementText',
         parent=styles['Normal'],
-        fontName='Helvetica-Oblique',
+        fontName='Helvetica',
         fontSize=8,
         leading=11.5,
         textColor=c_secondary
@@ -205,8 +201,8 @@ def build_pdf(filename_dest):
         'TableHeader',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=8,
-        leading=10.5,
+        fontSize=7.5,
+        leading=10,
         textColor=colors.white
     )
 
@@ -214,8 +210,8 @@ def build_pdf(filename_dest):
         'TableCell',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=7.5,
-        leading=10,
+        fontSize=7,
+        leading=9.5,
         textColor=c_dark
     )
 
@@ -238,7 +234,7 @@ def build_pdf(filename_dest):
     meta_data = [
         [
             Paragraph("<b>Target System:</b> Azam-Pnet / PNETLab Enterprise", table_cell_style),
-            Paragraph("<b>Document Version:</b> 2.5.0-LTS Enterprise Edition", table_cell_style)
+            Paragraph("<b>Document Version:</b> 2.6.0-LTS Enterprise Edition", table_cell_style)
         ],
         [
             Paragraph(f"<b>Generated:</b> {datetime.now().strftime('%B %d, %Y')}", table_cell_style),
@@ -265,9 +261,9 @@ def build_pdf(filename_dest):
     # ==================== SECTION 1: ARCHITECTURAL OVERVIEW ====================
     story.append(Paragraph("1. Executive Architectural Taxonomy & Feature Placements", section_heading))
     story.append(Paragraph(
-        "Azam-Pnet organizes all twenty-five enterprise capabilities across three deliberate user and runtime environments: "
-        "<b>Outside-the-Lab Canvas</b> (global hypervisor diagnostics, template repository marketplace, multi-cloud and offline air-gapped backups, capacity planning, and SSL automation accessed from the main administrative dashboard), "
-        "<b>Inside-the-Lab Canvas</b> (in-workbench workflow tools, live traffic bandwidth heatmaps, OS-level desktop push notifications, anti-bootstorm staggered startup with KSM deduplication, Git version control, and live Wireshark packet capture available right inside the active topology view), and "
+        "Azam-Pnet organizes all enterprise capabilities across three deliberate user and runtime environments: "
+        "<b>Outside-the-Lab Canvas</b> (global hypervisor diagnostics, template repository marketplace, multi-cloud and offline air-gapped backups, capacity planning, golden image auditing, idle scheduler, client toolkit generator, and SSL automation accessed from the main administrative dashboard), "
+        "<b>Inside-the-Lab Canvas</b> (in-workbench workflow tools, live traffic bandwidth heatmaps, WAN QoS link impairment, multi-node snapshots, RESTCONF sandbox, Chaos Monkey link flaps, NetDevOps inventory export, CFS vCPU throttling, AI copilot drawer, anti-bootstorm staggered startup with console ready-state probing, Git version control, and live Wireshark packet capture available right inside the active topology view), and "
         "<b>Autonomous Kernel & Background Daemons</b> (24/7 self-healing watchdogs, Soft-RoCE RXE MTU 9000 kernel engines, MySQL socket auto-healers, and nightly SSD TRIM cron jobs running continuously in the host background).",
         body_style
     ))
@@ -277,52 +273,63 @@ def build_pdf(filename_dest):
     matrix_data = [
         [
             Paragraph("Feature Name", table_header_style),
+            Paragraph("In GUI?", table_header_style),
             Paragraph("Architectural Zone", table_header_style),
             Paragraph("Exact UI / System Location", table_header_style),
             Paragraph("Primary Trigger", table_header_style),
             Paragraph("Plane Support", table_header_style)
         ],
-        # Outside
-        [Paragraph("1. Community Templates Marketplace", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Community Templates", table_cell_style), Paragraph("One-Click Import", table_cell_style), Paragraph("Master Only", table_cell_style)],
-        [Paragraph("2. Live Hot-Node Profiler (RBAC Guard)", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Health &amp; Diagnostics", table_cell_style), Paragraph("Real-Time / Kill", table_cell_style), Paragraph("Master &amp; CLI", table_cell_style)],
-        [Paragraph("3. HTML5 Console Session Reset", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Console Fixer", table_cell_style), Paragraph("Repair Button", table_cell_style), Paragraph("Master Only", table_cell_style)],
-        [Paragraph("4. Local, Cloud &amp; Air-Gapped Backups", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Cloud &amp; Local Backup", table_cell_style), Paragraph("Instant Archive", table_cell_style), Paragraph("Master &amp; CLI", table_cell_style)],
-        [Paragraph("5. Fleet Multi-Node Cluster Monitor", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Cluster Nodes", table_cell_style), Paragraph("Auto-Refresh (15s)", table_cell_style), Paragraph("Master (Agent: Sat)", table_cell_style)],
-        [Paragraph("6. Lab Hardware Capacity Planner", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Capacity Planner", table_cell_style), Paragraph("Interactive Sizer", table_cell_style), Paragraph("Master Only", table_cell_style)],
-        [Paragraph("7. Comprehensive Diagnostic Doctor", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; System Doctor", table_cell_style), Paragraph("Run Diagnostics", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
-        [Paragraph("8. QCOW2 Disk Shrinker &amp; Sparse Comp.", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Storage Optimizer", table_cell_style), Paragraph("Batch Compress", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
-        [Paragraph("9. Multi-Cloud Transit Overlay Bridge", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Cloud Transit", table_cell_style), Paragraph("Connect Overlay", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
-        [Paragraph("10. Automated SSL &amp; WhatsApp Alerts", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Alerts &amp; SSL", table_cell_style), Paragraph("Deploy Cert / Test", table_cell_style), Paragraph("Master Only", table_cell_style)],
-        [Paragraph("11. Version Synchronizer &amp; PDF Portal", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Updates &amp; Header Doc", table_cell_style), Paragraph("Check &amp; Update", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
-        # Inside
-        [Paragraph("12. Anti-Bootstorm &amp; In-Canvas KSM", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Canvas Workbench &gt; Top Toolbar &gt; Anti-Bootstorm", table_cell_style), Paragraph("Toolbar Button", table_cell_style), Paragraph("Master (KSM: Both)", table_cell_style)],
-        [Paragraph("13. Topology Git VCS &amp; Auto-Commit", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Canvas Left Sidebar &gt; Git VCS Icon &gt; Drawer", table_cell_style), Paragraph("Auto / Commit", table_cell_style), Paragraph("Master Only", table_cell_style)],
-        [Paragraph("14. In-Workbench Quick Console Healer", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Canvas Workbench &gt; Top Toolbar &gt; Fix Console", table_cell_style), Paragraph("Toolbar Button", table_cell_style), Paragraph("Master Only", table_cell_style)],
-        [Paragraph("15. Live Wireshark &amp; Traffic Heatmap", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Top Toolbar &gt; Heatmap / Right-Click &gt; Capture", table_cell_style), Paragraph("Toolbar &amp; Menu", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
-        [Paragraph("16. AI Lab Copilot &amp; Desktop Alerts", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Canvas Bottom-Right &gt; Floating AI &amp; OS Notif", table_cell_style), Paragraph("Chat &amp; Event Hook", table_cell_style), Paragraph("Master Only", table_cell_style)],
-        [Paragraph("17. Multi-Node Config Diff &amp; Rollback", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Canvas Workbench &gt; Management Tools &gt; Config Diff", table_cell_style), Paragraph("Compare Configs", table_cell_style), Paragraph("Master Only", table_cell_style)],
-        [Paragraph("18. Automated Lab Exam Grader", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Canvas Workbench &gt; Lab Actions &gt; Run Evaluation", table_cell_style), Paragraph("Evaluate Lab", table_cell_style), Paragraph("Master Only", table_cell_style)],
-        [Paragraph("19. Ping Mesh &amp; Traffic Generator", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Canvas Workbench &gt; Lab Testing &gt; Traffic Injector", table_cell_style), Paragraph("Generate Traffic", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
-        [Paragraph("20. High-Res Diagram &amp; SVG Exporter", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Canvas Workbench &gt; Export &gt; Vector Topology", table_cell_style), Paragraph("Download SVG", table_cell_style), Paragraph("Master Only", table_cell_style)],
-        [Paragraph("21. Interactive Canvas Accelerators", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Canvas Navigation Controls (Minimap &amp; Snap)", table_cell_style), Paragraph("Always Active", table_cell_style), Paragraph("Master Only", table_cell_style)],
-        # Background
-        [Paragraph("22. 24/7 Self-Healing Watchdog", table_cell_style), Paragraph("Daemon Plane", table_cell_style), Paragraph("systemd: azam-watchdog.service", table_cell_style), Paragraph("Autonomous (60s)", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
-        [Paragraph("23. MySQL Socket &amp; Credential Healer", table_cell_style), Paragraph("Daemon Plane", table_cell_style), Paragraph("systemd &amp; Cron: azambasha-fix-web-credentials", table_cell_style), Paragraph("On Boot &amp; Hourly", table_cell_style), Paragraph("Master Only", table_cell_style)],
-        [Paragraph("24. Soft-RoCE RXE &amp; Jumbo MTU Engine", table_cell_style), Paragraph("Kernel Plane", table_cell_style), Paragraph("Kernel Module (ib_core, rdma_rxe) &amp; udev", table_cell_style), Paragraph("Boot &amp; Net Hook", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
-        [Paragraph("25. Scheduled Maintenance &amp; TRIM Cron", table_cell_style), Paragraph("Daemon Plane", table_cell_style), Paragraph("cron.d: azambasha-maintenance-trim", table_cell_style), Paragraph("Daily 03:00 UTC", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        # Outside the Lab
+        [Paragraph("1. Community Templates Marketplace", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Community Templates", table_cell_style), Paragraph("One-Click Import", table_cell_style), Paragraph("Master Only", table_cell_style)],
+        [Paragraph("2. Live Hot-Node Profiler (RBAC Guard)", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Health &amp; Diagnostics", table_cell_style), Paragraph("Real-Time / Kill", table_cell_style), Paragraph("Master &amp; CLI", table_cell_style)],
+        [Paragraph("3. HTML5 Console Session Reset", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Console Fixer", table_cell_style), Paragraph("Repair Button", table_cell_style), Paragraph("Master Only", table_cell_style)],
+        [Paragraph("4. Local, Cloud &amp; Air-Gapped Backups", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Cloud &amp; Local Backup", table_cell_style), Paragraph("Instant Archive", table_cell_style), Paragraph("Master &amp; CLI", table_cell_style)],
+        [Paragraph("5. Fleet Multi-Node Cluster Monitor", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Cluster Nodes", table_cell_style), Paragraph("Auto-Refresh (15s)", table_cell_style), Paragraph("Master (Agent: Sat)", table_cell_style)],
+        [Paragraph("6. Lab Hardware Capacity Planner", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Capacity Planner", table_cell_style), Paragraph("Interactive Sizer", table_cell_style), Paragraph("Master Only", table_cell_style)],
+        [Paragraph("7. Comprehensive Diagnostic Doctor", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; System Doctor", table_cell_style), Paragraph("Run Diagnostics", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("8. QCOW2 Disk Shrinker &amp; Sparse Comp.", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Storage Optimizer", table_cell_style), Paragraph("Batch Compress", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("9. Multi-Cloud Transit Overlay Bridge", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Cloud Transit", table_cell_style), Paragraph("Connect Overlay", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("10. Automated SSL &amp; WhatsApp Alerts", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Alerts &amp; SSL", table_cell_style), Paragraph("Deploy Cert / Test", table_cell_style), Paragraph("Master Only", table_cell_style)],
+        [Paragraph("11. Version Synchronizer &amp; PDF Portal", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Azam Features &gt; Updates &amp; Header Doc", table_cell_style), Paragraph("Check &amp; Update", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("12. Golden Appliance Image Doctor", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Storage Optimizer &gt; Golden Image Doctor", table_cell_style), Paragraph("Scan &amp; Audit", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("13. RoCE MTU 9000 Synthetic Benchmark", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Health &amp; Diagnostics &gt; RoCE Benchmark", table_cell_style), Paragraph("Start Benchmark", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("14. Idle Auto-Shutdown &amp; Tenant Quota", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Nav &gt; Resource Scheduler &gt; Quota Policies", table_cell_style), Paragraph("Save Policies", table_cell_style), Paragraph("Master Only", table_cell_style)],
+        [Paragraph("15. Desktop Client Toolkit Packager", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Outside Lab", table_cell_style), Paragraph("Main Dashboard Header &gt; Client Toolkit button", table_cell_style), Paragraph("Modal Download", table_cell_style), Paragraph("Master Only", table_cell_style)],
+        # Inside Canvas
+        [Paragraph("16. Anti-Bootstorm + Console Probing", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Top Toolbar &gt; Anti-Bootstorm &gt; Console Probe", table_cell_style), Paragraph("Start All Safely", table_cell_style), Paragraph("Master (KSM: Both)", table_cell_style)],
+        [Paragraph("17. Topology Git VCS &amp; Auto-Commit", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Left Sidebar &gt; Git VCS Icon &gt; Slide Drawer", table_cell_style), Paragraph("Auto / Commit", table_cell_style), Paragraph("Master Only", table_cell_style)],
+        [Paragraph("18. In-Workbench Quick Console Healer", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Top Toolbar &gt; Fix Console button", table_cell_style), Paragraph("Toolbar Button", table_cell_style), Paragraph("Master Only", table_cell_style)],
+        [Paragraph("19. Live Wireshark &amp; Traffic Heatmap", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Top Toolbar &gt; Heatmap / Right-Click &gt; Capture", table_cell_style), Paragraph("Toolbar &amp; Menu", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("20. AI Copilot Drawer (Lab Architect)", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Top Toolbar &gt; ✨ AI Copilot &gt; 3-Tab Drawer", table_cell_style), Paragraph("Prompt / Query", table_cell_style), Paragraph("Master Only", table_cell_style)],
+        [Paragraph("21. WAN QoS &amp; Link Impairment (NetEm)", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Link Right-Click Context Menu &gt; Impair Link", table_cell_style), Paragraph("Apply Impairment", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("22. Instant Lab Checkpoints &amp; GitOps", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Top Toolbar &gt; Lab Checkpoint (#pnq-btn-checkpoint)", table_cell_style), Paragraph("Snapshot / Rollback", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("23. RESTCONF / NETCONF Workbench Sandbox", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Node Right-Click &gt; RESTCONF Sandbox / Top Toolbar", table_cell_style), Paragraph("Send RFC8040 Req", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("24. Automated Chaos Monkey &amp; Flap Engine", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Top Toolbar &gt; Chaos Monkey (#pnq-btn-chaos)", table_cell_style), Paragraph("Arm Chaos Engine", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("25. 1-Click NetDevOps Exporter Suite", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Top Toolbar &gt; Export DevOps (#pnq-btn-export)", table_cell_style), Paragraph("Download 4 Formats", table_cell_style), Paragraph("Master Only", table_cell_style)],
+        [Paragraph("26. Linux CFS vCPU Governor &amp; cgroups", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Node Right-Click &gt; vCPU Performance Governor", table_cell_style), Paragraph("Apply CPU Quota", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("27. Multi-Node Config Diff &amp; Rollback", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Canvas Left Menu &gt; Config Diff Engine", table_cell_style), Paragraph("Compare &amp; Push", table_cell_style), Paragraph("Master Only", table_cell_style)],
+        [Paragraph("28. Automated Lab Exam Grader", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Top Bar &gt; Lab Actions &gt; Run Exam Evaluation", table_cell_style), Paragraph("Evaluate Lab", table_cell_style), Paragraph("Master Only", table_cell_style)],
+        [Paragraph("29. Ping Mesh &amp; Traffic Generator", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Top Bar &gt; Lab Testing &gt; Ping Mesh &amp; Traffic", table_cell_style), Paragraph("Start Mesh Test", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("30. High-Res Diagram &amp; SVG Exporter", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Top Bar &gt; Export &gt; Export Topology Diagram", table_cell_style), Paragraph("Download SVG", table_cell_style), Paragraph("Master Only", table_cell_style)],
+        [Paragraph("31. Interactive Canvas Accelerators &amp; Minimap", table_cell_style), Paragraph("Yes", table_cell_style), Paragraph("Inside Canvas", table_cell_style), Paragraph("Bottom-Left Minimap &amp; Shift+S / Shift+A Shortcuts", table_cell_style), Paragraph("Always Active", table_cell_style), Paragraph("Master Only", table_cell_style)],
+        # Background Daemons & Kernel
+        [Paragraph("32. 24/7 Self-Healing Watchdog", table_cell_style), Paragraph("No", table_cell_style), Paragraph("Daemon Plane", table_cell_style), Paragraph("systemd: azam-watchdog.service", table_cell_style), Paragraph("Autonomous (60s)", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("33. MySQL Socket &amp; Credential Healer", table_cell_style), Paragraph("No", table_cell_style), Paragraph("Daemon Plane", table_cell_style), Paragraph("systemd &amp; Cron: azambasha-fix-web-credentials", table_cell_style), Paragraph("On Boot &amp; Hourly", table_cell_style), Paragraph("Master Only", table_cell_style)],
+        [Paragraph("34. Soft-RoCE RXE &amp; Jumbo MTU Engine", table_cell_style), Paragraph("No", table_cell_style), Paragraph("Kernel Plane", table_cell_style), Paragraph("Kernel Module (ib_core, rdma_rxe) &amp; udev", table_cell_style), Paragraph("Boot &amp; Net Hook", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("35. Scheduled Maintenance &amp; TRIM Cron", table_cell_style), Paragraph("No", table_cell_style), Paragraph("Daemon Plane", table_cell_style), Paragraph("cron.d: azambasha-maintenance-trim", table_cell_style), Paragraph("Daily 03:00 UTC", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
     ]
 
-    t_matrix = Table(matrix_data, colWidths=[130, 65, 160, 75, 74])
+    t_matrix = Table(matrix_data, colWidths=[115, 35, 60, 144, 75, 75])
     t_matrix.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), c_secondary),
         ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, c_border),
         ('BOX', (0, 0), (-1, -1), 1, c_secondary),
-        ('TOPPADDING', (0, 0), (-1, -1), 2.5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 2.5),
-        ('LEFTPADDING', (0, 0), (-1, -1), 4),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ('LEFTPADDING', (0, 0), (-1, -1), 3),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 3),
         ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, c_light_bg])
     ]))
     story.append(t_matrix)
@@ -353,7 +360,7 @@ def build_pdf(filename_dest):
         "Satellite nodes are dedicated, bare-metal or nested KVM execution engines. Their primary responsibility is running heavy virtual machines "
         "(e.g., Cisco IOS-XRv9k, Arista cEOS, Junos vMX, Linux appliances) with zero CPU cycles wasted on unnecessary web servers, SQL databases, or desktop environments. "
         "Therefore, Satellite nodes operate in a <b>headless compute state</b>. Running <code>azambasha-install-azam-features.sh --satellite</code> on a satellite node "
-        "purposefully provisions all 26 CLI system tools, installs the 24/7 watchdog daemon (<code>azam-watchdog.service</code>), tunes Kernel Samepage Merging (KSM), "
+        "purposefully provisions all 26 CLI system tools (including <code>azam-link-impair</code>, <code>azam-roce</code>, <code>azam-cgroups</code>, and <code>azam-cpu-governor</code>), installs the 24/7 watchdog daemon (<code>azam-watchdog.service</code>), tunes Kernel Samepage Merging (KSM), "
         "loads Soft-RoCE RXE acceleration with MTU 9000 jumbo frames, and installs the nightly SSD TRIM maintenance cron, while omitting Apache, Guacamole, and MariaDB.",
         body_style
     ))
@@ -410,16 +417,16 @@ def build_pdf(filename_dest):
             Paragraph("<b>100% Identical:</b> Reclaims deleted flash blocks and purges stale sockets.", table_cell_style)
         ],
         [
-            Paragraph("<b>MariaDB &amp; Guacamole Socket Fixer</b>", table_cell_style),
-            Paragraph("Active (Database on Master)", table_cell_style),
-            Paragraph("Not Applicable (Headless)", table_cell_style),
-            Paragraph("<b>Aligned:</b> Satellites do not host MySQL or Guacamole; no repair needed.", table_cell_style)
+            Paragraph("<b>NetEm QoS Link Impairment</b>", table_cell_style),
+            Paragraph("Active (API &amp; Kernel tc)", table_cell_style),
+            Paragraph("Active (Kernel tc &amp; CLI)", table_cell_style),
+            Paragraph("<b>100% Identical:</b> tc qdisc rules execute identically on local TAP/vnet interfaces.", table_cell_style)
         ],
         [
-            Paragraph("<b>Air-Gapped Pack Bundler</b>", table_cell_style),
-            Paragraph("Full Pack Generator (GUI &amp; CLI)", table_cell_style),
-            Paragraph("CLI Extractor / Consumer", table_cell_style),
-            Paragraph("<b>Aligned:</b> Master builds the tarball; Satellites consume bundle for air-gapped install.", table_cell_style)
+            Paragraph("<b>Linux CFS vCPU &amp; cgroups</b>", table_cell_style),
+            Paragraph("Active (API &amp; cgroups v2)", table_cell_style),
+            Paragraph("Active (cgroups v2 &amp; CLI)", table_cell_style),
+            Paragraph("<b>100% Identical:</b> cpu.max and cpu.weight throttling operate identically per-QEMU PID.", table_cell_style)
         ]
     ]
     t_parity = Table(parity_data, colWidths=[120, 110, 110, 164])
@@ -439,11 +446,12 @@ def build_pdf(filename_dest):
     story.append(PageBreak())
 
     # Helper function to format each feature entry
-    def render_feature(feat_id, feat_name, category_tag, placement_path, how_to_steps, bg_steps):
+    def render_feature(feat_id, feat_name, in_gui, placement_path, how_to_steps, bg_steps):
         elements = []
         
         # Header + Tag
-        header_text = f"<b>{feat_id}. {feat_name}</b> &nbsp;&nbsp;<font size=7 color='#4F46E5'><b>[{category_tag}]</b></font>"
+        gui_badge = "<font color='#16A34A'><b>[GUI: YES]</b></font>" if in_gui else "<font color='#DC2626'><b>[GUI: NO - System Plane]</b></font>"
+        header_text = f"<b>{feat_id}. {feat_name}</b> &nbsp;&nbsp;{gui_badge}"
         elements.append(Paragraph(header_text, feature_heading))
 
         # Placement Callout Box
@@ -480,7 +488,7 @@ def build_pdf(filename_dest):
     story.append(Paragraph("3. Outside-the-Lab Features (Main Dashboard: /main/#/azam-features)", section_heading))
     story.append(Paragraph(
         "Outside-the-lab features are located in the primary management dashboard (<code>/main/#/azam-features</code>) accessible prior to loading any topology. "
-        "They provide centralized hypervisor monitoring, repository synchronizations, fleet health oversight, air-gapped bundling, RBAC access control, and disaster recovery.",
+        "They provide centralized hypervisor monitoring, repository synchronizations, fleet health oversight, air-gapped bundling, golden appliance health, idle scheduler policies, desktop client toolkit generation, and disaster recovery.",
         body_style
     ))
     story.append(Spacer(1, 4))
@@ -500,7 +508,7 @@ def build_pdf(filename_dest):
         "<b>Step 4:</b> Python backend queries repository manifest schemas or git repository.",
         "<b>Step 5:</b> Verifies template file syntax, generates corresponding <code>/opt/unetlab/html/templates/{os}.yml</code>, sets permissions to <code>www-data:www-data 0644</code>, and flushes APC/OpCache."
     ]
-    for el in render_feature("1", "Community Templates Marketplace", "GUI: Outside Lab Canvas",
+    for el in render_feature("1", "Community Templates Marketplace", True,
                              "Main Dashboard Navigation &gt; <b>Azam Features</b> &gt; <b>Community Templates</b> tab (<code>#pane-templates</code>)",
                              f1_how, f1_bg):
         story.append(el)
@@ -520,7 +528,7 @@ def build_pdf(filename_dest):
         "<b>Step 4:</b> On Kill trigger, <code>POST /azam-ops/api/perf-kill</code> inspects the <code>X-User-Role</code> header; if not role 0 (Admin), returns HTTP 403 Forbidden.",
         "<b>Step 5:</b> For authorized admins, sends <code>SIGTERM</code> (15) to PID; if unresponsive after 2.5s, sends <code>SIGKILL</code> (9) and logs to <code>/var/log/azam-ops-api.log</code>."
     ]
-    for el in render_feature("2", "Live Hot-Node Profiler & Task Manager (RBAC Guard)", "GUI: Outside Lab Canvas",
+    for el in render_feature("2", "Live Hot-Node Profiler & Task Manager (RBAC Guard)", True,
                              "Main Dashboard Navigation &gt; <b>Azam Features</b> &gt; <b>Health & Diagnostics</b> (<code>#pane-health</code>)",
                              f2_how, f2_bg):
         story.append(el)
@@ -539,7 +547,7 @@ def build_pdf(filename_dest):
         "<b>Step 4:</b> Executes <code>systemctl restart guacd tomcat9</code> and verifies local socket listening on <code>127.0.0.1:4822</code>.",
         "<b>Step 5:</b> Flushes browser websocket cookies and returns JSON status <code>{success: true, services_reloaded: 3}</code>."
     ]
-    for el in render_feature("3", "HTML5 Console Auto-Fixer & Session Cleaner", "GUI: Outside Lab Canvas",
+    for el in render_feature("3", "HTML5 Console Auto-Fixer & Session Cleaner", True,
                              "Main Dashboard Navigation &gt; <b>Azam Features</b> &gt; <b>Console Fixer</b> (<code>#pane-console</code>)",
                              f3_how, f3_bg):
         story.append(el)
@@ -558,7 +566,7 @@ def build_pdf(filename_dest):
         "<b>Step 3:</b> Moves generated tarball to <code>/opt/unetlab/data/Exports/azam-pnet-airgap-bundle-latest.tar.gz</code> with read permissions.",
         "<b>Step 4:</b> For cloud backups, <code>azambasha-cloud-backup.sh</code> executes <code>rclone sync</code> with AES-256 encryption and validates SHA-256 checksums."
     ]
-    for el in render_feature("4", "Local, Multi-Cloud & 100% Air-Gapped Bundler", "GUI: Outside Lab Canvas",
+    for el in render_feature("4", "Local, Multi-Cloud & 100% Air-Gapped Bundler", True,
                              "Main Dashboard Navigation &gt; <b>Azam Features</b> &gt; <b>Cloud & Local Backups</b> (<code>#pane-cloud</code>)",
                              f4_how, f4_bg):
         story.append(el)
@@ -576,7 +584,7 @@ def build_pdf(filename_dest):
         "<b>Step 3:</b> Evaluates node placement affinity rules against worker RAM capacity prior to new VM dispatch.",
         "<b>Step 4:</b> If a worker becomes unresponsive (missing 3 heartbeats), marks node as Degraded and triggers alert hook."
     ]
-    for el in render_feature("5", "Fleet Multi-Node Cluster Monitor", "GUI: Outside Lab Canvas",
+    for el in render_feature("5", "Fleet Multi-Node Cluster Monitor", True,
                              "Main Dashboard Navigation &gt; <b>Azam Features</b> &gt; <b>Cluster Fleet</b> (<code>#pane-cluster</code>)",
                              f5_how, f5_bg):
         story.append(el)
@@ -594,7 +602,7 @@ def build_pdf(filename_dest):
         "<b>Step 3:</b> Enforces safe limits by writing updated swap thresholds into <code>/etc/sysctl.d/99-pnetlab-perf.conf</code>.",
         "<b>Step 4:</b> Notifies administrator if requested deployment exceeds safe memory thresholds (over 85% host RAM)."
     ]
-    for el in render_feature("6", "Lab Capacity & Hardware Sizing Planner", "GUI: Outside Lab Canvas",
+    for el in render_feature("6", "Lab Capacity & Hardware Sizing Planner", True,
                              "Main Dashboard Navigation &gt; <b>Azam Features</b> &gt; <b>Capacity Planner</b> (<code>#pane-capacity</code>)",
                              f6_how, f6_bg):
         story.append(el)
@@ -612,7 +620,7 @@ def build_pdf(filename_dest):
         "<b>Step 3:</b> Checks <code>/dev/kvm</code> permissions (<code>0666</code>), IP forwarding (<code>net.ipv4.ip_forward=1</code>), and bridge states.",
         "<b>Step 4:</b> If auto-heal is selected, executes repair routines, resets permissions on <code>/opt/unetlab/</code>, and returns diagnostic report."
     ]
-    for el in render_feature("7", "Comprehensive Diagnostic Doctor", "GUI: Outside Lab Canvas",
+    for el in render_feature("7", "Comprehensive Diagnostic Doctor", True,
                              "Main Dashboard Navigation &gt; <b>Azam Features</b> &gt; <b>System Doctor</b> (<code>#pane-doctor</code>)",
                              f7_how, f7_bg):
         story.append(el)
@@ -630,7 +638,7 @@ def build_pdf(filename_dest):
         "<b>Step 3:</b> Invokes <code>azambasha-heavy-node-optimizer.sh --shrink</code> which runs <code>qemu-img convert -c -O qcow2</code> with zlib compression.",
         "<b>Step 4:</b> Replaces original image atomically, updating sparse metadata and freeing unused hypervisor blocks."
     ]
-    for el in render_feature("8", "QCOW2 Disk Shrinker & Sparse Compressor", "GUI: Outside Lab Canvas",
+    for el in render_feature("8", "QCOW2 Disk Shrinker & Sparse Compressor", True,
                              "Main Dashboard Navigation &gt; <b>Azam Features</b> &gt; <b>Storage Optimizer</b> (<code>#pane-storage</code>)",
                              f8_how, f8_bg):
         story.append(el)
@@ -648,7 +656,7 @@ def build_pdf(filename_dest):
         "<b>Step 3:</b> Configures <code>iptables -t nat -A POSTROUTING -o &lt;tun_interface&gt; -j MASQUERADE</code> and enables proxy ARP.",
         "<b>Step 4:</b> Bridges virtual lab nodes directly to the remote cloud subnet without requiring public IPs."
     ]
-    for el in render_feature("9", "Multi-Cloud Transit Overlay Bridge", "GUI: Outside Lab Canvas",
+    for el in render_feature("9", "Multi-Cloud Transit Overlay Bridge", True,
                              "Main Dashboard Navigation &gt; <b>Azam Features</b> &gt; <b>Cloud Transit</b> (<code>#pane-transit</code>)",
                              f9_how, f9_bg):
         story.append(el)
@@ -666,7 +674,7 @@ def build_pdf(filename_dest):
         "<b>Step 3:</b> Reloads Nginx and sets up automatic certbot renewal cron job in <code>/etc/cron.d/certbot</code>.",
         "<b>Step 4:</b> WhatsApp service stores encrypted credentials in <code>/etc/pnetlab/alerts.conf</code> and transmits JSON payload via Twilio REST API."
     ]
-    for el in render_feature("10", "Automated SSL & WhatsApp Alerts", "GUI: Outside Lab Canvas",
+    for el in render_feature("10", "Automated SSL & WhatsApp Alerts", True,
                              "Main Dashboard Navigation &gt; <b>Azam Features</b> &gt; <b>Alerts & SSL</b> (<code>#pane-alerts</code>)",
                              f10_how, f10_bg):
         story.append(el)
@@ -685,9 +693,89 @@ def build_pdf(filename_dest):
         "<b>Step 3:</b> When update is clicked, queries git repository commit HEAD.",
         "<b>Step 4:</b> Executes <code>azambasha-install-azam-features.sh</code>, updating CLI symlinks in <code>/usr/local/bin/</code> and restarting <code>azambasha-ops-api.service</code>."
     ]
-    for el in render_feature("11", "Version Synchronizer & Direct Operations Manual Portal", "GUI: Outside Lab Canvas",
+    for el in render_feature("11", "Version Synchronizer & Direct Operations Manual Portal", True,
                              "Main Dashboard Header &gt; <b>Operations Manual (PDF)</b> &amp; <b>Updates Tab</b> (<code>#pane-updates</code>)",
                              f11_how, f11_bg):
+        story.append(el)
+
+    # Feature 12: Golden Appliance Image Doctor & Sparseness Auditor
+    f12_how = [
+        "<b>Step 1:</b> In the main dashboard, open <b>Azam Features</b> &gt; <b>Storage Optimizer</b> (<code>#pane-shrink</code>).",
+        "<b>Step 2:</b> Locate the card titled <b>Golden Appliance Image Doctor & Sparseness Auditor</b>.",
+        "<b>Step 3:</b> Inspect the table listing all installed QEMU/KVM images, their virtual vs actual allocated disk sizes, sparseness ratio, and recommended virtio/RAM/vCPU settings.",
+        "<b>Step 4:</b> For any image showing high bloat (e.g. 15 GB virtual vs 2 GB actual), click the green <b>Shrink (1-Click)</b> button in the Action column.",
+        "<b>Step 5:</b> A real-time notification confirms QCOW2 sparseness reclamation and freed disk capacity."
+    ]
+    f12_bg = [
+        "<b>Step 1:</b> UI executes <code>GET /azam-ops/api/images/audit</code> which scans <code>/opt/unetlab/addons/qemu/</code>.",
+        "<b>Step 2:</b> Backend runs <code>qemu-img info --output=json</code> on each image to extract <code>virtual-size</code> and <code>actual-size</code>.",
+        "<b>Step 3:</b> Evaluates hardware tuning heuristic database based on OS family (e.g. Cisco IOS-XR requires 4 vCPUs + 16GB RAM + virtio-net-pci).",
+        "<b>Step 4:</b> When 1-click shrink is triggered, backend dispatches <code>POST /azam-ops/api/shrink</code> targeting the specific image path.",
+        "<b>Step 5:</b> Executes <code>qemu-img convert -c -O qcow2</code> creating an optimized sparse file, replaces the original atomically, and sets permissions to <code>0755 root:root</code>."
+    ]
+    for el in render_feature("12", "Golden Appliance Image Doctor & Sparseness Auditor", True,
+                             "Main Dashboard Navigation &gt; <b>Azam Features</b> &gt; <b>Storage Optimizer</b> (<code>#pane-shrink</code>) &gt; Golden Image Auditor Card",
+                             f12_how, f12_bg):
+        story.append(el)
+
+    # Feature 13: RoCE MTU 9000 & Jumbo Frame Synthetic Benchmark Suite
+    f13_how = [
+        "<b>Step 1:</b> Navigate to <b>Azam Features</b> &gt; <b>Health & Diagnostics</b> tab (<code>#pane-health</code>).",
+        "<b>Step 2:</b> Scroll to the card titled <b>RoCE MTU 9000 & Jumbo Frame Synthetic Benchmark Suite</b>.",
+        "<b>Step 3:</b> Enter the target node or gateway IP address (e.g. <code>192.168.1.1</code>) and choose MTU size (e.g. <code>9000 (Jumbo)</code> or <code>1500 (Standard)</code>).",
+        "<b>Step 4:</b> Click the button labeled <b>Run Jumbo Benchmark</b>.",
+        "<b>Step 5:</b> The benchmark output console displays packet transmission results, round-trip times, zero-fragmentation confirmation, and Soft-RoCE RXE device status."
+    ]
+    f13_bg = [
+        "<b>Step 1:</b> Front-end transmits <code>GET /azam-ops/api/cluster/bench?target={ip}&mtu={mtu}</code> to the backend.",
+        "<b>Step 2:</b> Python backend executes <code>ping -M do -s {payload_size} -c 4 {target}</code> with Don't Fragment (DF) bit set.",
+        "<b>Step 3:</b> Inspects kernel RDMA link devices via <code>rdma link</code> or <code>ibv_devices</code> and verifies <code>rdma_rxe</code> kernel module presence.",
+        "<b>Step 4:</b> Verifies host interface MTU in <code>/sys/class/net/{iface}/mtu</code> to confirm jumbo frame compatibility.",
+        "<b>Step 5:</b> Formats test results, calculating average latency, packet loss percentage, and returns structured JSON to the dashboard card."
+    ]
+    for el in render_feature("13", "RoCE MTU 9000 & Jumbo Frame Synthetic Benchmark Suite", True,
+                             "Main Dashboard Navigation &gt; <b>Azam Features</b> &gt; <b>Health & Diagnostics</b> (<code>#pane-health</code>) &gt; RoCE Benchmark Card",
+                             f13_how, f13_bg):
+        story.append(el)
+
+    # Feature 14: Multi-Tenant Workspace Quotas & Idle Auto-Shutdown Scheduler
+    f14_how = [
+        "<b>Step 1:</b> In the main dashboard, select <b>Azam Features</b> &gt; <b>Resource Scheduler</b> (<code>#pane-scheduler</code>).",
+        "<b>Step 2:</b> Locate the card titled <b>Idle Auto-Shutdown & Tenant Capacity Policies</b>.",
+        "<b>Step 3:</b> Configure desired limits: <b>Auto-Shutdown Inactive Labs After (minutes)</b> (e.g. 120), <b>Max Running Nodes Per Lab Quota</b> (e.g. 16), and <b>Curfew Auto-Shutdown Hours</b> (e.g. 23:00-06:00).",
+        "<b>Step 4:</b> Click <b>Save & Enforce Policies</b>.",
+        "<b>Step 5:</b> A success notification confirms the active enforcement of hypervisor quota policies."
+    ]
+    f14_bg = [
+        "<b>Step 1:</b> Client dispatches <code>POST /azam-ops/api/scheduler/config</code> containing JSON payload of idle timeout, max nodes, and curfew hours.",
+        "<b>Step 2:</b> API server writes policy definitions to <code>/etc/pnetlab/scheduler_policy.json</code> with <code>0644</code> permissions.",
+        "<b>Step 3:</b> Background worker daemon evaluates last active user session timestamp from Guacamole and MariaDB lab access records.",
+        "<b>Step 4:</b> If a lab topology has had zero terminal or canvas interactions exceeding the configured threshold, dispatches safe node shutdown sequence.",
+        "<b>Step 5:</b> Enforces maximum concurrent node limit by rejecting new node spawn requests when tenant quota is saturated."
+    ]
+    for el in render_feature("14", "Multi-Tenant Workspace Quotas & Idle Auto-Shutdown Scheduler", True,
+                             "Main Dashboard Navigation &gt; <b>Azam Features</b> &gt; <b>Resource Scheduler</b> (<code>#pane-scheduler</code>) &gt; Quota Policies Card",
+                             f14_how, f14_bg):
+        story.append(el)
+
+    # Feature 15: Cross-Platform Desktop Client Toolkit Auto-Packager
+    f15_how = [
+        "<b>Step 1:</b> In the top navigation header of the main dashboard, locate and click the <b>Client Toolkit</b> button.",
+        "<b>Step 2:</b> A modal window opens titled <b>Azam-Pnet Cross-Platform Desktop Client Toolkit</b>.",
+        "<b>Step 3:</b> Select your desired operating system client: <b>Windows Batch / CLI Helper (.bat)</b>, <b>Windows PowerShell Helper (.ps1)</b>, <b>Linux / macOS Shell Client (.sh)</b>, or <b>Python Automation SDK (.py)</b>.",
+        "<b>Step 4:</b> Click the blue <b>Download Script</b> button next to the desired toolkit.",
+        "<b>Step 5:</b> Run the downloaded script on your desktop to automatically connect, open native terminal sessions (SecureCRT, Putty, Tabby), and automate API requests."
+    ]
+    f15_bg = [
+        "<b>Step 1:</b> Front-end issues <code>GET /azam-ops/api/client/toolkit/{script_name}</code>.",
+        "<b>Step 2:</b> API server reads dynamic template files from <code>/opt/azambasha/scripts/clients/</code> or generates them on-the-fly.",
+        "<b>Step 3:</b> Dynamically binds host IP address, port 8088, and authentication headers into the generated client script.",
+        "<b>Step 4:</b> Sets HTTP response headers <code>Content-Disposition: attachment; filename={script_name}</code>.",
+        "<b>Step 5:</b> Browser initiates immediate local file download to the operator's computer."
+    ]
+    for el in render_feature("15", "Cross-Platform Desktop Client Toolkit Auto-Packager", True,
+                             "Main Dashboard Top Navigation Header &gt; <b>Client Toolkit</b> button (<code>#btn-azam-client-toolkit</code>)",
+                             f15_how, f15_bg):
         story.append(el)
 
     story.append(PageBreak())
@@ -696,278 +784,400 @@ def build_pdf(filename_dest):
     story.append(Paragraph("4. Inside-the-Lab Canvas Features (Lab Workbench: /themes/default/)", section_heading))
     story.append(Paragraph(
         "Inside-the-lab features are integrated directly into the visual network topology canvas. "
-        "They empower network engineers to execute live troubleshooting, staggered boot scheduling with KSM deduplication, automated version control commits, "
-        "live traffic heatmaps, packet sniffing, and AI copilot queries without leaving the workbench.",
+        "They empower network engineers to execute live troubleshooting, WAN QoS impairment, multi-node lab snapshots, RESTCONF sandbox testing, Chaos Monkey stress tests, NetDevOps inventory exports, staggered boot scheduling with console ready-state probing, CFS vCPU throttling, and AI copilot queries without leaving the workbench.",
         body_style
     ))
     story.append(Spacer(1, 4))
 
-    # Feature 12: Anti-Bootstorm & In-Canvas KSM
-    f12_how = [
+    # Feature 16: Anti-Bootstorm + Console Probing
+    f16_how = [
         "<b>Step 1:</b> Open any lab topology inside the PNETLab canvas workspace.",
         "<b>Step 2:</b> In the top workbench navigation toolbar, locate the purple button labeled <b>Anti-Bootstorm</b> (icon: lightning bolt).",
         "<b>Step 3:</b> In the modal, check the box <b>Boost with KSM Memory Deduplication</b>.",
-        "<b>Step 4:</b> Select startup profile: <b>Conservative (15s delay)</b>, <b>Balanced (10s delay)</b>, or <b>Aggressive (5s delay)</b>.",
-        "<b>Step 5:</b> Click <b>Start All Nodes Safely</b> and watch nodes boot sequentially without hypervisor overload."
+        "<b>Step 4:</b> Check the new advanced option: <b>Probe Console Ready-State (Wait for TCP Socket Before Next Node)</b>.",
+        "<b>Step 5:</b> Select startup profile (e.g. Balanced 10s delay) and click <b>Start All Nodes Safely</b> to watch sequential, intelligent node startup."
     ]
-    f12_bg = [
-        "<b>Step 1:</b> Trigger executes <code>azamLaunchBootstormModal()</code> which fetches node list and KSM status.",
+    f16_bg = [
+        "<b>Step 1:</b> Trigger executes <code>openBootstormModal()</code> which fetches node list, KSM status, and console ports.",
         "<b>Step 2:</b> If KSM booster is checked, client dispatches <code>POST /azam-ops/api/node-ksm-tune</code> setting <code>/sys/kernel/mm/ksm/run=1</code>.",
-        "<b>Step 3:</b> Backend runs <code>azambasha-bootstorm.py</code> ordering nodes by weight (firewalls/spines first).",
-        "<b>Step 4:</b> Inspects CPU utilization via <code>/proc/stat</code>; if load exceeds 80%, pauses until CPU stabilizes.",
-        "<b>Step 5:</b> Boots nodes individually via <code>unl_wrapper -a start -i {id}</code>, preventing hypervisor OOM panics."
+        "<b>Step 3:</b> When Console Probing is active, <code>azambasha-bootstorm.py</code> actively probes node TCP console ports (e.g. <code>32769+id</code>) using Python socket connections.",
+        "<b>Step 4:</b> Instead of guessing with fixed timers, the engine advances to the next node only after the device console responds to TCP SYN/ACK, guaranteeing clean boots.",
+        "<b>Step 5:</b> Boots nodes sequentially via <code>unl_wrapper -a start -i {id}</code>, preventing CPU spikes and hypervisor OOM crashes."
     ]
-    for el in render_feature("12", "Anti-Bootstorm Staggered Startup & In-Canvas KSM Booster", "GUI: Inside Lab Canvas",
-                             "Lab Workbench Top Toolbar &gt; <b>Anti-Bootstorm</b> button (<code>#btn-azam-bootstorm</code>)",
-                             f12_how, f12_bg):
+    for el in render_feature("16", "Anti-Bootstorm Staggered Startup & Console Ready-State Probing", True,
+                             "Lab Workbench Top Toolbar &gt; <b>Anti-Bootstorm</b> button (<code>#btn-azam-bootstorm</code>) &gt; Modal Checkbox (<code>#pnq-bs-probe</code>)",
+                             f16_how, f16_bg):
         story.append(el)
 
-    # Feature 13: Topology Git VCS & Auto-Commit
-    f13_how = [
+    # Feature 17: Topology Git VCS & Auto-Commit
+    f17_how = [
         "<b>Step 1:</b> Inside the lab canvas, click the <b>Git Version Control</b> icon in the left toolbar (branch icon, <code>#btn-azam-git-vcs</code>).",
         "<b>Step 2:</b> A slide-over drawer displays commit history, authors, and timestamps.",
         "<b>Step 3:</b> When you add nodes, connect interfaces, or save the lab, the system triggers an <b>Automated Auto-Commit</b> in the background.",
         "<b>Step 4:</b> To create a named checkpoint: enter a commit message (e.g. 'Configured OSPF Area 0') and click <b>Commit Topology State</b>.",
         "<b>Step 5:</b> To rollback: click <b>Restore</b> next to any historical commit; the canvas automatically reloads."
     ]
-    f13_bg = [
+    f17_bg = [
         "<b>Step 1:</b> On drawer open, fetches commit history via <code>GET /api/azam/topology-log?lab={lab_name}</code>.",
         "<b>Step 2:</b> Ensures lab folder <code>/opt/unetlab/labs/&lt;lab&gt;</code> is initialized with git; if not, runs <code>git init</code>.",
         "<b>Step 3:</b> When topology changes occur, front-end issues <code>POST /azam-ops/api/topology-autocommit</code>.",
         "<b>Step 4:</b> Stages the <code>.unl</code> XML file and creates a git commit with timestamp and change description.",
         "<b>Step 5:</b> On rollback, checks out historical snapshot via <code>git checkout &lt;hash&gt; -- &lt;lab.unl&gt;</code> and dispatches reload event."
     ]
-    for el in render_feature("13", "Topology Git Version Control & Automated Auto-Commit", "GUI: Inside Lab Canvas",
+    for el in render_feature("17", "Topology Git Version Control & Automated Auto-Commit", True,
                              "Lab Workbench Left Sidebar &gt; <b>Git VCS</b> icon (<code>#btn-azam-git-vcs</code>) &gt; Slide-Over Drawer",
-                             f13_how, f13_bg):
+                             f17_how, f17_bg):
         story.append(el)
 
-    # Feature 14: In-Canvas HTML5 Console Healer
-    f14_how = [
+    # Feature 18: In-Canvas HTML5 Console Healer
+    f18_how = [
         "<b>Step 1:</b> While inside a lab, if clicking a node yields a blank screen or 'Connection Refused', stay on the canvas.",
         "<b>Step 2:</b> Click the green button in the top toolbar labeled <b>Fix Console</b> (icon: wrench).",
         "<b>Step 3:</b> A confirmation toast appears: 'Restarting HTML5 Console Services...'",
         "<b>Step 4:</b> Wait 2 seconds until the success notification appears ('Console services recovered successfully').",
         "<b>Step 5:</b> Re-click the node to open the working HTML5 terminal immediately."
     ]
-    f14_bg = [
+    f18_bg = [
         "<b>Step 1:</b> Button executes <code>azamFixConsoleNow()</code> sending asynchronous <code>POST /api/azam/console-fix-full</code>.",
         "<b>Step 2:</b> API server invokes <code>azambasha-fix-web-credentials.sh</code> targeting Guacamole and Tomcat daemon sockets.",
         "<b>Step 3:</b> Flushes stuck client sessions in Guacamole memory cache and verifies port 4822 binds properly.",
         "<b>Step 4:</b> Resets browser terminal session iframe tokens without requiring a full page reload."
     ]
-    for el in render_feature("14", "In-Workbench Quick Console Healer", "GUI: Inside Lab Canvas",
+    for el in render_feature("18", "In-Workbench Quick Console Healer", True,
                              "Lab Workbench Top Toolbar &gt; <b>Fix Console</b> button (<code>#btn-azam-fix-console</code>)",
-                             f14_how, f14_bg):
+                             f18_how, f18_bg):
         story.append(el)
 
-    # Feature 15: Live Wireshark & Traffic Heatmap
-    f15_how = [
+    # Feature 19: Live Wireshark & Traffic Heatmap
+    f19_how = [
         "<b>Step 1:</b> In the top workbench toolbar, click the pulse icon button labeled <b>Traffic Heatmap</b>.",
         "<b>Step 2:</b> Observe canvas links transition to dynamic color codes: Green (idle/normal &lt;1 Mbps), Yellow (moderate 1-10 Mbps), Red (saturated &gt;10 Mbps).",
         "<b>Step 3:</b> To sniff packets on a specific interface, right-click any device node and select <b>Live Capture (Wireshark)</b>.",
         "<b>Step 4:</b> The capture drawer opens showing live packet decode, or click <b>Download PCAP</b> for local Wireshark analysis."
     ]
-    f15_bg = [
+    f19_bg = [
         "<b>Step 1:</b> Heatmap engine polls <code>GET /azam-ops/api/link-stats</code> every 3 seconds.",
         "<b>Step 2:</b> Backend reads virtual TAP counters from <code>/sys/class/net/vnet*/statistics/rx_bytes</code> and calculates delta rate (bytes/sec).",
         "<b>Step 3:</b> Front-end matches virtual interfaces to SVG link paths, updating <code>stroke</code> color dynamically.",
         "<b>Step 4:</b> For packet capture, host spawns <code>tcpdump -i vnetX_Y -U -w -</code> and streams raw PCAP bytes over HTTP."
     ]
-    for el in render_feature("15", "Live Wireshark Sniffer & In-Canvas Traffic Heatmap", "GUI: Inside Lab Canvas",
+    for el in render_feature("19", "Live Wireshark Sniffer & In-Canvas Traffic Heatmap", True,
                              "Lab Workbench Top Toolbar &gt; <b>Traffic Heatmap</b> button (<code>#pnq-btn-heatmap</code>) &amp; Context Menu",
-                             f15_how, f15_bg):
+                             f19_how, f19_bg):
         story.append(el)
 
-    # Feature 16: AI Lab Copilot & Desktop Notifications
-    f16_how = [
-        "<b>Step 1:</b> Click the floating <b>AI Assistant</b> widget at the bottom-right corner of the canvas.",
-        "<b>Step 2:</b> Type a query: 'Why isn't BGP EVPN establishing between Leaf1 and Leaf2?' or 'Generate Arista MLAG config'.",
-        "<b>Step 3:</b> The AI Copilot analyzes the active topology and streams back verified configuration snippets.",
-        "<b>Step 4:</b> If you minimize your browser during long operations, HTML5 Desktop Push Notifications will alert your operating system upon completion."
+    # Feature 20: In-Canvas AI Copilot Suite (Lab Architect, Config Synth, CIS Audit)
+    f20_how = [
+        "<b>Step 1:</b> In the top workbench toolbar, click the purple button labeled <b>AI Copilot</b> (<code>#pnq-btn-ai-drawer</code>) or press <b>Ctrl+Shift+A</b>.",
+        "<b>Step 2:</b> A 3-tab slide-over drawer opens: <b>✨ Lab Architect</b>, <b>Config Synthesizer</b>, and <b>CIS Security Audit</b>.",
+        "<b>Step 3:</b> In <b>✨ Lab Architect</b>: enter a natural language topology prompt (e.g. 'Build a 3-tier spine-leaf datacenter topology with 2 Arista spines and 4 leaves with BGP EVPN') and click <b>Generate Topology</b>.",
+        "<b>Step 4:</b> In <b>Config Synthesizer</b>: select target devices, prompt requirements (e.g. 'Synthesize OSPF Area 0 and multi-homed BGP peering'), and click <b>Synthesize Config</b>.",
+        "<b>Step 5:</b> In <b>CIS Security Audit</b>: click <b>Audit Node Security</b> to verify CIS hardening compliance (disabled telnet, strong SSH, encrypted passwords)."
     ]
-    f16_bg = [
-        "<b>Step 1:</b> Client serializes current topology structure (nodes, images, links) and queries <code>POST /api/azam/ai-copilot</code>.",
-        "<b>Step 2:</b> AI Copilot engine analyzes network architecture against vendor syntax guides (Cisco, Arista, Juniper).",
-        "<b>Step 3:</b> Desktop notification helper <code>azamNotifyDesktop()</code> invokes the browser HTML5 Notification API.",
-        "<b>Step 4:</b> Pushes native desktop OS toast notifications when Anti-Bootstorm finishes or system health warnings occur."
+    f20_bg = [
+        "<b>Step 1:</b> Frontend dispatches requests to <code>/azam-ops/api/ai/topology-build</code>, <code>/ai/config-synth</code>, or <code>/ai/compliance-audit</code>.",
+        "<b>Step 2:</b> <code>topology-build</code> parses node specs, computes 2D coordinates (spines at y=100, leaves at y=250), generates inter-switch link matrices, and produces clean UNL XML definitions.",
+        "<b>Step 3:</b> <code>config-synth</code> constructs vendor-specific syntax (Cisco IOS-XE, Arista EOS, Junos) conforming to modern best practices.",
+        "<b>Step 4:</b> <code>compliance-audit</code> runs automated rules checking for weak ciphers, cleartext passwords, and exposed management protocols.",
+        "<b>Step 5:</b> Returns structured JSON results rendered directly into the interactive code view within the drawer."
     ]
-    for el in render_feature("16", "AI Lab Copilot & HTML5 OS-Level Desktop Notifications", "GUI: Inside Lab Canvas",
-                             "Lab Workbench &gt; Floating Action Widget (Bottom-Right) &amp; OS Desktop Notification Service",
-                             f16_how, f16_bg):
+    for el in render_feature("20", "In-Canvas AI Copilot Suite (Lab Architect, Config Synthesizer, CIS Audit)", True,
+                             "Lab Workbench Top Toolbar &gt; <b>✨ AI Copilot</b> button (<code>#pnq-btn-ai-drawer</code>) &amp; 3-Tab Slide Drawer",
+                             f20_how, f20_bg):
         story.append(el)
 
-    # Feature 17: Multi-Node Config Diff
-    f17_how = [
+    # Feature 21: WAN QoS & Dynamic Link Impairment Engine
+    f21_how = [
+        "<b>Step 1:</b> In the lab canvas, right-click any connecting link or line between nodes.",
+        "<b>Step 2:</b> In the context menu, click <b>Impair Link (WAN/QoS)</b> (or click <b>AI Triage Link</b> for automated diagnosis).",
+        "<b>Step 3:</b> The WAN QoS Impairment modal opens displaying Interface, Source, and Destination.",
+        "<b>Step 4:</b> Adjust sliders or input values: <b>Latency Delay (ms)</b> (e.g. 50ms), <b>Jitter Variance (ms)</b> (e.g. 10ms), <b>Packet Loss (%)</b> (e.g. 2%), and <b>Bandwidth Rate Limit (kbps)</b> (e.g. 10000 kbps / 10 Mbps).",
+        "<b>Step 5:</b> Click <b>Apply Link Impairment</b>. To restore normal wire-speed conditions at any time, click <b>Clear All Impairment (Reset Link)</b>."
+    ]
+    f21_bg = [
+        "<b>Step 1:</b> Front-end submits <code>POST /azam-ops/api/link-impair</code> with JSON parameters (<code>interface</code>, <code>delay_ms</code>, <code>jitter_ms</code>, <code>loss_pct</code>, <code>rate_kbps</code>, <code>action</code>).",
+        "<b>Step 2:</b> API server validates interface existence in <code>/sys/class/net/</code>.",
+        "<b>Step 3:</b> When clear action is requested, executes <code>tc qdisc del dev {iface} root 2>/dev/null</code>.",
+        "<b>Step 4:</b> When applying impairment, builds Linux Traffic Control NetEm command: <code>tc qdisc replace dev {iface} root netem delay {delay}ms {jitter}ms loss {loss}% rate {rate}kbit</code>.",
+        "<b>Step 5:</b> Injects kernel-level queueing discipline (qdisc) directly into the Linux virtual TAP device, causing realistic packet buffering, dropped frames, and serialization delays."
+    ]
+    for el in render_feature("21", "WAN QoS & Dynamic Link Impairment Engine (NetEm)", True,
+                             "Lab Canvas &gt; Link Right-Click Context Menu &gt; <b>Impair Link (WAN/QoS)</b> Modal (<code>#azam-link-impair-modal</code>)",
+                             f21_how, f21_bg):
+        story.append(el)
+
+    # Feature 22: Instant Multi-Node Lab Checkpoints & GitOps Time-Machine
+    f22_how = [
+        "<b>Step 1:</b> Inside any active lab, locate and click the <b>Lab Checkpoint</b> button in the top toolbar (camera icon, <code>#pnq-btn-checkpoint</code>).",
+        "<b>Step 2:</b> The modal displays two operations: <b>Create Instant Lab Checkpoint</b> and <b>Restore Existing Checkpoint</b>.",
+        "<b>Step 3:</b> To snapshot: enter a checkpoint tag name (e.g. <code>pre-bgp-cutover</code>) and click <b>Create Checkpoint</b>.",
+        "<b>Step 4:</b> The engine freezes node disks momentarily and snapshots all QEMU overlay disks in parallel.",
+        "<b>Step 5:</b> To rollback: select the checkpoint tag from the list and click <b>Restore Checkpoint</b> to revert every node in the lab to that exact state instantly."
+    ]
+    f22_bg = [
+        "<b>Step 1:</b> Front-end issues <code>POST /azam-ops/api/lab-checkpoint/create</code> with <code>lab_id</code> and <code>tag</code>.",
+        "<b>Step 2:</b> API locates all node disk images in <code>/opt/unetlab/tmp/{lab_id}/{node_id}/*.qcow2</code>.",
+        "<b>Step 3:</b> Executes <code>qemu-img snapshot -c {tag} {disk_path}</code> across all node overlay images.",
+        "<b>Step 4:</b> Records snapshot metadata, timestamp, and active UNL topology in <code>/opt/unetlab/tmp/{lab_id}/checkpoints.json</code>.",
+        "<b>Step 5:</b> On restore, sends <code>POST /lab-checkpoint/restore</code> which issues <code>qemu-img snapshot -a {tag} {disk_path}</code>, atomically rewinding node disks to the checkpoint."
+    ]
+    for el in render_feature("22", "Instant Multi-Node Lab Checkpoints & GitOps Time-Machine", True,
+                             "Lab Workbench Top Toolbar &gt; <b>Lab Checkpoint</b> button (<code>#pnq-btn-checkpoint</code>)",
+                             f22_how, f22_bg):
+        story.append(el)
+
+    # Feature 23: Model-Driven RESTCONF / NETCONF Workbench Sandbox
+    f23_how = [
+        "<b>Step 1:</b> In the lab canvas, right-click any network device node (Cisco, Arista, Juniper, Linux).",
+        "<b>Step 2:</b> In the context menu, click <b>RESTCONF Sandbox</b> (or click the top toolbar RESTCONF icon).",
+        "<b>Step 3:</b> In the modal: choose HTTP Method (<b>GET</b>, <b>POST</b>, <b>PUT</b>, <b>PATCH</b>, <b>DELETE</b>).",
+        "<b>Step 4:</b> Enter RFC 8040 URI path (e.g. <code>/restconf/data/ietf-interfaces:interfaces</code>) and optional JSON/YANG payload.",
+        "<b>Step 5:</b> Click <b>Execute Request</b> to view the live HTTP status code, formatted JSON response, and latency."
+    ]
+    f23_bg = [
+        "<b>Step 1:</b> Front-end transmits <code>POST /azam-ops/api/restconf/proxy</code> containing target IP, port (default 443), credentials, URI path, and body.",
+        "<b>Step 2:</b> Python backend acts as an authenticated RFC 8040 proxy with <code>Accept: application/yang-data+json</code> and <code>Content-Type: application/yang-data+json</code>.",
+        "<b>Step 3:</b> Bypasses browser CORS restrictions, opens secure TLS connection to node management IP, and transmits payload.",
+        "<b>Step 4:</b> Captures HTTP return code (200 OK, 201 Created, 204 No Content, 400 Bad Request) and response headers.",
+        "<b>Step 5:</b> Pretty-prints JSON/XML response payload and streams it back to the in-browser sandbox viewer."
+    ]
+    for el in render_feature("23", "Model-Driven RESTCONF / NETCONF Workbench Sandbox", True,
+                             "Lab Canvas &gt; Node Right-Click Context Menu &gt; <b>RESTCONF Sandbox</b> Modal (<code>#azam-restconf-modal</code>)",
+                             f23_how, f23_bg):
+        story.append(el)
+
+    # Feature 24: Automated Chaos Monkey & Link-Flap / Crash Testing Engine
+    f24_how = [
+        "<b>Step 1:</b> In the top workbench toolbar, click the warning triangle button labeled <b>Chaos Monkey</b> (<code>#pnq-btn-chaos</code>).",
+        "<b>Step 2:</b> In the modal, configure chaos parameters: <b>Flap Interval (seconds)</b> (e.g. 30s), <b>Affected Links Percentage</b> (e.g. 25%), and <b>Inject Node Crash (Kernel Panic)</b> toggle.",
+        "<b>Step 3:</b> Click the red button labeled <b>Arm Chaos Engine</b>.",
+        "<b>Step 4:</b> Observe links flapping randomly in the canvas as routing protocols (OSPF/BGP) reconverge and heal.",
+        "<b>Step 5:</b> To halt chaos testing at any time, re-open the modal and click <b>Stop Chaos & Restore All Links</b>."
+    ]
+    f24_bg = [
+        "<b>Step 1:</b> Front-end dispatches <code>POST /azam-ops/api/chaos/start</code> with lab ID and interval parameters.",
+        "<b>Step 2:</b> API server registers an active chaos session and spawns background worker thread.",
+        "<b>Step 3:</b> Worker thread randomly picks participating link TAP interfaces and toggles state via <code>ip link set {iface} down</code> followed by sleep timer and <code>ip link set {iface} up</code>.",
+        "<b>Step 4:</b> If node crash injection is enabled, sends <code>kill -STOP {qemu_pid}</code> or drops guest management sockets.",
+        "<b>Step 5:</b> When stopped via <code>POST /chaos/stop</code>, worker thread terminates immediately and brings all TAP interfaces back UP."
+    ]
+    for el in render_feature("24", "Automated Chaos Monkey & Link-Flap / Crash Testing Engine", True,
+                             "Lab Workbench Top Toolbar &gt; <b>Chaos Monkey</b> button (<code>#pnq-btn-chaos</code>)",
+                             f24_how, f24_bg):
+        story.append(el)
+
+    # Feature 25: 1-Click Multi-Vendor NetDevOps Exporter Suite
+    f25_how = [
+        "<b>Step 1:</b> Click the download cloud icon in the top toolbar labeled <b>Export DevOps</b> (<code>#pnq-btn-export</code>).",
+        "<b>Step 2:</b> The modal offers 4 automated export formats: <b>Ansible Inventory (YAML)</b>, <b>Cisco pyATS Testbed (YAML)</b>, <b>Draw.io Network Diagram (XML)</b>, and <b>Patch Cabling Matrix (CSV)</b>.",
+        "<b>Step 3:</b> Click the <b>Download</b> button next to the desired format (e.g. <b>Download Ansible Inventory</b>).",
+        "<b>Step 4:</b> The generated file downloads instantly to your computer.",
+        "<b>Step 5:</b> Run <code>ansible-playbook -i ansible_inventory.yml site.yml</code> or <code>pyats run testbed.yaml</code> immediately without writing manual device definitions."
+    ]
+    f25_bg = [
+        "<b>Step 1:</b> UI calls <code>GET /azam-ops/api/export/{ansible|pyats|drawio|cabling}?lab={lab_name}</code>.",
+        "<b>Step 2:</b> Backend parses the lab's <code>.unl</code> XML file, extracting node types, names, management IPs, images, and interface interconnects.",
+        "<b>Step 3:</b> For Ansible: generates hierarchical groups (<code>cisco</code>, <code>arista</code>, <code>juniper</code>, <code>linux</code>) with correct <code>ansible_network_os</code> and <code>ansible_host</code>.",
+        "<b>Step 4:</b> For pyATS: builds Genie testbed schema with connection protocols (ssh/telnet) and interface dictionaries.",
+        "<b>Step 5:</b> For Draw.io & Cabling: generates mxGraphModel XML with coordinates and CSV connection matrices respectively, returned with <code>Content-Disposition: attachment</code>."
+    ]
+    for el in render_feature("25", "1-Click Multi-Vendor NetDevOps Exporter Suite", True,
+                             "Lab Workbench Top Toolbar &gt; <b>Export DevOps</b> button (<code>#pnq-btn-export</code>)",
+                             f25_how, f25_bg):
+        story.append(el)
+
+    # Feature 26: Linux CFS vCPU Bandwidth Quota & Hypervisor Noise Governor
+    f26_how = [
+        "<b>Step 1:</b> Right-click any virtual machine node on the canvas (e.g. an aggressive traffic generator or heavy router).",
+        "<b>Step 2:</b> In the context menu, select <b>vCPU & Performance Governor</b>.",
+        "<b>Step 3:</b> The modal displays current hypervisor cgroup allocations.",
+        "<b>Step 4:</b> Select throttling profile: <b>Full Priority (100% vCPU)</b>, <b>High (75% vCPU)</b>, <b>Throttled (50% vCPU)</b>, or <b>Constrained (25% vCPU)</b>.",
+        "<b>Step 5:</b> Click <b>Apply Governor Quota</b> to immediately constrain the node's CPU usage without shutting it down."
+    ]
+    f26_bg = [
+        "<b>Step 1:</b> Frontend calls <code>POST /azam-ops/api/cgroups/limit</code> with node PID and CPU percentage quota.",
+        "<b>Step 2:</b> Backend locates QEMU host PID associated with the target node in <code>/opt/unetlab/tmp/</code>.",
+        "<b>Step 3:</b> Creates or updates cgroups v2 control group in <code>/sys/fs/cgroup/pnetlab_nodes/node_{pid}/</code>.",
+        "<b>Step 4:</b> Writes quota to <code>cpu.max</code> (e.g. <code>50000 100000</code> for 50% CPU ceiling in a 100ms CFS period).",
+        "<b>Step 5:</b> Linux Completely Fair Scheduler (CFS) enforces strict bandwidth ceilings on host CPU cycles, protecting adjacent lab nodes from noisy-neighbor starvation."
+    ]
+    for el in render_feature("26", "Linux CFS vCPU Bandwidth Quota & Hypervisor Noise Governor", True,
+                             "Lab Canvas &gt; Node Right-Click Context Menu &gt; <b>vCPU Governor</b> Modal (<code>#azam-cfs-governor-modal</code>)",
+                             f26_how, f26_bg):
+        story.append(el)
+
+    # Feature 27: Multi-Node Config Diff
+    f27_how = [
         "<b>Step 1:</b> Inside the lab, click <b>Management Tools</b> in the canvas sidebar &gt; <b>Config Diff Engine</b>.",
         "<b>Step 2:</b> Select nodes to compare or choose between two historical configuration snapshots.",
         "<b>Step 3:</b> The split-screen diff viewer highlights added lines in green, removed lines in red, and modified syntax in yellow.",
         "<b>Step 4:</b> Click <b>Rollback Node Config</b> to push previous baseline syntax back to the device."
     ]
-    f17_bg = [
+    f27_bg = [
         "<b>Step 1:</b> Queries <code>/opt/unetlab/tmp/{lab_id}/{node_id}/startup-config</code> and running snapshots.",
         "<b>Step 2:</b> Python <code>difflib</code> compares normalized configuration text, ignoring non-functional whitespace.",
         "<b>Step 3:</b> Renders unified diff payload and returns structured JSON to client-side CodeMirror diff editor.",
         "<b>Step 4:</b> On rollback, writes chosen config directly to node flash storage via unl wrapper."
     ]
-    for el in render_feature("17", "Multi-Node Config Diff & Rollback Engine", "GUI: Inside Lab Canvas",
+    for el in render_feature("27", "Multi-Node Config Diff & Rollback Engine", True,
                              "Lab Workbench &gt; Canvas Management Menu &gt; <b>Config Diff Engine</b>",
-                             f17_how, f17_bg):
+                             f27_how, f27_bg):
         story.append(el)
 
-    # Feature 18: Automated Exam Grader
-    f18_how = [
+    # Feature 28: Automated Exam Grader
+    f28_how = [
         "<b>Step 1:</b> Click <b>Lab Actions</b> in the canvas top menu &gt; <b>Run Lab Assessment / Exam Grader</b>.",
         "<b>Step 2:</b> Select test rubric (e.g. CCNA Routing, BGP Multi-Homing, OSPF Area Verification).",
         "<b>Step 3:</b> Click <b>Execute Validation Tests</b>.",
         "<b>Step 4:</b> View real-time checklist: green ticks for passed objectives, red marks for failed requirements, and final score percentage."
     ]
-    f18_bg = [
+    f28_bg = [
         "<b>Step 1:</b> Backend orchestrator initiates automated Telnet/SSH probes to target node console ports.",
         "<b>Step 2:</b> Executes verification commands (e.g. <code>show ip route</code>, <code>show ip bgp summary</code>).",
         "<b>Step 3:</b> Regex parsing engine validates prefix reachability, next-hop IP, and protocol neighbor states.",
         "<b>Step 4:</b> Generates scorecard and saves PDF/JSON certificate in <code>/opt/unetlab/labs/{lab}/results/</code>."
     ]
-    for el in render_feature("18", "Automated Lab Exam Grader", "GUI: Inside Lab Canvas",
+    for el in render_feature("28", "Automated Lab Exam Grader", True,
                              "Lab Workbench Top Bar &gt; <b>Lab Actions</b> &gt; <b>Run Exam Evaluation</b>",
-                             f18_how, f18_bg):
+                             f28_how, f28_bg):
         story.append(el)
 
-    # Feature 19: Ping Mesh & Traffic Generator
-    f19_how = [
+    # Feature 29: Ping Mesh & Traffic Generator
+    f29_how = [
         "<b>Step 1:</b> In the canvas menu, select <b>Lab Testing</b> &gt; <b>Ping Mesh & Traffic Generator</b>.",
         "<b>Step 2:</b> Select participating nodes or choose 'Full Mesh All Running Nodes'.",
         "<b>Step 3:</b> Set packet size (64 to 9000 bytes) and rate (pps).",
         "<b>Step 4:</b> Click <b>Start Mesh Test</b> to view latency matrix heatmap, packet loss, and jitter."
     ]
-    f19_bg = [
+    f29_bg = [
         "<b>Step 1:</b> Orchestrator dispatches lightweight ICMP/UDP echo requests across all node bridge endpoints.",
         "<b>Step 2:</b> Collects round-trip time (RTT) telemetry and calculates minimum, average, and maximum latency.",
         "<b>Step 3:</b> Renders interactive matrix heatmap in the canvas interface.",
         "<b>Step 4:</b> Detects path MTU blackholes if packets above 1500 bytes drop unexpectedly."
     ]
-    for el in render_feature("19", "Ping Mesh & Traffic Generator Engine", "GUI: Inside Lab Canvas",
+    for el in render_feature("29", "Ping Mesh & Traffic Generator Engine", True,
                              "Lab Workbench Top Bar &gt; <b>Lab Testing</b> &gt; <b>Ping Mesh & Traffic</b>",
-                             f19_how, f19_bg):
+                             f29_how, f29_bg):
         story.append(el)
 
-    # Feature 20: High-Res Diagram Exporter
-    f20_how = [
+    # Feature 30: High-Res Diagram Exporter
+    f30_how = [
         "<b>Step 1:</b> Inside the canvas, click <b>Export</b> in the top-right toolbar &gt; <b>Export Topology Vector/PNG</b>.",
         "<b>Step 2:</b> Choose output format: <b>Scalable Vector Graphics (SVG)</b> or <b>High-Res PNG (300 DPI)</b>.",
         "<b>Step 3:</b> Toggle options: Include IP labels, Include interface names, Watermark with company logo.",
         "<b>Step 4:</b> Click <b>Download Image File</b> for presentation-ready architecture diagrams."
     ]
-    f20_bg = [
+    f30_bg = [
         "<b>Step 1:</b> JavaScript reads SVG DOM elements representing nodes, custom shapes, text labels, and link paths.",
         "<b>Step 2:</b> Normalizes viewBox coordinates, converts external image icons into inline base64 data URIs.",
         "<b>Step 3:</b> Applies CSS styling and embeds vector fonts directly into the standalone SVG document.",
         "<b>Step 4:</b> Triggers instant browser download without round-tripping to server, preserving client privacy."
     ]
-    for el in render_feature("20", "High-Resolution Lab Diagram Exporter", "GUI: Inside Lab Canvas",
+    for el in render_feature("30", "High-Resolution Lab Diagram Exporter", True,
                              "Lab Workbench Top Bar &gt; <b>Export</b> &gt; <b>Export Topology Diagram</b>",
-                             f20_how, f20_bg):
+                             f30_how, f30_bg):
         story.append(el)
 
-    # Feature 21: Interactive Canvas Accelerators
-    f21_how = [
+    # Feature 31: Interactive Canvas Accelerators
+    f31_how = [
         "<b>Step 1:</b> Locate the interactive <b>Minimap Overview</b> at the bottom-left of the canvas.",
         "<b>Step 2:</b> Drag the viewport indicator in the minimap to pan smoothly across large topologies with 50+ nodes.",
         "<b>Step 3:</b> Select multiple nodes and press <b>Shift + S</b> to snap to grid or <b>Shift + A</b> for automatic alignment.",
         "<b>Step 4:</b> Use mouse wheel for continuous zoom from 25% overview to 200% detail view."
     ]
-    f21_bg = [
+    f31_bg = [
         "<b>Step 1:</b> Canvas rendering engine creates a secondary hardware-accelerated HTML5 canvas element for the minimap.",
         "<b>Step 2:</b> Listens to canvas pan/zoom transform matrices and recalculates viewport bounding box in real-time.",
         "<b>Step 3:</b> Snap-to-grid algorithm calculates modulo-20 coordinate snapping for node drag events.",
         "<b>Step 4:</b> Persists updated coordinates directly to the underlying <code>.unl</code> XML file upon mouse release."
     ]
-    for el in render_feature("21", "Interactive Canvas Accelerators & Minimap", "GUI: Inside Lab Canvas",
+    for el in render_feature("31", "Interactive Canvas Accelerators & Minimap", True,
                              "Lab Workbench Canvas &gt; Bottom-Left <b>Minimap</b> &amp; Keyboard Accelerators",
-                             f21_how, f21_bg):
+                             f31_how, f31_bg):
         story.append(el)
 
     story.append(PageBreak())
 
     # ==================== SECTION 5: BACKGROUND DAEMONS ====================
-    story.append(Paragraph("5. Background Daemons & Kernel Infrastructure", section_heading))
+    story.append(Paragraph("5. Background Daemons & Kernel Infrastructure (System Plane)", section_heading))
     story.append(Paragraph(
         "These core features operate autonomously beneath the graphical interface on both Master and Satellite nodes. "
-        "They maintain hypervisor stability, self-heal system services, enable hardware-accelerated networking, and perform scheduled system maintenance.",
+        "They maintain hypervisor stability, self-heal system services, enable hardware-accelerated networking, and perform scheduled system maintenance. "
+        "Because they run autonomously at the kernel or systemd level, they do not require an active graphical user interface.",
         body_style
     ))
     story.append(Spacer(1, 4))
 
-    # Feature 22: 24/7 Watchdog Daemon
-    f22_how = [
+    # Feature 32: 24/7 Watchdog Daemon
+    f32_how = [
         "<b>Step 1:</b> The watchdog runs autonomously as a Linux systemd service: <code>azam-watchdog.service</code> on both Master and Satellite nodes.",
         "<b>Step 2:</b> To inspect live status, open an SSH terminal and run: <code>systemctl status azam-watchdog</code>.",
         "<b>Step 3:</b> To view event logs: <code>tail -f /var/log/azambasha-watchdog.log</code>.",
         "<b>Step 4:</b> No manual interaction is needed; the service auto-starts on boot and runs continuously."
     ]
-    f22_bg = [
+    f32_bg = [
         "<b>Step 1:</b> Daemon wakes up every 60 seconds and evaluates host health metrics.",
         "<b>Step 2:</b> Inspects essential processes; if any core service is down, triggers automated restart.",
         "<b>Step 3:</b> Monitors available system RAM; if free RAM drops below 5%, identifies hung QEMU processes and alerts.",
         "<b>Step 4:</b> Cleans up zombie processes and stale temporary lock files in <code>/tmp</code> to prevent hypervisor starvation."
     ]
-    for el in render_feature("22", "24/7 Self-Healing System Watchdog Daemon", "Background Daemon Plane (Master & Satellite)",
-                             "Linux Systemd Service &gt; <code>azam-watchdog.service</code> (Autonomous 24/7)",
-                             f22_how, f22_bg):
+    for el in render_feature("32", "24/7 Self-Healing System Watchdog Daemon", False,
+                             "Linux Systemd Service &gt; <code>azam-watchdog.service</code> (Autonomous 24/7 Background)",
+                             f32_how, f32_bg):
         story.append(el)
 
-    # Feature 23: MySQL Socket & Credentials Healer
-    f23_how = [
+    # Feature 33: MySQL Socket & Credentials Healer
+    f33_how = [
         "<b>Step 1:</b> The healer runs automatically during boot, hourly via cron, and upon admin request on the Master Node.",
         "<b>Step 2:</b> To trigger manual repair from CLI, execute: <code>azambasha-fix-web-credentials</code>.",
         "<b>Step 3:</b> The script inspects database user passwords, table permissions, and socket symlinks.",
         "<b>Step 4:</b> Confirms with output message: <code>[OK] Web credentials and MySQL socket successfully verified</code>."
     ]
-    f23_bg = [
+    f33_bg = [
         "<b>Step 1:</b> Checks if MariaDB unix socket exists at <code>/var/run/mysqld/mysqld.sock</code>; if missing, creates symlink.",
         "<b>Step 2:</b> Connects to database and verifies <code>pnetlab</code> user credentials match <code>/opt/unetlab/html/includes/config.php</code>.",
         "<b>Step 3:</b> Synchronizes Guacamole database credentials in <code>/etc/guacamole/guacamole.properties</code>.",
         "<b>Step 4:</b> Flushes MariaDB privileges (<code>FLUSH PRIVILEGES;</code>) and verifies read/write integrity."
     ]
-    for el in render_feature("23", "MySQL Socket & Credential Auto-Healer", "Background Daemon Plane (Master Only)",
-                             "Systemd Hook &amp; Cron &gt; <code>/usr/local/bin/azambasha-fix-web-credentials</code>",
-                             f23_how, f23_bg):
+    for el in render_feature("33", "MySQL Socket & Credential Auto-Healer", False,
+                             "Systemd Hook &amp; Cron &gt; <code>/usr/local/bin/azambasha-fix-web-credentials</code> (Master Node Background)",
+                             f33_how, f33_bg):
         story.append(el)
 
-    # Feature 24: Soft-RoCE RXE & Jumbo MTU Engine
-    f24_how = [
+    # Feature 34: Soft-RoCE RXE & Jumbo MTU Engine
+    f34_how = [
         "<b>Step 1:</b> Activated on both Master and Satellite nodes during setup via <code>azambasha-os-prerequisites.sh</code>.",
         "<b>Step 2:</b> To inspect RDMA status, run: <code>rdma link</code> or <code>ibv_devices</code>.",
         "<b>Step 3:</b> To verify Jumbo Frame MTU across bridge interfaces: <code>ip link show | grep mtu</code>.",
         "<b>Step 4:</b> All virtual bridges (pnet0 through pnet9) operate with MTU 9000 for high-throughput packet emulation."
     ]
-    f24_bg = [
+    f34_bg = [
         "<b>Step 1:</b> Loads Linux kernel modules <code>rdma_rxe</code> and <code>ib_core</code> into kernel memory.",
         "<b>Step 2:</b> Binds software RoCE (RDMA over Converged Ethernet) devices to physical NIC interfaces.",
         "<b>Step 3:</b> Configures <code>udev</code> rules and <code>/etc/network/interfaces</code> setting bridge MTU to 9000.",
         "<b>Step 4:</b> Eliminates CPU packet fragmentation overhead for high-speed emulated links (e.g. 10G/40G data center fabrics)."
     ]
-    for el in render_feature("24", "Soft-RoCE RXE & MTU 9000 Network Accelerator", "Kernel Infrastructure Plane (Master & Satellite)",
+    for el in render_feature("34", "Soft-RoCE RXE & MTU 9000 Network Accelerator", False,
                              "Linux Kernel Module &amp; Network Configuration (<code>/etc/modprobe.d/</code>, <code>udev</code>)",
-                             f24_how, f24_bg):
+                             f34_how, f34_bg):
         story.append(el)
 
-    # Feature 25: Scheduled Maintenance & TRIM Engine
-    f25_how = [
+    # Feature 35: Scheduled Maintenance & TRIM Engine
+    f35_how = [
         "<b>Step 1:</b> Scheduled automatically via cron on Master and Satellite nodes: <code>/etc/cron.d/azambasha-maintenance</code>.",
         "<b>Step 2:</b> Executes nightly at 03:00 UTC without disrupting running user labs.",
         "<b>Step 3:</b> To run on demand from CLI: <code>azambasha-heavy-node-optimizer.sh --maintenance</code>.",
         "<b>Step 4:</b> Check maintenance log at: <code>/var/log/azambasha-maintenance.log</code>."
     ]
-    f25_bg = [
+    f35_bg = [
         "<b>Step 1:</b> Executes <code>fstrim -av</code> to issue TRIM commands to underlying SSD/NVMe storage, recovering deleted blocks.",
         "<b>Step 2:</b> Clears Linux dentry and inode pagecache buffers via <code>sysctl vm.drop_caches=3</code> if system is idle.",
         "<b>Step 3:</b> Truncates log files in <code>/opt/unetlab/data/Logs/</code> older than 14 days and compresses historical archives.",
         "<b>Step 4:</b> Empties orphaned sockets in <code>/opt/unetlab/tmp/</code> left behind by abnormally terminated nodes."
     ]
-    for el in render_feature("25", "Scheduled Maintenance & Storage TRIM Engine", "Background Daemon Plane (Master & Satellite)",
+    for el in render_feature("35", "Scheduled Maintenance & Storage TRIM Engine", False,
                              "System Cron &gt; <code>/etc/cron.d/azambasha-maintenance</code> (Nightly 03:00 UTC)",
-                             f25_how, f25_bg):
+                             f35_how, f35_bg):
         story.append(el)
 
     story.append(PageBreak())
@@ -995,6 +1205,10 @@ def build_pdf(filename_dest):
         [Paragraph("azambasha-install-azam-features", table_cell_style), Paragraph("Symlink &amp; Package Installer", table_cell_style), Paragraph("azambasha-install-azam-features.sh [--satellite]", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
         [Paragraph("azambasha-fix-network-boot", table_cell_style), Paragraph("Bridge &amp; TAP Network Boot Fix", table_cell_style), Paragraph("azambasha-fix-network-boot.sh", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
         [Paragraph("azambasha-fix-export-and-apt", table_cell_style), Paragraph("Ubuntu Package Repository Fix", table_cell_style), Paragraph("azambasha-fix-export-and-apt.sh", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("azam-link-impair", table_cell_style), Paragraph("WAN QoS NetEm Impairment CLI", table_cell_style), Paragraph("azam-link-impair --iface vnet0 --delay 50", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("azam-roce", table_cell_style), Paragraph("Soft-RoCE &amp; MTU 9000 Driver", table_cell_style), Paragraph("azam-roce --status --mtu 9000", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("azam-cgroups", table_cell_style), Paragraph("cgroups v2 Performance Manager", table_cell_style), Paragraph("azam-cgroups --pid 1234 --cpu-max 50", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
+        [Paragraph("azam-cpu-governor", table_cell_style), Paragraph("Linux CFS Bandwidth Governor", table_cell_style), Paragraph("azam-cpu-governor --throttle 50", table_cell_style), Paragraph("Master &amp; Satellite", table_cell_style)],
     ]
     t_cli = Table(cli_data, colWidths=[130, 120, 160, 94])
     t_cli.setStyle(TableStyle([
@@ -1053,7 +1267,7 @@ def build_pdf(filename_dest):
     # Summary Box
     summary_text = [
         [Paragraph("<b>Documentation Summary & Compliance Note:</b><br/>"
-                   "This manual encompasses all 25 enterprise features and 9 advanced platform enhancements integrated into the Azam-Pnet platform. "
+                   "This manual encompasses all enterprise features, NetDevOps exporters, and AIOps platform enhancements integrated into the Azam-Pnet platform. "
                    "All API endpoints, UI placements, and background scripts adhere to the platform's non-destructive "
                    "design architecture. Stale websockets, hypervisor memory thresholds, and disk structures are guarded "
                    "by automated checks to guarantee continuous lab uptime across both Master and Satellite compute nodes.", body_style)]

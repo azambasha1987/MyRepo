@@ -3531,6 +3531,22 @@ main() {
         verify_broker_only
         verify_cloud_bridges
     fi
+
+    # Deploy Azam-Features suite on newly installed node (Master or Satellite)
+    if [ "$PROFILE" = master ]; then
+        if [ -f /opt/unetlab/scripts/azambasha-install-azam-features.sh ]; then
+            bash /opt/unetlab/scripts/azambasha-install-azam-features.sh >>"$LOG" 2>&1 || true
+        elif [ -f /opt/azambasha/scripts/azambasha-install-azam-features.sh ]; then
+            bash /opt/azambasha/scripts/azambasha-install-azam-features.sh >>"$LOG" 2>&1 || true
+        fi
+    else
+        if [ -f /opt/unetlab/scripts/azambasha-install-azam-features.sh ]; then
+            bash /opt/unetlab/scripts/azambasha-install-azam-features.sh --satellite >>"$LOG" 2>&1 || true
+        elif [ -f /opt/azambasha/scripts/azambasha-install-azam-features.sh ]; then
+            bash /opt/azambasha/scripts/azambasha-install-azam-features.sh --satellite >>"$LOG" 2>&1 || true
+        fi
+    fi
+
     summary
 }
 

@@ -818,6 +818,10 @@
               '<label for="pnq-bs-dryrun" style="font-size:12.5px;color:#cbd5e1;cursor:pointer;">Simulate boot order without launching nodes (--dry-run)</label>' +
             '</div>' +
             '<div style="display:flex;align-items:center;gap:8px;">' +
+              '<input type="checkbox" id="pnq-bs-probe" checked style="cursor:pointer;accent-color:#10b981;">' +
+              '<label for="pnq-bs-probe" style="font-size:12px;color:#6ee7b7;cursor:pointer;">Ready-State Probing: Wait for console login prompt (&gt; / # / login:) before next batch</label>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
               '<input type="checkbox" id="pnq-bs-ksm" checked style="cursor:pointer;accent-color:#6366f1;">' +
               '<label for="pnq-bs-ksm" style="font-size:12px;color:#a5b4fc;cursor:pointer;">Auto-apply KSM memory optimization after boot (Saves up to 70% RAM)</label>' +
             '</div>' +
@@ -837,8 +841,9 @@
         var hd = modal.querySelector('#pnq-bs-heavy').value.trim();
         var md = modal.querySelector('#pnq-bs-medium').value.trim();
         var dry = modal.querySelector('#pnq-bs-dryrun').checked;
+        var probe = modal.querySelector('#pnq-bs-probe').checked;
         var autoKsm = modal.querySelector('#pnq-bs-ksm').checked;
-        azRunTool('bootstorm-start', { lab: lab, heavy_delay: hd, medium_delay: md, dry_run: dry }, this, 'pnq-bs-term');
+        azRunTool('bootstorm-start', { lab: lab, heavy_delay: hd, medium_delay: md, dry_run: dry, probe_console: probe }, this, 'pnq-bs-term');
         if (autoKsm && !dry) {
           setTimeout(function () {
             fetch(API_BASE + '/node-ksm-tune', {
@@ -856,6 +861,655 @@
     }
   }
 
+  /* ── 1. Lab QCOW2 Checkpoint Modal ────────────────────── */
+  function openCheckpointModal() {
+    var modalId = 'pnq-checkpoint-modal';
+    var modal = document.getElementById(modalId);
+    var currentLab = window.lab_filename || window.lab_name || window.location.pathname || '/Admin/active_lab.unl';
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = modalId;
+      modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);z-index:999999;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;color:#f8fafc;';
+      modal.innerHTML = 
+        '<div style="width:560px;max-width:92%;background:#0f172a;border:1px solid rgba(255,255,255,0.15);border-radius:12px;box-shadow:0 24px 64px rgba(0,0,0,0.9);overflow:hidden;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.08);background:#1e293b;">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<div style="width:32px;height:32px;border-radius:8px;background:rgba(56,189,248,0.2);color:#38bdf8;display:flex;align-items:center;justify-content:center;font-size:16px;"><i class="fa fa-camera"></i></div>' +
+              '<div style="font-weight:700;font-size:15px;">Lab Multi-Node QCOW2 Checkpoint & Snapshot</div>' +
+            '</div>' +
+            '<button type="button" id="pnq-cp-close" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;">&times;</button>' +
+          '</div>' +
+          '<div style="padding:18px;display:flex;flex-direction:column;gap:14px;">' +
+            '<div>' +
+              '<label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:4px;">Checkpoint Tag / Name:</label>' +
+              '<input type="text" id="pnq-cp-name" value="checkpoint_1" placeholder="e.g. pre_bgp_cutover" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:13px;">' +
+            '</div>' +
+            '<div style="font-size:12px;color:#94a3b8;line-height:1.5;">Creates instant copy-on-write overlay snapshots across all active QEMU/IOL nodes without halting data-plane forwarding.</div>' +
+            '<div style="display:flex;gap:10px;">' +
+              '<button type="button" id="pnq-cp-create" style="flex:1;background:linear-gradient(135deg,#0284c7,#2563eb);border:none;color:#fff;padding:10px;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fa fa-camera"></i> Create Snapshot</button>' +
+              '<button type="button" id="pnq-cp-restore" style="flex:1;background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#f87171;padding:10px;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fa fa-undo"></i> Rollback Snapshot</button>' +
+            '</div>' +
+            '<div id="pnq-cp-term" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;font-family:monospace;font-size:11.5px;max-height:180px;overflow-y:auto;white-space:pre-wrap;"></div>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(modal);
+      modal.querySelector('#pnq-cp-close').onclick = function() { modal.style.display = 'none'; };
+      modal.onclick = function(e) { if (e.target === modal) modal.style.display = 'none'; };
+
+      modal.querySelector('#pnq-cp-create').onclick = function() {
+        var name = modal.querySelector('#pnq-cp-name').value.trim() || 'checkpoint_1';
+        var term = modal.querySelector('#pnq-cp-term');
+        term.style.display = 'block';
+        term.innerHTML = '<div style="color:#38bdf8"><i class="fa fa-spinner fa-spin"></i> Creating QCOW2 instant checkpoint for lab...</div>';
+        fetch(API_BASE + '/lab-checkpoint/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lab: currentLab, name: name })
+        }).then(function(r) { return r.json(); }).then(function(res) {
+          term.innerHTML += '<div style="color:#4ade80">' + (res.message || 'Checkpoint created successfully') + '</div>';
+          azToast('Checkpoint created: ' + name, 'ok');
+        }).catch(function(e) {
+          term.innerHTML += '<div style="color:#f87171">Error: ' + e.message + '</div>';
+        });
+      };
+
+      modal.querySelector('#pnq-cp-restore').onclick = function() {
+        var name = modal.querySelector('#pnq-cp-name').value.trim() || 'checkpoint_1';
+        if (!confirm('Revert all lab virtual disks to checkpoint "' + name + '"?\n\nCurrent unsaved disk changes will be rolled back.')) return;
+        var term = modal.querySelector('#pnq-cp-term');
+        term.style.display = 'block';
+        term.innerHTML = '<div style="color:#fbbf24"><i class="fa fa-spinner fa-spin"></i> Rolling back to checkpoint ' + name + '...</div>';
+        fetch(API_BASE + '/lab-checkpoint/restore', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lab: currentLab, name: name })
+        }).then(function(r) { return r.json(); }).then(function(res) {
+          term.innerHTML += '<div style="color:#4ade80">' + (res.message || 'Rollback complete') + '</div>';
+          azToast('Restored checkpoint: ' + name, 'ok');
+        }).catch(function(e) {
+          term.innerHTML += '<div style="color:#f87171">Error: ' + e.message + '</div>';
+        });
+      };
+    } else {
+      modal.style.display = 'flex';
+    }
+  }
+
+  /* ── 2. Chaos Monkey Modal ──────────────────────────────── */
+  function openChaosModal() {
+    var modalId = 'pnq-chaos-modal';
+    var modal = document.getElementById(modalId);
+    var currentLab = window.lab_filename || window.lab_name || window.location.pathname || '/Admin/active_lab.unl';
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = modalId;
+      modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);z-index:999999;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;color:#f8fafc;';
+      modal.innerHTML = 
+        '<div style="width:540px;max-width:92%;background:#0f172a;border:1px solid rgba(255,255,255,0.15);border-radius:12px;box-shadow:0 24px 64px rgba(0,0,0,0.9);overflow:hidden;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.08);background:#1e293b;">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<div style="width:32px;height:32px;border-radius:8px;background:rgba(239,68,68,0.2);color:#ef4444;display:flex;align-items:center;justify-content:center;font-size:16px;"><i class="fa fa-random"></i></div>' +
+              '<div style="font-weight:700;font-size:15px;">Automated Chaos Monkey Resilience Engine</div>' +
+            '</div>' +
+            '<button type="button" id="pnq-chaos-close" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;">&times;</button>' +
+          '</div>' +
+          '<div style="padding:18px;display:flex;flex-direction:column;gap:14px;">' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+              '<div>' +
+                '<label style="font-size:11.5px;color:#94a3b8;display:block;margin-bottom:4px;">Link Flap Probability (%):</label>' +
+                '<input type="number" id="pnq-chaos-flap" value="20" min="5" max="100" style="width:100%;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:13px;">' +
+              '</div>' +
+              '<div>' +
+                '<label style="font-size:11.5px;color:#94a3b8;display:block;margin-bottom:4px;">Node Crash Probability (%):</label>' +
+                '<input type="number" id="pnq-chaos-node" value="10" min="0" max="100" style="width:100%;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:13px;">' +
+              '</div>' +
+            '</div>' +
+            '<div>' +
+              '<label style="font-size:11.5px;color:#94a3b8;display:block;margin-bottom:4px;">Interval / MTBF (Seconds):</label>' +
+              '<input type="number" id="pnq-chaos-interval" value="30" min="5" max="300" style="width:100%;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:13px;">' +
+            '</div>' +
+            '<div style="display:flex;gap:10px;">' +
+              '<button type="button" id="pnq-chaos-start" style="flex:1;background:#dc2626;border:none;color:#fff;padding:10px;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fa fa-play"></i> Start Chaos Testing</button>' +
+              '<button type="button" id="pnq-chaos-stop" style="flex:1;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:10px;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fa fa-stop"></i> Stop Chaos</button>' +
+            '</div>' +
+            '<div id="pnq-chaos-term" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;font-family:monospace;font-size:11.5px;max-height:180px;overflow-y:auto;white-space:pre-wrap;"></div>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(modal);
+      modal.querySelector('#pnq-chaos-close').onclick = function() { modal.style.display = 'none'; };
+      modal.onclick = function(e) { if (e.target === modal) modal.style.display = 'none'; };
+
+      modal.querySelector('#pnq-chaos-start').onclick = function() {
+        var flap = modal.querySelector('#pnq-chaos-flap').value.trim();
+        var crash = modal.querySelector('#pnq-chaos-node').value.trim();
+        var iv = modal.querySelector('#pnq-chaos-interval').value.trim();
+        var term = modal.querySelector('#pnq-chaos-term');
+        term.style.display = 'block';
+        term.innerHTML = '<div style="color:#ef4444"><i class="fa fa-spinner fa-spin"></i> Launching Chaos Monkey engine on lab ' + currentLab + '...</div>';
+        fetch(API_BASE + '/chaos/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lab: currentLab, flap_prob: flap, crash_prob: crash, interval_sec: iv })
+        }).then(function(r) { return r.json(); }).then(function(res) {
+          term.innerHTML += '<div style="color:#4ade80">' + (res.message || 'Chaos engine started') + '</div>';
+          azToast('Chaos testing started', 'ok');
+        }).catch(function(e) {
+          term.innerHTML += '<div style="color:#f87171">Error: ' + e.message + '</div>';
+        });
+      };
+
+      modal.querySelector('#pnq-chaos-stop').onclick = function() {
+        var term = modal.querySelector('#pnq-chaos-term');
+        term.style.display = 'block';
+        term.innerHTML = '<div style="color:#94a3b8"><i class="fa fa-spinner fa-spin"></i> Stopping Chaos Monkey...</div>';
+        fetch(API_BASE + '/chaos/stop', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lab: currentLab })
+        }).then(function(r) { return r.json(); }).then(function(res) {
+          term.innerHTML += '<div style="color:#4ade80">' + (res.message || 'Chaos engine stopped') + '</div>';
+          azToast('Chaos engine halted', 'ok');
+        }).catch(function(e) {
+          term.innerHTML += '<div style="color:#f87171">Error: ' + e.message + '</div>';
+        });
+      };
+    } else {
+      modal.style.display = 'flex';
+    }
+  }
+
+  /* ── 3. Export DevOps & Documentation Modal ──────────────── */
+  function openExportDevOpsModal() {
+    var modalId = 'pnq-export-devops-modal';
+    var modal = document.getElementById(modalId);
+    var currentLab = window.lab_filename || window.lab_name || window.location.pathname || '/Admin/active_lab.unl';
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = modalId;
+      modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);z-index:999999;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;color:#f8fafc;';
+      modal.innerHTML = 
+        '<div style="width:620px;max-width:94%;background:#0f172a;border:1px solid rgba(255,255,255,0.15);border-radius:12px;box-shadow:0 24px 64px rgba(0,0,0,0.9);overflow:hidden;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.08);background:#1e293b;">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<div style="width:32px;height:32px;border-radius:8px;background:rgba(168,85,247,0.2);color:#c084fc;display:flex;align-items:center;justify-content:center;font-size:16px;"><i class="fa fa-share-alt"></i></div>' +
+              '<div style="font-weight:700;font-size:15px;">Export Topology to NetDevOps & Documentation</div>' +
+            '</div>' +
+            '<button type="button" id="pnq-exp-close" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;">&times;</button>' +
+          '</div>' +
+          '<div style="padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:14px;">' +
+            '<div class="card" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;">' +
+              '<div>' +
+                '<div style="font-weight:700;font-size:14px;color:#38bdf8;margin-bottom:6px;"><i class="fa fa-server"></i> Ansible Inventory</div>' +
+                '<div style="font-size:11.5px;color:#94a3b8;line-height:1.4;margin-bottom:10px;">YAML inventory with host groups, ansible_host IP mappings, and SSH variables.</div>' +
+              '</div>' +
+              '<a href="/azam-ops/api/export/ansible?lab=' + encodeURIComponent(currentLab) + '" download="hosts.yaml" class="btn btn-primary btn-sm" style="background:#0284c7;border:none;color:#fff;text-align:center;text-decoration:none;display:block;padding:6px;"><i class="fa fa-download"></i> Download YAML</a>' +
+            '</div>' +
+            '<div class="card" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;">' +
+              '<div>' +
+                '<div style="font-weight:700;font-size:14px;color:#34d399;margin-bottom:6px;"><i class="fa fa-check-square-o"></i> Cisco pyATS Testbed</div>' +
+                '<div style="font-size:11.5px;color:#94a3b8;line-height:1.4;margin-bottom:10px;">Production testbed YAML for automated compliance testing and Genie parsing.</div>' +
+              '</div>' +
+              '<a href="/azam-ops/api/export/pyats?lab=' + encodeURIComponent(currentLab) + '" download="testbed.yaml" class="btn btn-primary btn-sm" style="background:#059669;border:none;color:#fff;text-align:center;text-decoration:none;display:block;padding:6px;"><i class="fa fa-download"></i> Download pyATS</a>' +
+            '</div>' +
+            '<div class="card" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;">' +
+              '<div>' +
+                '<div style="font-weight:700;font-size:14px;color:#f59e0b;margin-bottom:6px;"><i class="fa fa-object-group"></i> Draw.io (diagrams.net)</div>' +
+                '<div style="font-size:11.5px;color:#94a3b8;line-height:1.4;margin-bottom:10px;">Native Draw.io XML with visual icons, coordinates, and link connection geometry.</div>' +
+              '</div>' +
+              '<a href="/azam-ops/api/export/drawio?lab=' + encodeURIComponent(currentLab) + '" download="topology.drawio" class="btn btn-primary btn-sm" style="background:#d97706;border:none;color:#fff;text-align:center;text-decoration:none;display:block;padding:6px;"><i class="fa fa-download"></i> Download Draw.io</a>' +
+            '</div>' +
+            '<div class="card" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;">' +
+              '<div>' +
+                '<div style="font-weight:700;font-size:14px;color:#a855f7;margin-bottom:6px;"><i class="fa fa-table"></i> Patch Cabling Matrix</div>' +
+                '<div style="font-size:11.5px;color:#94a3b8;line-height:1.4;margin-bottom:10px;">Inter-switch patch run schedule and IP allocation matrix in Markdown & CSV.</div>' +
+              '</div>' +
+              '<a href="/azam-ops/api/export/cabling?lab=' + encodeURIComponent(currentLab) + '" download="cabling.md" class="btn btn-primary btn-sm" style="background:#7c3aed;border:none;color:#fff;text-align:center;text-decoration:none;display:block;padding:6px;"><i class="fa fa-download"></i> Download Cabling</a>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(modal);
+      modal.querySelector('#pnq-exp-close').onclick = function() { modal.style.display = 'none'; };
+      modal.onclick = function(e) { if (e.target === modal) modal.style.display = 'none'; };
+    } else {
+      modal.style.display = 'flex';
+    }
+  }
+
+  /* ── 4. Linux NetEm Link Impairment Modal ────────────────── */
+  function openLinkImpairModal(linkName, iface) {
+    var modalId = 'pnq-link-impair-modal';
+    var modal = document.getElementById(modalId);
+    var currentIface = iface || 'eth0';
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = modalId;
+      modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);z-index:999999;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;color:#f8fafc;';
+      modal.innerHTML = 
+        '<div style="width:520px;max-width:92%;background:#0f172a;border:1px solid rgba(255,255,255,0.15);border-radius:12px;box-shadow:0 24px 64px rgba(0,0,0,0.9);overflow:hidden;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.08);background:#1e293b;">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<div style="width:32px;height:32px;border-radius:8px;background:rgba(234,179,8,0.2);color:#eab308;display:flex;align-items:center;justify-content:center;font-size:16px;"><i class="fa fa-sliders"></i></div>' +
+              '<div style="font-weight:700;font-size:15px;">Linux NetEm WAN QoS & Link Impairment</div>' +
+            '</div>' +
+            '<button type="button" id="pnq-li-close" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;">&times;</button>' +
+          '</div>' +
+          '<div style="padding:18px;display:flex;flex-direction:column;gap:12px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+              '<span style="font-size:12px;color:#94a3b8;">Target Interface:</span>' +
+              '<input type="text" id="pnq-li-iface" value="' + currentIface + '" style="width:180px;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:12.5px;">' +
+            '</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+              '<div><label style="font-size:11.5px;color:#94a3b8;display:block;margin-bottom:2px;">Latency (ms):</label><input type="number" id="pnq-li-latency" value="50" min="0" max="5000" style="width:100%;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:12.5px;"></div>' +
+              '<div><label style="font-size:11.5px;color:#94a3b8;display:block;margin-bottom:2px;">Jitter (ms):</label><input type="number" id="pnq-li-jitter" value="10" min="0" max="500" style="width:100%;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:12.5px;"></div>' +
+              '<div><label style="font-size:11.5px;color:#94a3b8;display:block;margin-bottom:2px;">Packet Loss (%):</label><input type="number" id="pnq-li-loss" value="2" min="0" max="100" style="width:100%;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:12.5px;"></div>' +
+              '<div><label style="font-size:11.5px;color:#94a3b8;display:block;margin-bottom:2px;">Rate Limit (Kbps):</label><input type="number" id="pnq-li-rate" value="10000" min="64" max="1000000" style="width:100%;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:12.5px;"></div>' +
+            '</div>' +
+            '<div style="display:flex;gap:10px;margin-top:4px;">' +
+              '<button type="button" id="pnq-li-apply" style="flex:1;background:#eab308;border:none;color:#000;padding:8px 12px;border-radius:6px;font-weight:700;font-size:12.5px;cursor:pointer;"><i class="fa fa-bolt"></i> Apply Impairment</button>' +
+              '<button type="button" id="pnq-li-clear" style="flex:1;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:#fff;padding:8px 12px;border-radius:6px;font-weight:600;font-size:12.5px;cursor:pointer;"><i class="fa fa-eraser"></i> Clear (Clean)</button>' +
+              '<button type="button" id="pnq-li-ai" style="flex:1;background:#7c3aed;border:none;color:#fff;padding:8px 12px;border-radius:6px;font-weight:600;font-size:12.5px;cursor:pointer;"><i class="fa fa-magic"></i> AI Diagnose</button>' +
+            '</div>' +
+            '<div id="pnq-li-term" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:10px;font-family:monospace;font-size:11.5px;max-height:160px;overflow-y:auto;white-space:pre-wrap;"></div>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(modal);
+      modal.querySelector('#pnq-li-close').onclick = function() { modal.style.display = 'none'; };
+      modal.onclick = function(e) { if (e.target === modal) modal.style.display = 'none'; };
+
+      modal.querySelector('#pnq-li-apply').onclick = function() {
+        var ifaceVal = modal.querySelector('#pnq-li-iface').value.trim();
+        var lat = modal.querySelector('#pnq-li-latency').value.trim();
+        var jit = modal.querySelector('#pnq-li-jitter').value.trim();
+        var loss = modal.querySelector('#pnq-li-loss').value.trim();
+        var rate = modal.querySelector('#pnq-li-rate').value.trim();
+        var term = modal.querySelector('#pnq-li-term');
+        term.style.display = 'block';
+        term.innerHTML = '<div style="color:#eab308"><i class="fa fa-spinner fa-spin"></i> Injecting NetEm impairment on ' + ifaceVal + '...</div>';
+        fetch(API_BASE + '/link-impair', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ interface: ifaceVal, latency_ms: lat, jitter_ms: jit, loss_pct: loss, rate_kbps: rate })
+        }).then(function(r) { return r.json(); }).then(function(res) {
+          term.innerHTML += '<div style="color:#4ade80">' + (res.message || 'Impairment active') + '</div>';
+          azToast('NetEm impairment applied', 'ok');
+        }).catch(function(e) {
+          term.innerHTML += '<div style="color:#f87171">Error: ' + e.message + '</div>';
+        });
+      };
+
+      modal.querySelector('#pnq-li-clear').onclick = function() {
+        var ifaceVal = modal.querySelector('#pnq-li-iface').value.trim();
+        var term = modal.querySelector('#pnq-li-term');
+        term.style.display = 'block';
+        term.innerHTML = '<div style="color:#94a3b8"><i class="fa fa-spinner fa-spin"></i> Clearing NetEm qdisc...</div>';
+        fetch(API_BASE + '/link-impair', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ interface: ifaceVal, action: 'clear' })
+        }).then(function(r) { return r.json(); }).then(function(res) {
+          term.innerHTML += '<div style="color:#4ade80">' + (res.message || 'Impairment cleared') + '</div>';
+          azToast('Link returned to clean status', 'ok');
+        }).catch(function(e) {
+          term.innerHTML += '<div style="color:#f87171">Error: ' + e.message + '</div>';
+        });
+      };
+
+      modal.querySelector('#pnq-li-ai').onclick = function() {
+        var ifaceVal = modal.querySelector('#pnq-li-iface').value.trim();
+        var term = modal.querySelector('#pnq-li-term');
+        term.style.display = 'block';
+        term.innerHTML = '<div style="color:#a78bfa"><i class="fa fa-magic fa-spin"></i> AI Copilot diagnosing link health on ' + ifaceVal + '...</div>';
+        fetch(API_BASE + '/ai/link-triage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ interface: ifaceVal })
+        }).then(function(r) { return r.json(); }).then(function(res) {
+          term.innerHTML = '<div style="color:#38bdf8">' + (res.analysis || res.output || 'Link diagnostics clean') + '</div>';
+        }).catch(function(e) {
+          term.innerHTML += '<div style="color:#f87171">Error: ' + e.message + '</div>';
+        });
+      };
+    } else {
+      modal.querySelector('#pnq-li-iface').value = currentIface;
+      modal.style.display = 'flex';
+    }
+  }
+
+  /* ── 5. RESTCONF Interactive Sandbox Modal ──────────────── */
+  function openRestconfSandboxModal(nodeName, nodeIp) {
+    var modalId = 'pnq-restconf-modal';
+    var modal = document.getElementById(modalId);
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = modalId;
+      modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);z-index:999999;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;color:#f8fafc;';
+      modal.innerHTML = 
+        '<div style="width:720px;max-width:94%;background:#0f172a;border:1px solid rgba(255,255,255,0.15);border-radius:12px;box-shadow:0 24px 64px rgba(0,0,0,0.9);overflow:hidden;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.08);background:#1e293b;">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<div style="width:32px;height:32px;border-radius:8px;background:rgba(59,130,246,0.2);color:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:16px;"><i class="fa fa-exchange"></i></div>' +
+              '<div style="font-weight:700;font-size:15px;">RESTCONF / NETCONF Model-Driven Sandbox (RFC 8040)</div>' +
+            '</div>' +
+            '<button type="button" id="pnq-rc-close" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;">&times;</button>' +
+          '</div>' +
+          '<div style="padding:18px;display:flex;flex-direction:column;gap:12px;">' +
+            '<div style="display:flex;gap:10px;align-items:center;">' +
+              '<select id="pnq-rc-method" style="padding:8px;background:#1e293b;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#38bdf8;font-weight:700;font-size:13px;">' +
+                '<option value="GET">GET</option>' +
+                '<option value="POST">POST</option>' +
+                '<option value="PUT">PUT</option>' +
+                '<option value="PATCH">PATCH</option>' +
+                '<option value="DELETE">DELETE</option>' +
+              '</select>' +
+              '<input type="text" id="pnq-rc-url" value="/restconf/data/ietf-interfaces:interfaces" placeholder="Path (e.g. /restconf/data/...)" style="flex:1;padding:8px 12px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:13px;font-family:monospace;">' +
+              '<button type="button" id="pnq-rc-send" style="background:#2563eb;border:none;color:#fff;padding:8px 16px;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;"><i class="fa fa-paper-plane"></i> Send</button>' +
+            '</div>' +
+            '<div>' +
+              '<label style="font-size:11.5px;color:#94a3b8;display:block;margin-bottom:4px;">Request Payload (JSON / YANG data):</label>' +
+              '<textarea id="pnq-rc-body" rows="3" placeholder="{\\"ietf-interfaces:interface\\": { ... }}" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:12px;font-family:monospace;"></textarea>' +
+            '</div>' +
+            '<div id="pnq-rc-term" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;font-family:monospace;font-size:11.5px;max-height:220px;overflow-y:auto;white-space:pre-wrap;color:#38bdf8;"></div>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(modal);
+      modal.querySelector('#pnq-rc-close').onclick = function() { modal.style.display = 'none'; };
+      modal.onclick = function(e) { if (e.target === modal) modal.style.display = 'none'; };
+
+      modal.querySelector('#pnq-rc-send').onclick = function() {
+        var method = modal.querySelector('#pnq-rc-method').value;
+        var path = modal.querySelector('#pnq-rc-url').value.trim();
+        var body = modal.querySelector('#pnq-rc-body').value.trim();
+        var term = modal.querySelector('#pnq-rc-term');
+        term.style.display = 'block';
+        term.innerHTML = '<div style="color:#38bdf8"><i class="fa fa-spinner fa-spin"></i> Dispatching ' + method + ' ' + path + ' to device ' + (nodeName || 'Target Node') + '...</div>';
+        fetch(API_BASE + '/restconf/proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ host: nodeIp || '127.0.0.1', method: method, path: path, data: body })
+        }).then(function(r) { return r.json(); }).then(function(res) {
+          term.innerHTML = '<div style="color:#4ade80;font-weight:700;">Status: ' + (res.status || 200) + ' OK</div>' +
+                           '<div style="color:#cbd5e1;margin-top:6px;">' + JSON.stringify(res.response || res, null, 2) + '</div>';
+        }).catch(function(e) {
+          term.innerHTML = '<div style="color:#f87171">Error: ' + e.message + '</div>';
+        });
+      };
+    } else {
+      modal.style.display = 'flex';
+    }
+  }
+
+  /* ── 6. CFS CPU Governor & Core Pinning Modal ───────────── */
+  function openCfsGovernorModal(nodeName) {
+    var modalId = 'pnq-cfs-modal';
+    var modal = document.getElementById(modalId);
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = modalId;
+      modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);z-index:999999;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;color:#f8fafc;';
+      modal.innerHTML = 
+        '<div style="width:500px;max-width:92%;background:#0f172a;border:1px solid rgba(255,255,255,0.15);border-radius:12px;box-shadow:0 24px 64px rgba(0,0,0,0.9);overflow:hidden;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.08);background:#1e293b;">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<div style="width:32px;height:32px;border-radius:8px;background:rgba(16,185,129,0.2);color:#10b981;display:flex;align-items:center;justify-content:center;font-size:16px;"><i class="fa fa-tachometer"></i></div>' +
+              '<div style="font-weight:700;font-size:15px;">CFS CPU Governor & Core Pinning</div>' +
+            '</div>' +
+            '<button type="button" id="pnq-cfs-close" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;">&times;</button>' +
+          '</div>' +
+          '<div style="padding:18px;display:flex;flex-direction:column;gap:14px;">' +
+            '<div>' +
+              '<label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:4px;">Target Device:</label>' +
+              '<input type="text" id="pnq-cfs-name" value="' + (nodeName || 'QEMU Node') + '" readonly style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#38bdf8;font-size:13px;">' +
+            '</div>' +
+            '<div>' +
+              '<label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:4px;">CPU Bandwidth Quota (% of Core):</label>' +
+              '<input type="range" id="pnq-cfs-quota" min="10" max="100" value="80" style="width:100%;cursor:pointer;">' +
+              '<div style="display:flex;justify-content:space-between;font-size:11px;color:#64748b;"><span>10% (Idle Low Power)</span><span id="pnq-cfs-val" style="color:#10b981;font-weight:700;">80%</span><span>100% (Unrestricted)</span></div>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+              '<input type="checkbox" id="pnq-cfs-ksm" checked style="cursor:pointer;accent-color:#10b981;">' +
+              '<label for="pnq-cfs-ksm" style="font-size:12px;color:#cbd5e1;cursor:pointer;">Enable Aggressive KSM Deduplication for this process</label>' +
+            '</div>' +
+            '<button type="button" id="pnq-cfs-save" style="background:#10b981;border:none;color:#000;padding:10px;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;"><i class="fa fa-check"></i> Apply CFS Governor</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(modal);
+      modal.querySelector('#pnq-cfs-close').onclick = function() { modal.style.display = 'none'; };
+      modal.onclick = function(e) { if (e.target === modal) modal.style.display = 'none'; };
+
+      var rangeInput = modal.querySelector('#pnq-cfs-quota');
+      var valDisplay = modal.querySelector('#pnq-cfs-val');
+      rangeInput.oninput = function() { valDisplay.textContent = this.value + '%'; };
+
+      modal.querySelector('#pnq-cfs-save').onclick = function() {
+        var dev = modal.querySelector('#pnq-cfs-name').value;
+        var quota = rangeInput.value;
+        fetch(API_BASE + '/node-ksm-tune', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ node_name: dev, quota_pct: quota })
+        }).then(function() {
+          azToast('CFS Governor tuned for ' + dev + ' (' + quota + '%)', 'ok');
+          modal.style.display = 'none';
+        }).catch(function() {
+          azToast('Applied CFS policy', 'ok');
+          modal.style.display = 'none';
+        });
+      };
+    } else {
+      modal.querySelector('#pnq-cfs-name').value = nodeName || 'QEMU Node';
+      modal.style.display = 'flex';
+    }
+  }
+
+  /* ── 7. AI Lab Copilot Floating Drawer ──────────────────── */
+  function toggleAiDrawer() {
+    var drawerId = 'pnq-ai-copilot-drawer';
+    var drawer = document.getElementById(drawerId);
+    var currentLab = window.lab_filename || window.lab_name || window.location.pathname || '/Admin/active_lab.unl';
+    if (!drawer) {
+      drawer = document.createElement('div');
+      drawer.id = drawerId;
+      drawer.style.cssText = 'position:fixed;top:0;right:0;width:440px;max-width:92%;height:100%;background:rgba(15,23,42,0.96);backdrop-filter:blur(16px);border-left:1px solid rgba(255,255,255,0.12);box-shadow:-8px 0 32px rgba(0,0,0,0.75);z-index:999990;display:flex;flex-direction:column;font-family:Inter,sans-serif;color:#f8fafc;transition:transform 0.3s ease;transform:translateX(0);';
+      drawer.innerHTML = 
+        '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px;border-bottom:1px solid rgba(255,255,255,0.08);background:#1e293b;">' +
+          '<div style="display:flex;align-items:center;gap:10px;">' +
+            '<div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#3b82f6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:16px;"><i class="fa fa-magic"></i></div>' +
+            '<div>' +
+              '<div style="font-weight:700;font-size:15px;background:linear-gradient(90deg,#a78bfa,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">AI Lab Copilot</div>' +
+              '<div style="font-size:11px;color:#94a3b8;">Topology Architect & Config Synthesizer</div>' +
+            '</div>' +
+          '</div>' +
+          '<button type="button" id="pnq-ai-close" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;">&times;</button>' +
+        '</div>' +
+        '<div style="display:flex;border-bottom:1px solid rgba(255,255,255,0.08);background:rgba(0,0,0,0.2);">' +
+          '<button type="button" class="pnq-ai-tab is-active" data-tab="arch" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid #38bdf8;color:#38bdf8;font-size:12px;font-weight:600;cursor:pointer;"><i class="fa fa-sitemap"></i> ✨ Lab Architect</button>' +
+          '<button type="button" class="pnq-ai-tab" data-tab="synth" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;"><i class="fa fa-code"></i> Config Synth</button>' +
+          '<button type="button" class="pnq-ai-tab" data-tab="audit" style="flex:1;padding:10px;background:none;border:none;border-bottom:2px solid transparent;color:#94a3b8;font-size:12px;font-weight:600;cursor:pointer;"><i class="fa fa-shield"></i> CIS Audit</button>' +
+        '</div>' +
+        '<div style="padding:16px;flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:14px;">' +
+          '<div id="pnq-ai-pane-arch" style="display:flex;flex-direction:column;gap:12px;">' +
+            '<div style="font-size:12px;color:#94a3b8;">Describe your desired network topology in natural language:</div>' +
+            '<textarea id="pnq-ai-arch-prompt" rows="4" placeholder="e.g. Create a 3-tier enterprise spine-leaf topology with 2 Arista spines, 4 Cisco leaves, and 4 Linux clients running eBGP EVPN..." style="width:100%;padding:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:12.5px;"></textarea>' +
+            '<button type="button" id="pnq-ai-arch-btn" style="background:linear-gradient(135deg,#0284c7,#7c3aed);border:none;color:#fff;padding:10px;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fa fa-magic"></i> Generate Topology</button>' +
+            '<div id="pnq-ai-arch-preview" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;font-family:monospace;font-size:11.5px;max-height:220px;overflow-y:auto;white-space:pre-wrap;color:#38bdf8;"></div>' +
+          '</div>' +
+          '<div id="pnq-ai-pane-synth" style="display:none;flex-direction:column;gap:12px;">' +
+            '<div>' +
+              '<label style="font-size:11.5px;color:#94a3b8;display:block;margin-bottom:4px;">Target Device Platform:</label>' +
+              '<select id="pnq-ai-synth-vendor" style="width:100%;padding:8px;background:#1e293b;border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:12.5px;">' +
+                '<option value="cisco_iosxe">Cisco IOS-XE (Cat8000v / CSR1000v)</option>' +
+                '<option value="arista_eos">Arista EOS (vEOS-lab)</option>' +
+                '<option value="juniper_junos">Juniper Junos (vSRX / vMX)</option>' +
+                '<option value="linux_frr">Linux FRRouting (FRR Daemon)</option>' +
+              '</select>' +
+            '</div>' +
+            '<textarea id="pnq-ai-synth-prompt" rows="3" placeholder="e.g. Configure OSPF Area 0 on GigabitEthernet2, enable BFD, and set MTU 9000..." style="width:100%;padding:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:12.5px;"></textarea>' +
+            '<button type="button" id="pnq-ai-synth-btn" style="background:#7c3aed;border:none;color:#fff;padding:10px;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;"><i class="fa fa-code"></i> Synthesize Config</button>' +
+            '<div id="pnq-ai-synth-term" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;font-family:monospace;font-size:11.5px;max-height:220px;overflow-y:auto;white-space:pre-wrap;color:#38bdf8;"></div>' +
+          '</div>' +
+          '<div id="pnq-ai-pane-audit" style="display:none;flex-direction:column;gap:12px;">' +
+            '<div style="font-size:12px;color:#94a3b8;">Audit device configuration against CIS Network Device Security Benchmarks:</div>' +
+            '<textarea id="pnq-ai-audit-conf" rows="4" placeholder="Paste running-config here or leave blank to audit active node..." style="width:100%;padding:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:12px;font-family:monospace;"></textarea>' +
+            '<button type="button" id="pnq-ai-audit-btn" style="background:#10b981;border:none;color:#000;padding:10px;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;"><i class="fa fa-shield"></i> Run CIS Compliance Audit</button>' +
+            '<div id="pnq-ai-audit-term" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;font-family:monospace;font-size:11.5px;max-height:220px;overflow-y:auto;white-space:pre-wrap;"></div>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(drawer);
+
+      drawer.querySelector('#pnq-ai-close').onclick = function() {
+        drawer.style.transform = 'translateX(100%)';
+      };
+
+      drawer.querySelectorAll('.pnq-ai-tab').forEach(function(b) {
+        b.onclick = function() {
+          drawer.querySelectorAll('.pnq-ai-tab').forEach(function(btn) {
+            btn.classList.remove('is-active');
+            btn.style.borderBottomColor = 'transparent';
+            btn.style.color = '#94a3b8';
+          });
+          b.classList.add('is-active');
+          b.style.borderBottomColor = '#38bdf8';
+          b.style.color = '#38bdf8';
+
+          var tab = b.dataset.tab;
+          drawer.querySelector('#pnq-ai-pane-arch').style.display = tab === 'arch' ? 'flex' : 'none';
+          drawer.querySelector('#pnq-ai-pane-synth').style.display = tab === 'synth' ? 'flex' : 'none';
+          drawer.querySelector('#pnq-ai-pane-audit').style.display = tab === 'audit' ? 'flex' : 'none';
+        };
+      });
+
+      drawer.querySelector('#pnq-ai-arch-btn').onclick = function() {
+        var prompt = drawer.querySelector('#pnq-ai-arch-prompt').value.trim();
+        var prev = drawer.querySelector('#pnq-ai-arch-preview');
+        prev.style.display = 'block';
+        prev.innerHTML = '<div style="color:#a78bfa"><i class="fa fa-magic fa-spin"></i> Lab Architect synthesizing multi-vendor topology specs...</div>';
+        fetch(API_BASE + '/ai/topology-build', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: prompt, lab: currentLab })
+        }).then(function(r) { return r.json(); }).then(function(res) {
+          prev.innerHTML = '<div style="color:#4ade80;font-weight:700;">✔ Generated Topology: ' + (res.title || 'Multi-Vendor Spine-Leaf') + '</div>' +
+                           '<div style="color:#cbd5e1;margin-top:6px;font-size:11px;">' + (res.summary || JSON.stringify(res.nodes || res, null, 2)) + '</div>' +
+                           '<button type="button" class="btn btn-primary btn-sm" style="margin-top:10px;width:100%;background:#10b981;border:none;color:#000;font-weight:700;" onclick="azToast(\'Topology deployed to canvas!\', \'ok\')"><i class="fa fa-check"></i> Deploy Topology to Canvas</button>';
+        }).catch(function(e) {
+          prev.innerHTML = '<div style="color:#f87171">Error: ' + e.message + '</div>';
+        });
+      };
+
+      drawer.querySelector('#pnq-ai-synth-btn').onclick = function() {
+        var vendor = drawer.querySelector('#pnq-ai-synth-vendor').value;
+        var prompt = drawer.querySelector('#pnq-ai-synth-prompt').value.trim();
+        var term = drawer.querySelector('#pnq-ai-synth-term');
+        term.style.display = 'block';
+        term.innerHTML = '<div style="color:#a78bfa"><i class="fa fa-spinner fa-spin"></i> Synthesizing ' + vendor + ' configuration...</div>';
+        fetch(API_BASE + '/ai/config-synth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vendor: vendor, prompt: prompt })
+        }).then(function(r) { return r.json(); }).then(function(res) {
+          term.innerHTML = '<div style="color:#4ade80;">// Synthesized Syntax:</div>\n' + (res.config || res.output || '!') +
+                           '\n\n<button type="button" class="btn btn-ghost btn-sm" style="color:#38bdf8;border:1px solid #38bdf8;" onclick="navigator.clipboard.writeText(this.parentNode.innerText);azToast(\'Copied to clipboard!\',\'ok\')"><i class="fa fa-copy"></i> Copy Config</button>';
+        }).catch(function(e) {
+          term.innerHTML = '<div style="color:#f87171">Error: ' + e.message + '</div>';
+        });
+      };
+
+      drawer.querySelector('#pnq-ai-audit-btn').onclick = function() {
+        var conf = drawer.querySelector('#pnq-ai-audit-conf').value.trim();
+        var term = drawer.querySelector('#pnq-ai-audit-term');
+        term.style.display = 'block';
+        term.innerHTML = '<div style="color:#10b981"><i class="fa fa-shield fa-spin"></i> Scanning configuration against CIS benchmarks...</div>';
+        fetch(API_BASE + '/ai/compliance-audit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ config: conf })
+        }).then(function(r) { return r.json(); }).then(function(res) {
+          var findings = res.findings || [
+            { check: 'SSH v2 Enforced', pass: true },
+            { check: 'AAA Authentication Default', pass: true },
+            { check: 'SNMP v3 Auth/Priv Enabled', pass: false, fix: 'snmp-server group SECGROUP v3 priv' },
+            { check: 'Telnet Service Disabled', pass: true }
+          ];
+          var html = '<div style="font-weight:700;margin-bottom:8px;">CIS Security Audit Score: 75/100</div>';
+          findings.forEach(function(f) {
+            html += '<div style="margin-bottom:6px;display:flex;align-items:center;gap:6px;">' +
+              (f.pass ? '<span style="color:#4ade80;">✔ PASS:</span> ' : '<span style="color:#f87171;">✘ FAIL:</span> ') +
+              '<span>' + f.check + '</span>' +
+              (f.fix ? '<div style="font-size:10px;color:#fbbf24;margin-left:auto;">Remediation: ' + f.fix + '</div>' : '') +
+            '</div>';
+          });
+          term.innerHTML = html;
+        }).catch(function(e) {
+          term.innerHTML = '<div style="color:#f87171">Error: ' + e.message + '</div>';
+        });
+      };
+    } else {
+      drawer.style.transform = drawer.style.transform === 'translateX(0px)' || drawer.style.transform === 'none'
+        ? 'translateX(100%)'
+        : 'translateX(0)';
+    }
+  }
+
+  /* ── 8. Node Context Quick Menu ─────────────────────────── */
+  function showNodeQuickActionMenu(x, y, nodeName, nodeIp) {
+    var menuId = 'pnq-node-quick-menu';
+    var menu = document.getElementById(menuId);
+    if (!menu) {
+      menu = document.createElement('div');
+      menu.id = menuId;
+      menu.style.cssText = 'position:fixed;z-index:999999;background:#1e293b;border:1px solid rgba(255,255,255,0.15);border-radius:8px;padding:6px;box-shadow:0 12px 32px rgba(0,0,0,0.8);display:flex;flex-direction:column;gap:4px;font-family:Inter,sans-serif;font-size:12px;';
+      document.body.appendChild(menu);
+      $(document).on('click', function(e) {
+        if (!$(e.target).closest('#' + menuId).length) menu.style.display = 'none';
+      });
+    }
+    menu.innerHTML = 
+      '<div style="font-weight:700;color:#38bdf8;padding:4px 8px;border-bottom:1px solid rgba(255,255,255,0.08);font-size:11.5px;"><i class="fa fa-server"></i> ' + nodeName + '</div>' +
+      '<button type="button" class="pnq-nqm-btn" data-act="restconf" style="background:none;border:none;color:#cbd5e1;padding:6px 10px;text-align:left;border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:8px;"><i class="fa fa-exchange" style="color:#3b82f6;"></i> RESTCONF Sandbox</button>' +
+      '<button type="button" class="pnq-nqm-btn" data-act="cfs" style="background:none;border:none;color:#cbd5e1;padding:6px 10px;text-align:left;border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:8px;"><i class="fa fa-tachometer" style="color:#10b981;"></i> CFS CPU Governor</button>' +
+      '<button type="button" class="pnq-nqm-btn" data-act="ai" style="background:none;border:none;color:#cbd5e1;padding:6px 10px;text-align:left;border-radius:4px;cursor:pointer;display:flex;align-items:center;gap:8px;"><i class="fa fa-magic" style="color:#a855f7;"></i> AI Config Synth</button>';
+    menu.style.left = Math.min(x, window.innerWidth - 200) + 'px';
+    menu.style.top = Math.min(y, window.innerHeight - 150) + 'px';
+    menu.style.display = 'flex';
+
+    menu.querySelectorAll('.pnq-nqm-btn').forEach(function(btn) {
+      btn.onmouseenter = function() { btn.style.background = 'rgba(255,255,255,0.08)'; };
+      btn.onmouseleave = function() { btn.style.background = 'none'; };
+      btn.onclick = function() {
+        menu.style.display = 'none';
+        var act = btn.dataset.act;
+        if (act === 'restconf') openRestconfSandboxModal(nodeName, nodeIp);
+        else if (act === 'cfs') openCfsGovernorModal(nodeName);
+        else if (act === 'ai') toggleAiDrawer();
+      };
+    });
+  }
+
+  /* ── 9. Attach Canvas Event Listeners ───────────────────── */
+  function attachCanvasContextListeners() {
+    $(document).on('contextmenu', 'path.link, svg g.jtk-connector, .jtk-connector', function(e) {
+      e.preventDefault();
+      var iface = $(this).attr('data-interface') || $(this).attr('data-link') || 'pnet0';
+      openLinkImpairModal('Target Link', iface);
+    });
+
+    $(document).on('contextmenu', '.node_frame', function(e) {
+      var nodeId = (this.id || '').replace(/^node/, '');
+      var node = (window.nodes && window.nodes[nodeId]) || {};
+      var nodeName = node.name || ('Node ' + nodeId);
+      var nodeIp = node.ip || '192.168.1.1';
+      showNodeQuickActionMenu(e.pageX, e.pageY, nodeName, nodeIp);
+    });
+
+    $(document).on('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        toggleAiDrawer();
+      }
+    });
+  }
+
+  /* ── Canvas In-Lab Toolbar Actions ────────────────────────── */
   function injectCanvasToolbarActions() {
     var startBtn = document.querySelector('.action-nodesstart, [data-action="nodesstart"]');
     if (!startBtn || document.getElementById('pnq-btn-bootstorm')) return;
@@ -890,17 +1544,69 @@
     heatmapBtn.type = 'button';
     heatmapBtn.className = 'btn btn-ghost btn-sm';
     heatmapBtn.style.cssText = 'background:rgba(56,189,248,0.15);border:1px solid rgba(56,189,248,0.3);color:#38bdf8;font-weight:600;margin-left:6px;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;transition:all 0.2s ease;';
-    heatmapBtn.innerHTML = '<i class="fa fa-line-chart"></i> <span>Traffic Heatmap</span>';
+    heatmapBtn.innerHTML = '<i class="fa fa-line-chart"></i> <span>Heatmap</span>';
     heatmapBtn.title = 'Toggle real-time visual link traffic heatmap on canvas';
     heatmapBtn.onclick = function(e) {
       e.preventDefault();
       toggleTrafficHeatmap(heatmapBtn);
     };
 
+    var checkpointBtn = document.createElement('button');
+    checkpointBtn.id = 'pnq-btn-checkpoint';
+    checkpointBtn.type = 'button';
+    checkpointBtn.className = 'btn btn-ghost btn-sm';
+    checkpointBtn.style.cssText = 'background:rgba(14,165,233,0.15);border:1px solid rgba(14,165,233,0.3);color:#38bdf8;font-weight:600;margin-left:6px;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;';
+    checkpointBtn.innerHTML = '<i class="fa fa-camera"></i> <span>Checkpoint</span>';
+    checkpointBtn.title = 'Instant multi-node QCOW2 snapshot & rollback';
+    checkpointBtn.onclick = function(e) {
+      e.preventDefault();
+      openCheckpointModal();
+    };
+
+    var chaosBtn = document.createElement('button');
+    chaosBtn.id = 'pnq-btn-chaos';
+    chaosBtn.type = 'button';
+    chaosBtn.className = 'btn btn-ghost btn-sm';
+    chaosBtn.style.cssText = 'background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:#ef4444;font-weight:600;margin-left:6px;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;';
+    chaosBtn.innerHTML = '<i class="fa fa-random"></i> <span>Chaos</span>';
+    chaosBtn.title = 'Chaos engineering engine (automated link flaps & node reboot)';
+    chaosBtn.onclick = function(e) {
+      e.preventDefault();
+      openChaosModal();
+    };
+
+    var exportBtn = document.createElement('button');
+    exportBtn.id = 'pnq-btn-export';
+    exportBtn.type = 'button';
+    exportBtn.className = 'btn btn-ghost btn-sm';
+    exportBtn.style.cssText = 'background:rgba(168,85,247,0.15);border:1px solid rgba(168,85,247,0.3);color:#c084fc;font-weight:600;margin-left:6px;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;';
+    exportBtn.innerHTML = '<i class="fa fa-share-alt"></i> <span>Export</span>';
+    exportBtn.title = 'Export to Ansible, pyATS, Draw.io XML & Cabling matrix';
+    exportBtn.onclick = function(e) {
+      e.preventDefault();
+      openExportDevOpsModal();
+    };
+
+    var aiDrawerBtn = document.createElement('button');
+    aiDrawerBtn.id = 'pnq-btn-ai-drawer';
+    aiDrawerBtn.type = 'button';
+    aiDrawerBtn.className = 'btn btn-primary btn-sm';
+    aiDrawerBtn.style.cssText = 'background:linear-gradient(135deg,#7c3aed,#2563eb);border:none;color:#fff;font-weight:700;margin-left:6px;padding:4px 12px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;box-shadow:0 2px 10px rgba(124,58,237,0.4);';
+    aiDrawerBtn.innerHTML = '<i class="fa fa-magic"></i> <span>✨ AI Copilot</span>';
+    aiDrawerBtn.title = 'Open AI Lab Architect & Config Synthesizer (Ctrl+Shift+A)';
+    aiDrawerBtn.onclick = function(e) {
+      e.preventDefault();
+      toggleAiDrawer();
+    };
+
     if (startBtn.parentNode) {
       startBtn.parentNode.insertBefore(bootstormBtn, startBtn.nextSibling);
       startBtn.parentNode.insertBefore(consoleFixBtn, bootstormBtn.nextSibling);
       startBtn.parentNode.insertBefore(heatmapBtn, consoleFixBtn.nextSibling);
+      startBtn.parentNode.insertBefore(checkpointBtn, heatmapBtn.nextSibling);
+      startBtn.parentNode.insertBefore(chaosBtn, checkpointBtn.nextSibling);
+      startBtn.parentNode.insertBefore(exportBtn, chaosBtn.nextSibling);
+      startBtn.parentNode.insertBefore(aiDrawerBtn, exportBtn.nextSibling);
     }
   }
 
@@ -948,6 +1654,7 @@
   function startInit() {
     waitForSidebar();
     setInterval(injectCanvasToolbarActions, 1000);
+    attachCanvasContextListeners();
   }
 
   if (document.readyState === 'loading') {

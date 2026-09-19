@@ -473,6 +473,13 @@ rm -rf /tmp/*_swtpm-sock /tmp/netio*/*.lck 2>/dev/null || true
 # Authoritative root password confirmation ("azam")
 echo "root:${SATELLITE_ROOT_PASSWORD:-azam}" | chpasswd >> "$LOG" 2>&1 || true
 
+# Deploy Azam-Features CLI suite, watchdog, KSM tuning, and maintenance cron on Satellite
+if [ -f /opt/unetlab/scripts/azambasha-install-azam-features.sh ]; then
+    bash /opt/unetlab/scripts/azambasha-install-azam-features.sh --satellite >> "$LOG" 2>&1 || true
+elif [ -f /opt/azambasha/scripts/azambasha-install-azam-features.sh ]; then
+    bash /opt/azambasha/scripts/azambasha-install-azam-features.sh --satellite >> "$LOG" 2>&1 || true
+fi
+
 log "=== Satellite install complete ==="
 log "Next: on the MASTER, System -> Cluster -> Generate PSK, then run here:"
 log "    pnet-satellite-join --master <master-ip> --id <1|2> --psk <psk>"

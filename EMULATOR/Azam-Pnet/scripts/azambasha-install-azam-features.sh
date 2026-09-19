@@ -101,6 +101,10 @@ ln -sf "${SCRIPTS}/azambasha-bench.sh"            /usr/local/bin/azam-bench
 ln -sf "${SCRIPTS}/azambasha-ssl.sh"              /usr/local/bin/azam-ssl
 ln -sf "${SCRIPTS}/azambasha-fix-web-credentials.sh" /usr/local/bin/azam-credentials
 ln -sf "${SCRIPTS}/azambasha-airgap-pack.sh"      /usr/local/bin/azam-airgap-pack
+ln -sf "${SCRIPTS}/azambasha-link-impairment.sh"   /usr/local/bin/azam-link-impair
+ln -sf "${SCRIPTS}/azambasha-roce-engine.sh"       /usr/local/bin/azam-roce
+ln -sf "${SCRIPTS}/azambasha-cgroups-v2-engine.sh" /usr/local/bin/azam-cgroups
+ln -sf "${SCRIPTS}/azambasha-cpu-governor.py"      /usr/local/bin/azam-cpu-governor
 
 # Install scheduler timer and 24/7 autonomous watchdog daemon
 python3 "${SCRIPTS}/azambasha-scheduler.py" --install 2>/dev/null || true

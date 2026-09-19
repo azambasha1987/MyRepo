@@ -68,6 +68,13 @@
     btnManual.style.cssText = 'display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#38bdf8;border:1px solid rgba(56,189,248,0.3);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;transition:background 0.15s ease;';
     btnManual.innerHTML = '<i class="fa fa-book" style="color:#38bdf8;"></i> Operations Manual (PDF)';
 
+    var btnToolkit = document.createElement('button');
+    btnToolkit.type = 'button';
+    btnToolkit.className = 'btn btn-ghost';
+    btnToolkit.style.cssText = 'display:inline-flex;align-items:center;gap:6px;color:#a78bfa;border:1px solid rgba(167,139,250,0.3);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:background 0.15s ease;';
+    btnToolkit.innerHTML = '<i class="fa fa-wrench" style="color:#a78bfa;"></i> Client Toolkit';
+    btnToolkit.onclick = function () { openClientToolkitModal(); };
+
     var btnRefresh = document.createElement('button');
     btnRefresh.className = 'btn btn-ghost';
     btnRefresh.innerHTML = '<i class="fa fa-refresh"></i> Refresh All';
@@ -80,6 +87,7 @@
     btnDoctor.onclick = function () { switchTab('health'); runTool('doctor', {}, null, 'term-doctor'); };
 
     actions.appendChild(btnManual);
+    actions.appendChild(btnToolkit);
     actions.appendChild(btnRefresh);
     actions.appendChild(btnDoctor);
 
@@ -167,6 +175,23 @@
         '<div id="perf-nodes-table" style="max-height:260px;overflow-y:auto;background:rgba(0,0,0,0.25);border-radius:8px;border:1px solid var(--pnq-border,rgba(255,255,255,0.06));padding:4px;">' +
           '<div style="padding:10px;color:#64748b;">Click "Refresh Profiler" to view top hot nodes.</div>' +
         '</div>' +
+      '</div>' +
+      '<div class="card" style="margin-top:16px;background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:12px;">' +
+          '<div style="display:flex;align-items:center;gap:10px;">' +
+            '<div style="width:36px;height:36px;border-radius:8px;background:rgba(14,165,233,0.15);color:#0ea5e9;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-tachometer"></i></div>' +
+            '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">RoCE MTU 9000 & Jumbo Frame Synthetic Benchmark</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">High-speed datapath throughput, MTU 9000 packet validation, and inter-satellite latency probe</div></div>' +
+          '</div>' +
+          '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">' +
+            '<input type="text" id="roce-bench-ip" value="192.168.1.22" placeholder="Satellite IP" style="padding:6px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:12.5px;width:140px;">' +
+            '<select id="roce-bench-mtu" style="padding:6px 10px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:12.5px;">' +
+              '<option value="9000">MTU 9000 (Jumbo Frames)</option>' +
+              '<option value="1500">MTU 1500 (Standard)</option>' +
+            '</select>' +
+            '<button type="button" id="btn-run-roce-bench" class="btn btn-primary" style="background:#0ea5e9;border:none;color:#fff;font-weight:600;font-size:12.5px;"><i class="fa fa-bolt"></i> Run Benchmark</button>' +
+          '</div>' +
+        '</div>' +
+        '<div id="term-roce-bench" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;font-family:monospace;font-size:12px;max-height:220px;overflow-y:auto;"></div>' +
       '</div>';
     panesContainer.appendChild(pHealth);
 
@@ -291,6 +316,18 @@
           '</div>' +
         '</div>' +
         '<div id="term-shrink" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:16px;font-family:monospace;font-size:12.5px;max-height:360px;overflow-y:auto;color:#e2e8f0;"></div>' +
+        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<div style="width:36px;height:36px;border-radius:8px;background:rgba(244,63,94,0.15);color:#f43f5e;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-stethoscope"></i></div>' +
+              '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Golden Appliance Image Doctor & Sparseness Auditor</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Live inspection of QEMU & IOL virtual disks, compression ratios, and filesystem health</div></div>' +
+            '</div>' +
+            '<button type="button" id="btn-image-audit-ref" class="btn btn-ghost" style="font-size:12px;"><i class="fa fa-refresh"></i> Refresh Audit</button>' +
+          '</div>' +
+          '<div id="az-images-table" style="max-height:300px;overflow-y:auto;background:rgba(0,0,0,0.25);border-radius:8px;border:1px solid var(--pnq-border,rgba(255,255,255,0.06));padding:4px;">' +
+            '<div style="padding:10px;color:#64748b;">Click "Refresh Audit" to inspect appliance images.</div>' +
+          '</div>' +
+        '</div>' +
       '</div>';
     panesContainer.appendChild(pShrink);
 
@@ -418,11 +455,38 @@
     pSched.id = 'pane-scheduler';
     pSched.style.display = 'none';
     pSched.innerHTML = 
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">' +
-        createToolCard('scheduler-status', 'azam-scheduler', 'Resource Quota & Curfew Watchdog', 'Inspects idle timeout settings, nightly power-saver curfews, and role-based node limits.', 'fa-clock-o', '#f59e0b', 'term-sched', [
-          { label: 'Stop Idle Labs Now', tool: 'scheduler-stop-idle' },
-          { label: 'Audit Compliance', tool: 'scheduler-check' }
-        ]) +
+      '<div style="display:flex;flex-direction:column;gap:16px;">' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">' +
+          createToolCard('scheduler-status', 'azam-scheduler', 'Resource Quota & Curfew Watchdog', 'Inspects idle timeout settings, nightly power-saver curfews, and role-based node limits.', 'fa-clock-o', '#f59e0b', 'term-sched', [
+            { label: 'Stop Idle Labs Now', tool: 'scheduler-stop-idle' },
+            { label: 'Audit Compliance', tool: 'scheduler-check' }
+          ]) +
+        '</div>' +
+        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
+          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">' +
+            '<div style="width:36px;height:36px;border-radius:8px;background:rgba(245,158,11,0.15);color:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-sliders"></i></div>' +
+            '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Idle Auto-Shutdown & Tenant Capacity Policy</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Configure autonomous lab shutdown timer, max active nodes per student, and nightly power-saver curfew</div></div>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:14px;">' +
+            '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Idle Auto-Shutdown (Minutes):</label>' +
+              '<input type="number" id="sched-idle-timeout" value="60" min="15" max="720" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
+            '</div>' +
+            '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Max Active Nodes Per Tenant / Student:</label>' +
+              '<input type="number" id="sched-max-nodes" value="12" min="1" max="64" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
+            '</div>' +
+            '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Curfew Start (HH:MM):</label>' +
+              '<input type="text" id="sched-curfew-start" value="23:00" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
+            '</div>' +
+            '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Curfew End (HH:MM):</label>' +
+              '<input type="text" id="sched-curfew-end" value="07:00" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
+            '</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">' +
+            '<button type="button" id="btn-sched-save" class="btn btn-primary" style="background:#f59e0b;border-color:#f59e0b;color:#000;font-weight:700;"><i class="fa fa-save"></i> Save & Apply Policy</button>' +
+            '<button type="button" id="btn-sched-stop-now" class="btn btn-danger" style="background:#dc2626;border:none;color:#fff;font-weight:600;"><i class="fa fa-power-off"></i> Stop Idle Labs Now</button>' +
+          '</div>' +
+          '<div id="term-sched-policy" style="display:none;margin-top:12px;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;font-family:monospace;font-size:12px;"></div>' +
+        '</div>' +
       '</div>';
     panesContainer.appendChild(pSched);
 
@@ -684,6 +748,67 @@
     if (btnBackupRef) {
       btnBackupRef.onclick = loadBackups;
     }
+
+    // RoCE MTU 9000 Benchmark
+    var btnRoce = container.querySelector('#btn-run-roce-bench');
+    if (btnRoce) {
+      btnRoce.onclick = function () {
+        var ip = (document.getElementById('roce-bench-ip') || {}).value || '';
+        var mtu = (document.getElementById('roce-bench-mtu') || {}).value || '9000';
+        ip = ip.trim();
+        if (!ip) { App.toast('Enter Satellite IP', 'warn'); return; }
+        runTool('bench', { satellite_ip: ip, mtu: mtu }, btnRoce, 'term-roce-bench');
+      };
+    }
+
+    // Golden Image Audit refresh
+    var btnImgRef = container.querySelector('#btn-image-audit-ref');
+    if (btnImgRef) {
+      btnImgRef.onclick = loadImagesAudit;
+    }
+
+    // Scheduler & Curfew Policy Save
+    var btnSchedSave = container.querySelector('#btn-sched-save');
+    if (btnSchedSave) {
+      btnSchedSave.onclick = function () {
+        var idleTimeout = parseInt((document.getElementById('sched-idle-timeout') || {}).value, 10) || 60;
+        var maxNodes = parseInt((document.getElementById('sched-max-nodes') || {}).value, 10) || 12;
+        var curfewStart = ((document.getElementById('sched-curfew-start') || {}).value || '23:00').trim();
+        var curfewEnd = ((document.getElementById('sched-curfew-end') || {}).value || '07:00').trim();
+
+        btnSchedSave.disabled = true;
+        fetch(API_BASE + '/scheduler/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            idle_timeout_min: idleTimeout,
+            max_nodes_per_user: maxNodes,
+            curfew_start: curfewStart,
+            curfew_end: curfewEnd,
+            auto_shutdown_enabled: true
+          })
+        }).then(function(r) { return r.json(); }).then(function(res) {
+          btnSchedSave.disabled = false;
+          if (res.success) {
+            App.toast('Scheduler & Quota Policy updated successfully', 'ok');
+          } else {
+            App.toast('Failed: ' + (res.error || 'Server error'), 'err');
+          }
+        }).catch(function(e) {
+          btnSchedSave.disabled = false;
+          App.toast('Error: ' + e.message, 'err');
+        });
+      };
+    }
+
+    // Stop Idle Labs Now
+    var btnSchedStop = container.querySelector('#btn-sched-stop-now');
+    if (btnSchedStop) {
+      btnSchedStop.onclick = function () {
+        if (!confirm('Halt all idle lab sessions immediately?\n\nNodes in labs with no console interaction for >60min will be gracefully shut down.')) return;
+        runTool('scheduler-stop-idle', {}, btnSchedStop, 'term-sched-policy');
+      };
+    }
   }
 
   /* ── Stats Loader ───────────────────────────────────────── */
@@ -784,13 +909,46 @@
   }
 
   function loadImagesAudit() {
+    var target = document.getElementById('az-images-table');
+    if (!target) return;
+    target.innerHTML = '<div style="padding:10px;"><i class="fa fa-spinner fa-spin"></i> Auditing QEMU and IOL images for bloat and health…</div>';
+
     fetch(API_BASE + '/images/audit')
       .then(function (r) { return r.json(); })
-      .then(function (d) {
-        // Can optionally populate an image table
+      .then(function (res) {
+        var list = res.images || [];
+        if (!list.length) {
+          target.innerHTML = '<div style="padding:10px;color:#64748b;">No appliance images detected in /opt/unetlab/addons/</div>';
+          return;
+        }
+        var html = '<table class="table" style="width:100%;font-size:12.5px;">';
+        html += '<thead><tr><th>Appliance Image</th><th>File</th><th>Format</th><th>Virtual Size</th><th>Disk Usage</th><th>Health</th><th>Action</th></tr></thead><tbody>';
+        list.forEach(function (img) {
+          var healthBadge = (img.status === 'healthy' || img.status === 'ok')
+            ? '<span style="color:#4ade80;font-weight:700;"><i class="fa fa-check"></i> Healthy</span>'
+            : '<span style="color:#fbbf24;font-weight:700;"><i class="fa fa-exclamation-triangle"></i> Bloated / Check</span>';
+          html += '<tr>' +
+            '<td style="font-weight:600;color:#f1f5f9;">' + (img.appliance || img.name) + '</td>' +
+            '<td style="font-family:monospace;font-size:11px;color:#94a3b8;">' + (img.file || 'hda.qcow2') + '</td>' +
+            '<td><span style="font-size:10.5px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:#38bdf8;">' + (img.format || 'qcow2') + '</span></td>' +
+            '<td style="font-family:monospace;color:#a78bfa;">' + (img.virtual_size_gb ? img.virtual_size_gb + ' GB' : (img.virtual_size || '—')) + '</td>' +
+            '<td style="font-family:monospace;color:#f472b6;font-weight:600;">' + (img.disk_size_gb ? img.disk_size_gb + ' GB' : (img.actual_size || '—')) + '</td>' +
+            '<td>' + healthBadge + '</td>' +
+            '<td><button type="button" class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;color:#f43f5e;" onclick="window.__azShrinkSingle(\'' + (img.appliance || img.name) + '\')"><i class="fa fa-compress"></i> Shrink</button></td>' +
+          '</tr>';
+        });
+        html += '</tbody></table>';
+        target.innerHTML = html;
       })
-      .catch(function () {});
+      .catch(function () {
+        target.innerHTML = '<div style="padding:10px;color:#ef4444;">Failed to audit images.</div>';
+      });
   }
+
+  window.__azShrinkSingle = function (name) {
+    if (!confirm('Compress and optimize appliance disk image "' + name + '"?\n\nNon-destructive qemu-img convert with sparseness detection.')) return;
+    runTool('image-shrink-all', { target: name }, null, 'term-shrink');
+  };
 
   /* ── Templates Loader ───────────────────────────────────── */
   var allTemplates = [];
@@ -1130,6 +1288,70 @@
         '<div style="font-size:12px;color:#64748b;border-top:1px solid rgba(255,255,255,0.06);padding-top:8px;margin-top:auto;">' + detail + '</div>' +
       '</div>'
     );
+  }
+
+  /* ── Client Toolkit Modal ───────────────────────────────── */
+  function openClientToolkitModal() {
+    var modalId = 'az-client-toolkit-modal';
+    var modal = document.getElementById(modalId);
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = modalId;
+      modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);z-index:999999;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;color:#f8fafc;';
+      modal.innerHTML = 
+        '<div style="width:680px;max-width:94%;background:#0f172a;border:1px solid rgba(255,255,255,0.15);border-radius:12px;box-shadow:0 24px 64px rgba(0,0,0,0.9);overflow:hidden;display:flex;flex-direction:column;max-height:85vh;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,0.08);background:#1e293b;">' +
+            '<div style="display:flex;align-items:center;gap:12px;">' +
+              '<div style="width:36px;height:36px;border-radius:8px;background:rgba(167,139,250,0.2);color:#a78bfa;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-wrench"></i></div>' +
+              '<div>' +
+                '<div style="font-weight:700;font-size:16px;color:#f1f5f9;">Enterprise Client Connectivity & NetDevOps Toolkit</div>' +
+                '<div style="font-size:12px;color:#94a3b8;">Pre-configured client integration packs for 1-click terminal & packet capture</div>' +
+              '</div>' +
+            '</div>' +
+            '<button type="button" id="az-toolkit-close" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer;line-height:1;">&times;</button>' +
+          '</div>' +
+          '<div style="padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:16px;">' +
+            '<div class="card" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:14px;">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+                '<div style="font-weight:600;font-size:14px;color:#38bdf8;"><i class="fa fa-windows"></i> Windows 10 / 11 One-Click Setup Pack</div>' +
+                '<span style="font-size:11px;color:#94a3b8;">PuTTY, SecureCRT, Wireshark</span>' +
+              '</div>' +
+              '<div style="font-size:12px;color:#94a3b8;line-height:1.5;margin-bottom:10px;">Associates <code>capture://</code> and <code>telnet://</code> URIs directly with your local Wireshark and PuTTY/SecureCRT executables.</div>' +
+              '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+                '<a href="/azam-ops/api/client/toolkit/pnetlab-urischeme-installer.bat" download class="btn btn-primary btn-sm" style="background:#0284c7;border:none;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-download"></i> Download URI Scheme Installer (.bat)</a>' +
+                '<a href="/azam-ops/api/client/toolkit/setup-windows-ssl-trust.ps1" download class="btn btn-ghost btn-sm" style="font-size:12px;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-lock"></i> SSL CA Trust (.ps1)</a>' +
+                '<a href="/azam-ops/api/client/toolkit/setup-windows-wireshark.ps1" download class="btn btn-ghost btn-sm" style="font-size:12px;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-rss"></i> Wireshark Pipe (.ps1)</a>' +
+              '</div>' +
+            '</div>' +
+            '<div class="card" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:14px;">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+                '<div style="font-weight:600;font-size:14px;color:#34d399;"><i class="fa fa-apple"></i> macOS & Linux Native Terminal Pack</div>' +
+                '<span style="font-size:11px;color:#94a3b8;">iTerm2, GNOME Terminal, Wireshark</span>' +
+              '</div>' +
+              '<div style="font-size:12px;color:#94a3b8;line-height:1.5;margin-bottom:10px;">Configures default handlers for telnet and Wireshark remote named pipes over SSH.</div>' +
+              '<div style="display:flex;gap:8px;">' +
+                '<a href="/azam-ops/api/client/toolkit/pnetlab-client-setup.sh" download class="btn btn-primary btn-sm" style="background:#059669;border:none;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-download"></i> Download Setup Script (.sh)</a>' +
+              '</div>' +
+            '</div>' +
+            '<div class="card" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:14px;">' +
+              '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+                '<div style="font-weight:600;font-size:14px;color:#a78bfa;"><i class="fa fa-code"></i> Python NetDevOps API Starter Pack</div>' +
+                '<span style="font-size:11px;color:#94a3b8;">REST API Automation Client</span>' +
+              '</div>' +
+              '<div style="font-size:12px;color:#94a3b8;line-height:1.5;margin-bottom:10px;">Standalone Python 3 script with session auth, lab lifecycle methods, topology export, and telemetry queries.</div>' +
+              '<div style="display:flex;gap:8px;">' +
+                '<a href="/azam-ops/api/client/toolkit/pnetlab-api-client.py" download class="btn btn-primary btn-sm" style="background:#7c3aed;border:none;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-download"></i> Download pnetlab-api-client.py</a>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(modal);
+
+      modal.querySelector('#az-toolkit-close').onclick = function () { modal.style.display = 'none'; };
+      modal.onclick = function (e) { if (e.target === modal) modal.style.display = 'none'; };
+    } else {
+      modal.style.display = 'flex';
+    }
   }
 
   /* ── Register with App Router ───────────────────────────── */

@@ -282,6 +282,41 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
                 data = {"version": "1.0", "templates": DEFAULT_TEMPLATES}
             self.reply_json(data)
 
+        elif parsed.path == "/azam-ops/api/templates/repos":
+            repos_data = {
+                "cml-community": {
+                    "name": "Cisco DevNet CML Community Labs",
+                    "url": "https://github.com/CiscoDevNet/cml-community",
+                    "format": "CML 2.x YAML",
+                    "desc": "Official Cisco Enterprise topologies (CCNA, CCNP, SD-WAN, BGP) with workbooks."
+                },
+                "eve-ng-community": {
+                    "name": "EVE-NG Community Enterprise Labs",
+                    "url": "https://github.com/Shadow578/eve-ng-labs",
+                    "format": "EVE-NG UNL",
+                    "desc": "Massive collection of Cisco, Juniper, and Arista multi-vendor topologies."
+                },
+                "packetpushers": {
+                    "name": "PacketPushers NetDevOps & BGP Testbeds",
+                    "url": "https://github.com/packetpushers/labs",
+                    "format": "NetDevOps",
+                    "desc": "Modern datacenter, BGP EVPN, and NetDevOps automation testbeds."
+                },
+                "jeremy-ccna": {
+                    "name": "Jeremy's IT Lab CCNA Practice Labs",
+                    "url": "https://github.com/JeremyITLab/CCNA-Labs",
+                    "format": "CCNA Practice",
+                    "desc": "Targeted CCNA 200-301 routing, switching, and ACL practice exercises."
+                },
+                "local-offline": {
+                    "name": "Azam-Basha Built-in Offline Library",
+                    "url": "local",
+                    "format": "PNetLab v8",
+                    "desc": "Air-gapped reference library pre-bundled locally with zero internet dependency."
+                }
+            }
+            self.reply_json(repos_data)
+
         elif parsed.path == "/azam-ops/api/notify-config":
             conf = {}
             if os.path.isfile("/etc/pnetlab/azambasha-notify.conf"):
@@ -773,6 +808,22 @@ print("[*] Azam-Pnet Python SDK Loaded.")
                         self.reply_json({"error": "template name required"}, status=400)
                         return
                     cmd = ["bash", "/usr/local/bin/azam-templates", "deploy", tmpl]
+                elif tool == "templates-browse":
+                    repo = params.get("repo", "cml-community").strip()
+                    cmd = ["python3", "/opt/azambasha/scripts/azambasha-eve-lab-importer.py", "--repo", repo, "--browse"]
+                elif tool == "templates-pull":
+                    repo = params.get("repo", "cml-community").strip()
+                    lab = params.get("lab", "").strip()
+                    if not lab:
+                        self.reply_json({"error": "lab name required"}, status=400)
+                        return
+                    cmd = ["python3", "/opt/azambasha/scripts/azambasha-eve-lab-importer.py", "--repo", repo, "--pull", lab]
+                elif tool == "templates-fix":
+                    lab_file = params.get("file", "").strip()
+                    if not lab_file:
+                        self.reply_json({"error": "file path required"}, status=400)
+                        return
+                    cmd = ["python3", "/opt/azambasha/scripts/azambasha-eve-lab-importer.py", "--fix", lab_file]
                 elif tool == "topology-log":
                     lab = params.get("lab", "").strip()
                     limit = str(params.get("limit", "20"))

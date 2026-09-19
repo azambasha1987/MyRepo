@@ -35,6 +35,9 @@ usage() {
     echo "  list                  List all available template topologies"
     echo "  deploy <name>         Deploy a template lab into PNetLab"
     echo "  show <name>           Show details and description of a template"
+    echo "  list-repos            List curated community repository sources (CML2, GNS3, EVE-NG)"
+    echo "  browse <repo>         Browse & index labs in a repository or custom GitHub URL"
+    echo "  pull <repo> <name>    Pull, auto-convert, and deploy lab from any repository"
     echo "  publish <file.unl>    Add a .unl topology to the local catalog"
     echo "  refresh               Re-sync template catalog from GitHub"
     echo "  remove <name>         Remove a template from the local catalog"
@@ -42,8 +45,10 @@ usage() {
     echo -e "${BOLD}Examples:${RESET}"
     echo "  azam-templates list"
     echo "  azam-templates deploy ccna-routing"
-    echo "  azam-templates show bgp-full-mesh"
-    echo "  azam-templates publish /opt/unetlab/labs/Admin/mylab.unl"
+    echo "  azam-templates list-repos"
+    echo "  azam-templates browse cml-community"
+    echo "  azam-templates browse https://github.com/my-org/my-labs"
+    echo "  azam-templates pull cml-community enterprise-ospf-area0"
     exit 0
 }
 
@@ -107,19 +112,20 @@ UNLEOF
     local y=100
     for i in $(seq 1 "$num_nodes"); do
         local node_type="iol"
+        local node_icon="Router.png"
+        local node_name="R${i}"
         # Alternate between router and L2 switch for realism
         if (( i % 3 == 0 )); then
-            node_type="iol-l2"
+            node_icon="Switch.png"
+            node_name="SW$((i / 3))"
         fi
         cat >> "$dest_file" << NODEEOF
-      <node id="${i}" name="R${i}" type="${node_type}" template="iol" image="L3-ADVENTERPRISEK9-M-15.4-2T.bin" left="${x}" top="${y}" nvram="512" ram="256" config="0" ethernet="4" serial="2" console="telnet" delay="0" icon="Router.png">
-        <interface id="0" name="Gi0/0" type="ethernet" network_id="0"/>
-      </node>
+      <node id="${i}" name="${node_name}" type="${node_type}" template="iol" image="L3-ADVENTERPRISEK9-M-15.4-2T.bin" left="${x}" top="${y}" nvram="512" ram="256" config="0" ethernet="4" serial="2" console="telnet" delay="0" icon="${node_icon}" status="0"/>
 NODEEOF
-        x=$((x + 200))
+        x=$((x + 220))
         if (( i % 3 == 0 )); then
             x=100
-            y=$((y + 150))
+            y=$((y + 160))
         fi
     done
 
@@ -227,11 +233,22 @@ print('NOT_FOUND')
     echo -e " Category:  ${CATEGORY} | Nodes: ${NUM_NODES}"
     echo -e " Target:    /opt/unetlab/labs/${DEST_FOLDER}/${TEMPLATE_NAME}.unl"
 
-    # Check if template .unl exists in catalog, if not generate stub
+    # Check if template .unl exists in catalog, or generate full interconnected lab via importer
     CATALOG_FILE="${CATALOG_DIR}/${CATEGORY}/${TEMPLATE_NAME}.unl"
+    IMPORTER_SCRIPT="/opt/azambasha/scripts/azambasha-eve-lab-importer.py"
+    if [ ! -f "$IMPORTER_SCRIPT" ]; then
+        IMPORTER_SCRIPT="$(dirname "$0")/azambasha-eve-lab-importer.py"
+    fi
+
     if [ ! -f "$CATALOG_FILE" ]; then
-        echo -e " ${YELLOW}[*]${RESET} Generating topology scaffold..."
-        DEPLOYED_FILE=$(generate_stub_unl "$TEMPLATE_NAME" "$CATEGORY" "$DESCRIPTION" "$NUM_NODES")
+        if [ -f "$IMPORTER_SCRIPT" ]; then
+            echo -e " ${YELLOW}[*]${RESET} Generating full interconnected topology with base configs & workbook..."
+            python3 "$IMPORTER_SCRIPT" --build-template "$TEMPLATE_NAME"
+            DEPLOYED_FILE="${LABS_DIR}/Azam-Templates/${CATEGORY}/${TEMPLATE_NAME}.unl"
+        else
+            echo -e " ${YELLOW}[*]${RESET} Generating topology scaffold..."
+            DEPLOYED_FILE=$(generate_stub_unl "$TEMPLATE_NAME" "$CATEGORY" "$DESCRIPTION" "$NUM_NODES")
+        fi
     else
         # Copy from catalog to labs
         DEST_PATH="${LABS_DIR}/${DEST_FOLDER}/${TEMPLATE_NAME}.unl"
@@ -241,11 +258,11 @@ print('NOT_FOUND')
     fi
 
     # Fix permissions
-    chown -R nobody:nogroup "${LABS_DIR}/${DEST_FOLDER}/" 2>/dev/null || \
-    chown -R www-data:www-data "${LABS_DIR}/${DEST_FOLDER}/" 2>/dev/null || true
+    chown -R nobody:nogroup "${LABS_DIR}/Azam-Templates/" 2>/dev/null || \
+    chown -R www-data:www-data "${LABS_DIR}/Azam-Templates/" 2>/dev/null || true
     
     echo -e "  ${GREEN}[✔ DEPLOYED]${RESET} Template ready at: ${DEPLOYED_FILE}"
-    echo -e "  ${GREEN}[✔]${RESET} Open PNetLab GUI → Navigate to '${DEST_FOLDER}' folder → Click ${TEMPLATE_NAME}.unl"
+    echo -e "  ${GREEN}[✔]${RESET} Open PNetLab GUI → Navigate to 'Azam-Templates' folder → Click ${TEMPLATE_NAME}.unl"
     echo -e "${CYAN}====================================================================${RESET}"
     ;;
 
@@ -304,6 +321,28 @@ if len(data["templates"]) < before:
 else:
     print(f"  [!] Template '{name}' not found.")
 PYEOF
+    ;;
+
+  list-repos)
+    IMPORTER_SCRIPT="/opt/azambasha/scripts/azambasha-eve-lab-importer.py"
+    [ ! -f "$IMPORTER_SCRIPT" ] && IMPORTER_SCRIPT="$(dirname "$0")/azambasha-eve-lab-importer.py"
+    python3 "$IMPORTER_SCRIPT" --list-repos
+    ;;
+
+  browse)
+    REPO_SRC="${2:-cml-community}"
+    IMPORTER_SCRIPT="/opt/azambasha/scripts/azambasha-eve-lab-importer.py"
+    [ ! -f "$IMPORTER_SCRIPT" ] && IMPORTER_SCRIPT="$(dirname "$0")/azambasha-eve-lab-importer.py"
+    python3 "$IMPORTER_SCRIPT" --repo "$REPO_SRC" --browse
+    ;;
+
+  pull)
+    REPO_SRC="${2:-}"
+    LAB_NAME="${3:-}"
+    [ -z "$REPO_SRC" ] || [ -z "$LAB_NAME" ] && echo "[!] Usage: azam-templates pull <repo_or_url> <lab_name>" && exit 1
+    IMPORTER_SCRIPT="/opt/azambasha/scripts/azambasha-eve-lab-importer.py"
+    [ ! -f "$IMPORTER_SCRIPT" ] && IMPORTER_SCRIPT="$(dirname "$0")/azambasha-eve-lab-importer.py"
+    python3 "$IMPORTER_SCRIPT" --repo "$REPO_SRC" --pull "$LAB_NAME"
     ;;
 
   *)

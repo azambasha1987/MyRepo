@@ -105,6 +105,8 @@ ln -sf "${SCRIPTS}/azambasha-link-impairment.sh"   /usr/local/bin/azam-link-impa
 ln -sf "${SCRIPTS}/azambasha-roce-engine.sh"       /usr/local/bin/azam-roce
 ln -sf "${SCRIPTS}/azambasha-cgroups-v2-engine.sh" /usr/local/bin/azam-cgroups
 ln -sf "${SCRIPTS}/azambasha-cpu-governor.py"      /usr/local/bin/azam-cpu-governor
+ln -sf "${SCRIPTS}/azambasha-eve-lab-importer.py"   /usr/local/bin/azam-lab-importer
+chmod +x "${SCRIPTS}/azambasha-eve-lab-importer.py" 2>/dev/null || true
 
 # Install scheduler timer and 24/7 autonomous watchdog daemon
 python3 "${SCRIPTS}/azambasha-scheduler.py" --install 2>/dev/null || true

@@ -201,17 +201,32 @@
     pTemplates.style.display = 'none';
     pTemplates.innerHTML = 
       '<div style="display:flex;flex-direction:column;gap:16px;">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:var(--pnq-surface,#1e293b);padding:14px 18px;border-radius:10px;border:1px solid var(--pnq-border,rgba(255,255,255,0.08));">' +
-          '<div style="display:flex;align-items:center;gap:10px;">' +
-            '<div style="width:36px;height:36px;border-radius:8px;background:rgba(59,130,246,0.15);color:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-th-large"></i></div>' +
-            '<div>' +
-              '<div style="font-weight:700;font-size:16px;color:#f1f5f9;">Lab Templates Marketplace</div>' +
-              '<div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">14 Curated multi-vendor topologies ready for instant 1-click deployment</div>' +
+        '<div style="display:flex;flex-direction:column;gap:12px;background:var(--pnq-surface,#1e293b);padding:14px 18px;border-radius:10px;border:1px solid var(--pnq-border,rgba(255,255,255,0.08));">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<div style="width:36px;height:36px;border-radius:8px;background:rgba(59,130,246,0.15);color:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-th-large"></i></div>' +
+              '<div>' +
+                '<div style="font-weight:700;font-size:16px;color:#f1f5f9;">Lab Templates & Universal Converter Marketplace</div>' +
+                '<div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Import and auto-fix CML2, GNS3, and EVE-NG labs with tasks & base configs</div>' +
+              '</div>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<input type="text" id="tmpl-search" placeholder="Search templates (e.g. BGP, CCNA, MPLS)..." style="padding:6px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:12.5px;width:240px;">' +
+              '<button type="button" id="btn-tmpl-refresh" class="btn btn-ghost" style="font-size:12.5px;"><i class="fa fa-refresh"></i> Refresh</button>' +
             '</div>' +
           '</div>' +
-          '<div style="display:flex;align-items:center;gap:10px;">' +
-            '<input type="text" id="tmpl-search" placeholder="Search templates (e.g. BGP, CCNA, MPLS)..." style="padding:6px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:12.5px;width:240px;">' +
-            '<button type="button" id="btn-tmpl-refresh" class="btn btn-ghost" style="font-size:12.5px;"><i class="fa fa-refresh"></i> Refresh</button>' +
+          '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">' +
+            '<span style="font-size:12px;font-weight:600;color:#94a3b8;display:flex;align-items:center;gap:6px;"><i class="fa fa-github" style="color:#38bdf8;"></i> Repository Source:</span>' +
+            '<select id="az-tmpl-repo-select" style="padding:6px 12px;background:rgba(0,0,0,0.35);border:1px solid var(--pnq-border,rgba(255,255,255,0.12));border-radius:6px;color:#fff;font-size:12.5px;">' +
+              '<option value="cml-community">Cisco DevNet CML Community (Official CML2 YAML)</option>' +
+              '<option value="eve-ng-community">EVE-NG Community Enterprise Labs (EVE-NG UNL)</option>' +
+              '<option value="packetpushers">PacketPushers NetDevOps & BGP Testbeds</option>' +
+              '<option value="jeremy-ccna">Jeremy\'s IT Lab CCNA Practice Labs</option>' +
+              '<option value="local-offline">Azam-Basha Built-in Offline Library</option>' +
+              '<option value="custom">Custom GitHub Repository URL...</option>' +
+            '</select>' +
+            '<input type="text" id="az-tmpl-custom-url" placeholder="https://github.com/owner/repo" style="display:none;padding:6px 12px;background:rgba(0,0,0,0.35);border:1px solid var(--pnq-border,rgba(255,255,255,0.12));border-radius:6px;color:#fff;font-size:12.5px;width:240px;">' +
+            '<button type="button" id="btn-tmpl-browse-repo" class="btn btn-primary btn-sm" style="background:#0284c7;border:none;color:#fff;font-weight:600;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-search"></i> Browse Repo Labs</button>' +
           '</div>' +
         '</div>' +
         '<div id="tmpl-category-chips" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;"></div>' +
@@ -743,6 +758,31 @@
       };
     }
 
+    // Repository Source Selector & Browse
+    var repoSelect = container.querySelector('#az-tmpl-repo-select');
+    var customUrlInput = container.querySelector('#az-tmpl-custom-url');
+    var btnBrowseRepo = container.querySelector('#btn-tmpl-browse-repo');
+
+    if (repoSelect && customUrlInput) {
+      repoSelect.onchange = function () {
+        customUrlInput.style.display = repoSelect.value === 'custom' ? 'inline-block' : 'none';
+      };
+    }
+
+    if (btnBrowseRepo && repoSelect) {
+      btnBrowseRepo.onclick = function () {
+        var repoVal = repoSelect.value;
+        if (repoVal === 'custom') {
+          repoVal = (customUrlInput ? customUrlInput.value : '').trim();
+          if (!repoVal) {
+            App.toast('Please enter a valid GitHub repository URL', 'warn');
+            return;
+          }
+        }
+        runTool('templates-browse', { repo: repoVal }, btnBrowseRepo, 'term-templates');
+      };
+    }
+
     // Local Backups refresh
     var btnBackupRef = container.querySelector('#btn-backup-refresh');
     if (btnBackupRef) {
@@ -1024,22 +1064,30 @@
         return '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:#94a3b8;">#' + tag + '</span>';
       }).join(' ');
 
+      var srcUrl = t.source_url || ('https://github.com/CiscoDevNet/cml-community/tree/master/labs/' + t.name);
+
       html += '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;transition:transform 0.15s ease, border-color 0.15s ease;" onmouseenter="this.style.borderColor=\'' + catColor + '\'" onmouseleave="this.style.borderColor=\'var(--pnq-border,rgba(255,255,255,0.08))\'">' +
         '<div>' +
           '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
             '<div style="font-weight:700;font-size:15px;color:#f1f5f9;">' + t.name + '</div>' +
             '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;background:' + catColor + '20;color:' + catColor + ';border:1px solid ' + catColor + '40;text-transform:uppercase;">' + t.category + '</span>' +
           '</div>' +
-          '<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;">' +
+          '<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">' +
             '<span style="font-size:11px;color:#38bdf8;font-weight:600;"><i class="fa fa-cubes"></i> ' + (t.nodes || 4) + ' Nodes</span>' +
+            '<a href="' + srcUrl + '" target="_blank" rel="noopener noreferrer" style="font-size:11px;color:#0ea5e9;text-decoration:none;display:inline-flex;align-items:center;gap:4px;" title="View original lab repository & documentation" onmouseenter="this.style.textDecoration=\'underline\'" onmouseleave="this.style.textDecoration=\'none\'">' +
+              '<i class="fa fa-external-link"></i> Upstream Source ↗' +
+            '</a>' +
           '</div>' +
           '<div style="font-size:12.5px;color:var(--pnq-text-muted,#94a3b8);line-height:1.4;margin-bottom:12px;">' + t.desc + '</div>' +
         '</div>' +
         '<div>' +
           '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">' + tagsHtml + '</div>' +
-          '<button type="button" class="btn btn-primary btn-sm" style="width:100%;background:linear-gradient(135deg,' + catColor + ',#2563eb);border:none;color:#fff;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="window.__azDeployTemplate(\'' + t.name + '\', this)">' +
-            '<i class="fa fa-cloud-download"></i> Deploy to My Labs' +
-          '</button>' +
+          '<div style="display:flex;gap:6px;">' +
+            '<button type="button" class="btn btn-primary btn-sm" style="flex:1;background:linear-gradient(135deg,' + catColor + ',#2563eb);border:none;color:#fff;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="window.__azDeployTemplate(\'' + t.name + '\', this)">' +
+              '<i class="fa fa-cloud-download"></i> Deploy & Auto-Fix' +
+            '</button>' +
+            '<a href="' + srcUrl + '" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm" style="font-size:11px;padding:6px 10px;color:#94a3b8;border:1px solid rgba(255,255,255,0.1);border-radius:6px;display:inline-flex;align-items:center;text-decoration:none;" title="Open original repository in new tab"><i class="fa fa-github"></i></a>' +
+          '</div>' +
         '</div>' +
       '</div>';
     });

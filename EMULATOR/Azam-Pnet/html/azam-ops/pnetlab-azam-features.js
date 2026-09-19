@@ -88,32 +88,118 @@
   /* ═══════════════════════════════════════════════════════════
      Full-Screen Operations Panel
   ═══════════════════════════════════════════════════════════ */
+  /* ═══════════════════════════════════════════════════════════
+     Futuristic Cyber-Console Operations Window
+  ═══════════════════════════════════════════════════════════ */
   function buildPanel() {
     if (document.getElementById(PANEL_ID)) return;
+
+    // Inject futuristic animations, scrollbar and neon glow styles once
+    if (!document.getElementById('az-cyber-styles')) {
+      var s = document.createElement('style');
+      s.id = 'az-cyber-styles';
+      s.textContent = [
+        '@keyframes azLaserFlow { 0%{background-position:0% 50%} 100%{background-position:200% 50%} }',
+        '@keyframes azWindowPop { 0%{transform:scale(0.96) translateY(14px);opacity:0} 100%{transform:scale(1) translateY(0);opacity:1} }',
+        '@keyframes azPulseDot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.3;transform:scale(0.8)} }',
+        '.az-close-futuristic:hover { background:linear-gradient(135deg,rgba(239,68,68,0.5),rgba(220,38,38,0.65)) !important; box-shadow:0 0 30px rgba(239,68,68,0.7) !important; color:#fff !important; transform:translateY(-1px); }',
+        '.az-tab-active { color:#38bdf8 !important; border-bottom:2px solid #38bdf8 !important; box-shadow:0 2px 12px rgba(56,189,248,0.3) !important; font-weight:700 !important; }',
+        '#az-features-window ::-webkit-scrollbar { width:8px; height:8px; }',
+        '#az-features-window ::-webkit-scrollbar-track { background:rgba(0,0,0,0.25); }',
+        '#az-features-window ::-webkit-scrollbar-thumb { background:rgba(56,189,248,0.25); border-radius:4px; }',
+        '#az-features-window ::-webkit-scrollbar-thumb:hover { background:rgba(56,189,248,0.5); }'
+      ].join('\n');
+      document.head.appendChild(s);
+    }
 
     var overlay = document.createElement('div');
     overlay.id = PANEL_ID;
     overlay.style.cssText = [
-      'position:fixed;inset:0;z-index:99999',
-      'background:#080c18',
+      'position:fixed;inset:0;z-index:999999',
+      'background:rgba(3,7,18,0.78)',
+      'backdrop-filter:blur(12px)',
+      '-webkit-backdrop-filter:blur(12px)',
       'display:none',
-      'flex-direction:column',
+      'align-items:center',
+      'justify-content:center',
+      'padding:16px',
+      'box-sizing:border-box',
       'font-family:Inter,system-ui,sans-serif',
       'font-size:14px',
       'color:#e2e8f0',
-      'overflow:hidden'
+      'transition:all 0.25s cubic-bezier(0.16,1,0.3,1)'
     ].join(';');
 
     overlay.innerHTML = getPanelHTML();
     document.body.appendChild(overlay);
 
+    // Wire backdrop click to close
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) {
+        closePanel();
+      }
+    });
+
+    // Wire keyboard ESC key to close
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' || e.keyCode === 27) {
+        var p = document.getElementById(PANEL_ID);
+        if (p && p.style.display !== 'none') {
+          closePanel();
+        }
+      }
+    });
+
+    // Wire close button
+    var closeBtn = overlay.querySelector('#az-close');
+    if (closeBtn) closeBtn.addEventListener('click', closePanel);
+
+    // Wire fullscreen/windowed size toggle
+    var isMaximized = false;
+    var expandBtn = overlay.querySelector('#az-toggle-expand');
+    var win = overlay.querySelector('#az-features-window');
+    var expandIcon = overlay.querySelector('#az-expand-icon');
+    if (expandBtn && win) {
+      expandBtn.addEventListener('click', function() {
+        isMaximized = !isMaximized;
+        if (isMaximized) {
+          win.style.width = '100vw';
+          win.style.height = '100vh';
+          win.style.maxWidth = '100vw';
+          win.style.maxHeight = '100vh';
+          win.style.borderRadius = '0px';
+          overlay.style.padding = '0px';
+          if (expandIcon) expandIcon.className = 'fa fa-compress';
+          expandBtn.title = 'Restore Windowed Mode';
+        } else {
+          win.style.width = '1200px';
+          win.style.height = '88vh';
+          win.style.maxWidth = '95vw';
+          win.style.maxHeight = '92vh';
+          win.style.borderRadius = '18px';
+          overlay.style.padding = '16px';
+          if (expandIcon) expandIcon.className = 'fa fa-expand';
+          expandBtn.title = 'Toggle Fullscreen';
+        }
+      });
+    }
+
+    // Wire live tool search
+    var searchInput = overlay.querySelector('#az-filter-tools');
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        var q = searchInput.value.toLowerCase().trim();
+        overlay.querySelectorAll('[data-az-tool-card]').forEach(function(card) {
+          var txt = card.textContent.toLowerCase();
+          card.style.display = (!q || txt.includes(q)) ? '' : 'none';
+        });
+      });
+    }
+
     // Wire up all tab buttons
     overlay.querySelectorAll('[data-az-tab]').forEach(function (btn) {
       btn.addEventListener('click', function () { azSwitchTab(btn.dataset.azTab); });
     });
-
-    // Wire close button
-    overlay.querySelector('#az-close').addEventListener('click', closePanel);
 
     // Wire tool run buttons
     overlay.querySelectorAll('[data-az-tool]').forEach(function (btn) {
@@ -164,7 +250,8 @@
 
   function openPanel() {
     buildPanel();
-    document.getElementById(PANEL_ID).style.display = 'flex';
+    var p = document.getElementById(PANEL_ID);
+    if (p) p.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     azLoadStats();
   }
@@ -180,6 +267,13 @@
     var panel = document.getElementById(PANEL_ID);
     panel.querySelectorAll('[data-az-tab]').forEach(function (b) {
       b.classList.toggle('az-tab-active', b.dataset.azTab === name);
+      if (b.dataset.azTab === name) {
+        b.style.color = '#38bdf8';
+        b.style.borderBottomColor = '#38bdf8';
+      } else {
+        b.style.color = '#64748b';
+        b.style.borderBottomColor = 'transparent';
+      }
     });
     panel.querySelectorAll('[data-az-section]').forEach(function (s) {
       s.style.display = s.dataset.azSection === name ? 'block' : 'none';
@@ -470,7 +564,7 @@
     }
 
     function toolCard(icon, iconCol, name, cli, desc, body) {
-      return '<div style="' + CARD_STYLE + '">' +
+      return '<div data-az-tool-card="1" style="' + CARD_STYLE + '">' +
         '<div style="display:flex;align-items:flex-start;gap:14px;margin-bottom:14px">' +
           '<div style="width:40px;height:40px;border-radius:10px;background:rgba(255,255,255,.06);' +
             'display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">' + icon + '</div>' +
@@ -507,40 +601,85 @@
     }).join('');
 
     return '' +
-    /* ── Header bar ── */
-    '<div style="display:flex;align-items:center;gap:16px;padding:14px 24px;' +
-      'background:rgba(8,12,24,.9);border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0">' +
-      '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);' +
-        'display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 20px rgba(59,130,246,.3)">⚡</div>' +
-      '<div>' +
-        '<div style="font-size:16px;font-weight:700;background:linear-gradient(135deg,#3b82f6,#8b5cf6);' +
-          '-webkit-background-clip:text;-webkit-text-fill-color:transparent">Azam-Features</div>' +
-        '<div style="font-size:10px;color:#475569;font-weight:500;text-transform:uppercase;letter-spacing:.5px">Operations Center — ' + window.location.hostname + '</div>' +
+    /* ── Futuristic Window Wrapper ── */
+    '<div id="az-features-window" style="width:1200px;max-width:95vw;height:88vh;max-height:92vh;' +
+      'background:radial-gradient(circle at 50% 0%,rgba(30,41,59,0.96),rgba(11,17,33,0.98));' +
+      'border:1px solid rgba(56,189,248,0.35);border-radius:18px;' +
+      'box-shadow:0 0 60px rgba(56,189,248,0.25),0 30px 80px rgba(0,0,0,0.9),inset 0 1px 0 rgba(255,255,255,0.15);' +
+      'display:flex;flex-direction:column;overflow:hidden;position:relative;' +
+      'animation:azWindowPop 0.25s cubic-bezier(0.16,1,0.3,1);transition:all 0.25s ease;">' +
+
+      /* Top Animated Neon Laser Runner */
+      '<div style="height:3px;width:100%;background:linear-gradient(90deg,#38bdf8,#818cf8,#c084fc,#38bdf8);' +
+        'background-size:200% 100%;animation:azLaserFlow 4s linear infinite;flex-shrink:0;"></div>' +
+
+      /* ── Futuristic Header bar ── */
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 20px;' +
+        'background:rgba(15,23,42,0.85);border-bottom:1px solid rgba(56,189,248,0.2);flex-shrink:0">' +
+        '<div style="display:flex;align-items:center;gap:12px;">' +
+          '<div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#0284c7,#7c3aed);' +
+            'display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 20px rgba(56,189,248,0.4);border:1px solid rgba(255,255,255,0.2)">⚡</div>' +
+          '<div>' +
+            '<div style="font-size:16px;font-weight:800;letter-spacing:-0.01em;background:linear-gradient(90deg,#38bdf8,#a78bfa,#f43f5e);' +
+              '-webkit-background-clip:text;-webkit-text-fill-color:transparent">AZAM-OPS // QUANTUM CONSOLE</div>' +
+            '<div style="font-size:10.5px;color:#94a3b8;font-weight:600;display:flex;align-items:center;gap:8px;">' +
+              '<span>ENTERPRISE LAB ENGINE</span>' +
+              '<span style="color:#22c55e;display:inline-flex;align-items:center;gap:4px;"><i class="fa fa-circle" style="font-size:7px;animation:azPulseDot 1.5s infinite;"></i> ONLINE</span>' +
+              '<span style="color:#64748b;">•</span>' +
+              '<span style="color:#38bdf8;font-family:monospace;">' + window.location.hostname + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+
+        /* Center Quick Search */
+        '<div style="flex:1;max-width:340px;position:relative;margin:0 10px;">' +
+          '<i class="fa fa-search" style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#64748b;font-size:12px;"></i>' +
+          '<input type="text" id="az-filter-tools" placeholder="Filter tools (doctor, git, backup)..." style="width:100%;padding:7px 12px 7px 32px;' +
+            'background:rgba(0,0,0,0.45);border:1px solid rgba(56,189,248,0.25);border-radius:8px;color:#f8fafc;font-size:12px;outline:none;' +
+            'transition:border-color 0.2s;" onfocus="this.style.borderColor=\'#38bdf8\';" onblur="this.style.borderColor=\'rgba(56,189,248,0.25)\';">' +
+        '</div>' +
+
+        /* Right Window Control Trio */
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<div id="az-s-nodes" style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#4ade80;padding:5px 12px;border-radius:20px;font-size:11.5px;font-weight:600;display:flex;align-items:center;gap:5px;">' +
+            '<i class="fa fa-cubes"></i> <span>— nodes</span>' +
+          '</div>' +
+          '<div id="az-s-watchdog" style="background:rgba(56,189,248,0.15);border:1px solid rgba(56,189,248,0.3);color:#38bdf8;padding:5px 12px;border-radius:20px;font-size:11.5px;font-weight:600;display:flex;align-items:center;gap:5px;">' +
+            '<i class="fa fa-shield"></i> <span>watchdog —</span>' +
+          '</div>' +
+          '<button id="az-toggle-expand" type="button" title="Toggle Fullscreen / Windowed Mode" style="width:34px;height:34px;border-radius:8px;' +
+            'border:1px solid rgba(255,255,255,0.12);background:rgba(255,255,255,0.06);color:#94a3b8;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.2s;" ' +
+            'onmouseover="this.style.background=\'rgba(255,255,255,0.12)\';this.style.color=\'#fff\';" onmouseout="this.style.background=\'rgba(255,255,255,0.06)\';this.style.color=\'#94a3b8\';">' +
+            '<i class="fa fa-expand" id="az-expand-icon"></i>' +
+          '</button>' +
+          '<button id="az-close" type="button" class="az-close-futuristic" title="Close Operations Center (Esc)" style="height:34px;padding:0 14px;border-radius:8px;' +
+            'border:1px solid rgba(239,68,68,0.6);background:linear-gradient(135deg,rgba(239,68,68,0.25),rgba(185,28,28,0.35));color:#fee2e2;font-size:12px;' +
+            'font-weight:700;letter-spacing:0.5px;cursor:pointer;display:flex;align-items:center;gap:8px;box-shadow:0 0 20px rgba(239,68,68,0.35);transition:all 0.2s;" ' +
+            'onmouseover="this.style.background=\'linear-gradient(135deg,rgba(239,68,68,0.5),rgba(220,38,38,0.6))\';this.style.boxShadow=\'0 0 25px rgba(239,68,68,0.6)\';this.style.color=\'#fff\';" ' +
+            'onmouseout="this.style.background=\'linear-gradient(135deg,rgba(239,68,68,0.25),rgba(185,28,28,0.35))\';this.style.boxShadow=\'0 0 20px rgba(239,68,68,0.35)\';this.style.color=\'#fee2e2\';">' +
+            '<i class="fa fa-times" style="font-size:14px;color:#fca5a5;"></i>' +
+            '<span>CLOSE</span>' +
+            '<kbd style="font-size:9.5px;padding:1px 5px;background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.2);border-radius:4px;color:#fecaca;font-family:inherit;">ESC</kbd>' +
+          '</button>' +
+        '</div>' +
       '</div>' +
-      '<div style="flex:1"></div>' +
-      /* Stats pills */
-      '<div id="az-s-nodes" style="background:rgba(34,197,94,.1);color:#22c55e;padding:4px 12px;border-radius:20px;font-size:12px">— nodes</div>' +
-      '<div id="az-s-watchdog" style="background:rgba(59,130,246,.1);color:#3b82f6;padding:4px 12px;border-radius:20px;font-size:12px">watchdog —</div>' +
-      '<button id="az-close" style="width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,.1);' +
-        'background:rgba(255,255,255,.06);color:#94a3b8;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">✕</button>' +
-    '</div>' +
 
-    /* ── Tab bar ── */
-    '<div style="display:flex;gap:2px;padding:0 24px;background:rgba(8,12,24,.6);border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;overflow-x:auto">' +
-      [['overview','🏠 Overview'],['health','📊 Health'],['backup','💾 Backup & Restore'],
-       ['network','🌐 Network'],['security','🔒 SSL & Security'],
-       ['templates','📦 Templates'],['vcs','🕰️ Topology VCS'],['alerts','🔔 Alerts']
-      ].map(function (t) {
-        return '<button data-az-tab="' + t[0] + '" style="' +
-          'display:flex;align-items:center;gap:6px;padding:12px 16px;border:none;background:none;' +
-          'color:#64748b;cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;' +
-          'border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:color .2s">' +
-          t[1] + '</button>';
-      }).join('') +
-    '</div>' +
+      /* ── Tab bar ── */
+      '<div style="display:flex;gap:2px;padding:0 20px;background:rgba(8,12,24,0.7);border-bottom:1px solid rgba(56,189,248,0.15);flex-shrink:0;overflow-x:auto">' +
+        [['overview','🏠 Overview'],['health','📊 Health'],['backup','💾 Backup & Restore'],
+         ['network','🌐 Network'],['security','🔒 SSL & Security'],
+         ['templates','📦 Templates'],['vcs','🕰️ Topology VCS'],['alerts','🔔 Alerts']
+        ].map(function (t) {
+          return '<button data-az-tab="' + t[0] + '" style="' +
+            'display:flex;align-items:center;gap:6px;padding:12px 16px;border:none;background:none;' +
+            'color:#64748b;cursor:pointer;font-family:inherit;font-size:13px;font-weight:500;' +
+            'border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;transition:all .2s">' +
+            t[1] + '</button>';
+        }).join('') +
+      '</div>' +
 
-    /* ── Body (scrollable) ── */
-    '<div style="flex:1;overflow-y:auto;padding:24px">' +
+      /* ── Body (scrollable) ── */
+      '<div style="flex:1;overflow-y:auto;padding:24px">' +
 
       /* Stats row (always visible) */
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:24px">' +
@@ -674,7 +813,8 @@
         '</div>' +
       '</div>' +
 
-    '</div>'; /* end body */
+    '</div>' + /* end body */
+    '</div>'; /* end #az-features-window */
   }
 
   /* ── Desktop Notification Helper ────────────────────────── */

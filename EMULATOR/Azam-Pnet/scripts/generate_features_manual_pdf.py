@@ -784,7 +784,12 @@ def build_pdf(filename_dest):
     story.append(Paragraph("4. Inside-the-Lab Canvas Features (Lab Workbench: /themes/default/)", section_heading))
     story.append(Paragraph(
         "Inside-the-lab features are integrated directly into the visual network topology canvas. "
-        "They empower network engineers to execute live troubleshooting, WAN QoS impairment, multi-node lab snapshots, RESTCONF sandbox testing, Chaos Monkey stress tests, NetDevOps inventory exports, staggered boot scheduling with console ready-state probing, CFS vCPU throttling, and AI copilot queries without leaving the workbench.",
+        "They empower network engineers to execute live troubleshooting, WAN QoS impairment, multi-node lab snapshots, RESTCONF sandbox testing, Chaos Monkey stress tests, NetDevOps inventory exports, staggered boot scheduling with console ready-state probing, CFS vCPU throttling, and AI copilot queries without leaving the workbench.<br/><br/>"
+        "<b>Futuristic Cyber-Console Window Usability (In-Lab Azam-Features):</b><br/>"
+        "Clicking <b>⚡ Azam-Features</b> in the left workbench toolbar opens a state-of-the-art <b>futuristic floating cyber-command center modal</b> (`#az-features-window`) "
+        "suspended over a semi-transparent glassmorphic blurred backdrop (`backdrop-filter: blur(12px)`), keeping the underlying lab topology visible. "
+        "The interface incorporates an unmistakable glowing red <b>CLOSE [ESC]</b> button with neon box-shadow, keyboard <b>Escape</b> key dismissal, backdrop click-to-close, "
+        "a one-click <b>Windowed / Fullscreen Mode Toggle</b>, a live tool filter search bar, and an animated multi-color neon laser runner.",
         body_style
     ))
     story.append(Spacer(1, 4))

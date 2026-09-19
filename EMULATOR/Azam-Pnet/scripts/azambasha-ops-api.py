@@ -824,6 +824,9 @@ print("[*] Azam-Pnet Python SDK Loaded.")
                         self.reply_json({"error": "file path required"}, status=400)
                         return
                     cmd = ["python3", "/opt/azambasha/scripts/azambasha-eve-lab-importer.py", "--fix", lab_file]
+                elif tool == "templates-import-cml":
+                    src = params.get("source", "test").strip()
+                    cmd = ["python3", "/opt/azambasha/scripts/azambasha-eve-lab-importer.py", "--import-cml", src]
                 elif tool == "topology-log":
                     lab = params.get("lab", "").strip()
                     limit = str(params.get("limit", "20"))

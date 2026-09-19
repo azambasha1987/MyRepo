@@ -38,6 +38,8 @@ usage() {
     echo "  list-repos            List curated community repository sources (CML2, GNS3, EVE-NG)"
     echo "  browse <repo>         Browse & index labs in a repository or custom GitHub URL"
     echo "  pull <repo> <name>    Pull, auto-convert, and deploy lab from any repository"
+    echo "  test-cml              Test CML2 import engine with authentic Cisco DevNet CML2 topology"
+    echo "  import-cml <file/url> Import and convert any CML2 YAML topology into PNetLab v8"
     echo "  publish <file.unl>    Add a .unl topology to the local catalog"
     echo "  refresh               Re-sync template catalog from GitHub"
     echo "  remove <name>         Remove a template from the local catalog"
@@ -45,9 +47,10 @@ usage() {
     echo -e "${BOLD}Examples:${RESET}"
     echo "  azam-templates list"
     echo "  azam-templates deploy ccna-routing"
+    echo "  azam-templates test-cml"
+    echo "  azam-templates import-cml https://raw.githubusercontent.com/.../lab.yaml"
     echo "  azam-templates list-repos"
     echo "  azam-templates browse cml-community"
-    echo "  azam-templates browse https://github.com/my-org/my-labs"
     echo "  azam-templates pull cml-community enterprise-ospf-area0"
     exit 0
 }
@@ -343,6 +346,19 @@ PYEOF
     IMPORTER_SCRIPT="/opt/azambasha/scripts/azambasha-eve-lab-importer.py"
     [ ! -f "$IMPORTER_SCRIPT" ] && IMPORTER_SCRIPT="$(dirname "$0")/azambasha-eve-lab-importer.py"
     python3 "$IMPORTER_SCRIPT" --repo "$REPO_SRC" --pull "$LAB_NAME"
+    ;;
+
+  test-cml)
+    IMPORTER_SCRIPT="/opt/azambasha/scripts/azambasha-eve-lab-importer.py"
+    [ ! -f "$IMPORTER_SCRIPT" ] && IMPORTER_SCRIPT="$(dirname "$0")/azambasha-eve-lab-importer.py"
+    python3 "$IMPORTER_SCRIPT" --test-cml
+    ;;
+
+  import-cml)
+    CML_SRC="${2:-test}"
+    IMPORTER_SCRIPT="/opt/azambasha/scripts/azambasha-eve-lab-importer.py"
+    [ ! -f "$IMPORTER_SCRIPT" ] && IMPORTER_SCRIPT="$(dirname "$0")/azambasha-eve-lab-importer.py"
+    python3 "$IMPORTER_SCRIPT" --import-cml "$CML_SRC"
     ;;
 
   *)

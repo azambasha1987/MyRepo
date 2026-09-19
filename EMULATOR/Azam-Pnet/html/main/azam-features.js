@@ -61,13 +61,6 @@
     var actions = document.createElement('div');
     actions.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;';
 
-    var btnManual = document.createElement('a');
-    btnManual.href = '/docs/manual.pdf';
-    btnManual.target = '_blank';
-    btnManual.className = 'btn btn-ghost';
-    btnManual.style.cssText = 'display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#38bdf8;border:1px solid rgba(56,189,248,0.3);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;transition:background 0.15s ease;';
-    btnManual.innerHTML = '<i class="fa fa-book" style="color:#38bdf8;"></i> Operations Manual (PDF)';
-
     var btnToolkit = document.createElement('button');
     btnToolkit.type = 'button';
     btnToolkit.className = 'btn btn-ghost';
@@ -86,7 +79,6 @@
     btnDoctor.innerHTML = '<i class="fa fa-stethoscope"></i> Run Doctor';
     btnDoctor.onclick = function () { switchTab('health'); runTool('doctor', {}, null, 'term-doctor'); };
 
-    actions.appendChild(btnManual);
     actions.appendChild(btnToolkit);
     actions.appendChild(btnRefresh);
     actions.appendChild(btnDoctor);

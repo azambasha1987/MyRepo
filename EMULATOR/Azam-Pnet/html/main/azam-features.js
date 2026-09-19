@@ -117,7 +117,6 @@
       { id: 'grader',    name: 'Exam & Quiz Grader',      icon: 'fa-graduation-cap' },
       { id: 'sniffer',   name: 'Web Wireshark Sniffer',   icon: 'fa-rss' },
       { id: 'bridge',    name: 'Cloud & LAN Transit',     icon: 'fa-globe' },
-      { id: 'shrink',    name: 'Golden Disk Shrinker',    icon: 'fa-compress' },
       { id: 'doc',       name: 'Diagram & Doc Exporter',  icon: 'fa-file-code-o' },
       { id: 'ai',        name: 'AI Lab Copilot',          icon: 'fa-magic' },
       { id: 'diff',      name: 'Config Diff & Rollback',  icon: 'fa-history' },
@@ -156,7 +155,7 @@
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">' +
         createToolCard('fleet', 'azam-fleet', 'Cluster Fleet & Satellite Monitor', 'Pings Master & Satellites (192.168.1.22, 192.168.1.23, 192.168.1.24), checks WireGuard/GRE tunnels and node distribution.', 'fa-server', '#0284c7', 'term-fleet') +
         createToolCard('capacity', 'azam-capacity', 'Resource Capacity Planner', 'Live calculation of remaining RAM, vCPU cores, and maximum additional QEMU/IOL node slots before saturation.', 'fa-bar-chart', '#059669', 'term-capacity') +
-        createToolCard('doctor', 'azam-doctor', 'Cluster Doctor & Self-Healer', 'Deep diagnostic check of file permissions, disk health, orphan QEMU processes, and Apache proxy settings.', 'fa-stethoscope', '#d97706', 'term-doctor', [{ label: 'Reclaim Disk (--compress)', param: 'compress', tool: 'doctor-compress' }]) +
+        createToolCard('doctor', 'azam-doctor', 'Cluster Doctor & Self-Healer', 'Deep diagnostic check of file permissions, disk health, orphan QEMU processes, and Apache proxy settings.', 'fa-stethoscope', '#d97706', 'term-doctor') +
         createToolCard('perf', 'azam-perf', 'Performance Benchmark', 'Measures real-time memory throughput, disk I/O latency, and system load stress test.', 'fa-dashboard', '#7c3aed', 'term-perf') +
         createToolCard('watchdog-status', 'azam-watchdog', '24/7 Watchdog Service', 'Autonomous background systemd service that monitors cluster health continuously.', 'fa-eye', '#dc2626', 'term-watchdog', [{ label: 'Reinstall / Enable', param: 'install', tool: 'watchdog-install' }]) +
         createToolCard('console-fix-full', 'azam-console-fix', 'HTML5 Console Auto-Fixer', 'Repairs Guacamole WebSockets, cleans stale pipes, and tests guacd daemon health.', 'fa-terminal', '#10b981', 'term-console-fix') +
@@ -349,41 +348,7 @@
       '</div>';
     panesContainer.appendChild(pBridge);
 
-    // ── Pane 5: Golden Disk Shrinker ──
-    var pShrink = document.createElement('div');
-    pShrink.id = 'pane-shrink';
-    pShrink.style.display = 'none';
-    pShrink.innerHTML = 
-      '<div style="display:flex;flex-direction:column;gap:16px;">' +
-        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">' +
-            '<div style="display:flex;align-items:center;gap:12px;">' +
-              '<div style="width:38px;height:38px;border-radius:8px;background:rgba(244,63,94,0.15);color:#f43f5e;display:flex;align-items:center;justify-content:center;font-size:17px;"><i class="fa fa-compress"></i></div>' +
-              '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Golden Image Optimizer & QCOW2 Disk Shrinker</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Compress oversized appliance images non-destructively, saving 50%–70% disk space</div></div>' +
-            '</div>' +
-            '<div style="display:flex;gap:10px;">' +
-              '<button type="button" class="btn btn-ghost" data-az-tool="image-audit" data-az-term="term-shrink"><i class="fa fa-search"></i> Audit Bloat</button>' +
-              '<button type="button" class="btn btn-primary" data-az-tool="image-shrink-all" data-az-term="term-shrink" style="background:#f43f5e;border-color:#f43f5e;color:#fff;"><i class="fa fa-compress"></i> Compress All Disks</button>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div id="term-shrink" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:16px;font-family:monospace;font-size:12.5px;max-height:360px;overflow-y:auto;color:#e2e8f0;"></div>' +
-        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">' +
-            '<div style="display:flex;align-items:center;gap:10px;">' +
-              '<div style="width:36px;height:36px;border-radius:8px;background:rgba(244,63,94,0.15);color:#f43f5e;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-stethoscope"></i></div>' +
-              '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Golden Appliance Image Doctor & Sparseness Auditor</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Live inspection of QEMU & IOL virtual disks, compression ratios, and filesystem health</div></div>' +
-            '</div>' +
-            '<button type="button" id="btn-image-audit-ref" class="btn btn-ghost" style="font-size:12px;"><i class="fa fa-refresh"></i> Refresh Audit</button>' +
-          '</div>' +
-          '<div id="az-images-table" style="max-height:300px;overflow-y:auto;background:rgba(0,0,0,0.25);border-radius:8px;border:1px solid var(--pnq-border,rgba(255,255,255,0.06));padding:4px;">' +
-            '<div style="padding:10px;color:#64748b;">Click "Refresh Audit" to inspect appliance images.</div>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
-    panesContainer.appendChild(pShrink);
-
-    // ── Pane 6: Diagram & Doc Exporter ──
+    // ── Pane 5: Diagram & Doc Exporter ──
     var pDoc = document.createElement('div');
     pDoc.id = 'pane-doc';
     pDoc.style.display = 'none';
@@ -644,7 +609,7 @@
       b.style.borderBottomColor = isActive ? '#38bdf8' : 'transparent';
     });
 
-    ['health', 'templates', 'grader', 'sniffer', 'bridge', 'shrink', 'doc', 'ai', 'diff', 'mesh', 'scheduler', 'cloud', 'security', 'canvas'].forEach(function (id) {
+    ['health', 'templates', 'grader', 'sniffer', 'bridge', 'doc', 'ai', 'diff', 'mesh', 'scheduler', 'cloud', 'security', 'canvas'].forEach(function (id) {
       var p = document.getElementById('pane-' + id);
       if (p) p.style.display = id === tabId ? 'block' : 'none';
     });
@@ -977,12 +942,6 @@
       };
     }
 
-    // Golden Image Audit refresh
-    var btnImgRef = container.querySelector('#btn-image-audit-ref');
-    if (btnImgRef) {
-      btnImgRef.onclick = loadImagesAudit;
-    }
-
     // Scheduler & Curfew Policy Save
     var btnSchedSave = container.querySelector('#btn-sched-save');
     if (btnSchedSave) {
@@ -1123,48 +1082,6 @@
         target.innerHTML = '<div style="padding:10px;color:#ef4444;">Failed to load backup archives</div>';
       });
   }
-
-  function loadImagesAudit() {
-    var target = document.getElementById('az-images-table');
-    if (!target) return;
-    target.innerHTML = '<div style="padding:10px;"><i class="fa fa-spinner fa-spin"></i> Auditing QEMU and IOL images for bloat and health…</div>';
-
-    fetch(API_BASE + '/images/audit')
-      .then(function (r) { return r.json(); })
-      .then(function (res) {
-        var list = res.images || [];
-        if (!list.length) {
-          target.innerHTML = '<div style="padding:10px;color:#64748b;">No appliance images detected in /opt/unetlab/addons/</div>';
-          return;
-        }
-        var html = '<table class="table" style="width:100%;font-size:12.5px;">';
-        html += '<thead><tr><th>Appliance Image</th><th>File</th><th>Format</th><th>Virtual Size</th><th>Disk Usage</th><th>Health</th><th>Action</th></tr></thead><tbody>';
-        list.forEach(function (img) {
-          var healthBadge = (img.status === 'healthy' || img.status === 'ok')
-            ? '<span style="color:#4ade80;font-weight:700;"><i class="fa fa-check"></i> Healthy</span>'
-            : '<span style="color:#fbbf24;font-weight:700;"><i class="fa fa-exclamation-triangle"></i> Bloated / Check</span>';
-          html += '<tr>' +
-            '<td style="font-weight:600;color:#f1f5f9;">' + (img.appliance || img.name) + '</td>' +
-            '<td style="font-family:monospace;font-size:11px;color:#94a3b8;">' + (img.file || 'hda.qcow2') + '</td>' +
-            '<td><span style="font-size:10.5px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:#38bdf8;">' + (img.format || 'qcow2') + '</span></td>' +
-            '<td style="font-family:monospace;color:#a78bfa;">' + (img.virtual_size_gb ? img.virtual_size_gb + ' GB' : (img.virtual_size || '—')) + '</td>' +
-            '<td style="font-family:monospace;color:#f472b6;font-weight:600;">' + (img.disk_size_gb ? img.disk_size_gb + ' GB' : (img.actual_size || '—')) + '</td>' +
-            '<td>' + healthBadge + '</td>' +
-            '<td><button type="button" class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;color:#f43f5e;" onclick="window.__azShrinkSingle(\'' + (img.appliance || img.name) + '\')"><i class="fa fa-compress"></i> Shrink</button></td>' +
-          '</tr>';
-        });
-        html += '</tbody></table>';
-        target.innerHTML = html;
-      })
-      .catch(function () {
-        target.innerHTML = '<div style="padding:10px;color:#ef4444;">Failed to audit images.</div>';
-      });
-  }
-
-  window.__azShrinkSingle = function (name) {
-    if (!confirm('Compress and optimize appliance disk image "' + name + '"?\n\nNon-destructive qemu-img convert with sparseness detection.')) return;
-    runTool('image-shrink-all', { target: name }, null, 'term-shrink');
-  };
 
   /* ── Templates Loader & Universal Multi-Format Filter ────── */
   var DEFAULT_CLIENT_TEMPLATES = [

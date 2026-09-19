@@ -1,6 +1,6 @@
 # 3 Months Update Check Plan: Q3 2026 – Q4 2026
 
-*Scan Timestamp: 2026-09-19 17:02:06 (IST / UTC+5:30)* | *UTC: 2026-09-19 11:32:06* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*
+*Scan Timestamp: 2026-09-19 17:22:32 (IST / UTC+5:30)* | *UTC: 2026-09-19 11:52:32* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*
 
 ## Mandatory Production Safeguards (Zero-Glitch Protocol)
 
@@ -268,7 +268,7 @@ Production utilities installed across Master and Satellite nodes:
 |---|---|---|
 | `azam-fleet` | Multi-Node Health | 1-Click live dashboard: RAM, KSM savings, active nodes, and satellite link health. |
 | `azam-capacity` | Density Modeling | Hardware capacity estimator with Ultra-KSM deduplication node ceiling calculation. |
-| `azam-doctor` | Disk & Appliance | QEMU template auditor, IOL iourc license generator, and 50-75% disk compressor. |
+| `azam-doctor` | Disk & Appliance | QEMU template auditor and IOL iourc license generator. |
 | `azam-notify` | Alert Dispatcher | Instant WhatsApp (CallMeBot) and webhook alerts for weekly scans and crash events. |
 | `azam-bench <SAT_IP>` | Dataplane QoS | MTU 9000 jumbo frame probe, Soft-RoCE RXE counter audit, and iperf3 throughput test. |
 | `azam-bootstorm --lab <PATH>` | Boot Orchestrator | Anti-bootstorm: staggers heavy → medium → light node boot batches with configurable delays. |

@@ -83,7 +83,7 @@ ln -sf "${SCRIPTS}/azambasha-cloud-backup.py"     /usr/local/bin/azam-cloud-back
 ln -sf "${SCRIPTS}/azambasha-lab-grader.py"       /usr/local/bin/azam-grader
 ln -sf "${SCRIPTS}/azambasha-sniffer.py"          /usr/local/bin/azam-sniffer
 ln -sf "${SCRIPTS}/azambasha-cloud-bridge.py"     /usr/local/bin/azam-cloud-bridge
-ln -sf "${SCRIPTS}/azambasha-image-shrink.py"     /usr/local/bin/azam-image-shrink
+rm -f /usr/local/bin/azam-image-shrink 2>/dev/null || true
 ln -sf "${SCRIPTS}/azambasha-topology-doc.py"     /usr/local/bin/azam-topology-doc
 ln -sf "${SCRIPTS}/azambasha-bootstorm.py"        /usr/local/bin/azam-bootstorm
 ln -sf "${SCRIPTS}/azambasha-templates.sh"        /usr/local/bin/azam-templates

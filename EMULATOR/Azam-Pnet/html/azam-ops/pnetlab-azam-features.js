@@ -585,7 +585,7 @@
       ['🐕','#22c55e','Node Watchdog Status','azam-watchdog --status','Auto-recovery daemon monitoring all QEMU/IOL processes for silent crashes.','watchdog-status','az-term-watchdog'],
       ['🔥','#8b5cf6','Hot-Node Profiler','azam-perf --once','CPU/RAM/IO snapshot — instantly spots the resource-hogging node.','perf','az-term-perf'],
       ['📐','#eab308','Capacity Estimator','azam-capacity','Max node ceiling calculation with Ultra-KSM deduplication factor.','capacity','az-term-capacity'],
-      ['🩺','#22c55e','Image Doctor Check','azam-doctor --check','Validates QEMU templates, IOL license, and image disk usage.','doctor','az-term-doctor'],
+      ['🩺','#22c55e','Image Doctor Check','azam-doctor --check','Validates QEMU templates, IOL license, and image compliance.','doctor','az-term-doctor'],
       ['💾','#ef4444','Create Backup Snapshot','azam-backup --backup','Snapshot all .unl files, startup configs, and MySQL DB to timestamped archive.','backup','az-term-backup'],
       ['🖥️','#06b6d4','HTML5 Console Auto-Fix','azam-console-fix --fix','Repairs WebSocket tunnel, guacd, stale pipes, generates Windows .reg handlers.','console-fix','az-term-console'],
       ['📸','#8b5cf6','Topology Git Snapshot','azam-topology-git --snapshot','Commit all changed .unl topology files to the local Git version history.','topology-snapshot','az-term-topo'],
@@ -704,7 +704,7 @@
           toolCard('📊','#3b82f6','Fleet Dashboard','azam-fleet','Full multi-node health dashboard.','<button style="'+BTN_PRI+'" data-az-tool="fleet" data-az-term="az-term-fleet-h">▶ Run</button><div id="az-term-fleet-h" style="'+TERM_STYLE+'"></div>') +
           toolCard('🔥','#8b5cf6','Hot-Node Profiler','azam-perf --once','CPU/RAM/IO snapshot for all active nodes.','<button style="'+BTN_PRI+'" data-az-tool="perf" data-az-term="az-term-perf-h">▶ Snapshot</button><div id="az-term-perf-h" style="'+TERM_STYLE+'"></div>') +
           toolCard('📐','#eab308','Capacity Estimator','azam-capacity','Node ceiling with Ultra-KSM factor.','<button style="'+BTN_PRI+'" data-az-tool="capacity" data-az-term="az-term-cap-h">▶ Run</button><div id="az-term-cap-h" style="'+TERM_STYLE+'"></div>') +
-          toolCard('🩺','#22c55e','Image Doctor','azam-doctor','QEMU template audit + disk compression.','<button style="'+BTN_PRI+'" data-az-tool="doctor" data-az-term="az-term-doc-h">▶ Check</button><button style="'+BTN_SEC+';margin-left:8px" data-az-tool="doctor-compress" data-az-term="az-term-doc-h">🗜 Compress</button><div id="az-term-doc-h" style="'+TERM_STYLE+'"></div>') +
+          toolCard('🩺','#22c55e','Image Doctor','azam-doctor','QEMU template and image integrity audit.','<button style="'+BTN_PRI+'" data-az-tool="doctor" data-az-term="az-term-doc-h">▶ Check</button><div id="az-term-doc-h" style="'+TERM_STYLE+'"></div>') +
           toolCard('🐕','#06b6d4','Node Watchdog','azam-watchdog','Systemd daemon — detect crashes, auto-recover.','<button style="'+BTN_PRI+'" data-az-tool="watchdog-status" data-az-term="az-term-wd-h">▶ Status</button><button style="'+BTN_SEC+';margin-left:8px" data-az-tool="watchdog-install" data-az-term="az-term-wd-h">⚙ Install</button><div id="az-term-wd-h" style="'+TERM_STYLE+'"></div>') +
         '</div>' +
       '</div>' +

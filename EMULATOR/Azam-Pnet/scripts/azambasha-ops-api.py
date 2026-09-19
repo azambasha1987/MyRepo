@@ -22,7 +22,6 @@ COMMANDS = {
     "fleet":         ["bash", "/usr/local/bin/azam-fleet"],
     "capacity":      ["python3", "/usr/local/bin/azam-capacity"],
     "doctor":        ["bash", "/usr/local/bin/azam-doctor", "--check"],
-    "doctor-compress":["bash", "/usr/local/bin/azam-doctor", "--compress"],
     "perf":          ["python3", "/usr/local/bin/azam-perf", "--once"],
     "watchdog-status":["python3", "/usr/local/bin/azam-watchdog", "--status"],
     "watchdog-install":["python3", "/usr/local/bin/azam-watchdog", "--install"],
@@ -93,10 +92,6 @@ COMMANDS = {
     "bridge-disable-nat": ["python3", "/opt/azambasha/scripts/azambasha-cloud-bridge.py", "--disable-nat"],
     "bridge-wireguard-up":["python3", "/opt/azambasha/scripts/azambasha-cloud-bridge.py", "--wireguard-up"],
     "bridge-wireguard-down":["python3", "/opt/azambasha/scripts/azambasha-cloud-bridge.py", "--wireguard-down"],
-
-    # Golden Image Shrinker
-    "image-audit":        ["python3", "/opt/azambasha/scripts/azambasha-image-shrink.py", "--audit"],
-    "image-shrink-all":   ["python3", "/opt/azambasha/scripts/azambasha-image-shrink.py", "--shrink-all"],
 
     # Automatic Topology Documentation
     "topology-doc":       None,
@@ -424,14 +419,6 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
             except Exception as e:
                 self.reply_json({"error": str(e)})
 
-        elif parsed.path == "/azam-ops/api/images/audit":
-            try:
-                r = subprocess.run(["python3", "/opt/azambasha/scripts/azambasha-image-shrink.py", "--audit", "--json"],
-                                   capture_output=True, text=True, timeout=15)
-                self.reply_json(json.loads(r.stdout))
-            except Exception as e:
-                self.reply_json({"images": [], "error": str(e)})
-
         elif parsed.path == "/azam-ops/api/doc/export":
             lab = params.get("lab", ["default_lab"])[0]
             fmt = params.get("format", ["all"])[0]
@@ -676,18 +663,6 @@ devices:
 | R2-Core | Gi3 | FW1-Gate | port1 | 172.16.1.0/24 | DMZ Firewall Link |
 """
             self.reply_json({"success": True, "matrix": matrix_md, "filename": f"{lab}_cabling_matrix.md"})
-
-        elif parsed.path == "/azam-ops/api/images/audit":
-            script = "/usr/local/bin/azam-image-doctor"
-            if not os.path.isfile(script):
-                script = "/opt/unetlab/scripts/azambasha-image-doctor.sh"
-            if not os.path.isfile(script):
-                script = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), "scripts", "azambasha-image-doctor.sh")
-            try:
-                r = subprocess.run(["bash", script, "--check"], capture_output=True, text=True, timeout=15)
-                self.reply_json({"success": True, "output": r.stdout, "issues_found": "FAIL" in r.stdout})
-            except Exception as e:
-                self.reply_json({"success": False, "error": str(e), "issues_found": False})
 
         elif parsed.path == "/azam-ops/api/cluster/bench":
             peer = params.get("target", params.get("peer", ["127.0.0.1"]))[0]

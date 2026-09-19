@@ -386,7 +386,7 @@ def main():
     md.append("|---|---|---|")
     md.append("| `azam-fleet` | Multi-Node Health | 1-Click live dashboard: RAM, KSM savings, active nodes, and satellite link health. |")
     md.append("| `azam-capacity` | Density Modeling | Hardware capacity estimator with Ultra-KSM deduplication node ceiling calculation. |")
-    md.append("| `azam-doctor` | Disk & Appliance | QEMU template auditor, IOL iourc license generator, and 50-75% disk compressor. |")
+    md.append("| `azam-doctor` | Disk & Appliance | QEMU template auditor and IOL iourc license generator. |")
     md.append("| `azam-notify` | Alert Dispatcher | Instant WhatsApp (CallMeBot) and webhook alerts for weekly scans and crash events. |")
     md.append("| `azam-bench <SAT_IP>` | Dataplane QoS | MTU 9000 jumbo frame probe, Soft-RoCE RXE counter audit, and iperf3 throughput test. |")
     md.append("| `azam-bootstorm --lab <PATH>` | Boot Orchestrator | Anti-bootstorm: staggers heavy → medium → light node boot batches with configurable delays. |")

@@ -21,13 +21,12 @@ set -euo pipefail
 
 # Support non-root help/check
 if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
-    echo "Usage: sudo bash $0 [--check | --fix | --repair-disks | --compress]"
+    echo "Usage: sudo bash $0 [--check | --fix | --repair-disks]"
     echo ""
     echo "Options:"
     echo "  --check          Inspect all installed images and report compliance (non-destructive)"
     echo "  --fix            Auto-correct misnamed image files and fix permissions"
     echo "  --repair-disks   Run qemu-img check -r all on all QCOW2 disks"
-    echo "  --compress       Safely compress non-active QCOW2 disks to reclaim disk space (saves 50-75%)"
     exit 0
 fi
 
@@ -148,37 +147,6 @@ if [ -d "$QEMU_DIR" ]; then
                 qemu-img check -r all "$qcow" 2>/dev/null || true
             done
         fi
-
-        # Run Safe QCOW2 Compression if in --compress mode
-        if [ "$MODE" = "--compress" ] && command -v qemu-img &>/dev/null; then
-            for disk in "$img_folder"/*.qcow2; do
-                [ ! -f "$disk" ] && continue
-                disk_base=$(basename "$disk")
-                if is_disk_in_use "$disk"; then
-                    echo "      [SKIP] $disk_base is currently active in a running node."
-                    continue
-                fi
-                orig_size=$(stat -c %s "$disk")
-                orig_mb=$((orig_size / 1024 / 1024))
-                temp_compressed="${disk}.tmp_comp.qcow2"
-                echo "      ↳ Compressing $disk_base (${orig_mb}MB)..."
-                if qemu-img convert -c -O qcow2 "$disk" "$temp_compressed"; then
-                    new_size=$(stat -c %s "$temp_compressed")
-                    new_mb=$((new_size / 1024 / 1024))
-                    saved_mb=$((orig_mb - new_mb))
-                    if [ "$new_size" -lt "$orig_size" ]; then
-                        mv -f "$temp_compressed" "$disk"
-                        echo "        [RECLAIMED] Saved ${saved_mb}MB! (${orig_mb}MB -> ${new_mb}MB)"
-                    else
-                        rm -f "$temp_compressed"
-                        echo "        [OPTIMAL] Disk is already fully compressed (${orig_mb}MB)."
-                    fi
-                else
-                    rm -f "$temp_compressed" 2>/dev/null || true
-                    echo "        [WARN] Compression failed for $disk_base. Original preserved."
-                fi
-            done
-        fi
     done
 else
     echo "  -> Directory $QEMU_DIR not found."
@@ -243,6 +211,5 @@ echo -e " Audit Summary: $TOTAL_IMAGES QEMU appliances inspected."
 echo -e " Status: $CORRECT_IMAGES Valid | $ISSUE_IMAGES Needs Attention"
 if [ "$ISSUE_IMAGES" -gt 0 ] && [ "$MODE" = "--check" ]; then
     echo -e "\n Tip: Run 'sudo azam-doctor --fix' to automatically rename image disks and fix permissions."
-    echo -e " Tip: Run 'sudo azam-doctor --compress' to safely reclaim 50-75% disk space on QCOW2 images."
 fi
 echo -e "============================================================"

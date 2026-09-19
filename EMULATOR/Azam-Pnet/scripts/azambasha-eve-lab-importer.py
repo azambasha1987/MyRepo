@@ -69,6 +69,14 @@ PRESET_REPOS = {
         "format": "packet-tracer-eve",
         "desc": "Targeted CCNA 200-301 routing, switching, and ACL practice exercises."
     },
+    "gns3-community": {
+        "name": "GNS3 Open-Source Community Lab Archive",
+        "url": "https://github.com/danehans/gns3-labs",
+        "api_repo": "danehans/gns3-labs",
+        "branch": "master",
+        "format": "gns3",
+        "desc": "Cisco, Arista, and Linux multi-node topologies exported from GNS3."
+    },
     "local-offline": {
         "name": "Azam-Basha Built-in Offline Library",
         "url": "local",

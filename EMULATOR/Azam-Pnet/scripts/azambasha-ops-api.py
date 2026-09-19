@@ -308,6 +308,12 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
                     "format": "CCNA Practice",
                     "desc": "Targeted CCNA 200-301 routing, switching, and ACL practice exercises."
                 },
+                "gns3-community": {
+                    "name": "GNS3 Open-Source Community Lab Archive",
+                    "url": "https://github.com/danehans/gns3-labs",
+                    "format": "GNS3 Project",
+                    "desc": "Cisco, Arista, and Linux multi-node topologies exported from GNS3."
+                },
                 "local-offline": {
                     "name": "Azam-Basha Built-in Offline Library",
                     "url": "local",

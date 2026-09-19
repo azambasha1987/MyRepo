@@ -55,11 +55,19 @@
   /* ── Wait for sidebar ───────────────────────────────────── */
   function waitForSidebar() {
     var sidebar = document.getElementById('lab-sidebar');
-    if (sidebar) { injectSidebarEntry(sidebar); return; }
+    if (sidebar) {
+      injectSidebarEntry(sidebar);
+      injectGitSidebarButton(sidebar);
+      return;
+    }
 
     var obs = new MutationObserver(function () {
       sidebar = document.getElementById('lab-sidebar');
-      if (sidebar) { obs.disconnect(); injectSidebarEntry(sidebar); }
+      if (sidebar) {
+        obs.disconnect();
+        injectSidebarEntry(sidebar);
+        injectGitSidebarButton(sidebar);
+      }
     });
     obs.observe(document.body, { childList: true, subtree: true });
 
@@ -69,7 +77,10 @@
       sidebar = document.getElementById('lab-sidebar');
       if (sidebar || ++attempts > 60) {
         clearInterval(poll);
-        if (sidebar) injectSidebarEntry(sidebar);
+        if (sidebar) {
+          injectSidebarEntry(sidebar);
+          injectGitSidebarButton(sidebar);
+        }
       }
     }, 500);
   }
@@ -666,18 +677,134 @@
     '</div>'; /* end body */
   }
 
-  /* ── Bootstorm helper (client-side) ──────────────────────── */
+  /* ── Bootstorm helper ────────────────────────────────────── */
   window.azBoostorm = function (dryRun) {
-    var lab = document.getElementById('az-boot-lab').value.trim();
+    var labInput = document.getElementById('az-boot-lab');
+    var lab = labInput ? labInput.value.trim() : (window.lab_filename || window.location.pathname || '');
     var term = document.getElementById('az-term-boot');
     if (!lab) { azToast('Enter lab path first', 'err'); return; }
-    if (term) {
-      term.style.display = 'block';
-      term.innerHTML = '<div style="color:#60a5fa">SSH to ' + window.location.hostname + ' and run:<br>' +
-        '<span style="color:#22c55e">azam-bootstorm --lab ' + lab + (dryRun ? ' --dry-run' : '') + '</span></div>';
-    }
-    azToast('Bootstorm: connect via SSH and run the command shown.', 'info');
+    azRunTool('bootstorm-start', { lab: lab, dry_run: dryRun }, null, 'az-term-boot');
   };
+
+  /* ── Canvas In-Lab Toolbar Actions ────────────────────────── */
+  function openBootstormModal() {
+    var modalId = 'pnq-bootstorm-modal';
+    var modal = document.getElementById(modalId);
+    var currentLab = window.lab_filename || window.lab_name || window.location.pathname || '/Admin/active_lab.unl';
+
+    if (!modal) {
+      modal = document.createElement('div');
+      modal.id = modalId;
+      modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);z-index:999999;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;color:#f8fafc;';
+      modal.innerHTML = 
+        '<div style="width:540px;max-width:92%;background:#0f172a;border:1px solid rgba(255,255,255,0.15);border-radius:12px;box-shadow:0 24px 64px rgba(0,0,0,0.9);overflow:hidden;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.08);background:#1e293b;">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<div style="width:32px;height:32px;border-radius:8px;background:rgba(245,158,11,0.2);color:#f59e0b;display:flex;align-items:center;justify-content:center;font-size:16px;"><i class="fa fa-rocket"></i></div>' +
+              '<div style="font-weight:700;font-size:15px;">Anti-Bootstorm Staggered Startup</div>' +
+            '</div>' +
+            '<button type="button" id="pnq-bs-close" style="background:none;border:none;color:#94a3b8;font-size:20px;cursor:pointer;line-height:1;">&times;</button>' +
+          '</div>' +
+          '<div style="padding:18px;display:flex;flex-direction:column;gap:14px;">' +
+            '<div>' +
+              '<label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:4px;">Target Lab Topology:</label>' +
+              '<input type="text" id="pnq-bs-lab" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:13px;" value="' + currentLab + '">' +
+            '</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+              '<div>' +
+                '<label style="font-size:11.5px;color:#94a3b8;display:block;margin-bottom:4px;">Heavy Delay (XRd, C8000v):</label>' +
+                '<input type="number" id="pnq-bs-heavy" value="18" min="5" max="60" style="width:100%;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:13px;">' +
+              '</div>' +
+              '<div>' +
+                '<label style="font-size:11.5px;color:#94a3b8;display:block;margin-bottom:4px;">Medium Delay (vIOS, CSR):</label>' +
+                '<input type="number" id="pnq-bs-medium" value="10" min="3" max="30" style="width:100%;padding:6px 10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:13px;">' +
+              '</div>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+              '<input type="checkbox" id="pnq-bs-dryrun" style="cursor:pointer;">' +
+              '<label for="pnq-bs-dryrun" style="font-size:12.5px;color:#cbd5e1;cursor:pointer;">Simulate boot order without launching nodes (--dry-run)</label>' +
+            '</div>' +
+            '<div style="display:flex;gap:10px;margin-top:4px;">' +
+              '<button type="button" id="pnq-bs-start" style="flex:1;background:linear-gradient(135deg,#f59e0b,#ea580c);border:none;color:#fff;padding:10px;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fa fa-play"></i> Launch Staggered Boot</button>' +
+            '</div>' +
+            '<div id="pnq-bs-term" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;font-family:monospace;font-size:11.5px;max-height:180px;overflow-y:auto;white-space:pre-wrap;"></div>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(modal);
+
+      modal.querySelector('#pnq-bs-close').onclick = function() { modal.style.display = 'none'; };
+      modal.onclick = function(e) { if (e.target === modal) modal.style.display = 'none'; };
+
+      modal.querySelector('#pnq-bs-start').onclick = function() {
+        var lab = modal.querySelector('#pnq-bs-lab').value.trim();
+        var hd = modal.querySelector('#pnq-bs-heavy').value.trim();
+        var md = modal.querySelector('#pnq-bs-medium').value.trim();
+        var dry = modal.querySelector('#pnq-bs-dryrun').checked;
+        azRunTool('bootstorm-start', { lab: lab, heavy_delay: hd, medium_delay: md, dry_run: dry }, this, 'pnq-bs-term');
+      };
+    } else {
+      modal.querySelector('#pnq-bs-lab').value = currentLab;
+      modal.style.display = 'flex';
+    }
+  }
+
+  function injectCanvasToolbarActions() {
+    var startBtn = document.querySelector('.action-nodesstart, [data-action="nodesstart"]');
+    if (!startBtn || document.getElementById('pnq-btn-bootstorm')) return;
+
+    var bootstormBtn = document.createElement('button');
+    bootstormBtn.id = 'pnq-btn-bootstorm';
+    bootstormBtn.type = 'button';
+    bootstormBtn.className = 'btn btn-primary btn-sm';
+    bootstormBtn.style.cssText = 'background:linear-gradient(135deg,#f59e0b,#ea580c);border:none;color:#fff;font-weight:700;margin-left:6px;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(245,158,11,0.3);cursor:pointer;';
+    bootstormBtn.innerHTML = '<i class="fa fa-rocket"></i> <span>Anti-Bootstorm</span>';
+    bootstormBtn.title = 'Staggered heavy -> medium -> light node startup';
+    bootstormBtn.onclick = function(e) {
+      e.preventDefault();
+      openBootstormModal();
+    };
+
+    var consoleFixBtn = document.createElement('button');
+    consoleFixBtn.id = 'pnq-btn-console-fix';
+    consoleFixBtn.type = 'button';
+    consoleFixBtn.className = 'btn btn-ghost btn-sm';
+    consoleFixBtn.style.cssText = 'background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);color:#10b981;font-weight:600;margin-left:6px;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;';
+    consoleFixBtn.innerHTML = '<i class="fa fa-wrench"></i> <span>Fix Console</span>';
+    consoleFixBtn.title = 'Repair HTML5 WebSocket console & guacd socket';
+    consoleFixBtn.onclick = function(e) {
+      e.preventDefault();
+      azToast('Running HTML5 console auto-fix…', 'info');
+      azRunTool('console-fix-full', {}, consoleFixBtn, 'term-canvas-console');
+    };
+
+    if (startBtn.parentNode) {
+      startBtn.parentNode.insertBefore(bootstormBtn, startBtn.nextSibling);
+      startBtn.parentNode.insertBefore(consoleFixBtn, bootstormBtn.nextSibling);
+    }
+  }
+
+  function injectGitSidebarButton(sidebar) {
+    if (document.getElementById('pnq-git-vcs-entry')) return;
+
+    var li = document.createElement('li');
+    li.id = 'pnq-git-vcs-entry';
+    li.innerHTML =
+      '<a href="#" id="pnq-git-vcs-link" title="Topology Git Version Control" style="display:flex;align-items:center;gap:8px;">' +
+        '<i class="fa fa-code-fork" style="color:#a855f7;width:16px;text-align:center"></i>' +
+        '<span style="font-weight:600;color:#c084fc;">' +
+          'Topology Git' +
+        '</span>' +
+      '</a>';
+
+    li.querySelector('a').addEventListener('click', function (e) {
+      e.preventDefault();
+      openPanel();
+      azSwitchTab('vcs');
+    });
+
+    var ul = sidebar.tagName === 'UL' ? sidebar : sidebar.querySelector('ul');
+    if (ul) ul.appendChild(li);
+  }
 
   /* ── CSS for active tab ──────────────────────────────────── */
   function injectStyles() {
@@ -690,17 +817,22 @@
       '#' + PANEL_ID + ' [data-az-tab]:hover{color:#e2e8f0!important}' +
       '#' + PANEL_ID + ' button:disabled{opacity:.5;cursor:not-allowed}' +
       '@keyframes az-slide-in{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:none}}' +
-      '#pnq-azam-features:hover a{opacity:.85}' +
-      '#pnq-azam-features a{transition:opacity .2s}';
+      '#pnq-azam-features:hover a, #pnq-git-vcs-entry:hover a{opacity:.85}' +
+      '#pnq-azam-features a, #pnq-git-vcs-entry a{transition:opacity .2s}';
     document.head.appendChild(s);
   }
 
   /* ── Init ───────────────────────────────────────────────── */
   injectStyles();
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', waitForSidebar);
-  } else {
+  function startInit() {
     waitForSidebar();
+    setInterval(injectCanvasToolbarActions, 1000);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startInit);
+  } else {
+    startInit();
   }
 
 })();

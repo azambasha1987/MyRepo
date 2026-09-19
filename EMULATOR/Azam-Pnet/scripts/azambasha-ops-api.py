@@ -100,7 +100,46 @@ COMMANDS = {
 
     # Automatic Topology Documentation
     "topology-doc":       None,
+
+    # Anti-Bootstorm Engine
+    "bootstorm-start":    None,
+
+    # Templates Marketplace
+    "templates-deploy":   None,
+
+    # Topology Git
+    "topology-log":       None,
+    "topology-diff":      None,
+    "topology-restore":   None,
+
+    # Hot-Node Profiler & Killer
+    "perf-kill":          None,
+    "perf-resume":        None,
+
+    # HTML5 Console Fixer
+    "console-fix-full":   ["bash", "/usr/local/bin/azam-console-fix", "--fix"],
+
+    # Lab Backups & Snapshots
+    "backup-create":      None,
+    "backup-restore":     None,
 }
+
+DEFAULT_TEMPLATES = [
+    {"name":"ccna-routing","category":"ccna","desc":"Full CCNA Routing topology: 4x IOSv routers + 2x IOL L2 switches. OSPF, EIGRP, RIP labs ready.","nodes":6,"tags":["ccna","ospf","eigrp","rip","routing"]},
+    {"name":"ccna-switching","category":"ccna","desc":"CCNA Switching: 6x IOL L2 with STP, VTP, Inter-VLAN, EtherChannel, and HSRP pre-configured.","nodes":8,"tags":["ccna","switching","stp","vlan","hsrp"]},
+    {"name":"ccna-wan","category":"ccna","desc":"CCNA WAN: PPP, HDLC, Frame Relay, DMVPN phase 1 topology with 4 routers.","nodes":4,"tags":["ccna","wan","ppp","dmvpn"]},
+    {"name":"bgp-full-mesh","category":"bgp","desc":"BGP full-mesh: 8x CSR1000v routers, 4 autonomous systems, iBGP/eBGP, communities, route-maps.","nodes":8,"tags":["bgp","ccie","enterprise","advanced"]},
+    {"name":"bgp-internet-edge","category":"bgp","desc":"Internet edge: 2x ISP routers + 2x CPE with BGP dual-homing, prefix filtering, AS-path prepend.","nodes":4,"tags":["bgp","internet","edge","filtering"]},
+    {"name":"ospf-multi-area","category":"ospf","desc":"OSPF multi-area: Areas 0, 1, 2, stub/NSSA, virtual links, redistribution with 6 IOSv routers.","nodes":6,"tags":["ospf","multiarea","redistribution"]},
+    {"name":"mpls-ldp","category":"mpls","desc":"MPLS/LDP: 6x CSR1000v with MPLS forwarding, LDP neighbors, L3VPN PE-CE, and traffic engineering.","nodes":6,"tags":["mpls","ldp","l3vpn","te"]},
+    {"name":"mpls-sr","category":"mpls","desc":"Segment Routing: XRv9k or IOSv SR-MPLS with TI-LFA fast reroute, SID allocation, and SR-TE.","nodes":4,"tags":["mpls","segment-routing","sr-te","xrv"]},
+    {"name":"isis-datacenter","category":"isis","desc":"IS-IS spine-leaf datacenter: 2x spine + 4x leaf with IS-IS L2, BFD, and prefix-SID.","nodes":6,"tags":["isis","datacenter","spine-leaf","bfd"]},
+    {"name":"sdwan-vedge","category":"sdwan","desc":"SD-WAN vEdge: vManage + vSmart + vBond + 3x vEdge with OMP, TLOCs, and policy templates.","nodes":6,"tags":["sdwan","viptela","cisco","vedge"]},
+    {"name":"firewall-perimeter","category":"security","desc":"Perimeter security: ASAv + Cisco ISE + 2x edge routers with ZBF, NAT, VPN, and ACLs.","nodes":5,"tags":["security","asa","firewall","nat","vpn"]},
+    {"name":"datacenter-vxlan","category":"datacenter","desc":"VXLAN/EVPN BGP: 2x spine + 4x leaf Nexus 9Kv with L2VNI, L3VNI, and VTEP auto-discovery.","nodes":6,"tags":["vxlan","evpn","bgp","nexus","datacenter"]},
+    {"name":"ccie-rs-lab1","category":"ccie","desc":"CCIE RS mock lab 1: 8-router topology with OSPF, BGP, MPLS, QoS, and redistribution tasks.","nodes":8,"tags":["ccie","advanced","mock-lab"]},
+    {"name":"ipv6-dual-stack","category":"ccna","desc":"IPv6 dual-stack: 4x routers with OSPFv3, BGP4+, RIPng, SLAAC, DHCPv6, and NAT64.","nodes":4,"tags":["ipv6","ospfv3","bgp","dual-stack"]}
+]
 
 def get_cluster_stats():
     stats = {}
@@ -229,12 +268,16 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
                 self.reply_json({"error": str(e)})
 
         elif parsed.path == "/azam-ops/api/templates":
-            try:
-                with open("/opt/azambasha/templates/catalog.json") as f:
-                    data = json.load(f)
-                self.reply_json(data)
-            except Exception as e:
-                self.reply_json({"templates": [], "error": str(e)})
+            data = None
+            if os.path.isfile("/opt/azambasha/templates/catalog.json"):
+                try:
+                    with open("/opt/azambasha/templates/catalog.json") as f:
+                        data = json.load(f)
+                except Exception:
+                    pass
+            if not data or not data.get("templates"):
+                data = {"version": "1.0", "templates": DEFAULT_TEMPLATES}
+            self.reply_json(data)
 
         elif parsed.path == "/azam-ops/api/notify-config":
             conf = {}
@@ -335,6 +378,59 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
             except Exception as e:
                 self.reply_json({"error": str(e)})
 
+        elif parsed.path == "/azam-ops/api/perf/top":
+            try:
+                r = subprocess.run(["python3", "/usr/local/bin/azam-perf", "--once"],
+                                   capture_output=True, text=True, timeout=10)
+                procs = []
+                for line in r.stdout.splitlines():
+                    if "|" in line and not line.startswith("+") and not "PID" in line and not "Sampling" in line:
+                        parts = [p.strip() for p in line.split("|") if p.strip()]
+                        if len(parts) >= 6:
+                            procs.append({
+                                "pid": parts[0],
+                                "name": parts[1],
+                                "type": parts[2],
+                                "cpu_pct": parts[3],
+                                "ram_mb": parts[4],
+                                "state": parts[5]
+                            })
+                self.reply_json({"raw": r.stdout, "nodes": procs})
+            except Exception as e:
+                self.reply_json({"raw": "", "nodes": [], "error": str(e)})
+
+        elif parsed.path == "/azam-ops/api/topology/diff":
+            lab = params.get("lab", [""])[0]
+            commit = params.get("commit", [""])[0]
+            cmd = ["python3", "/usr/local/bin/azam-topology-git", "--diff", lab]
+            if commit:
+                cmd.extend(["--commit", commit])
+            try:
+                r = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+                self.reply_json({"diff": r.stdout, "error": r.stderr})
+            except Exception as e:
+                self.reply_json({"diff": "", "error": str(e)})
+
+        elif parsed.path == "/azam-ops/api/backups/local":
+            backup_dirs = ["/opt/azambasha/backups", "/opt/unetlab/data/backups"]
+            all_backups = []
+            for bdir in backup_dirs:
+                if os.path.isdir(bdir):
+                    try:
+                        for f in os.listdir(bdir):
+                            if f.endswith(".tar.gz") or f.endswith(".zip"):
+                                p = os.path.join(bdir, f)
+                                all_backups.append({
+                                    "filename": f,
+                                    "path": p,
+                                    "size_mb": round(os.path.getsize(p) / 1024 / 1024, 2),
+                                    "mtime": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(os.path.getmtime(p)))
+                                })
+                    except Exception:
+                        pass
+            all_backups.sort(key=lambda x: x.get("mtime", ""), reverse=True)
+            self.reply_json({"backups": all_backups})
+
         else:
             self.send_response(404)
             self.end_headers()
@@ -425,6 +521,52 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
                     lab = params.get("lab", "default_lab")
                     fmt = params.get("format", "all")
                     cmd = ["python3", "/opt/azambasha/scripts/azambasha-topology-doc.py", "--lab", lab, "--format", fmt]
+                elif tool == "bootstorm-start":
+                    lab = params.get("lab", "").strip()
+                    heavy_delay = str(params.get("heavy_delay", "18"))
+                    medium_delay = str(params.get("medium_delay", "10"))
+                    dry_run = params.get("dry_run", False)
+                    cmd = ["python3", "/usr/local/bin/azam-bootstorm", "--heavy-delay", heavy_delay, "--medium-delay", medium_delay]
+                    if lab:
+                        cmd.extend(["--lab", lab])
+                    if dry_run:
+                        cmd.append("--dry-run")
+                elif tool == "templates-deploy":
+                    tmpl = params.get("template", "").strip()
+                    if not tmpl:
+                        self.reply_json({"error": "template name required"}, status=400)
+                        return
+                    cmd = ["bash", "/usr/local/bin/azam-templates", "deploy", tmpl]
+                elif tool == "topology-log":
+                    lab = params.get("lab", "").strip()
+                    limit = str(params.get("limit", "20"))
+                    cmd = ["python3", "/usr/local/bin/azam-topology-git", "--log", lab, "--limit", limit]
+                elif tool == "topology-restore":
+                    lab = params.get("lab", "").strip()
+                    commit = params.get("commit", "").strip()
+                    if not commit:
+                        self.reply_json({"error": "commit SHA required"}, status=400)
+                        return
+                    cmd = ["python3", "/usr/local/bin/azam-topology-git", "--restore", lab, "--commit", commit]
+                elif tool == "perf-kill":
+                    cmd = ["python3", "/usr/local/bin/azam-perf", "--kill-hot"]
+                elif tool == "perf-resume":
+                    pid = str(params.get("pid", "")).strip()
+                    if not pid:
+                        self.reply_json({"error": "PID required"}, status=400)
+                        return
+                    cmd = ["python3", "/usr/local/bin/azam-perf", "--resume", pid]
+                elif tool == "backup-create":
+                    lab = params.get("lab", "").strip()
+                    cmd = ["bash", "/usr/local/bin/azam-backup", "--backup"]
+                    if lab:
+                        cmd.extend(["--lab", lab])
+                elif tool == "backup-restore":
+                    fname = params.get("file", "").strip()
+                    if not fname:
+                        self.reply_json({"error": "backup filename required"}, status=400)
+                        return
+                    cmd = ["bash", "/usr/local/bin/azam-restore", fname]
                 else:
                     self.reply_json({"error": "Command not configured"}, status=400)
                     return

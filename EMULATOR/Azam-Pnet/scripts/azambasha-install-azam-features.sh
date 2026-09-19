@@ -21,8 +21,35 @@ MAIN_INDEX="${MAIN_HTML}/index.html"
 MAIN_JS="${MAIN_HTML}/js"
 THEME_JS="${PNET_HTML}/themes/default/js"
 THEME_INDEX="${PNET_HTML}/themes/default/index.html"
-AZAM_DIR="/opt/azambasha"
-SCRIPTS="${AZAM_DIR}/scripts"
+# Resolve dynamic paths for install environment (git clone, /opt/unetlab, or /opt/azambasha)
+INSTALL_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd || echo "")"
+if [ -d "/opt/unetlab/scripts" ] && [ -f "/opt/unetlab/scripts/azambasha-ops-api.py" ]; then
+    SCRIPTS="/opt/unetlab/scripts"
+elif [ -n "$INSTALL_ROOT" ] && [ -d "${INSTALL_ROOT}/scripts" ]; then
+    SCRIPTS="${INSTALL_ROOT}/scripts"
+else
+    SCRIPTS="/opt/azambasha/scripts"
+fi
+
+if [ -n "$INSTALL_ROOT" ] && [ -d "${INSTALL_ROOT}/html" ]; then
+    AZAM_DIR="$INSTALL_ROOT"
+elif [ -d "/opt/azambasha/html" ]; then
+    AZAM_DIR="/opt/azambasha"
+elif [ -d "/opt/azam-pnet/EMULATOR/Azam-Pnet/html" ]; then
+    AZAM_DIR="/opt/azam-pnet/EMULATOR/Azam-Pnet"
+else
+    AZAM_DIR="/opt/unetlab"
+fi
+
+# Ensure /opt/azambasha compatibility directory and symlinks
+mkdir -p /opt/azambasha 2>/dev/null || true
+if [ ! -e "/opt/azambasha/scripts" ]; then
+    ln -sfn "$SCRIPTS" /opt/azambasha/scripts 2>/dev/null || true
+fi
+if [ ! -e "/opt/azambasha/html" ] && [ -d "${AZAM_DIR}/html" ]; then
+    ln -sfn "${AZAM_DIR}/html" /opt/azambasha/html 2>/dev/null || true
+fi
+
 API_PORT=8889
 
 echo -e "${CYAN}================================================================${RESET}"
@@ -35,19 +62,35 @@ chmod +x "${SCRIPTS}"/azambasha-*.py 2>/dev/null || true
 chmod +x "${SCRIPTS}"/azambasha-*.sh 2>/dev/null || true
 
 # Symlinks for CLI tools
-ln -sf "${SCRIPTS}/azambasha-ai-copilot.py"   /usr/local/bin/azam-ai
-ln -sf "${SCRIPTS}/azambasha-config-diff.py"  /usr/local/bin/azam-config-diff
-ln -sf "${SCRIPTS}/azambasha-ping-mesh.py"    /usr/local/bin/azam-ping-mesh
-ln -sf "${SCRIPTS}/azambasha-scheduler.py"    /usr/local/bin/azam-scheduler
-ln -sf "${SCRIPTS}/azambasha-cloud-backup.py" /usr/local/bin/azam-cloud-backup
-ln -sf "${SCRIPTS}/azambasha-lab-grader.py"   /usr/local/bin/azam-grader
-ln -sf "${SCRIPTS}/azambasha-sniffer.py"      /usr/local/bin/azam-sniffer
-ln -sf "${SCRIPTS}/azambasha-cloud-bridge.py" /usr/local/bin/azam-cloud-bridge
-ln -sf "${SCRIPTS}/azambasha-image-shrink.py" /usr/local/bin/azam-image-shrink
-ln -sf "${SCRIPTS}/azambasha-topology-doc.py" /usr/local/bin/azam-topology-doc
+ln -sf "${SCRIPTS}/azambasha-ai-copilot.py"       /usr/local/bin/azam-ai
+ln -sf "${SCRIPTS}/azambasha-config-diff.py"      /usr/local/bin/azam-config-diff
+ln -sf "${SCRIPTS}/azambasha-ping-mesh.py"        /usr/local/bin/azam-ping-mesh
+ln -sf "${SCRIPTS}/azambasha-scheduler.py"        /usr/local/bin/azam-scheduler
+ln -sf "${SCRIPTS}/azambasha-cloud-backup.py"     /usr/local/bin/azam-cloud-backup
+ln -sf "${SCRIPTS}/azambasha-lab-grader.py"       /usr/local/bin/azam-grader
+ln -sf "${SCRIPTS}/azambasha-sniffer.py"          /usr/local/bin/azam-sniffer
+ln -sf "${SCRIPTS}/azambasha-cloud-bridge.py"     /usr/local/bin/azam-cloud-bridge
+ln -sf "${SCRIPTS}/azambasha-image-shrink.py"     /usr/local/bin/azam-image-shrink
+ln -sf "${SCRIPTS}/azambasha-topology-doc.py"     /usr/local/bin/azam-topology-doc
+ln -sf "${SCRIPTS}/azambasha-bootstorm.py"        /usr/local/bin/azam-bootstorm
+ln -sf "${SCRIPTS}/azambasha-templates.sh"        /usr/local/bin/azam-templates
+ln -sf "${SCRIPTS}/azambasha-perf.py"             /usr/local/bin/azam-perf
+ln -sf "${SCRIPTS}/azambasha-console-fix.sh"      /usr/local/bin/azam-console-fix
+ln -sf "${SCRIPTS}/azambasha-lab-backup.sh"       /usr/local/bin/azam-backup
+ln -sf "${SCRIPTS}/azambasha-lab-backup.sh"       /usr/local/bin/azam-restore
+ln -sf "${SCRIPTS}/azambasha-topology-git.py"     /usr/local/bin/azam-topology-git
+ln -sf "${SCRIPTS}/azambasha-watchdog.py"         /usr/local/bin/azam-watchdog
+ln -sf "${SCRIPTS}/azambasha-fleet-status.sh"     /usr/local/bin/azam-fleet
+ln -sf "${SCRIPTS}/azambasha-cluster-capacity.py" /usr/local/bin/azam-capacity
+ln -sf "${SCRIPTS}/azambasha-image-doctor.sh"     /usr/local/bin/azam-doctor
+ln -sf "${SCRIPTS}/azambasha-notify.py"           /usr/local/bin/azam-notify
+ln -sf "${SCRIPTS}/azambasha-bench.sh"            /usr/local/bin/azam-bench
+ln -sf "${SCRIPTS}/azambasha-ssl.sh"              /usr/local/bin/azam-ssl
+ln -sf "${SCRIPTS}/azambasha-fix-web-credentials.sh" /usr/local/bin/azam-credentials
 
-# Install scheduler timer
+# Install scheduler timer and 24/7 watchdog
 python3 "${SCRIPTS}/azambasha-scheduler.py" --install 2>/dev/null || true
+python3 "${SCRIPTS}/azambasha-watchdog.py" --install 2>/dev/null || true
 
 python3 "${SCRIPTS}/azambasha-ops-api.py" --install
 systemctl restart azam-ops-api.service 2>/dev/null || true
@@ -109,6 +152,14 @@ else
     cp "${THEME_INDEX}" "${THEME_INDEX}.bak"
     sed -i 's|</body>|<script src="/themes/default/js/pnetlab-azam-features.js" defer></script>\n</body>|' "${THEME_INDEX}"
     echo -e "  ${GREEN}[✔]${RESET} Successfully injected script into Lab Canvas."
+fi
+
+# ── 5b. Install Standalone Azam-Ops Dashboard ────────────────────────────────
+mkdir -p "${PNET_HTML}/azam-ops"
+OPS_SRC="${AZAM_DIR}/html/azam-ops/index.html"
+if [ -f "${OPS_SRC}" ]; then
+    cp "${OPS_SRC}" "${PNET_HTML}/azam-ops/index.html"
+    echo -e "  ${GREEN}[✔]${RESET} Copied index.html → ${PNET_HTML}/azam-ops/"
 fi
 
 # ── 6. Reload Apache ────────────────────────────────────────────────────────

@@ -44,8 +44,9 @@ fi
 LOG_FILE="/var/log/azambasha-install.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
-mkdir -p /opt/pnetlab 2>/dev/null || true
+mkdir -p /opt/pnetlab /opt/azambasha 2>/dev/null || true
 ln -sfn "$SCRIPT_DIR" /opt/pnetlab 2>/dev/null || true
+ln -sfn "$SCRIPT_DIR" /opt/azambasha 2>/dev/null || true
 
 # Parse Command-Line Options for Unattended or Static IP Installation
 STATIC_IP=""
@@ -1036,6 +1037,11 @@ fi
 
 # --- Step 8: Apply Modernization Suite & Essential Fixes ---
 echo "[8/8] Applying Ubuntu 26 modernization, session fixes, and update freeze..."
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-os-prerequisites.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-os-prerequisites.sh" || true
+elif [ -f "/opt/unetlab/scripts/azambasha-os-prerequisites.sh" ]; then
+    bash "/opt/unetlab/scripts/azambasha-os-prerequisites.sh" || true
+fi
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-eth0-permanent.py" ]; then
     python3 "${SCRIPT_DIR}/scripts/azambasha-fix-eth0-permanent.py" || true
 fi
@@ -1106,6 +1112,13 @@ if [ -f "${SCRIPT_DIR}/scripts/azambasha-gui-enhancements.sh" ]; then
 fi
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-ui-enhancements.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-ui-enhancements.sh" || true
+fi
+
+# Deploy all enterprise Azam-Features (GUI tabs, Canvas widgets, APIs, daemons, and symlinks)
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-install-azam-features.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-install-azam-features.sh" || true
+elif [ -f "/opt/unetlab/scripts/azambasha-install-azam-features.sh" ]; then
+    bash "/opt/unetlab/scripts/azambasha-install-azam-features.sh" || true
 fi
 
 # Register global administrative CLI commands in /usr/local/bin
@@ -1335,12 +1348,20 @@ else
     echo "  [✖ WARN] Offline Update Freeze Lock   : Not held"
 fi
 
+# Test 6: Azam-Features Operations API Backend
+if systemctl is-active azam-ops-api 2>/dev/null | grep -q "active"; then
+    echo "  [✔ PASS] Azam-Features Operations API : OK (port 8889 active)"
+else
+    echo "  [✖ WARN] Azam-Features Operations API : azam-ops-api not running"
+fi
+
 echo ""
 echo "============================================================"
 echo "    Azam Basha v1.0.0 Installation Completed Successfully!  "
 echo "============================================================"
 echo "  Web UI URL      : https://${HOST_IP}/"
 echo "  HTTP Redirect   : http://${HOST_IP}/"
+echo "  Azam-Features   : https://${HOST_IP}/main/#/azam-features"
 echo "  Default User    : admin"
 echo "  Default Pass    : azam"
 echo ""
@@ -1348,11 +1369,17 @@ echo "  Console SSH     : root@${HOST_IP} (Password: azam)"
 echo "  Theme Mode      : Unified Dark Theme (Active)"
 echo "  Install Log     : $LOG_FILE"
 echo "============================================================"
-echo "  [CLI COMMANDS AVAILABLE ANYTIME AS ROOT]:"
-echo "  azam-menu     -> Open master admin & performance toolkit"
-echo "  azam-doctor   -> Run complete health & diagnostic check"
-echo "  azam-images   -> Validate images, templates & fix permissions"
-echo "  azam-dark     -> Re-apply pure black dark mode theme"
-echo "  azam-backup   -> Create full labs & database backup archive"
+echo "  [ENTERPRISE CLI COMMANDS AVAILABLE AS ROOT]:"
+echo "  azam-menu        -> Open master admin & performance toolkit"
+echo "  azam-doctor      -> Run complete 25-point health diagnostic"
+echo "  azam-bootstorm   -> Staggered anti-bootstorm startup engine"
+echo "  azam-ai          -> AI lab copilot & vendor syntax assistant"
+echo "  azam-git         -> Topology Git version control & rollbacks"
+echo "  azam-console-fix -> Quick HTML5 console session healer"
+echo "  azam-perf        -> Live per-process hot-node CPU/RAM profiler"
+echo "  azam-watchdog    -> 24/7 autonomous node failure recovery"
+echo "  azam-images      -> Validate images, templates & fix permissions"
+echo "  azam-backup      -> Create full labs & database backup archive"
+echo "  azam-dark        -> Re-apply pure black dark mode theme"
 echo "============================================================"
 exit 0

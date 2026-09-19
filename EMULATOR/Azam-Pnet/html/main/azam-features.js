@@ -97,6 +97,7 @@
 
     var tabs = [
       { id: 'health',    name: 'Cluster Health',          icon: 'fa-heartbeat' },
+      { id: 'templates', name: 'Templates Marketplace',   icon: 'fa-th-large' },
       { id: 'grader',    name: 'Exam & Quiz Grader',      icon: 'fa-graduation-cap' },
       { id: 'sniffer',   name: 'Web Wireshark Sniffer',   icon: 'fa-rss' },
       { id: 'bridge',    name: 'Cloud & LAN Transit',     icon: 'fa-globe' },
@@ -142,8 +143,49 @@
         createToolCard('doctor', 'azam-doctor', 'Cluster Doctor & Self-Healer', 'Deep diagnostic check of file permissions, disk health, orphan QEMU processes, and Apache proxy settings.', 'fa-stethoscope', '#d97706', 'term-doctor', [{ label: 'Reclaim Disk (--compress)', param: 'compress', tool: 'doctor-compress' }]) +
         createToolCard('perf', 'azam-perf', 'Performance Benchmark', 'Measures real-time memory throughput, disk I/O latency, and system load stress test.', 'fa-dashboard', '#7c3aed', 'term-perf') +
         createToolCard('watchdog-status', 'azam-watchdog', '24/7 Watchdog Service', 'Autonomous background systemd service that monitors cluster health continuously.', 'fa-eye', '#dc2626', 'term-watchdog', [{ label: 'Reinstall / Enable', param: 'install', tool: 'watchdog-install' }]) +
+        createToolCard('console-fix-full', 'azam-console-fix', 'HTML5 Console Auto-Fixer', 'Repairs Guacamole WebSockets, cleans stale pipes, and tests guacd daemon health.', 'fa-terminal', '#10b981', 'term-console-fix') +
+      '</div>' +
+      '<div class="card" style="margin-top:16px;background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">' +
+          '<div style="display:flex;align-items:center;gap:10px;">' +
+            '<div style="width:36px;height:36px;border-radius:8px;background:rgba(239,68,68,0.15);color:#ef4444;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-fire"></i></div>' +
+            '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Live Hot-Node Resource Profiler</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Active QEMU/IOL processes ranked by CPU% and Resident Memory</div></div>' +
+          '</div>' +
+          '<div style="display:flex;gap:8px;align-items:center;">' +
+            '<button type="button" id="btn-perf-refresh" class="btn btn-ghost" style="font-size:12px;"><i class="fa fa-refresh"></i> Refresh Profiler</button>' +
+            '<button type="button" id="btn-perf-kill" class="btn btn-danger" style="background:#dc2626;color:#fff;font-size:12px;padding:6px 12px;border:none;border-radius:6px;font-weight:600;"><i class="fa fa-pause-circle"></i> Pause Top Offender (--kill-hot)</button>' +
+          '</div>' +
+        '</div>' +
+        '<div id="perf-nodes-table" style="max-height:260px;overflow-y:auto;background:rgba(0,0,0,0.25);border-radius:8px;border:1px solid var(--pnq-border,rgba(255,255,255,0.06));padding:4px;">' +
+          '<div style="padding:10px;color:#64748b;">Click "Refresh Profiler" to view top hot nodes.</div>' +
+        '</div>' +
       '</div>';
     panesContainer.appendChild(pHealth);
+
+    // ── Pane 1.5: Templates Marketplace ──
+    var pTemplates = document.createElement('div');
+    pTemplates.id = 'pane-templates';
+    pTemplates.style.display = 'none';
+    pTemplates.innerHTML = 
+      '<div style="display:flex;flex-direction:column;gap:16px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:var(--pnq-surface,#1e293b);padding:14px 18px;border-radius:10px;border:1px solid var(--pnq-border,rgba(255,255,255,0.08));">' +
+          '<div style="display:flex;align-items:center;gap:10px;">' +
+            '<div style="width:36px;height:36px;border-radius:8px;background:rgba(59,130,246,0.15);color:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-th-large"></i></div>' +
+            '<div>' +
+              '<div style="font-weight:700;font-size:16px;color:#f1f5f9;">Lab Templates Marketplace</div>' +
+              '<div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">14 Curated multi-vendor topologies ready for instant 1-click deployment</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:10px;">' +
+            '<input type="text" id="tmpl-search" placeholder="Search templates (e.g. BGP, CCNA, MPLS)..." style="padding:6px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:12.5px;width:240px;">' +
+            '<button type="button" id="btn-tmpl-refresh" class="btn btn-ghost" style="font-size:12.5px;"><i class="fa fa-refresh"></i> Refresh</button>' +
+          '</div>' +
+        '</div>' +
+        '<div id="tmpl-category-chips" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;"></div>' +
+        '<div id="tmpl-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;"></div>' +
+        '<div id="term-templates" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;font-family:monospace;font-size:12px;max-height:220px;overflow-y:auto;"></div>' +
+      '</div>';
+    panesContainer.appendChild(pTemplates);
 
     // ── Pane 2: Exam & Quiz Grader ──
     var pGrader = document.createElement('div');
@@ -381,11 +423,26 @@
     pCloud.id = 'pane-cloud';
     pCloud.style.display = 'none';
     pCloud.innerHTML = 
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">' +
-        createToolCard('cloud-sync', 'azam-cloud-backup', 'Offsite Cloud & NAS Sync', 'Synchronizes local snapshots to remote SFTP servers, AWS S3, or Network NAS.', 'fa-cloud-upload', '#0284c7', 'term-cloud', [
-          { label: 'Sync Status', tool: 'cloud-status' },
-          { label: 'List Remote Files', tool: 'cloud-list' }
-        ]) +
+      '<div style="display:flex;flex-direction:column;gap:16px;">' +
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;">' +
+          createToolCard('cloud-sync', 'azam-cloud-backup', 'Offsite Cloud & NAS Sync', 'Synchronizes local snapshots to remote SFTP servers, AWS S3, or Network NAS.', 'fa-cloud-upload', '#0284c7', 'term-cloud', [
+            { label: 'Sync Status', tool: 'cloud-status' },
+            { label: 'List Remote Files', tool: 'cloud-list' }
+          ]) +
+          createToolCard('backup', 'azam-backup', 'Instant Local Lab Snapshot', 'Compresses all lab .unl topologies, device startup configs, and database records.', 'fa-archive', '#8b5cf6', 'term-backup', [
+            { label: 'List Local Backups', tool: 'backup-list' }
+          ]) +
+        '</div>' +
+        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<div style="width:36px;height:36px;border-radius:8px;background:rgba(139,92,246,0.15);color:#8b5cf6;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-hdd-o"></i></div>' +
+              '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Local Lab Archives & 1-Click Restore</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Saved in /opt/azambasha/backups/ and ready for rollback</div></div>' +
+            '</div>' +
+            '<button type="button" id="btn-backup-refresh" class="btn btn-ghost" style="font-size:12px;"><i class="fa fa-refresh"></i> Refresh Archives</button>' +
+          '</div>' +
+          '<div id="az-backups-table" style="font-size:13px;color:var(--pnq-text-muted,#94a3b8);">Reading backup directory…</div>' +
+        '</div>' +
       '</div>';
     panesContainer.appendChild(pCloud);
 
@@ -442,6 +499,8 @@
     loadStats();
     loadBackups();
     loadMesh();
+    loadTemplates();
+    loadPerf();
   }
 
   /* ── Tab Switching Helper ───────────────────────────────── */
@@ -454,7 +513,7 @@
       b.style.borderBottomColor = isActive ? '#38bdf8' : 'transparent';
     });
 
-    ['health', 'grader', 'sniffer', 'bridge', 'shrink', 'doc', 'ai', 'diff', 'mesh', 'scheduler', 'cloud', 'security', 'canvas'].forEach(function (id) {
+    ['health', 'templates', 'grader', 'sniffer', 'bridge', 'shrink', 'doc', 'ai', 'diff', 'mesh', 'scheduler', 'cloud', 'security', 'canvas'].forEach(function (id) {
       var p = document.getElementById('pane-' + id);
       if (p) p.style.display = id === tabId ? 'block' : 'none';
     });
@@ -569,6 +628,47 @@
         runTool('notify-test', {}, btnWaQuick, 'term-notify');
       };
     }
+
+    // Hot-Node Profiler refresh & kill
+    var btnPerfRef = container.querySelector('#btn-perf-refresh');
+    if (btnPerfRef) {
+      btnPerfRef.onclick = loadPerf;
+    }
+    var btnPerfKill = container.querySelector('#btn-perf-kill');
+    if (btnPerfKill) {
+      btnPerfKill.onclick = function () {
+        runTool('perf-kill', {}, btnPerfKill, 'term-perf');
+      };
+    }
+
+    // Templates refresh & search
+    var btnTmplRef = container.querySelector('#btn-tmpl-refresh');
+    if (btnTmplRef) {
+      btnTmplRef.onclick = loadTemplates;
+    }
+    var searchTmpl = container.querySelector('#tmpl-search');
+    if (searchTmpl) {
+      searchTmpl.oninput = function () {
+        var q = (searchTmpl.value || '').toLowerCase().trim();
+        if (!q) {
+          renderTemplateCards(allTemplates);
+          return;
+        }
+        var filtered = allTemplates.filter(function (t) {
+          return (t.name || '').toLowerCase().includes(q) ||
+                 (t.category || '').toLowerCase().includes(q) ||
+                 (t.desc || '').toLowerCase().includes(q) ||
+                 (t.tags || []).some(function (tag) { return tag.toLowerCase().includes(q); });
+        });
+        renderTemplateCards(filtered);
+      };
+    }
+
+    // Local Backups refresh
+    var btnBackupRef = container.querySelector('#btn-backup-refresh');
+    if (btnBackupRef) {
+      btnBackupRef.onclick = loadBackups;
+    }
   }
 
   /* ── Stats Loader ───────────────────────────────────────── */
@@ -676,6 +776,149 @@
       })
       .catch(function () {});
   }
+
+  /* ── Templates Loader ───────────────────────────────────── */
+  var allTemplates = [];
+  function loadTemplates() {
+    var target = document.getElementById('tmpl-grid');
+    if (!target) return;
+    target.innerHTML = '<div style="padding:20px;grid-column:1/-1;text-align:center;color:#94a3b8;"><i class="fa fa-spinner fa-spin"></i> Loading template catalog…</div>';
+
+    fetch(API_BASE + '/templates')
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        allTemplates = res.templates || [];
+        renderCategoryChips();
+        renderTemplateCards(allTemplates);
+      })
+      .catch(function () {
+        target.innerHTML = '<div style="padding:20px;color:#ef4444;grid-column:1/-1;">Failed to load template catalog.</div>';
+      });
+  }
+
+  function renderCategoryChips() {
+    var chipsContainer = document.getElementById('tmpl-category-chips');
+    if (!chipsContainer) return;
+    var categories = ['all', 'ccna', 'bgp', 'mpls', 'isis', 'sdwan', 'datacenter', 'security', 'ccie'];
+    var html = '';
+    categories.forEach(function (cat, i) {
+      var activeStyle = i === 0 
+        ? 'background:#3b82f6;color:#fff;border-color:#3b82f6;' 
+        : 'background:rgba(255,255,255,0.05);color:#94a3b8;border-color:rgba(255,255,255,0.1);';
+      html += '<button type="button" class="tmpl-cat-btn" data-cat="' + cat + '" style="font-size:11.5px;padding:4px 10px;border-radius:14px;border:1px solid;cursor:pointer;text-transform:uppercase;font-weight:600;white-space:nowrap;' + activeStyle + '">' + cat + '</button>';
+    });
+    chipsContainer.innerHTML = html;
+
+    chipsContainer.querySelectorAll('.tmpl-cat-btn').forEach(function (btn) {
+      btn.onclick = function () {
+        var cat = btn.dataset.cat;
+        chipsContainer.querySelectorAll('.tmpl-cat-btn').forEach(function (b) {
+          b.style.background = 'rgba(255,255,255,0.05)';
+          b.style.color = '#94a3b8';
+          b.style.borderColor = 'rgba(255,255,255,0.1)';
+        });
+        btn.style.background = '#3b82f6';
+        btn.style.color = '#fff';
+        btn.style.borderColor = '#3b82f6';
+
+        if (cat === 'all') {
+          renderTemplateCards(allTemplates);
+        } else {
+          var filtered = allTemplates.filter(function (t) { return (t.category || '').toLowerCase() === cat; });
+          renderTemplateCards(filtered);
+        }
+      };
+    });
+  }
+
+  function renderTemplateCards(list) {
+    var target = document.getElementById('tmpl-grid');
+    if (!target) return;
+    if (!list.length) {
+      target.innerHTML = '<div style="padding:30px;color:#64748b;grid-column:1/-1;text-align:center;">No templates match the selected filter.</div>';
+      return;
+    }
+    var html = '';
+    list.forEach(function (t) {
+      var catColor = '#3b82f6';
+      if (t.category === 'ccie') catColor = '#ef4444';
+      else if (t.category === 'bgp') catColor = '#8b5cf6';
+      else if (t.category === 'mpls') catColor = '#ec4899';
+      else if (t.category === 'security') catColor = '#10b981';
+      else if (t.category === 'datacenter') catColor = '#f59e0b';
+
+      var tagsHtml = (t.tags || []).map(function(tag) {
+        return '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:#94a3b8;">#' + tag + '</span>';
+      }).join(' ');
+
+      html += '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;transition:transform 0.15s ease, border-color 0.15s ease;" onmouseenter="this.style.borderColor=\'' + catColor + '\'" onmouseleave="this.style.borderColor=\'var(--pnq-border,rgba(255,255,255,0.08))\'">' +
+        '<div>' +
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
+            '<div style="font-weight:700;font-size:15px;color:#f1f5f9;">' + t.name + '</div>' +
+            '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;background:' + catColor + '20;color:' + catColor + ';border:1px solid ' + catColor + '40;text-transform:uppercase;">' + t.category + '</span>' +
+          '</div>' +
+          '<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;">' +
+            '<span style="font-size:11px;color:#38bdf8;font-weight:600;"><i class="fa fa-cubes"></i> ' + (t.nodes || 4) + ' Nodes</span>' +
+          '</div>' +
+          '<div style="font-size:12.5px;color:var(--pnq-text-muted,#94a3b8);line-height:1.4;margin-bottom:12px;">' + t.desc + '</div>' +
+        '</div>' +
+        '<div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">' + tagsHtml + '</div>' +
+          '<button type="button" class="btn btn-primary btn-sm" style="width:100%;background:linear-gradient(135deg,' + catColor + ',#2563eb);border:none;color:#fff;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="window.__azDeployTemplate(\'' + t.name + '\', this)">' +
+            '<i class="fa fa-cloud-download"></i> Deploy to My Labs' +
+          '</button>' +
+        '</div>' +
+      '</div>';
+    });
+    target.innerHTML = html;
+  }
+
+  window.__azDeployTemplate = function(name, btn) {
+    if (!confirm('Deploy template lab "' + name + '" to your PNetLab repository?\n\nThis creates the topology in /opt/unetlab/labs/Azam-Templates/')) return;
+    runTool('templates-deploy', { template: name }, btn, 'term-templates');
+  };
+
+  /* ── Perf Loader ────────────────────────────────────────── */
+  function loadPerf() {
+    var target = document.getElementById('perf-nodes-table');
+    if (!target) return;
+    target.innerHTML = '<div style="padding:10px;color:#94a3b8;"><i class="fa fa-spinner fa-spin"></i> Profiling active QEMU/IOL processes…</div>';
+
+    fetch(API_BASE + '/perf/top')
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        var nodes = res.nodes || [];
+        if (!nodes.length) {
+          target.innerHTML = '<div style="padding:14px;color:#64748b;text-align:center;">No active node processes detected (0 QEMU/IOL running).</div>';
+          return;
+        }
+        var html = '<table class="table" style="width:100%;font-size:12.5px;">';
+        html += '<thead><tr><th>Node Name</th><th>PID</th><th>Type</th><th>CPU%</th><th>RAM (MB)</th><th>State</th><th>Action</th></tr></thead><tbody>';
+        nodes.forEach(function (n) {
+          var cpuNum = parseFloat(n.cpu_pct) || 0;
+          var cpuColor = cpuNum > 80 ? '#f87171' : (cpuNum > 40 ? '#fbbf24' : '#4ade80');
+          html += '<tr>' +
+            '<td style="font-weight:600;color:#f1f5f9;">' + n.name + '</td>' +
+            '<td style="font-family:monospace;color:#94a3b8;">' + n.pid + '</td>' +
+            '<td><span style="font-size:11px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:#38bdf8;">' + n.type + '</span></td>' +
+            '<td style="font-family:monospace;font-weight:700;color:' + cpuColor + ';">' + n.cpu_pct + '%</td>' +
+            '<td style="font-family:monospace;color:#a78bfa;">' + n.ram_mb + ' MB</td>' +
+            '<td><span style="color:#4ade80;">' + n.state + '</span></td>' +
+            '<td><button type="button" class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;color:#f87171;" onclick="window.__azKillNode(' + n.pid + ')"><i class="fa fa-pause"></i> Pause</button></td>' +
+          '</tr>';
+        });
+        html += '</tbody></table>';
+        target.innerHTML = html;
+      })
+      .catch(function () {
+        target.innerHTML = '<div style="padding:10px;color:#ef4444;">Failed to retrieve process profiler metrics.</div>';
+      });
+  }
+
+  window.__azKillNode = function(pid) {
+    if (!confirm('Pause node process (PID ' + pid + ') using SIGSTOP?')) return;
+    runTool('perf-kill', { pid: pid }, null, 'term-perf');
+  };
 
   window.__azRestore = function (filename) {
     if (!confirm('Are you sure you want to restore cluster backup:\n' + filename + '\n\nThis will restore configurations and labs.')) return;

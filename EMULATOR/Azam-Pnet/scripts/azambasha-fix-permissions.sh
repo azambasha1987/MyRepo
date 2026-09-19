@@ -116,8 +116,8 @@ if ! pgrep -x "qemu-system-x86_64" >/dev/null 2>&1 && \
    ! pgrep -x "iol_wrapper" >/dev/null 2>&1 && \
    ! pgrep -f "iol.*\.bin" >/dev/null 2>&1 && \
    ! pgrep -x "dynamips" >/dev/null 2>&1; then
-    ip -o link show 2>/dev/null | cut -d: -f2 | tr -d ' ' | grep -E '^(vunl|ser)[0-9]+_' | while read -r dev; do
-        ip link delete "$dev" 2>/dev/null || true
+    for dev in $(ip -o link show 2>/dev/null | cut -d: -f2 | tr -d ' ' | (grep -E '^(vunl|ser)[0-9]+_' || true)); do
+        [ -n "$dev" ] && ip link delete "$dev" 2>/dev/null || true
     done
     find /opt/unetlab/tmp -mindepth 2 -type f -name "*.pid" -delete 2>/dev/null || true
 fi

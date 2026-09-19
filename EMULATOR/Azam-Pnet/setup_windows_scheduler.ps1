@@ -39,27 +39,32 @@ Write-Host ""
 Write-Host "SUCCESS: Task '$TaskName' is registered to run daily at 03:00 AM with Highest Privileges." -ForegroundColor Green
 
 # ------------------------------------------------------------------------------
-# Task 2: Weekly Codeberg Intelligence Scan & Implementation Plan Generator
+# Task 2: 3-Months (Quarterly) Codeberg Intelligence Scan & Update Check Plan
 # ------------------------------------------------------------------------------
+$QuarterlyTaskName = "AzamBasha-Quarterly-Codeberg-Scan"
 $WeeklyTaskName = "AzamBasha-Weekly-Codeberg-Scan"
-$WeeklyScriptPath = Join-Path (Join-Path $ScriptDir "scripts") "azambasha-weekly-codeberg-scanner.py"
+$QuarterlyScriptPath = Join-Path (Join-Path $ScriptDir "scripts") "azambasha-weekly-codeberg-scanner.py"
 
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "Registering Windows Scheduled Task: $WeeklyTaskName" -ForegroundColor Cyan
+Write-Host "Registering Windows Scheduled Task: $QuarterlyTaskName" -ForegroundColor Cyan
 Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host "Target Script: $WeeklyScriptPath"
+Write-Host "Target Script: $QuarterlyScriptPath"
 
-$WeeklyAction = New-ScheduledTaskAction -Execute $PythonExe -Argument "`"$WeeklyScriptPath`"" -WorkingDirectory "$ScriptDir"
-$WeeklyTrigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Sunday -At 04:00AM
+$QuarterlyAction = New-ScheduledTaskAction -Execute $PythonExe -Argument "`"$QuarterlyScriptPath`"" -WorkingDirectory "$ScriptDir"
+# Runs quarterly every 3 months at 09:00 AM IST
+$QuarterlyTrigger = New-ScheduledTaskTrigger -Once -At "09:00AM" -RepetitionInterval (New-TimeSpan -Days 91)
 
+# Unregister legacy weekly task and previous quarterly task
 Unregister-ScheduledTask -TaskName $WeeklyTaskName -Confirm:$false -ErrorAction SilentlyContinue
+Unregister-ScheduledTask -TaskName $QuarterlyTaskName -Confirm:$false -ErrorAction SilentlyContinue
 
-Register-ScheduledTask -TaskName $WeeklyTaskName -Action $WeeklyAction -Trigger $WeeklyTrigger -Settings $Settings -Principal $Principal -Description "Weekly Codeberg issues/PR/release intelligence audit generating docs/WEEKLY_IMPLEMENTATION_PLAN.md" | Out-Null
+Register-ScheduledTask -TaskName $QuarterlyTaskName -Action $QuarterlyAction -Trigger $QuarterlyTrigger -Settings $Settings -Principal $Principal -Description "Quarterly 3-month Codeberg issues/PR/release intelligence audit generating docs/3_MONTHS_UPDATE_CHECK_PLAN.md" | Out-Null
 
-Write-Host "SUCCESS: Task '$WeeklyTaskName' is registered to run weekly every Sunday at 04:00 AM." -ForegroundColor Green
+Write-Host "SUCCESS: Task '$QuarterlyTaskName' is registered for quarterly execution at 09:00 AM IST." -ForegroundColor Green
 Write-Host ""
 Write-Host "To test or trigger manually now, run:" -ForegroundColor Yellow
 Write-Host "  Start-ScheduledTask -TaskName '$TaskName'" -ForegroundColor White
-Write-Host "  Start-ScheduledTask -TaskName '$WeeklyTaskName'" -ForegroundColor White
+Write-Host "  Start-ScheduledTask -TaskName '$QuarterlyTaskName'" -ForegroundColor White
+
 

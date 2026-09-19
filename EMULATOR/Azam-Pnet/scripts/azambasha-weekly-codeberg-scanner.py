@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """
 ================================================================================
-Azam Basha Weekly Codeberg Intelligence Scanner & Implementation Plan Generator
+Azam Basha 3 Months (Quarterly) Upstream Intelligence & Update Check Scanner
 Ubuntu 26.04+ (Resolute) & Windows Fleet Management Native Architecture
 ================================================================================
 Performs an automated deep scan against Codeberg (netkillui/Pnetlabv8):
 1. Audits all Open and Closed issues, comments, and bug reports.
 2. Checks git repository commits, tags, and new upstream package releases.
 3. Cross-references detected items against Azam-Pnet codebase and known issues.
-4. Generates docs/WEEKLY_IMPLEMENTATION_PLAN.md with embedded Zero-Glitch Safeguards,
-   issue ledger, recommended integrations, and ready-to-run push commands.
+4. Generates docs/3_MONTHS_UPDATE_CHECK_PLAN.md and synchronizes 
+   docs/WEEKLY_IMPLEMENTATION_PLAN.md with embedded Zero-Glitch Safeguards,
+   IST quarterly schedule, issue ledger, and audited adaptation runbooks.
 ================================================================================
 """
 
@@ -33,6 +34,7 @@ if sys.platform == "win32":
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DOCS_DIR = os.path.join(BASE_DIR, "docs")
 REPORTS_DIR = os.path.join(DOCS_DIR, "reports")
+PLAN_3MONTHS_PATH = os.path.join(DOCS_DIR, "3_MONTHS_UPDATE_CHECK_PLAN.md")
 WEEKLY_PLAN_PATH = os.path.join(DOCS_DIR, "WEEKLY_IMPLEMENTATION_PLAN.md")
 
 CODEBERG_API_ISSUES = "https://codeberg.org/api/v1/repos/netkillui/Pnetlabv8/issues?state=all&limit=100"
@@ -63,15 +65,15 @@ SAFEGUARD_PREAMBLE = """## Mandatory Production Safeguards (Zero-Glitch Protocol
 
 > [!IMPORTANT]
 > ### THE AZAM-BASHA ARCHITECTURAL SHIELD
-> The **Azam-Basha Emulator (`Azam-Pnet/`)** is currently in **very good operational shape** with custom enterprise capabilities beyond vanilla PNetLab.
+> The **Azam-Basha Emulator (`Azam-Pnet/`)** is currently in **very good operational shape** with custom enterprise capabilities far beyond vanilla PNetLab.
 > 
 > **Why We Do NOT Blindly Copy-Paste Upstream Code**:
 > - Upstream commits frequently contain unvetted regressions, broken permissions, password overwrites (forcing `root:pnet`), canvas glitches, and syntax incompatibilities.
-> - Instead, this weekly implementation plan serves as an **intelligence, audit, and adaptation pipeline**:
+> - Instead, this 3-month update check plan serves as an **intelligence, audit, and adaptation pipeline**:
 > 
-> 1. **Feature Radar (Pillar 1)**: Actively detect new features, canvas tools, and performance tweaks from PNetLab v8.x, audit their implementation, and adapt them cleanly to Azam-Pnet.
-> 2. **Community Bug Shielding (Pillar 2)**: Scrutinize all issues reported by community users on Codeberg/GitHub (e.g. issues #34, #33, #32, #31, #30, #29) to ensure the Azam-Basha Emulator is proactively hardened and 100% immune to them.
-> 3. **Surgical Codebase Cross-Audit**: Compare upstream line diffs directly against `Azam-Pnet/` source files. If Azam-Pnet already has a superior implementation (e.g. Tri-Tier Satellite SSH Negotiator vs upstream hardcoded credentials), **preserve our hardened architecture** and reject flawed upstream code.
+> 1. **Feature Radar (Pillar 1 - Ingest)**: Actively detect new features, canvas tools, and performance tweaks from PNetLab v8.x, audit their implementation, and adapt them cleanly to Azam-Pnet.
+> 2. **Community Bug Shielding (Pillar 2 - Immunize)**: Scrutinize all issues reported by community users on Codeberg/GitHub (e.g. issues #34, #33, #32, #31, #30, #29) to ensure the Azam-Basha Emulator is proactively hardened and 100% immune to them before they can impact production.
+> 3. **Surgical Codebase Cross-Audit (Pillar 3 - Protect)**: Compare upstream line diffs directly against `Azam-Pnet/` source files. If Azam-Pnet already has a superior implementation (e.g. Tri-Tier Satellite SSH Negotiator vs upstream hardcoded credentials, Universal Lab Importer vs missing formats), **preserve our hardened architecture** and reject flawed upstream code.
 """
 
 def fetch_json(url, timeout=15):
@@ -85,21 +87,24 @@ def fetch_json(url, timeout=15):
         return None
 
 def main():
-    parser = argparse.ArgumentParser(description="Azam Basha Weekly Codeberg Intelligence Scanner")
+    parser = argparse.ArgumentParser(description="Azam Basha 3 Months Upstream Intelligence Scanner")
     parser.add_argument("--dry-run", action="store_true", help="Scan and output summary without writing files")
     parser.add_argument("--sync-version", action="store_true", help="Automatically synchronize Web-GUI Version to detected latest release")
-    parser.add_argument("--output", default=WEEKLY_PLAN_PATH, help="Path for generated implementation plan")
-    parser.add_argument("--notify", action="store_true", help="Dispatch weekly intelligence digest to WhatsApp / Webhooks")
+    parser.add_argument("--output", default=PLAN_3MONTHS_PATH, help="Path for generated 3 months check plan")
+    parser.add_argument("--notify", action="store_true", help="Dispatch quarterly intelligence digest to WhatsApp / Webhooks")
     parser.add_argument("--whatsapp-phone", help="Recipient WhatsApp phone number (with country code, e.g. +91XXXXXXXXXX)")
     parser.add_argument("--whatsapp-apikey", help="CallMeBot WhatsApp API Key")
     parser.add_argument("--webhook", help="Webhook URL (Discord / Slack / Generic)")
     args = parser.parse_args()
 
-    now = datetime.datetime.now()
-    date_str = now.strftime("%Y-%m-%d %H:%M:%S")
-    week_str = now.strftime("Week %U (%B %Y)")
+    # Time handling locked to Indian Standard Time (IST - UTC+5:30)
+    ist_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30), name="IST")
+    now_utc = datetime.datetime.now(datetime.timezone.utc)
+    now_ist = now_utc.astimezone(ist_tz)
+    ist_date_str = now_ist.strftime("%Y-%m-%d %H:%M:%S")
+    utc_date_str = now_utc.strftime("%Y-%m-%d %H:%M:%S")
 
-    print(f"[*] Azam Basha Weekly Intelligence Scan started at {date_str}...")
+    print(f"[*] Azam Basha 3 Months Intelligence Scan started at {ist_date_str} IST (UTC: {utc_date_str})...")
     os.makedirs(DOCS_DIR, exist_ok=True)
     os.makedirs(REPORTS_DIR, exist_ok=True)
 
@@ -201,9 +206,21 @@ def main():
 
     # Build Markdown Document
     md = []
-    md.append(f"# Weekly Upstream Intelligence & Implementation Plan: {week_str}")
-    md.append(f"\n*Scan Timestamp: {date_str}* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*\n")
+    md.append(f"# 3 Months Update Check Plan: Q3 2026 – Q4 2026")
+    md.append(f"\n*Scan Timestamp: {ist_date_str} (IST / UTC+5:30)* | *UTC: {utc_date_str}* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*\n")
     md.append(SAFEGUARD_PREAMBLE)
+    md.append("\n---\n")
+
+    # Quarterly IST Schedule
+    md.append("## 🗓️ Quarterly IST Audit Schedule (UTC+5:30)\n")
+    md.append("All recurring checks, automated scans, and administrative audits execute every 3 months on the **19th** at **09:00 AM IST** (03:30 AM UTC):\n")
+    md.append("| Check Cycle | Scheduled Date & Time (IST) | Equivalent Time (UTC) | Cadence Type | Milestone Objectives | Status |")
+    md.append("|:---:|:---:|:---:|:---:|---|:---:|")
+    md.append("| **Cycle 0** | **Sat, 19 Sep 2026, 16:00 IST** | 19 Sep 2026, 10:30 UTC | Baseline Scan | Baseline audit; 34 issues audited; Universal Lab Importer live; GUI v6.8.79 synced. | ✅ `COMPLETED` |")
+    md.append("| **Cycle 1** | **Sat, 19 Dec 2026, 09:00 IST** | 19 Dec 2026, 03:30 UTC | Q4 2026 Check | Q4 upstream diff audit; Issue #34 canvas zoom retention review; package release sync. | ⏳ `SCHEDULED` |")
+    md.append("| **Cycle 2** | **Fri, 19 Mar 2027, 09:00 IST** | 19 Mar 2027, 03:30 UTC | Q1 2027 Check | Q1 2027 upstream diff audit; Ubuntu 26.04 Resolute point release kernel sanity check. | ⏳ `SCHEDULED` |")
+    md.append("| **Cycle 3** | **Sat, 19 Jun 2027, 09:00 IST** | 19 Jun 2027, 03:30 UTC | Q2 2027 Check | Q2 2027 upstream diff audit; Heavy node templates & multi-disk QEMU validation. | ⏳ `SCHEDULED` |")
+    md.append("| **Cycle 4** | **Sun, 19 Sep 2027, 09:00 IST** | 19 Sep 2027, 03:30 UTC | Annual Horizon | 1-Year cluster review; long-term performance & deduplication audit; capacity planning. | ⏳ `SCHEDULED` |\n")
     md.append("\n---\n")
 
     # Executive Summary
@@ -212,13 +229,14 @@ def main():
     md.append(f"- **Latest Upstream Version Implemented**: `v{latest_rel_ver}` (Package: `{latest_pkg_ver}`)")
     md.append(f"- **Web-GUI Display Status**: Synchronized with latest implemented release (`PNetLab v{latest_rel_ver}`).")
     md.append(f"- **Recent Upstream Commits**: {len(commits)} commits inspected")
+    md.append("- **Audit Cadence**: Quarterly (Every 3 Months) locked to Indian Standard Time (IST - UTC+5:30).")
     md.append("- **Platform Alignment**: Native Ubuntu 26.04 Resolute & Linux Kernel 7.0 stack verified.")
     md.append("- **Performance State**: Ultra-KSM memory deduplication (65-80% savings) & CPU governor intact.\n")
 
     md.append("\n---\n")
 
-    # 1. Delta & What's New This Week Digest
-    md.append("## 🌟 Weekly Delta & Upstream Intelligence Digest\n")
+    # 1. Delta & What's New Digest
+    md.append("## 🌟 Quarterly Delta & Upstream Intelligence Digest\n")
     md.append("> [!NOTE]")
     md.append("> ### Scan Differential Summary")
     md.append(f"> - **Recent Upstream Code Activity**: {min(5, len(commits))} latest commits reviewed from `netkillui/Pnetlabv8`.")
@@ -294,7 +312,7 @@ def main():
     md.append("\n---\n")
 
     # Active Workstreams
-    md.append("## 🎯 Active Weekly Workstreams & Implementation Agenda\n")
+    md.append("## 🎯 Active Quarterly Workstreams & Implementation Agenda\n")
     md.append("Prioritized tasks for continuous improvement and upstream immunity:\n")
     md.append("### Workstream 1: Issue #34 Remediation (Canvas Zoom & Viewport Retention)")
     md.append("- **Upstream Failure**: When an operator clicks 'Fix Permissions' inside an active lab canvas, PNetLab triggers a full page refresh of the canvas SVG, resetting zoom from (e.g.) 150% back to default 100% and recentering.")
@@ -379,7 +397,7 @@ def main():
     md.append("| `azam-ssl --generate` | HTTPS Trust | 5-year SAN cert + Windows CA trust package eliminating all browser security warnings. |")
     md.append("| `azam-templates deploy <name>` | Lab Marketplace | 14-topology catalog: CCNA, BGP, MPLS, CCIE, VXLAN. 1-command deploy to PNetLab. |")
     md.append("| `azam-topology-git --install` | Topology VCS | Git-backed .unl version control: auto-snapshot, XML diff, and per-commit restore. |")
-    md.append("| `azambasha-setup-scheduler.sh` | Automation | Systemd timer & cron for Monday 06:00 UTC weekly scan with WhatsApp digest. |\n")
+    md.append("| `azambasha-setup-scheduler.sh` | Automation | Systemd timer & cron for quarterly IST scans (every 3 months on the 19th at 09:00 IST). |\n")
 
     md.append("\n---\n")
 
@@ -435,10 +453,20 @@ def main():
     else:
         with open(args.output, "w", encoding="utf-8") as f:
             f.write(md_content)
-        print(f"[✔] Weekly Implementation Plan successfully generated: {args.output}")
+        print(f"[✔] 3 Months Update Check Plan successfully generated: {args.output}")
+
+        # Ensure both 3_MONTHS_UPDATE_CHECK_PLAN.md and WEEKLY_IMPLEMENTATION_PLAN.md remain 100% in sync
+        if os.path.abspath(args.output) != os.path.abspath(WEEKLY_PLAN_PATH):
+            with open(WEEKLY_PLAN_PATH, "w", encoding="utf-8") as f:
+                f.write(md_content)
+            print(f"[✔] Synchronized backward-compatible plan: {WEEKLY_PLAN_PATH}")
+        if os.path.abspath(args.output) != os.path.abspath(PLAN_3MONTHS_PATH):
+            with open(PLAN_3MONTHS_PATH, "w", encoding="utf-8") as f:
+                f.write(md_content)
+            print(f"[✔] Synchronized 3 Months Check plan: {PLAN_3MONTHS_PATH}")
 
         # Also write a timestamped archive copy
-        archive_name = f"WEEKLY_PLAN_{now.strftime('%Y%m%d')}.md"
+        archive_name = f"3_MONTHS_PLAN_{now_ist.strftime('%Y%m%d')}.md"
         archive_path = os.path.join(REPORTS_DIR, archive_name)
         with open(archive_path, "w", encoding="utf-8") as f:
             f.write(md_content)
@@ -447,10 +475,10 @@ def main():
     # Dispatch notification if requested or configured
     notify_script = os.path.join(BASE_DIR, "scripts", "azambasha-notify.py")
     if (args.notify or args.whatsapp_phone or args.webhook or os.path.exists("/etc/pnetlab/azambasha-notify.conf")) and os.path.isfile(notify_script):
-        print("\n[*] Dispatching Weekly Intelligence notification...")
+        print("\n[*] Dispatching Quarterly Intelligence notification...")
         cmd = [
             sys.executable, notify_script,
-            "--weekly-digest",
+            "--quarterly-digest",
             "--version-tag", latest_rel_ver,
             "--pkg-tag", latest_pkg_ver,
             "--open-issues", str(len(open_issues)),

@@ -106,23 +106,25 @@ def send_webhook(webhook_url, title, message):
     except Exception as e:
         return False, f"Failed to send webhook: {str(e)}"
 
-def format_weekly_whatsapp_message(version, pkg_ver, open_issues, commits_count):
-    """Formats a concise, attractive WhatsApp message."""
+def format_quarterly_whatsapp_message(version, pkg_ver, open_issues, commits_count):
+    """Formats a concise, attractive WhatsApp message for 3-Month Check."""
     msg = (
-        f"🚨 *AZAM-PNET WEEKLY INTELLIGENCE UPDATE*\n"
+        f"🚨 *AZAM-PNET 3-MONTHS UPDATE CHECK DIGEST*\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
         f"🏷 *Implemented Release*: v{version}\n"
         f"📦 *Core Package*: {pkg_ver}\n"
         f"🔍 *Upstream Issues Audited*: {open_issues} open tracked\n"
         f"⚡ *Upstream Commits*: {commits_count} inspected\n"
-        f"🛡 *Safeguard Status*: All 33 issues remediated\n"
+        f"🛡 *Safeguard Status*: Zero-Glitch Immunity Active\n"
         f"🧠 *Ultra-KSM*: Active (65-80% RAM Deduplication)\n"
         f"🌐 *Cluster Status*: Master & Satellite Ready\n"
         f"━━━━━━━━━━━━━━━━━━━━\n"
         f"✅ *Cluster Drift*: 0 unmanaged regressions.\n"
-        f"Details: /opt/azambasha/docs/WEEKLY_IMPLEMENTATION_PLAN.md"
+        f"Details: /opt/azambasha/docs/3_MONTHS_UPDATE_CHECK_PLAN.md"
     )
     return msg
+
+format_weekly_whatsapp_message = format_quarterly_whatsapp_message
 
 def main():
     parser = argparse.ArgumentParser(description="Azam-Pnet Unified Notification Engine")
@@ -132,7 +134,7 @@ def main():
     parser.add_argument("--whatsapp-apikey", help="CallMeBot WhatsApp API Key")
     parser.add_argument("--webhook", help="Webhook URL (Discord / Slack / Generic)")
     parser.add_argument("--test", action="store_true", help="Send a test notification")
-    parser.add_argument("--weekly-digest", action="store_true", help="Format and send weekly scan digest")
+    parser.add_argument("--quarterly-digest", "--weekly-digest", dest="quarterly_digest", action="store_true", help="Format and send 3-month quarterly scan digest")
     parser.add_argument("--version-tag", default="6.8.79", help="Release version for digest")
     parser.add_argument("--pkg-tag", default="6.8.79resolute1", help="Package version for digest")
     parser.add_argument("--open-issues", default="9", help="Open issues count")
@@ -155,15 +157,15 @@ def main():
                 f.write(f"WHATSAPP_APIKEY={apikey}\n")
                 f.write(f"WEBHOOK_URL={webhook}\n")
             os.chmod(CONFIG_FILE, 0o600)
-            print(f"[✔] Notification credentials securely stored in {CONFIG_FILE}")
+            print(f"[✔] Notification configuration saved to {CONFIG_FILE}")
         except Exception as e:
             print(f"[!] Could not save configuration to {CONFIG_FILE}: {e}")
 
-    if args.weekly_digest:
-        message = format_weekly_whatsapp_message(
+    if args.quarterly_digest:
+        message = format_quarterly_whatsapp_message(
             args.version_tag, args.pkg_tag, args.open_issues, args.commits_count
         )
-        title = f"Weekly Intelligence Digest: v{args.version_tag}"
+        title = f"3-Months Intelligence Digest: v{args.version_tag}"
     elif args.test:
         message = (
             "🔔 *Azam-Pnet Test Alert*\n"

@@ -277,26 +277,39 @@
     pGrader.style.display = 'none';
     pGrader.innerHTML = 
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
-        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
-          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
-            '<div style="width:36px;height:36px;border-radius:8px;background:rgba(16,185,129,0.15);color:#10b981;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-graduation-cap"></i></div>' +
-            '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Automated Lab Exam Grader</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Test checkpoints and generate instant pass/fail scorecards</div></div>' +
-          '</div>' +
-          '<div style="display:flex;flex-direction:column;gap:12px;margin-bottom:14px;">' +
-            '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Select Certification Quiz:</label>' +
-              '<select id="grader-quiz-select" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
-                '<option value="ccna_ospf_basics">CCNA 200-301 — Multi-Area OSPF & Gateway Routing</option>' +
-                '<option value="ccnp_bgp_enterprise">CCNP ENCOR 350-401 — Enterprise Dual-Homed BGP</option>' +
-              '</select>' +
+        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<div style="width:36px;height:36px;border-radius:8px;background:rgba(16,185,129,0.15);color:#10b981;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-graduation-cap"></i></div>' +
+              '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Automated Lab Exam Grader</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Test checkpoints and generate instant pass/fail scorecards</div></div>' +
             '</div>' +
-            '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Target Lab ID:</label>' +
-              '<input type="text" id="grader-lab-id" value="default_lab" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;">' +
+            '<div id="grader-lab-badge" style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:20px;background:rgba(16,185,129,0.1);color:#10b981;font-size:11px;font-weight:700;border:1px solid rgba(16,185,129,0.25);">' +
+              '<i class="fa fa-folder-open"></i> <span id="grader-total-count">Loading labs...</span>' +
             '</div>' +
           '</div>' +
-          '<button type="button" id="btn-run-grade" class="btn btn-primary" style="background:#10b981;border-color:#10b981;color:#fff;"><i class="fa fa-check-circle"></i> Grade My Lab</button>' +
+          '<div style="position:relative;">' +
+            '<input type="text" id="grader-lab-search" placeholder="🔍 Search all labs by name, topic (OSPF, BGP, CCNA)..." style="width:100%;padding:8px 12px;padding-right:32px;background:rgba(0,0,0,0.3);border:1px solid var(--pnq-border,rgba(255,255,255,0.12));border-radius:6px;color:#fff;font-size:12.5px;">' +
+            '<button type="button" id="btn-grader-refresh-labs" title="Refresh Labs List" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;font-size:13px;"><i class="fa fa-refresh"></i></button>' +
+          '</div>' +
+          '<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:0.5px;text-transform:uppercase;margin-top:2px;">SELECT TARGET LAB (FROM LABS SECTION):</div>' +
+          '<div id="grader-lab-tree" style="max-height:220px;overflow-y:auto;background:rgba(5,8,17,0.6);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px;">' +
+            '<div style="text-align:center;color:#64748b;padding:16px;font-size:12px;"><i class="fa fa-spinner fa-spin"></i> Loading labs from /opt/unetlab/labs...</div>' +
+          '</div>' +
+          '<div id="grader-selected-preview" style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.25);border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;overflow:hidden;">' +
+              '<div style="width:28px;height:28px;border-radius:6px;background:rgba(16,185,129,0.2);color:#10b981;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;"><i class="fa fa-check"></i></div>' +
+              '<div style="overflow:hidden;">' +
+                '<div id="grader-selected-title" style="font-weight:600;font-size:13px;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">No lab selected</div>' +
+                '<div id="grader-selected-path" style="font-size:11px;color:#94a3b8;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Please choose a lab from the list above</div>' +
+              '</div>' +
+            '</div>' +
+            '<div id="grader-selected-nodes" style="padding:2px 8px;border-radius:4px;background:rgba(56,189,248,0.15);color:#38bdf8;font-size:11px;font-weight:700;white-space:nowrap;">- Nodes</div>' +
+          '</div>' +
+          '<input type="hidden" id="grader-selected-lab-path" value="">' +
+          '<button type="button" id="btn-run-grade" class="btn btn-primary" style="background:#10b981;border-color:#10b981;color:#fff;padding:10px 16px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fa fa-check-circle"></i> Grade Selected Lab</button>' +
         '</div>' +
-        '<div id="term-grader" style="display:block;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:16px;font-family:monospace;font-size:12.5px;min-height:300px;max-height:450px;overflow-y:auto;color:#38bdf8;">' +
-          '<div style="color:#64748b;">// Ready to evaluate lab. Click "Grade My Lab" to audit checkpoints.</div>' +
+        '<div id="term-grader" style="display:block;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:16px;font-family:monospace;font-size:12.5px;min-height:380px;max-height:520px;overflow-y:auto;color:#38bdf8;">' +
+          '<div style="color:#64748b;">// Ready to evaluate lab. Select any lab from the library and click "Grade Selected Lab".</div>' +
         '</div>' +
       '</div>';
     panesContainer.appendChild(pGrader);
@@ -597,6 +610,7 @@
     loadMesh();
     loadTemplates();
     loadPerf();
+    loadGraderLabs();
   }
 
   /* ── Tab Switching Helper ───────────────────────────────── */
@@ -613,6 +627,10 @@
       var p = document.getElementById('pane-' + id);
       if (p) p.style.display = id === tabId ? 'block' : 'none';
     });
+
+    if (tabId === 'grader') {
+      loadGraderLabs();
+    }
   }
 
   /* ── Wire Dynamic Buttons ───────────────────────────────── */
@@ -637,9 +655,26 @@
     var btnGrade = container.querySelector('#btn-run-grade');
     if (btnGrade) {
       btnGrade.onclick = function () {
-        var quiz = document.getElementById('grader-quiz-select').value;
-        var lab = document.getElementById('grader-lab-id').value.trim();
-        runTool('grader-run', { quiz: quiz, lab: lab }, btnGrade, 'term-grader');
+        var lab = (document.getElementById('grader-selected-lab-path') ? document.getElementById('grader-selected-lab-path').value.trim() : '');
+        if (!lab) {
+          App.toast('Please select a target lab to grade from the list above', 'warn');
+          return;
+        }
+        runTool('grader-run', { lab: lab }, btnGrade, 'term-grader');
+      };
+    }
+
+    // Grader Search & Refresh
+    var labSearch = container.querySelector('#grader-lab-search');
+    if (labSearch) {
+      labSearch.oninput = function () {
+        if (_graderLabsCache) renderGraderLabs(_graderLabsCache);
+      };
+    }
+    var btnGraderRefresh = container.querySelector('#btn-grader-refresh-labs');
+    if (btnGraderRefresh) {
+      btnGraderRefresh.onclick = function () {
+        loadGraderLabs(true);
       };
     }
 
@@ -1632,6 +1667,176 @@
       modal.onclick = function (e) { if (e.target === modal) modal.style.display = 'none'; };
     } else {
       modal.style.display = 'flex';
+    }
+  }
+
+  /* ── Helper: Escape HTML ────────────────────────────────── */
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  /* ── Exam & Quiz Grader Labs Management ─────────────────── */
+  var _graderLabsCache = null;
+
+  function loadGraderLabs(force) {
+    if (_graderLabsCache && !force) {
+      renderGraderLabs(_graderLabsCache);
+      return;
+    }
+
+    var treeEl = document.getElementById('grader-lab-tree');
+    if (treeEl && !treeEl.querySelector('.az-folder-group')) {
+      treeEl.innerHTML = '<div style="text-align:center;color:#64748b;padding:16px;font-size:12px;"><i class="fa fa-spinner fa-spin"></i> Loading labs from /opt/unetlab/labs...</div>';
+    }
+
+    fetch('/azam-ops/api/labs')
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        _graderLabsCache = data;
+        renderGraderLabs(data);
+      })
+      .catch(function (err) {
+        if (treeEl) {
+          treeEl.innerHTML = '<div style="color:#ef4444;padding:12px;font-size:12px;"><i class="fa fa-exclamation-triangle"></i> Failed to load labs: ' + (err.message || 'API error') + '</div>';
+        }
+      });
+  }
+
+  function renderGraderLabs(data) {
+    var treeEl = document.getElementById('grader-lab-tree');
+    var badgeCount = document.getElementById('grader-total-count');
+    if (!treeEl) return;
+
+    var total = (data && data.total_labs) || 0;
+    if (badgeCount) badgeCount.textContent = total + ' Labs in Library';
+
+    if (!data || !data.folders || !data.folders.length) {
+      treeEl.innerHTML = '<div style="color:#64748b;padding:14px;text-align:center;font-size:12px;">No labs found under /opt/unetlab/labs</div>';
+      return;
+    }
+
+    var searchVal = (document.getElementById('grader-lab-search') ? document.getElementById('grader-lab-search').value.toLowerCase().trim() : '');
+    var currentSelected = (document.getElementById('grader-selected-lab-path') ? document.getElementById('grader-selected-lab-path').value : '');
+
+    var html = '';
+    var matchCount = 0;
+    var autoPickFirst = null;
+
+    data.folders.forEach(function (f, fIdx) {
+      var filteredLabs = f.labs.filter(function (l) {
+        if (!searchVal) return true;
+        return l.name.toLowerCase().indexOf(searchVal) !== -1 ||
+               l.folder.toLowerCase().indexOf(searchVal) !== -1 ||
+               (l.description && l.description.toLowerCase().indexOf(searchVal) !== -1);
+      });
+
+      if (!filteredLabs.length) return;
+      matchCount += filteredLabs.length;
+      if (!autoPickFirst && filteredLabs.length) autoPickFirst = filteredLabs[0];
+
+      var isSearchActive = !!searchVal;
+      var showGroup = (isSearchActive || fIdx === 0 || fIdx === 1);
+      html += 
+        '<div class="az-folder-group" style="margin-bottom:4px;">' +
+          '<div class="az-folder-hdr" data-fidx="' + fIdx + '" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:12px;font-weight:600;color:#cbd5e1;user-select:none;transition:background 0.15s ease;" onmouseenter="this.style.background=\'rgba(255,255,255,0.07)\'" onmouseleave="this.style.background=\'rgba(255,255,255,0.04)\'">' +
+            '<div style="display:flex;align-items:center;gap:7px;overflow:hidden;">' +
+              '<i class="fa ' + (showGroup ? 'fa-folder-open' : 'fa-folder') + '" style="color:#f59e0b;font-size:13px;"></i>' +
+              '<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(f.name) + '</span>' +
+            '</div>' +
+            '<span style="font-size:10px;color:#94a3b8;background:rgba(255,255,255,0.06);padding:2px 7px;border-radius:10px;font-weight:700;">' + filteredLabs.length + '</span>' +
+          '</div>' +
+          '<div class="az-folder-labs" id="az-flabs-' + fIdx + '" style="display:' + (showGroup ? 'flex' : 'none') + ';flex-direction:column;gap:3px;margin-top:3px;padding-left:14px;">';
+
+      filteredLabs.forEach(function (lab) {
+        var isSel = (currentSelected && currentSelected === lab.path);
+        var borderStyle = isSel ? 'border:1px solid #10b981;background:rgba(16,185,129,0.15);' : 'border:1px solid rgba(255,255,255,0.05);background:rgba(0,0,0,0.2);';
+        html += 
+          '<div class="az-grader-lab-item" data-path="' + escapeHtml(lab.path) + '" data-name="' + escapeHtml(lab.name) + '" data-nodes="' + lab.nodes + '" data-folder="' + escapeHtml(lab.folder) + '" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:6px;' + borderStyle + 'font-size:12px;transition:all 0.15s ease;">' +
+            '<div style="display:flex;align-items:center;gap:8px;overflow:hidden;">' +
+              '<i class="fa fa-cube" style="color:' + (isSel ? '#10b981' : '#38bdf8') + ';font-size:11px;"></i>' +
+              '<span style="color:' + (isSel ? '#34d399' : '#f1f5f9') + ';font-weight:' + (isSel ? '700' : '500') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(lab.name) + '</span>' +
+            '</div>' +
+            '<span style="padding:1px 6px;border-radius:4px;background:rgba(56,189,248,0.12);color:#38bdf8;font-size:10.5px;font-weight:700;white-space:nowrap;">' + lab.nodes + ' Nodes</span>' +
+          '</div>';
+      });
+
+      html += '</div></div>';
+    });
+
+    if (matchCount === 0) {
+      treeEl.innerHTML = '<div style="color:#64748b;padding:14px;text-align:center;font-size:12px;">No labs match "<b>' + escapeHtml(searchVal) + '</b>"</div>';
+      return;
+    }
+
+    treeEl.innerHTML = html;
+
+    // Attach folder collapse/expand toggles
+    treeEl.querySelectorAll('.az-folder-hdr').forEach(function (hdr) {
+      hdr.onclick = function () {
+        var fIdx = hdr.dataset.fidx;
+        var labsList = document.getElementById('az-flabs-' + fIdx);
+        var icon = hdr.querySelector('.fa');
+        if (labsList) {
+          var isHidden = labsList.style.display === 'none';
+          labsList.style.display = isHidden ? 'flex' : 'none';
+          if (icon) {
+            icon.className = isHidden ? 'fa fa-folder-open' : 'fa fa-folder';
+          }
+        }
+      };
+    });
+
+    // Attach click handlers to lab items
+    treeEl.querySelectorAll('.az-grader-lab-item').forEach(function (item) {
+      item.onclick = function () {
+        selectGraderLab({
+          path: item.dataset.path,
+          name: item.dataset.name,
+          nodes: item.dataset.nodes,
+          folder: item.dataset.folder
+        });
+      };
+    });
+
+    // If nothing currently selected and we have an autoPick, select it
+    if (!currentSelected && autoPickFirst) {
+      selectGraderLab(autoPickFirst);
+    }
+  }
+
+  function selectGraderLab(lab) {
+    if (!lab) return;
+    var pathInput = document.getElementById('grader-selected-lab-path');
+    var titleEl = document.getElementById('grader-selected-title');
+    var pathEl = document.getElementById('grader-selected-path');
+    var nodesEl = document.getElementById('grader-selected-nodes');
+
+    if (pathInput) pathInput.value = lab.path;
+    if (titleEl) titleEl.textContent = lab.name;
+    if (pathEl) pathEl.textContent = lab.path;
+    if (nodesEl) nodesEl.textContent = (lab.nodes || '-') + ' Nodes';
+
+    // Highlight selected item in tree
+    var treeEl = document.getElementById('grader-lab-tree');
+    if (treeEl) {
+      treeEl.querySelectorAll('.az-grader-lab-item').forEach(function (item) {
+        var isMatch = item.dataset.path === lab.path;
+        item.style.borderColor = isMatch ? '#10b981' : 'rgba(255,255,255,0.05)';
+        item.style.background = isMatch ? 'rgba(16,185,129,0.15)' : 'rgba(0,0,0,0.2)';
+        var icon = item.querySelector('.fa-cube');
+        if (icon) icon.style.color = isMatch ? '#10b981' : '#38bdf8';
+        var nameSpan = item.querySelector('span');
+        if (nameSpan) {
+          nameSpan.style.color = isMatch ? '#34d399' : '#f1f5f9';
+          nameSpan.style.fontWeight = isMatch ? '700' : '500';
+        }
+      });
     }
   }
 

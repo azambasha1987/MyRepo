@@ -7,7 +7,7 @@ Provides secure whitelisted execution of azam-* CLI tools
 and streams real-time output via Server-Sent Events (SSE).
 ==============================================================================
 """
-import os, sys, json, subprocess, threading, queue, time, signal, shutil
+import os, sys, json, subprocess, threading, queue, time, signal, shutil, re
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -281,6 +281,64 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
                 self.reply_json({"output": r.stdout, "error": r.stderr})
             except Exception as e:
                 self.reply_json({"error": str(e)})
+
+        elif parsed.path in ("/azam-ops/api/labs", "/api/azam/labs"):
+            labs_root = "/opt/unetlab/labs"
+            result = {"folders": [], "all_labs": [], "total_labs": 0}
+            if os.path.isdir(labs_root):
+                folders_map = {}
+                for root, dirs, files in os.walk(labs_root):
+                    files.sort()
+                    unl_files = [f for f in files if f.endswith(".unl")]
+                    if not unl_files:
+                        continue
+                    rel_dir = os.path.relpath(root, labs_root)
+                    if rel_dir == ".":
+                        folder_name = "Root Labs"
+                    else:
+                        folder_name = rel_dir.replace("\\", "/")
+
+                    folder_labs = []
+                    for uf in unl_files:
+                        lab_path = os.path.join(root, uf)
+                        rel_lab_path = os.path.relpath(lab_path, labs_root).replace("\\", "/")
+                        lab_name = os.path.splitext(uf)[0]
+                        node_count = 0
+                        description = ""
+                        try:
+                            with open(lab_path, "r", encoding="utf-8", errors="ignore") as f:
+                                txt = f.read(16384)
+                                node_count = txt.count("<node ")
+                                m_desc = re.search(r"<description>(.*?)</description>", txt, re.DOTALL)
+                                if m_desc:
+                                    description = m_desc.group(1).strip()[:160]
+                        except Exception:
+                            pass
+                        if node_count == 0:
+                            node_count = 4
+
+                        item = {
+                            "name": lab_name,
+                            "path": rel_lab_path,
+                            "folder": folder_name,
+                            "nodes": node_count,
+                            "description": description
+                        }
+                        folder_labs.append(item)
+                        result["all_labs"].append(item)
+
+                    if folder_labs:
+                        folders_map[folder_name] = folder_labs
+
+                for fn in sorted(folders_map.keys()):
+                    result["folders"].append({
+                        "name": fn,
+                        "path": fn,
+                        "count": len(folders_map[fn]),
+                        "labs": folders_map[fn]
+                    })
+                result["total_labs"] = len(result["all_labs"])
+            self.reply_json(result)
 
         elif parsed.path == "/azam-ops/api/templates":
             cat_file = "/opt/azambasha/templates/catalog.json"
@@ -853,9 +911,11 @@ print("[*] Azam-Pnet Python SDK Loaded.")
                     dur = str(params.get("duration", "5"))
                     cmd = ["python3", "/opt/azambasha/scripts/azambasha-ping-mesh.py", "--traffic-gen", "--target", target, "--rate", rate, "--duration", dur]
                 elif tool == "grader-run":
-                    quiz = params.get("quiz", "ccna_ospf_basics")
+                    quiz = params.get("quiz", "")
                     lab = params.get("lab", "default_lab")
-                    cmd = ["python3", "/opt/azambasha/scripts/azambasha-lab-grader.py", "--grade", "--quiz", quiz, "--lab", lab]
+                    cmd = ["python3", "/opt/azambasha/scripts/azambasha-lab-grader.py", "--grade", "--lab", lab]
+                    if quiz:
+                        cmd += ["--quiz", quiz]
                 elif tool == "sniffer-capture":
                     iface = params.get("interface", "eth0")
                     count = str(params.get("count", "15"))

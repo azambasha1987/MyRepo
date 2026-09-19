@@ -203,6 +203,26 @@ def handle_signal(signum, frame):
     RUNNING = False
 
 
+def cleanup_orphaned_interfaces():
+    """If no active nodes/emulators are running, prune any orphaned vunl/ser interfaces."""
+    try:
+        # Extra check: make sure no dynamips processes exist
+        res = subprocess.run(["pgrep", "-f", "dynamips"], capture_output=True, text=True)
+        if res.stdout.strip():
+            return
+
+        res = subprocess.run(["ip", "-o", "link", "show"], capture_output=True, text=True)
+        for line in res.stdout.splitlines():
+            parts = line.split(":")
+            if len(parts) >= 2:
+                dev = parts[1].strip().split("@")[0]
+                if (dev.startswith("vunl") or dev.startswith("ser")) and "_" in dev:
+                    subprocess.run(["ip", "link", "delete", dev], capture_output=True)
+                    logging.info(f"[watchdog] Cleaned orphaned interface {dev}")
+    except Exception as e:
+        logging.debug(f"[watchdog] Interface cleanup exception: {e}")
+
+
 def run_watchdog(master_ip: str, password: str, poll: int = POLL_INTERVAL):
     """Main watchdog loop."""
     setup_logging()
@@ -263,6 +283,10 @@ def run_watchdog(master_ip: str, password: str, poll: int = POLL_INTERVAL):
                     )
             else:
                 logging.warning(f"[watchdog] Insufficient metadata to attempt recovery for PID {pid}.")
+
+        # Periodic check for orphaned interfaces if no emulators are running
+        if not current_all:
+            cleanup_orphaned_interfaces()
 
         time.sleep(poll)
 

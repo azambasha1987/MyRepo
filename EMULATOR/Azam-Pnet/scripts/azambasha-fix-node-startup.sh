@@ -266,6 +266,27 @@ if os.path.exists(dev_file):
             with open(dev_file, 'w', encoding='utf-8') as f:
                 f.write(code)
             print("  [✔] Console fallback active in device.php")
+
+        # Teardown fix: ensure TAP interfaces are cleanly removed when node is stopped
+        if "Azam-Pnet Teardown Fix" not in code:
+            search_str = "            return 0;\\n        }\\n\\n        return 0;\\n    }"
+            teardown_patch = """            return 0;
+        }
+
+        // Always clean up node TAP interfaces for this session upon stop (Azam-Pnet Teardown Fix)
+        $session = (int) $this->getSession();
+        if ($session > 0) {
+            $cmd = 'ip -o link show | cut -d: -f2 | tr -d " " | grep -E "^(vunl|ser)' . $session . '_" | while read -r dev; do ip link delete "$dev" 2>/dev/null; done';
+            exec($cmd);
+        }
+
+        return 0;
+    }"""
+            if "return 0;\n        }\n\n        return 0;\n    }" in code:
+                code = code.replace("return 0;\n        }\n\n        return 0;\n    }", "return 0;\n        }\n\n" + teardown_patch.split("        }\n\n")[1], 1)
+                with open(dev_file, 'w', encoding='utf-8') as f:
+                    f.write(code)
+                print("  [✔] Teardown TAP interface cleanup active in device.php")
     except Exception as e:
         print(f"  [!] Note patching device.php: {e}")
 

@@ -61,6 +61,13 @@
     var actions = document.createElement('div');
     actions.style.cssText = 'display:flex;gap:10px;align-items:center;flex-wrap:wrap;';
 
+    var btnManual = document.createElement('a');
+    btnManual.href = '/docs/manual.pdf';
+    btnManual.target = '_blank';
+    btnManual.className = 'btn btn-ghost';
+    btnManual.style.cssText = 'display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:#38bdf8;border:1px solid rgba(56,189,248,0.3);padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;transition:background 0.15s ease;';
+    btnManual.innerHTML = '<i class="fa fa-book" style="color:#38bdf8;"></i> Operations Manual (PDF)';
+
     var btnRefresh = document.createElement('button');
     btnRefresh.className = 'btn btn-ghost';
     btnRefresh.innerHTML = '<i class="fa fa-refresh"></i> Refresh All';
@@ -72,6 +79,7 @@
     btnDoctor.innerHTML = '<i class="fa fa-stethoscope"></i> Run Doctor';
     btnDoctor.onclick = function () { switchTab('health'); runTool('doctor', {}, null, 'term-doctor'); };
 
+    actions.appendChild(btnManual);
     actions.appendChild(btnRefresh);
     actions.appendChild(btnDoctor);
 
@@ -432,6 +440,13 @@
           createToolCard('backup', 'azam-backup', 'Instant Local Lab Snapshot', 'Compresses all lab .unl topologies, device startup configs, and database records.', 'fa-archive', '#8b5cf6', 'term-backup', [
             { label: 'List Local Backups', tool: 'backup-list' }
           ]) +
+          '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:16px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<div style="width:36px;height:36px;border-radius:8px;background:rgba(14,165,233,0.15);color:#0ea5e9;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-cubes"></i></div>' +
+              '<div><div style="font-weight:600;font-size:14px;color:#f1f5f9;">100% Offline Air-Gapped Installer Bundle</div><div style="font-size:11.5px;color:var(--pnq-text-muted,#94a3b8);">Packages all deb packages, templates & offline scripts into standalone tarball</div></div>' +
+            '</div>' +
+            '<div style="margin-top:12px;"><button type="button" class="btn btn-primary btn-sm" style="width:100%;background:linear-gradient(135deg,#0284c7,#2563eb);border:none;color:#fff;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="window.__azGenerateAirgap(this)"><i class="fa fa-archive"></i> Generate Air-Gapped Bundle (azam-airgap-pack)</button></div>' +
+          '</div>' +
         '</div>' +
         '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:14px;">' +
@@ -894,9 +909,13 @@
         }
         var html = '<table class="table" style="width:100%;font-size:12.5px;">';
         html += '<thead><tr><th>Node Name</th><th>PID</th><th>Type</th><th>CPU%</th><th>RAM (MB)</th><th>State</th><th>Action</th></tr></thead><tbody>';
+        var canKill = !window.userRole || window.userRole === '0' || window.userRole === 0 || window.userRole === 'admin';
         nodes.forEach(function (n) {
           var cpuNum = parseFloat(n.cpu_pct) || 0;
           var cpuColor = cpuNum > 80 ? '#f87171' : (cpuNum > 40 ? '#fbbf24' : '#4ade80');
+          var actionBtn = canKill
+            ? '<button type="button" class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;color:#f87171;" onclick="window.__azKillNode(' + n.pid + ')"><i class="fa fa-times-circle"></i> Kill</button>'
+            : '<span style="font-size:10.5px;color:#64748b;">Admin-Only</span>';
           html += '<tr>' +
             '<td style="font-weight:600;color:#f1f5f9;">' + n.name + '</td>' +
             '<td style="font-family:monospace;color:#94a3b8;">' + n.pid + '</td>' +
@@ -904,7 +923,7 @@
             '<td style="font-family:monospace;font-weight:700;color:' + cpuColor + ';">' + n.cpu_pct + '%</td>' +
             '<td style="font-family:monospace;color:#a78bfa;">' + n.ram_mb + ' MB</td>' +
             '<td><span style="color:#4ade80;">' + n.state + '</span></td>' +
-            '<td><button type="button" class="btn btn-ghost btn-sm" style="font-size:11px;padding:2px 8px;color:#f87171;" onclick="window.__azKillNode(' + n.pid + ')"><i class="fa fa-pause"></i> Pause</button></td>' +
+            '<td>' + actionBtn + '</td>' +
           '</tr>';
         });
         html += '</tbody></table>';
@@ -916,8 +935,44 @@
   }
 
   window.__azKillNode = function(pid) {
-    if (!confirm('Pause node process (PID ' + pid + ') using SIGSTOP?')) return;
-    runTool('perf-kill', { pid: pid }, null, 'term-perf');
+    if (!confirm('Terminate process (PID ' + pid + ') immediately via SIGTERM?\n\nThis will stop the virtual node and release its hypervisor memory.')) return;
+    fetch(API_BASE + '/perf-kill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-User-Role': window.userRole || '0' },
+      body: JSON.stringify({ pid: pid })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res.success) {
+        if (window.PnqApp && window.PnqApp.toast) window.PnqApp.toast(res.message, 'ok');
+        else alert(res.message);
+        setTimeout(loadPerf, 1000);
+      } else {
+        alert('Action failed: ' + (res.error || 'Permission denied'));
+      }
+    }).catch(function(e) {
+      alert('Request failed: ' + e);
+    });
+  };
+
+  window.__azGenerateAirgap = function(btn) {
+    if (!confirm('Generate 100% Offline Air-Gapped Installation Bundle?\n\nThis will package all local .deb packages, templates, Python wheels, and configuration into a standalone archive.')) return;
+    if (btn) btn.disabled = true;
+    fetch(API_BASE + '/airgap-pack', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-User-Role': window.userRole || '0' },
+      body: JSON.stringify({})
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (btn) btn.disabled = false;
+      if (res.success) {
+        if (window.PnqApp && window.PnqApp.toast) window.PnqApp.toast(res.message, 'ok');
+        else alert(res.message);
+        setTimeout(loadBackups, 3000);
+      } else {
+        alert('Error: ' + (res.error || 'Failed to start airgap pack'));
+      }
+    }).catch(function(e) {
+      if (btn) btn.disabled = false;
+      alert('Request failed: ' + e);
+    });
   };
 
   window.__azRestore = function (filename) {

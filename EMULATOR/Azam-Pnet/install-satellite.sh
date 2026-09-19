@@ -946,6 +946,15 @@ elif [ -f "/opt/unetlab/scripts/azambasha-fix-node-startup.sh" ]; then
     bash "/opt/unetlab/scripts/azambasha-fix-node-startup.sh" || true
 fi
 
+# Deploy all enterprise Azam-Features CLI tools, watchdogs & maintenance onto Satellite
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-install-azam-features.sh" ]; then
+    echo "       -> Deploying Azam-Features Satellite toolchain & watchdog..."
+    bash "${SCRIPT_DIR}/scripts/azambasha-install-azam-features.sh" --satellite || true
+elif [ -f "/opt/unetlab/scripts/azambasha-install-azam-features.sh" ]; then
+    echo "       -> Deploying Azam-Features Satellite toolchain & watchdog..."
+    bash "/opt/unetlab/scripts/azambasha-install-azam-features.sh" --satellite || true
+fi
+
 # ── Step 10: Automated or Interactive Join to Master Server ───────────────────
 echo "[10/10] Verifying satellite readiness and cluster configuration..."
 

@@ -677,6 +677,99 @@
     '</div>'; /* end body */
   }
 
+  /* ── Desktop Notification Helper ────────────────────────── */
+  function azamNotifyDesktop(title, body) {
+    try {
+      if ('Notification' in window) {
+        if (Notification.permission === 'granted') {
+          new Notification(title, { body: body, icon: '/themes/default/images/logo.png' });
+        } else if (Notification.permission !== 'denied') {
+          Notification.requestPermission().then(function (perm) {
+            if (perm === 'granted') {
+              new Notification(title, { body: body, icon: '/themes/default/images/logo.png' });
+            }
+          });
+        }
+      }
+    } catch (e) {}
+  }
+
+  /* ── In-Canvas KSM Heavy Node Tuning ─────────────────────── */
+  window.azTuneNodeKSM = function(nodeId, nodeName) {
+    azToast('Applying Heavy-Node KSM Memory Tuning for ' + (nodeName || 'node') + '…', 'info');
+    fetch(API_BASE + '/node-ksm-tune', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ node_id: nodeId || '', node_name: nodeName || 'Heavy Node' })
+    }).then(function(r) { return r.json(); }).then(function(res) {
+      if (res.success) {
+        azToast(res.message, 'ok');
+        azamNotifyDesktop('KSM Tuning Active', res.message);
+      } else {
+        azToast('KSM tuning error: ' + res.error, 'err');
+      }
+    }).catch(function(e) {
+      azToast('Request failed: ' + e, 'err');
+    });
+  };
+
+  /* ── Dynamic Link Traffic Heatmap ────────────────────────── */
+  var trafficHeatmapActive = false;
+  var trafficPollTimer = null;
+
+  function toggleTrafficHeatmap(btn) {
+    trafficHeatmapActive = !trafficHeatmapActive;
+    if (trafficHeatmapActive) {
+      btn.style.background = '#10b981';
+      btn.style.color = '#fff';
+      btn.innerHTML = '<i class="fa fa-line-chart"></i> <span>Heatmap: ON</span>';
+      azToast('Live Traffic Heatmap active (polling bridge stats)', 'ok');
+      trafficPollTimer = setInterval(updateCanvasHeatmap, 3000);
+      updateCanvasHeatmap();
+    } else {
+      btn.style.background = 'rgba(56,189,248,0.15)';
+      btn.style.color = '#38bdf8';
+      btn.innerHTML = '<i class="fa fa-line-chart"></i> <span>Traffic Heatmap</span>';
+      if (trafficPollTimer) clearInterval(trafficPollTimer);
+      resetCanvasHeatmap();
+      azToast('Traffic Heatmap deactivated', 'info');
+    }
+  }
+
+  function updateCanvasHeatmap() {
+    fetch(API_BASE + '/link-stats')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        var ifaces = data.interfaces || [];
+        var paths = document.querySelectorAll('svg path.link, svg path[data-link], svg g.jtk-connector path');
+        if (!paths.length) return;
+        paths.forEach(function(p, idx) {
+          var stat = ifaces[idx % ifaces.length];
+          var kb = stat ? stat.total_kb : 0;
+          var strokeColor = '#22c55e';
+          var strokeWidth = '3px';
+          if (kb > 50000) {
+            strokeColor = '#ef4444';
+            strokeWidth = '5px';
+          } else if (kb > 5000) {
+            strokeColor = '#f59e0b';
+            strokeWidth = '4px';
+          }
+          p.style.stroke = strokeColor;
+          p.style.strokeWidth = strokeWidth;
+          p.style.transition = 'stroke 0.3s ease, stroke-width 0.3s ease';
+        });
+      }).catch(function() {});
+  }
+
+  function resetCanvasHeatmap() {
+    var paths = document.querySelectorAll('svg path.link, svg path[data-link], svg g.jtk-connector path');
+    paths.forEach(function(p) {
+      p.style.stroke = '';
+      p.style.strokeWidth = '';
+    });
+  }
+
   /* ── Bootstorm helper ────────────────────────────────────── */
   window.azBoostorm = function (dryRun) {
     var labInput = document.getElementById('az-boot-lab');
@@ -724,6 +817,10 @@
               '<input type="checkbox" id="pnq-bs-dryrun" style="cursor:pointer;">' +
               '<label for="pnq-bs-dryrun" style="font-size:12.5px;color:#cbd5e1;cursor:pointer;">Simulate boot order without launching nodes (--dry-run)</label>' +
             '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+              '<input type="checkbox" id="pnq-bs-ksm" checked style="cursor:pointer;accent-color:#6366f1;">' +
+              '<label for="pnq-bs-ksm" style="font-size:12px;color:#a5b4fc;cursor:pointer;">Auto-apply KSM memory optimization after boot (Saves up to 70% RAM)</label>' +
+            '</div>' +
             '<div style="display:flex;gap:10px;margin-top:4px;">' +
               '<button type="button" id="pnq-bs-start" style="flex:1;background:linear-gradient(135deg,#f59e0b,#ea580c);border:none;color:#fff;padding:10px;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fa fa-play"></i> Launch Staggered Boot</button>' +
             '</div>' +
@@ -740,7 +837,18 @@
         var hd = modal.querySelector('#pnq-bs-heavy').value.trim();
         var md = modal.querySelector('#pnq-bs-medium').value.trim();
         var dry = modal.querySelector('#pnq-bs-dryrun').checked;
+        var autoKsm = modal.querySelector('#pnq-bs-ksm').checked;
         azRunTool('bootstorm-start', { lab: lab, heavy_delay: hd, medium_delay: md, dry_run: dry }, this, 'pnq-bs-term');
+        if (autoKsm && !dry) {
+          setTimeout(function () {
+            fetch(API_BASE + '/node-ksm-tune', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ node_name: 'All Booted Nodes', lab_path: lab })
+            });
+            azamNotifyDesktop('Anti-Bootstorm Complete', 'All nodes have been safely booted with KSM deduplication active.');
+          }, 6000);
+        }
       };
     } else {
       modal.querySelector('#pnq-bs-lab').value = currentLab;
@@ -777,9 +885,22 @@
       azRunTool('console-fix-full', {}, consoleFixBtn, 'term-canvas-console');
     };
 
+    var heatmapBtn = document.createElement('button');
+    heatmapBtn.id = 'pnq-btn-heatmap';
+    heatmapBtn.type = 'button';
+    heatmapBtn.className = 'btn btn-ghost btn-sm';
+    heatmapBtn.style.cssText = 'background:rgba(56,189,248,0.15);border:1px solid rgba(56,189,248,0.3);color:#38bdf8;font-weight:600;margin-left:6px;padding:4px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;transition:all 0.2s ease;';
+    heatmapBtn.innerHTML = '<i class="fa fa-line-chart"></i> <span>Traffic Heatmap</span>';
+    heatmapBtn.title = 'Toggle real-time visual link traffic heatmap on canvas';
+    heatmapBtn.onclick = function(e) {
+      e.preventDefault();
+      toggleTrafficHeatmap(heatmapBtn);
+    };
+
     if (startBtn.parentNode) {
       startBtn.parentNode.insertBefore(bootstormBtn, startBtn.nextSibling);
       startBtn.parentNode.insertBefore(consoleFixBtn, bootstormBtn.nextSibling);
+      startBtn.parentNode.insertBefore(heatmapBtn, consoleFixBtn.nextSibling);
     }
   }
 

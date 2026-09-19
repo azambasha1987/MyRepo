@@ -50,18 +50,31 @@ if [ ! -e "/opt/azambasha/html" ] && [ -d "${AZAM_DIR}/html" ]; then
     ln -sfn "${AZAM_DIR}/html" /opt/azambasha/html 2>/dev/null || true
 fi
 
+IS_SATELLITE=0
+for arg in "$@"; do
+    case "$arg" in
+        --satellite|-s)
+            IS_SATELLITE=1
+            ;;
+    esac
+done
+
 API_PORT=8889
 
 echo -e "${CYAN}================================================================${RESET}"
-echo -e "  ${BOLD}Azam-Features GUI & Operations Center Installation${RESET}"
+if [ "$IS_SATELLITE" -eq 1 ]; then
+    echo -e "  ${BOLD}Azam-Features Satellite Compute Worker Provisioning${RESET}"
+else
+    echo -e "  ${BOLD}Azam-Features Master GUI & Operations Center Installation${RESET}"
+fi
 echo -e "${CYAN}================================================================${RESET}"
 
-# ── 1. Copy Backend API and Install Service ─────────────────────────────────
-echo -e "\n${CYAN}[1/7]${RESET} Setting up Azam-Ops backend API service…"
+# ── 1. Register Global Administrative CLI Commands ──────────────────────────
+echo -e "\n${CYAN}[1/7]${RESET} Registering global CLI toolchains in /usr/local/bin/…"
 chmod +x "${SCRIPTS}"/azambasha-*.py 2>/dev/null || true
 chmod +x "${SCRIPTS}"/azambasha-*.sh 2>/dev/null || true
 
-# Symlinks for CLI tools
+# Symlinks for CLI tools (Available identically on Master and Satellite)
 ln -sf "${SCRIPTS}/azambasha-ai-copilot.py"       /usr/local/bin/azam-ai
 ln -sf "${SCRIPTS}/azambasha-config-diff.py"      /usr/local/bin/azam-config-diff
 ln -sf "${SCRIPTS}/azambasha-ping-mesh.py"        /usr/local/bin/azam-ping-mesh
@@ -87,14 +100,40 @@ ln -sf "${SCRIPTS}/azambasha-notify.py"           /usr/local/bin/azam-notify
 ln -sf "${SCRIPTS}/azambasha-bench.sh"            /usr/local/bin/azam-bench
 ln -sf "${SCRIPTS}/azambasha-ssl.sh"              /usr/local/bin/azam-ssl
 ln -sf "${SCRIPTS}/azambasha-fix-web-credentials.sh" /usr/local/bin/azam-credentials
+ln -sf "${SCRIPTS}/azambasha-airgap-pack.sh"      /usr/local/bin/azam-airgap-pack
 
-# Install scheduler timer and 24/7 watchdog
+# Install scheduler timer and 24/7 autonomous watchdog daemon
 python3 "${SCRIPTS}/azambasha-scheduler.py" --install 2>/dev/null || true
 python3 "${SCRIPTS}/azambasha-watchdog.py" --install 2>/dev/null || true
 
+# Deploy Nightly SSD TRIM & Maintenance Cron (Master & Satellite)
+cat << 'TRIMEOF' > /etc/cron.d/azambasha-maintenance
+# Azam-Pnet Scheduled Maintenance & Storage TRIM
+0 3 * * * root /sbin/fstrim -av > /var/log/azambasha-trim.log 2>&1
+TRIMEOF
+chmod 0644 /etc/cron.d/azambasha-maintenance 2>/dev/null || true
+
+# If Satellite Node: finish here (no web UI or apache needed on headless workers)
+if [ "$IS_SATELLITE" -eq 1 ]; then
+    echo -e "  ${GREEN}[✔]${RESET} All 26 CLI tools, watchdog daemon, and maintenance cron installed on Satellite!"
+    echo -e "${CYAN}================================================================${RESET}"
+    exit 0
+fi
+
+# ── 1b. Copy Backend API and Install Service (Master Mode) ───────────────────
 python3 "${SCRIPTS}/azambasha-ops-api.py" --install
 systemctl restart azam-ops-api.service 2>/dev/null || true
 echo -e "  ${GREEN}[✔]${RESET} azam-ops-api.service installed and running on port ${API_PORT}."
+
+# ── 1c. Deploy In-Browser PDF Operations Manual ──────────────────────────────
+mkdir -p "${PNET_HTML}/docs" 2>/dev/null || true
+PDF_SRC="${AZAM_DIR}/docs/Azam-Pnet_Enterprise_Features_Operations_Manual.pdf"
+if [ -f "${PDF_SRC}" ]; then
+    cp -f "${PDF_SRC}" "${PNET_HTML}/docs/manual.pdf"
+    cp -f "${PDF_SRC}" "${PNET_HTML}/docs/Azam-Pnet_Enterprise_Features_Operations_Manual.pdf"
+    chmod 0644 "${PNET_HTML}/docs/manual.pdf" "${PNET_HTML}/docs/Azam-Pnet_Enterprise_Features_Operations_Manual.pdf" 2>/dev/null || true
+    echo -e "  ${GREEN}[✔]${RESET} Published Operations Manual PDF to ${PNET_HTML}/docs/manual.pdf"
+fi
 
 # ── 2. Configure Apache proxy for /azam-ops/api/ ────────────────────────────
 echo -e "${CYAN}[2/7]${RESET} Configuring Apache reverse proxy for Azam-Ops API…"

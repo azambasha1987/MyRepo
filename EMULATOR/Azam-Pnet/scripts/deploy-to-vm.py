@@ -171,7 +171,7 @@ def deploy_host(host, user, password, port, args):
                 sftp.chmod(f"{remote_base}/{rfile}", 0o755)
                 
         # Sync core subdirectories
-        for sdir in ["scripts", "assets", "login", "schema", "metadata", "generic", "debian"]:
+        for sdir in ["scripts", "assets", "assets-common", "login", "schema", "metadata", "generic", "debian", "html", "docs", "themes"]:
             ldir = os.path.join(BASE_DIR, sdir)
             if os.path.exists(ldir):
                 rdir = f"{remote_base}/{sdir}"
@@ -245,6 +245,12 @@ def deploy_host(host, user, password, port, args):
                 log_ok(f"Fetched remote weekly plan to local workspace: {local_report}")
             except Exception as e:
                 log_warn(f"Could not retrieve remote plan file via SFTP: {e}")
+        elif args.install_features:
+            log_info("Executing Azam Features Installer & Symlink Generator...")
+            execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-install-azam-features.sh")
+        elif args.cmd:
+            log_info(f"Executing Custom Remote Command: {args.cmd}")
+            execute_remote_cmd(client, f"cd {remote_base} && {args.cmd}")
         elif args.verify:
             log_info("Running Remote Non-Regression Health Probe...")
             execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-fix-permissions.sh --check && sudo bash scripts/azambasha-system-and-console-fix.sh --check")
@@ -274,6 +280,8 @@ def main():
     parser.add_argument("--install", action="store_true", help="Run master installer on targets")
     parser.add_argument("--satellite", action="store_true", help="Run satellite worker installer on targets")
     parser.add_argument("--satellite-fixes", action="store_true", help="Apply full optimization & issue remediation suite to a satellite worker node")
+    parser.add_argument("--install-features", action="store_true", help="Run azambasha-install-azam-features.sh to link all 26 CLI tools and services")
+    parser.add_argument("--cmd", help="Execute arbitrary command on remote host after sync")
     parser.add_argument("--fix-cluster", action="store_true", help="Stage cluster bundle and configure remote DB on Master")
     parser.add_argument("--join-master", help="Master node IP address for satellite cluster join")
     parser.add_argument("--cluster-id", type=int, choices=[1, 2, 3, 4, 5], default=1, help="Satellite slot ID (default: 1)")

@@ -104,8 +104,12 @@ COMMANDS = {
     # Anti-Bootstorm Engine
     "bootstorm-start":    None,
 
-    # Templates Marketplace
-    "templates-deploy":   None,
+    # Templates Marketplace & Universal Importer / Auto-Fixer
+    "templates-deploy":     None,
+    "templates-browse":     None,
+    "templates-pull":       None,
+    "templates-fix":        None,
+    "templates-import-cml": None,
 
     # Topology Git
     "topology-log":       None,
@@ -125,20 +129,33 @@ COMMANDS = {
 }
 
 DEFAULT_TEMPLATES = [
-    {"name":"ccna-routing","category":"ccna","desc":"Full CCNA Routing topology: 4x IOSv routers + 2x IOL L2 switches. OSPF, EIGRP, RIP labs ready.","nodes":6,"tags":["ccna","ospf","eigrp","rip","routing"]},
-    {"name":"ccna-switching","category":"ccna","desc":"CCNA Switching: 6x IOL L2 with STP, VTP, Inter-VLAN, EtherChannel, and HSRP pre-configured.","nodes":8,"tags":["ccna","switching","stp","vlan","hsrp"]},
-    {"name":"ccna-wan","category":"ccna","desc":"CCNA WAN: PPP, HDLC, Frame Relay, DMVPN phase 1 topology with 4 routers.","nodes":4,"tags":["ccna","wan","ppp","dmvpn"]},
-    {"name":"bgp-full-mesh","category":"bgp","desc":"BGP full-mesh: 8x CSR1000v routers, 4 autonomous systems, iBGP/eBGP, communities, route-maps.","nodes":8,"tags":["bgp","ccie","enterprise","advanced"]},
-    {"name":"bgp-internet-edge","category":"bgp","desc":"Internet edge: 2x ISP routers + 2x CPE with BGP dual-homing, prefix filtering, AS-path prepend.","nodes":4,"tags":["bgp","internet","edge","filtering"]},
-    {"name":"ospf-multi-area","category":"ospf","desc":"OSPF multi-area: Areas 0, 1, 2, stub/NSSA, virtual links, redistribution with 6 IOSv routers.","nodes":6,"tags":["ospf","multiarea","redistribution"]},
-    {"name":"mpls-ldp","category":"mpls","desc":"MPLS/LDP: 6x CSR1000v with MPLS forwarding, LDP neighbors, L3VPN PE-CE, and traffic engineering.","nodes":6,"tags":["mpls","ldp","l3vpn","te"]},
-    {"name":"mpls-sr","category":"mpls","desc":"Segment Routing: XRv9k or IOSv SR-MPLS with TI-LFA fast reroute, SID allocation, and SR-TE.","nodes":4,"tags":["mpls","segment-routing","sr-te","xrv"]},
-    {"name":"isis-datacenter","category":"isis","desc":"IS-IS spine-leaf datacenter: 2x spine + 4x leaf with IS-IS L2, BFD, and prefix-SID.","nodes":6,"tags":["isis","datacenter","spine-leaf","bfd"]},
-    {"name":"sdwan-vedge","category":"sdwan","desc":"SD-WAN vEdge: vManage + vSmart + vBond + 3x vEdge with OMP, TLOCs, and policy templates.","nodes":6,"tags":["sdwan","viptela","cisco","vedge"]},
-    {"name":"firewall-perimeter","category":"security","desc":"Perimeter security: ASAv + Cisco ISE + 2x edge routers with ZBF, NAT, VPN, and ACLs.","nodes":5,"tags":["security","asa","firewall","nat","vpn"]},
-    {"name":"datacenter-vxlan","category":"datacenter","desc":"VXLAN/EVPN BGP: 2x spine + 4x leaf Nexus 9Kv with L2VNI, L3VNI, and VTEP auto-discovery.","nodes":6,"tags":["vxlan","evpn","bgp","nexus","datacenter"]},
-    {"name":"ccie-rs-lab1","category":"ccie","desc":"CCIE RS mock lab 1: 8-router topology with OSPF, BGP, MPLS, QoS, and redistribution tasks.","nodes":8,"tags":["ccie","advanced","mock-lab"]},
-    {"name":"ipv6-dual-stack","category":"ccna","desc":"IPv6 dual-stack: 4x routers with OSPFv3, BGP4+, RIPng, SLAAC, DHCPv6, and NAT64.","nodes":4,"tags":["ipv6","ospfv3","bgp","dual-stack"]}
+    # CML2 (Cisco Modeling Labs 2.x) Topologies
+    {"name":"cml2-bgp-enterprise","format":"cml2","category":"bgp","desc":"Cisco DevNet CML2 Enterprise BGP Core: Dual-homed eBGP to dual ISPs with iBGP mesh & Day-0 configs.","nodes":4,"tags":["cml2","cml","bgp","ospf","cisco","enterprise"],"source_url":"https://github.com/CiscoDevNet/cml-community/tree/master/lab-topologies/bgp-enterprise"},
+    {"name":"cml2-basic-forwarding","format":"cml2","category":"ccna","desc":"CML2 Flexible Forwarding Behavior: Multi-router OSPF area 0 backbone with dual traffic-gen hosts.","nodes":6,"tags":["cml2","cml","ospf","forwarding","traffic"],"source_url":"https://github.com/CiscoDevNet/cml-community/blob/master/lab-topologies/basic-forwarding-behavior.yaml"},
+    {"name":"ccna-routing","format":"cml2","category":"ccna","desc":"Full CCNA Routing topology: 4x IOSv routers + 2x IOL L2 switches. OSPF, EIGRP, RIP labs ready.","nodes":6,"tags":["cml2","ccna","ospf","eigrp","rip","routing"],"source_url":"https://github.com/CiscoDevNet/cml-community/tree/master/labs/ccna-enterprise-routing"},
+    {"name":"sdwan-vedge","format":"cml2","category":"sdwan","desc":"SD-WAN vEdge: vManage + vSmart + vBond + 3x vEdge with OMP, TLOCs, and policy templates.","nodes":6,"tags":["cml2","sdwan","viptela","cisco","vedge"],"source_url":"https://github.com/CiscoDevNet/cml-community/tree/master/use-cases/sdwan"},
+
+    # EVE-NG Community Topologies
+    {"name":"eve-ccie-enterprise","format":"eve-ng","category":"ccie","desc":"EVE-NG Community CCIE Enterprise Infrastructure: Full 10-node core/distribution/access topology.","nodes":10,"tags":["eve-ng","eve","ccie","enterprise","switching","bgp"],"source_url":"https://github.com/Shadow578/eve-ng-labs/tree/master/ccie"},
+    {"name":"eve-arista-evpn","format":"eve-ng","category":"datacenter","desc":"EVE-NG Arista vEOS BGP EVPN/VXLAN: 2x Spine + 4x Leaf datacenter fabric with auto-vtep.","nodes":6,"tags":["eve-ng","eve","arista","evpn","vxlan","datacenter"],"source_url":"https://github.com/Shadow578/eve-ng-labs/tree/master/arista"},
+    {"name":"bgp-full-mesh","format":"eve-ng","category":"bgp","desc":"BGP full-mesh: 8x CSR1000v routers, 4 autonomous systems, iBGP/eBGP, communities, route-maps.","nodes":8,"tags":["eve-ng","bgp","ccie","enterprise","advanced"],"source_url":"https://github.com/Shadow578/eve-ng-labs/tree/master/bgp-mesh"},
+    {"name":"mpls-ldp","format":"eve-ng","category":"mpls","desc":"MPLS/LDP: 6x CSR1000v with MPLS forwarding, LDP neighbors, L3VPN PE-CE, and traffic engineering.","nodes":6,"tags":["eve-ng","mpls","ldp","l3vpn","te"],"source_url":"https://github.com/Shadow578/eve-ng-labs/tree/master/mpls-ldp"},
+    {"name":"isis-datacenter","format":"eve-ng","category":"isis","desc":"IS-IS spine-leaf datacenter: 2x spine + 4x leaf with IS-IS L2, BFD, and prefix-SID.","nodes":6,"tags":["eve-ng","isis","datacenter","spine-leaf","bfd"],"source_url":"https://github.com/Shadow578/eve-ng-labs/tree/master/isis"},
+
+    # GNS3 Community Topologies
+    {"name":"gns3-frr-bgp-mesh","format":"gns3","category":"bgp","desc":"GNS3 Open-Source FRRouting BGP Mesh: Containerized Linux routers running high-speed modern FRR.","nodes":5,"tags":["gns3","frr","bgp","linux","open-source"],"source_url":"https://github.com/danehans/gns3-labs/tree/master/bgp-mesh"},
+    {"name":"gns3-spine-leaf","format":"gns3","category":"datacenter","desc":"GNS3 Datacenter Spine-Leaf: Multi-vendor fabric with automated eBGP unnumbered underlay.","nodes":6,"tags":["gns3","spine-leaf","datacenter","ebgp","automation"],"source_url":"https://github.com/danehans/gns3-labs/tree/master/spine-leaf"},
+
+    # Native PNetLab v8 / Hybrid Topologies
+    {"name":"ccna-switching","format":"pnetlab-v8","category":"ccna","desc":"CCNA Switching: 6x IOL L2 with STP, VTP, Inter-VLAN, EtherChannel, and HSRP pre-configured.","nodes":8,"tags":["pnetlab","pnetlab-v8","ccna","switching","stp","vlan","hsrp"],"source_url":"https://github.com/JeremyITLab/CCNA-Labs"},
+    {"name":"ccna-wan","format":"pnetlab-v8","category":"ccna","desc":"CCNA WAN: PPP, HDLC, Frame Relay, DMVPN phase 1 topology with 4 routers.","nodes":4,"tags":["pnetlab","pnetlab-v8","ccna","wan","ppp","dmvpn"],"source_url":"https://github.com/JeremyITLab/CCNA-Labs"},
+    {"name":"bgp-internet-edge","format":"pnetlab-v8","category":"bgp","desc":"Internet edge: 2x ISP routers + 2x CPE with BGP dual-homing, prefix filtering, AS-path prepend.","nodes":4,"tags":["pnetlab","pnetlab-v8","bgp","internet","edge","filtering"],"source_url":"https://github.com/packetpushers/labs"},
+    {"name":"ospf-multi-area","format":"pnetlab-v8","category":"ospf","desc":"OSPF multi-area: Areas 0, 1, 2, stub/NSSA, virtual links, redistribution with 6 IOSv routers.","nodes":6,"tags":["pnetlab","pnetlab-v8","ospf","multiarea","redistribution"],"source_url":"https://github.com/CiscoDevNet/cml-community"},
+    {"name":"mpls-sr","format":"pnetlab-v8","category":"mpls","desc":"Segment Routing: XRv9k or IOSv SR-MPLS with TI-LFA fast reroute, SID allocation, and SR-TE.","nodes":4,"tags":["pnetlab","pnetlab-v8","mpls","segment-routing","sr-te","xrv"],"source_url":"https://github.com/packetpushers/labs"},
+    {"name":"firewall-perimeter","format":"pnetlab-v8","category":"security","desc":"Perimeter security: ASAv + Cisco ISE + 2x edge routers with ZBF, NAT, VPN, and ACLs.","nodes":5,"tags":["pnetlab","pnetlab-v8","security","asa","firewall","nat","vpn"],"source_url":"https://github.com/Shadow578/eve-ng-labs"},
+    {"name":"datacenter-vxlan","format":"pnetlab-v8","category":"datacenter","desc":"VXLAN/EVPN BGP: 2x spine + 4x leaf Nexus 9Kv with L2VNI, L3VNI, and VTEP auto-discovery.","nodes":6,"tags":["pnetlab","pnetlab-v8","vxlan","evpn","bgp","nexus","datacenter"],"source_url":"https://github.com/packetpushers/labs"},
+    {"name":"ccie-rs-lab1","format":"pnetlab-v8","category":"ccie","desc":"CCIE RS mock lab 1: 8-router topology with OSPF, BGP, MPLS, QoS, and redistribution tasks.","nodes":8,"tags":["pnetlab","pnetlab-v8","ccie","advanced","mock-lab"],"source_url":"https://github.com/Shadow578/eve-ng-labs"},
+    {"name":"ipv6-dual-stack","format":"pnetlab-v8","category":"ccna","desc":"IPv6 dual-stack: 4x routers with OSPFv3, BGP4+, RIPng, SLAAC, DHCPv6, and NAT64.","nodes":4,"tags":["pnetlab","pnetlab-v8","ipv6","ospfv3","bgp","dual-stack"],"source_url":"https://github.com/JeremyITLab/CCNA-Labs"}
 ]
 
 def get_cluster_stats():

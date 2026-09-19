@@ -201,37 +201,75 @@
     pTemplates.style.display = 'none';
     pTemplates.innerHTML = 
       '<div style="display:flex;flex-direction:column;gap:16px;">' +
-        '<div style="display:flex;flex-direction:column;gap:12px;background:var(--pnq-surface,#1e293b);padding:14px 18px;border-radius:10px;border:1px solid var(--pnq-border,rgba(255,255,255,0.08));">' +
+        '<div style="display:flex;flex-direction:column;gap:12px;background:var(--pnq-surface,#1e293b);padding:16px 20px;border-radius:10px;border:1px solid var(--pnq-border,rgba(255,255,255,0.08));">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">' +
             '<div style="display:flex;align-items:center;gap:10px;">' +
-              '<div style="width:36px;height:36px;border-radius:8px;background:rgba(59,130,246,0.15);color:#3b82f6;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-th-large"></i></div>' +
+              '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#0284c7,#7c3aed);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 12px rgba(2,132,199,0.3);"><i class="fa fa-th-large"></i></div>' +
               '<div>' +
-                '<div style="font-weight:700;font-size:16px;color:#f1f5f9;">Lab Templates & Universal Converter Marketplace</div>' +
-                '<div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Import and auto-fix CML2, GNS3, and EVE-NG labs with tasks & base configs</div>' +
+                '<div style="font-weight:700;font-size:17px;color:#f1f5f9;">Lab Templates & Universal Converter Marketplace</div>' +
+                '<div style="font-size:12.5px;color:var(--pnq-text-muted,#94a3b8);">Browse, convert, filter and auto-fix CML2, GNS3, and EVE-NG topologies into native PNetLab v8</div>' +
               '</div>' +
             '</div>' +
-            '<div style="display:flex;align-items:center;gap:10px;">' +
-              '<input type="text" id="tmpl-search" placeholder="Search templates (e.g. BGP, CCNA, MPLS)..." style="padding:6px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:12.5px;width:240px;">' +
+            '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
+              '<div style="position:relative;display:flex;align-items:center;">' +
+                '<i class="fa fa-search" style="position:absolute;left:10px;color:#64748b;font-size:12px;"></i>' +
+                '<input type="text" id="tmpl-search" placeholder="Search by name, format (cml2, gns3, eve), protocol..." style="padding:7px 12px 7px 30px;background:rgba(0,0,0,0.35);border:1px solid var(--pnq-border,rgba(255,255,255,0.12));border-radius:6px;color:#fff;font-size:12.5px;width:320px;">' +
+                '<button type="button" id="btn-tmpl-search-clear" style="position:absolute;right:8px;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:12px;display:none;">✕</button>' +
+              '</div>' +
               '<button type="button" id="btn-tmpl-refresh" class="btn btn-ghost" style="font-size:12.5px;"><i class="fa fa-refresh"></i> Refresh</button>' +
             '</div>' +
           '</div>' +
+          '<!-- Universal Lab Auto-Fixer Toolbar -->' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:12px 14px;background:rgba(16,185,129,0.07);border:1px solid rgba(16,185,129,0.25);border-radius:8px;">' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+              '<i class="fa fa-wrench" style="color:#10b981;font-size:16px;"></i>' +
+              '<span style="font-weight:700;font-size:13px;color:#f1f5f9;">Universal Lab Auto-Fixer:</span>' +
+              '<span style="font-size:12px;color:#94a3b8;">Repairs "Network ID is not valid", "Not support device" (iol-l2 → iol), and generates missing XML bridges.</span>' +
+            '</div>' +
+            '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+              '<input type="text" id="az-fix-lab-path" value="/opt/unetlab/labs/Azam-Templates/ccna/ccna-routing.unl" placeholder="/opt/unetlab/labs/.../lab.unl" style="padding:6px 12px;background:rgba(0,0,0,0.35);border:1px solid var(--pnq-border,rgba(255,255,255,0.12));border-radius:6px;color:#fff;font-size:12px;width:310px;">' +
+              '<button type="button" id="btn-fix-lab-run" class="btn btn-primary btn-sm" style="background:#10b981;border:none;color:#fff;font-weight:600;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-magic"></i> Auto-Fix Lab Now</button>' +
+            '</div>' +
+          '</div>' +
+          '<!-- Repository Selector & Explorer -->' +
           '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">' +
-            '<span style="font-size:12px;font-weight:600;color:#94a3b8;display:flex;align-items:center;gap:6px;"><i class="fa fa-github" style="color:#38bdf8;"></i> Repository Source:</span>' +
+            '<span style="font-size:12px;font-weight:700;color:#38bdf8;display:flex;align-items:center;gap:6px;"><i class="fa fa-github"></i> Pull From Repository:</span>' +
             '<select id="az-tmpl-repo-select" style="padding:6px 12px;background:rgba(0,0,0,0.35);border:1px solid var(--pnq-border,rgba(255,255,255,0.12));border-radius:6px;color:#fff;font-size:12.5px;">' +
-              '<option value="cml-community">Cisco DevNet CML Community (Official CML2 YAML)</option>' +
+              '<option value="cml-community">Cisco DevNet CML Community Labs (CML 2.x YAML)</option>' +
               '<option value="eve-ng-community">EVE-NG Community Enterprise Labs (EVE-NG UNL)</option>' +
+              '<option value="gns3-community">GNS3 Open-Source Community Archive (GNS3 JSON)</option>' +
               '<option value="packetpushers">PacketPushers NetDevOps & BGP Testbeds</option>' +
               '<option value="jeremy-ccna">Jeremy\'s IT Lab CCNA Practice Labs</option>' +
               '<option value="local-offline">Azam-Basha Built-in Offline Library</option>' +
               '<option value="custom">Custom GitHub Repository URL...</option>' +
             '</select>' +
-            '<input type="text" id="az-tmpl-custom-url" placeholder="https://github.com/owner/repo" style="display:none;padding:6px 12px;background:rgba(0,0,0,0.35);border:1px solid var(--pnq-border,rgba(255,255,255,0.12));border-radius:6px;color:#fff;font-size:12.5px;width:240px;">' +
+            '<input type="text" id="az-tmpl-custom-url" placeholder="https://github.com/owner/repo" style="display:none;padding:6px 12px;background:rgba(0,0,0,0.35);border:1px solid var(--pnq-border,rgba(255,255,255,0.12));border-radius:6px;color:#fff;font-size:12.5px;width:260px;">' +
             '<button type="button" id="btn-tmpl-browse-repo" class="btn btn-primary btn-sm" style="background:#0284c7;border:none;color:#fff;font-weight:600;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-search"></i> Browse Repo Labs</button>' +
           '</div>' +
+          '<!-- Discovered Repo Labs Drawer -->' +
+          '<div id="az-repo-discover-box" style="display:none;background:rgba(0,0,0,0.25);border:1px solid rgba(14,165,233,0.3);border-radius:8px;padding:12px;margin-top:6px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+              '<span id="az-repo-discover-title" style="font-weight:700;font-size:13px;color:#38bdf8;">Discovered Repository Labs</span>' +
+              '<button type="button" id="btn-close-discover" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:13px;">✕ Close</button>' +
+            '</div>' +
+            '<div id="az-repo-discover-list" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;"></div>' +
+          '</div>' +
         '</div>' +
-        '<div id="tmpl-category-chips" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;"></div>' +
-        '<div id="tmpl-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;"></div>' +
-        '<div id="term-templates" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;font-family:monospace;font-size:12px;max-height:220px;overflow-y:auto;"></div>' +
+        '<!-- 1. Format Filters (CML2, EVE-NG, GNS3, PNetLab) -->' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">' +
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+            '<span style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:0.5px;text-transform:uppercase;">FORMAT FILTER:</span>' +
+            '<div id="tmpl-format-chips" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;"></div>' +
+          '</div>' +
+          '<span id="tmpl-count-badge" style="font-size:11.5px;color:#38bdf8;font-weight:700;padding:3px 10px;background:rgba(56,189,248,0.1);border:1px solid rgba(56,189,248,0.25);border-radius:12px;">Topologies</span>' +
+        '</div>' +
+        '<!-- 2. Track & Category Filters -->' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+          '<span style="font-size:11px;font-weight:800;color:#64748b;letter-spacing:0.5px;text-transform:uppercase;">TRACK FILTER:</span>' +
+          '<div id="tmpl-category-chips" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;"></div>' +
+        '</div>' +
+        '<div id="tmpl-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:16px;"></div>' +
+        '<div id="term-templates" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;font-family:monospace;font-size:12px;max-height:260px;overflow-y:auto;"></div>' +
       '</div>';
     panesContainer.appendChild(pTemplates);
 
@@ -740,21 +778,49 @@
     if (btnTmplRef) {
       btnTmplRef.onclick = loadTemplates;
     }
+
     var searchTmpl = container.querySelector('#tmpl-search');
+    var btnClearSearch = container.querySelector('#btn-tmpl-search-clear');
+
+    function onSearchChange() {
+      var q = (searchTmpl ? searchTmpl.value : '').toLowerCase().trim();
+      activeSearchText = q;
+      if (btnClearSearch) {
+        btnClearSearch.style.display = q ? 'block' : 'none';
+      }
+      applyTemplateFilters();
+    }
+
     if (searchTmpl) {
-      searchTmpl.oninput = function () {
-        var q = (searchTmpl.value || '').toLowerCase().trim();
-        if (!q) {
-          renderTemplateCards(allTemplates);
+      searchTmpl.oninput = onSearchChange;
+      searchTmpl.onkeyup = onSearchChange;
+      searchTmpl.onchange = onSearchChange;
+      searchTmpl.onpaste = function () {
+        setTimeout(onSearchChange, 20);
+      };
+    }
+
+    if (btnClearSearch && searchTmpl) {
+      btnClearSearch.onclick = function () {
+        searchTmpl.value = '';
+        activeSearchText = '';
+        btnClearSearch.style.display = 'none';
+        searchTmpl.focus();
+        applyTemplateFilters();
+      };
+    }
+
+    // Universal Lab Auto-Fixer
+    var btnFixLab = container.querySelector('#btn-fix-lab-run');
+    var inputFixPath = container.querySelector('#az-fix-lab-path');
+    if (btnFixLab && inputFixPath) {
+      btnFixLab.onclick = function () {
+        var filePath = inputFixPath.value.trim();
+        if (!filePath) {
+          App.toast('Please provide a valid lab .unl file path', 'warn');
           return;
         }
-        var filtered = allTemplates.filter(function (t) {
-          return (t.name || '').toLowerCase().includes(q) ||
-                 (t.category || '').toLowerCase().includes(q) ||
-                 (t.desc || '').toLowerCase().includes(q) ||
-                 (t.tags || []).some(function (tag) { return tag.toLowerCase().includes(q); });
-        });
-        renderTemplateCards(filtered);
+        runTool('templates-fix', { file: filePath }, btnFixLab, 'term-templates');
       };
     }
 
@@ -762,6 +828,16 @@
     var repoSelect = container.querySelector('#az-tmpl-repo-select');
     var customUrlInput = container.querySelector('#az-tmpl-custom-url');
     var btnBrowseRepo = container.querySelector('#btn-tmpl-browse-repo');
+    var btnCloseDiscover = container.querySelector('#btn-close-discover');
+    var discoverBox = container.querySelector('#az-repo-discover-box');
+    var discoverTitle = container.querySelector('#az-repo-discover-title');
+    var discoverList = container.querySelector('#az-repo-discover-list');
+
+    if (btnCloseDiscover && discoverBox) {
+      btnCloseDiscover.onclick = function () {
+        discoverBox.style.display = 'none';
+      };
+    }
 
     if (repoSelect && customUrlInput) {
       repoSelect.onchange = function () {
@@ -778,6 +854,11 @@
             App.toast('Please enter a valid GitHub repository URL', 'warn');
             return;
           }
+        }
+        if (discoverBox) {
+          discoverBox.style.display = 'block';
+          if (discoverTitle) discoverTitle.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Browsing repository: ' + repoVal + '…';
+          if (discoverList) discoverList.innerHTML = '<div style="padding:10px;color:#94a3b8;"><i class="fa fa-spinner fa-spin"></i> Contacting repository and scanning for topologies (.yaml, .unl, .gns3project)…</div>';
         }
         runTool('templates-browse', { repo: repoVal }, btnBrowseRepo, 'term-templates');
       };
@@ -990,23 +1071,136 @@
     runTool('image-shrink-all', { target: name }, null, 'term-shrink');
   };
 
-  /* ── Templates Loader ───────────────────────────────────── */
-  var allTemplates = [];
+  /* ── Templates Loader & Universal Multi-Format Filter ────── */
+  var DEFAULT_CLIENT_TEMPLATES = [
+    // CML2 (Cisco Modeling Labs 2.x) Topologies
+    { name: "cml2-bgp-enterprise", format: "cml2", category: "bgp", desc: "Cisco DevNet CML2 Enterprise BGP Core: Dual-homed eBGP to dual ISPs with iBGP mesh & Day-0 configs.", nodes: 4, tags: ["cml2","cml","bgp","ospf","cisco","enterprise"], source_url: "https://github.com/CiscoDevNet/cml-community/tree/master/lab-topologies/bgp-enterprise" },
+    { name: "cml2-basic-forwarding", format: "cml2", category: "ccna", desc: "CML2 Flexible Forwarding Behavior: Multi-router OSPF area 0 backbone with dual traffic-gen hosts.", nodes: 6, tags: ["cml2","cml","ospf","forwarding","traffic"], source_url: "https://github.com/CiscoDevNet/cml-community/blob/master/lab-topologies/basic-forwarding-behavior.yaml" },
+    { name: "ccna-routing", format: "cml2", category: "ccna", desc: "Full CCNA Routing topology: 4x IOSv routers + 2x IOL L2 switches. OSPF, EIGRP, RIP labs ready.", nodes: 6, tags: ["cml2","ccna","ospf","eigrp","rip","routing"], source_url: "https://github.com/CiscoDevNet/cml-community/tree/master/labs/ccna-enterprise-routing" },
+    { name: "sdwan-vedge", format: "cml2", category: "sdwan", desc: "SD-WAN vEdge: vManage + vSmart + vBond + 3x vEdge with OMP, TLOCs, and policy templates.", nodes: 6, tags: ["cml2","sdwan","viptela","cisco","vedge"], source_url: "https://github.com/CiscoDevNet/cml-community/tree/master/use-cases/sdwan" },
+
+    // EVE-NG Community Topologies
+    { name: "eve-ccie-enterprise", format: "eve-ng", category: "ccie", desc: "EVE-NG Community CCIE Enterprise Infrastructure: Full 10-node core/distribution/access topology.", nodes: 10, tags: ["eve-ng","eve","ccie","enterprise","switching","bgp"], source_url: "https://github.com/Shadow578/eve-ng-labs/tree/master/ccie" },
+    { name: "eve-arista-evpn", format: "eve-ng", category: "datacenter", desc: "EVE-NG Arista vEOS BGP EVPN/VXLAN: 2x Spine + 4x Leaf datacenter fabric with auto-vtep.", nodes: 6, tags: ["eve-ng","eve","arista","evpn","vxlan","datacenter"], source_url: "https://github.com/Shadow578/eve-ng-labs/tree/master/arista" },
+    { name: "bgp-full-mesh", format: "eve-ng", category: "bgp", desc: "BGP full-mesh: 8x CSR1000v routers, 4 autonomous systems, iBGP/eBGP, communities, route-maps.", nodes: 8, tags: ["eve-ng","bgp","ccie","enterprise","advanced"], source_url: "https://github.com/Shadow578/eve-ng-labs/tree/master/bgp-mesh" },
+    { name: "mpls-ldp", format: "eve-ng", category: "mpls", desc: "MPLS/LDP: 6x CSR1000v with MPLS forwarding, LDP neighbors, L3VPN PE-CE, and traffic engineering.", nodes: 6, tags: ["eve-ng","mpls","ldp","l3vpn","te"], source_url: "https://github.com/Shadow578/eve-ng-labs/tree/master/mpls-ldp" },
+    { name: "isis-datacenter", format: "eve-ng", category: "isis", desc: "IS-IS spine-leaf datacenter: 2x spine + 4x leaf with IS-IS L2, BFD, and prefix-SID.", nodes: 6, tags: ["eve-ng","isis","datacenter","spine-leaf","bfd"], source_url: "https://github.com/Shadow578/eve-ng-labs/tree/master/isis" },
+
+    // GNS3 Community Topologies
+    { name: "gns3-frr-bgp-mesh", format: "gns3", category: "bgp", desc: "GNS3 Open-Source FRRouting BGP Mesh: Containerized Linux routers running high-speed modern FRR.", nodes: 5, tags: ["gns3","frr","bgp","linux","open-source"], source_url: "https://github.com/danehans/gns3-labs/tree/master/bgp-mesh" },
+    { name: "gns3-spine-leaf", format: "gns3", category: "datacenter", desc: "GNS3 Datacenter Spine-Leaf: Multi-vendor fabric with automated eBGP unnumbered underlay.", nodes: 6, tags: ["gns3","spine-leaf","datacenter","ebgp","automation"], source_url: "https://github.com/danehans/gns3-labs/tree/master/spine-leaf" },
+
+    // Native PNetLab v8 / Hybrid Topologies
+    { name: "ccna-switching", format: "pnetlab-v8", category: "ccna", desc: "CCNA Switching: 6x IOL L2 with STP, VTP, Inter-VLAN, EtherChannel, and HSRP pre-configured.", nodes: 8, tags: ["pnetlab","pnetlab-v8","ccna","switching","stp","vlan","hsrp"], source_url: "https://github.com/JeremyITLab/CCNA-Labs" },
+    { name: "ccna-wan", format: "pnetlab-v8", category: "ccna", desc: "CCNA WAN: PPP, HDLC, Frame Relay, DMVPN phase 1 topology with 4 routers.", nodes: 4, tags: ["pnetlab","pnetlab-v8","ccna","wan","ppp","dmvpn"], source_url: "https://github.com/JeremyITLab/CCNA-Labs" },
+    { name: "bgp-internet-edge", format: "pnetlab-v8", category: "bgp", desc: "Internet edge: 2x ISP routers + 2x CPE with BGP dual-homing, prefix filtering, AS-path prepend.", nodes: 4, tags: ["pnetlab","pnetlab-v8","bgp","internet","edge","filtering"], source_url: "https://github.com/packetpushers/labs" },
+    { name: "ospf-multi-area", format: "pnetlab-v8", category: "ospf", desc: "OSPF multi-area: Areas 0, 1, 2, stub/NSSA, virtual links, redistribution with 6 IOSv routers.", nodes: 6, tags: ["pnetlab","pnetlab-v8","ospf","multiarea","redistribution"], source_url: "https://github.com/CiscoDevNet/cml-community" },
+    { name: "mpls-sr", format: "pnetlab-v8", category: "mpls", desc: "Segment Routing: XRv9k or IOSv SR-MPLS with TI-LFA fast reroute, SID allocation, and SR-TE.", nodes: 4, tags: ["pnetlab","pnetlab-v8","mpls","segment-routing","sr-te","xrv"], source_url: "https://github.com/packetpushers/labs" },
+    { name: "firewall-perimeter", format: "pnetlab-v8", category: "security", desc: "Perimeter security: ASAv + Cisco ISE + 2x edge routers with ZBF, NAT, VPN, and ACLs.", nodes: 5, tags: ["pnetlab","pnetlab-v8","security","asa","firewall","nat","vpn"], source_url: "https://github.com/Shadow578/eve-ng-labs" },
+    { name: "datacenter-vxlan", format: "pnetlab-v8", category: "datacenter", desc: "VXLAN/EVPN BGP: 2x spine + 4x leaf Nexus 9Kv with L2VNI, L3VNI, and VTEP auto-discovery.", nodes: 6, tags: ["pnetlab","pnetlab-v8","vxlan","evpn","bgp","nexus","datacenter"], source_url: "https://github.com/packetpushers/labs" },
+    { name: "ccie-rs-lab1", format: "pnetlab-v8", category: "ccie", desc: "CCIE RS mock lab 1: 8-router topology with OSPF, BGP, MPLS, QoS, and redistribution tasks.", nodes: 8, tags: ["pnetlab","pnetlab-v8","ccie","advanced","mock-lab"], source_url: "https://github.com/Shadow578/eve-ng-labs" },
+    { name: "ipv6-dual-stack", format: "pnetlab-v8", category: "ccna", desc: "IPv6 dual-stack: 4x routers with OSPFv3, BGP4+, RIPng, SLAAC, DHCPv6, and NAT64.", nodes: 4, tags: ["pnetlab","pnetlab-v8","ipv6","ospfv3","bgp","dual-stack"], source_url: "https://github.com/JeremyITLab/CCNA-Labs" }
+  ];
+
+  var allTemplates = DEFAULT_CLIENT_TEMPLATES.slice();
+  var activeFormatFilter = 'all';
+  var activeCategoryFilter = 'all';
+  var activeSearchText = '';
+
+  function applyTemplateFilters() {
+    var filtered = allTemplates.filter(function (t) {
+      // 1. Format filter
+      if (activeFormatFilter !== 'all') {
+        var fmt = (t.format || 'pnetlab-v8').toLowerCase();
+        if (activeFormatFilter === 'cml2' && !fmt.includes('cml')) return false;
+        if (activeFormatFilter === 'eve-ng' && !fmt.includes('eve')) return false;
+        if (activeFormatFilter === 'gns3' && !fmt.includes('gns3')) return false;
+        if (activeFormatFilter === 'pnetlab-v8' && !fmt.includes('pnet')) return false;
+      }
+      // 2. Category filter
+      if (activeCategoryFilter !== 'all') {
+        var cat = (t.category || '').toLowerCase();
+        if (cat !== activeCategoryFilter) return false;
+      }
+      // 3. Search query (tokenized multi-word search)
+      if (activeSearchText) {
+        var hay = (
+          (t.name || '') + ' ' +
+          (t.desc || '') + ' ' +
+          (t.category || '') + ' ' +
+          (t.format || '') + ' ' +
+          (t.source_url || '') + ' ' +
+          (t.tags || []).join(' ')
+        ).toLowerCase();
+        var tokens = activeSearchText.split(/\s+/).filter(Boolean);
+        for (var i = 0; i < tokens.length; i++) {
+          if (!hay.includes(tokens[i])) return false;
+        }
+      }
+      return true;
+    });
+
+    var countBadge = document.getElementById('tmpl-count-badge');
+    if (countBadge) {
+      countBadge.textContent = filtered.length + ' of ' + allTemplates.length + ' Topologies';
+    }
+
+    renderTemplateCards(filtered);
+  }
+
   function loadTemplates() {
-    var target = document.getElementById('tmpl-grid');
-    if (!target) return;
-    target.innerHTML = '<div style="padding:20px;grid-column:1/-1;text-align:center;color:#94a3b8;"><i class="fa fa-spinner fa-spin"></i> Loading template catalog…</div>';
+    renderFormatChips();
+    renderCategoryChips();
+    applyTemplateFilters();
 
     fetch(API_BASE + '/templates')
       .then(function (r) { return r.json(); })
       .then(function (res) {
-        allTemplates = res.templates || [];
+        if (res && res.templates && res.templates.length) {
+          allTemplates = res.templates;
+        }
+        var sInput = document.getElementById('tmpl-search');
+        if (sInput && sInput.value) {
+          activeSearchText = sInput.value.toLowerCase().trim();
+        }
+        renderFormatChips();
         renderCategoryChips();
-        renderTemplateCards(allTemplates);
+        applyTemplateFilters();
       })
       .catch(function () {
-        target.innerHTML = '<div style="padding:20px;color:#ef4444;grid-column:1/-1;">Failed to load template catalog.</div>';
+        renderFormatChips();
+        renderCategoryChips();
+        applyTemplateFilters();
       });
+  }
+
+  function renderFormatChips() {
+    var chipsContainer = document.getElementById('tmpl-format-chips');
+    if (!chipsContainer) return;
+    var formats = [
+      { id: 'all',        name: 'All Formats',               icon: 'fa-cubes',  color: '#38bdf8' },
+      { id: 'cml2',       name: 'CML 2.x (Cisco DevNet)',    icon: 'fa-globe',  color: '#0284c7' },
+      { id: 'eve-ng',     name: 'EVE-NG (Community UNL)',    icon: 'fa-bolt',   color: '#8b5cf6' },
+      { id: 'gns3',       name: 'GNS3 (Open-Source JSON)',   icon: 'fa-flask',  color: '#10b981' },
+      { id: 'pnetlab-v8', name: 'PNetLab Native (v8 XML)',   icon: 'fa-cube',   color: '#f59e0b' }
+    ];
+    var html = '';
+    formats.forEach(function (f) {
+      var isActive = activeFormatFilter === f.id;
+      var style = isActive
+        ? 'background:' + f.color + ';color:#fff;border-color:' + f.color + ';box-shadow:0 0 12px ' + f.color + '40;'
+        : 'background:rgba(255,255,255,0.05);color:#94a3b8;border-color:rgba(255,255,255,0.1);';
+      html += '<button type="button" class="tmpl-fmt-btn" data-fmt="' + f.id + '" style="font-size:11.5px;padding:5px 12px;border-radius:14px;border:1px solid;cursor:pointer;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;transition:all 0.15s ease;' + style + '"><i class="fa ' + f.icon + '"></i> ' + f.name + '</button>';
+    });
+    chipsContainer.innerHTML = html;
+
+    chipsContainer.querySelectorAll('.tmpl-fmt-btn').forEach(function (btn) {
+      btn.onclick = function () {
+        activeFormatFilter = btn.dataset.fmt;
+        renderFormatChips();
+        applyTemplateFilters();
+      };
+    });
   }
 
   function renderCategoryChips() {
@@ -1014,32 +1208,20 @@
     if (!chipsContainer) return;
     var categories = ['all', 'ccna', 'bgp', 'mpls', 'isis', 'sdwan', 'datacenter', 'security', 'ccie'];
     var html = '';
-    categories.forEach(function (cat, i) {
-      var activeStyle = i === 0 
+    categories.forEach(function (cat) {
+      var isActive = activeCategoryFilter === cat;
+      var style = isActive 
         ? 'background:#3b82f6;color:#fff;border-color:#3b82f6;' 
         : 'background:rgba(255,255,255,0.05);color:#94a3b8;border-color:rgba(255,255,255,0.1);';
-      html += '<button type="button" class="tmpl-cat-btn" data-cat="' + cat + '" style="font-size:11.5px;padding:4px 10px;border-radius:14px;border:1px solid;cursor:pointer;text-transform:uppercase;font-weight:600;white-space:nowrap;' + activeStyle + '">' + cat + '</button>';
+      html += '<button type="button" class="tmpl-cat-btn" data-cat="' + cat + '" style="font-size:11px;padding:3px 10px;border-radius:12px;border:1px solid;cursor:pointer;text-transform:uppercase;font-weight:600;white-space:nowrap;transition:all 0.15s ease;' + style + '">' + (cat === 'all' ? 'All Tracks' : cat) + '</button>';
     });
     chipsContainer.innerHTML = html;
 
     chipsContainer.querySelectorAll('.tmpl-cat-btn').forEach(function (btn) {
       btn.onclick = function () {
-        var cat = btn.dataset.cat;
-        chipsContainer.querySelectorAll('.tmpl-cat-btn').forEach(function (b) {
-          b.style.background = 'rgba(255,255,255,0.05)';
-          b.style.color = '#94a3b8';
-          b.style.borderColor = 'rgba(255,255,255,0.1)';
-        });
-        btn.style.background = '#3b82f6';
-        btn.style.color = '#fff';
-        btn.style.borderColor = '#3b82f6';
-
-        if (cat === 'all') {
-          renderTemplateCards(allTemplates);
-        } else {
-          var filtered = allTemplates.filter(function (t) { return (t.category || '').toLowerCase() === cat; });
-          renderTemplateCards(filtered);
-        }
+        activeCategoryFilter = btn.dataset.cat;
+        renderCategoryChips();
+        applyTemplateFilters();
       };
     });
   }
@@ -1048,7 +1230,12 @@
     var target = document.getElementById('tmpl-grid');
     if (!target) return;
     if (!list.length) {
-      target.innerHTML = '<div style="padding:30px;color:#64748b;grid-column:1/-1;text-align:center;">No templates match the selected filter.</div>';
+      target.innerHTML = '<div style="padding:40px;color:#64748b;grid-column:1/-1;text-align:center;background:rgba(0,0,0,0.2);border-radius:10px;border:1px dashed rgba(255,255,255,0.1);">' +
+        '<i class="fa fa-info-circle" style="font-size:24px;color:#38bdf8;margin-bottom:8px;display:block;"></i>' +
+        '<div style="font-weight:600;font-size:14px;color:#f1f5f9;margin-bottom:4px;">No topologies match the active search or format filter</div>' +
+        '<div style="font-size:12px;color:#94a3b8;margin-bottom:12px;">Try adjusting your keyword query, choosing "All Formats", or resetting filters.</div>' +
+        '<button type="button" class="btn btn-ghost btn-sm" onclick="window.__azClearTemplateFilters()" style="color:#38bdf8;border:1px solid rgba(56,189,248,0.3);"><i class="fa fa-refresh"></i> Reset All Filters</button>' +
+      '</div>';
       return;
     }
     var html = '';
@@ -1060,6 +1247,16 @@
       else if (t.category === 'security') catColor = '#10b981';
       else if (t.category === 'datacenter') catColor = '#f59e0b';
 
+      var fmt = (t.format || 'pnetlab-v8').toLowerCase();
+      var fmtBadge = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.35);"><i class="fa fa-cube"></i> PNetLab v8</span>';
+      if (fmt.includes('cml')) {
+        fmtBadge = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(14,165,233,0.15);color:#0ea5e9;border:1px solid rgba(14,165,233,0.35);"><i class="fa fa-globe"></i> CML 2.x YAML</span>';
+      } else if (fmt.includes('eve')) {
+        fmtBadge = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(139,92,246,0.15);color:#a78bfa;border:1px solid rgba(139,92,246,0.35);"><i class="fa fa-bolt"></i> EVE-NG UNL</span>';
+      } else if (fmt.includes('gns3')) {
+        fmtBadge = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.35);"><i class="fa fa-flask"></i> GNS3 JSON</span>';
+      }
+
       var tagsHtml = (t.tags || []).map(function(tag) {
         return '<span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,0.06);color:#94a3b8;">#' + tag + '</span>';
       }).join(' ');
@@ -1068,9 +1265,12 @@
 
       html += '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;transition:transform 0.15s ease, border-color 0.15s ease;" onmouseenter="this.style.borderColor=\'' + catColor + '\'" onmouseleave="this.style.borderColor=\'var(--pnq-border,rgba(255,255,255,0.08))\'">' +
         '<div>' +
-          '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px;flex-wrap:wrap;">' +
             '<div style="font-weight:700;font-size:15px;color:#f1f5f9;">' + t.name + '</div>' +
-            '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:12px;background:' + catColor + '20;color:' + catColor + ';border:1px solid ' + catColor + '40;text-transform:uppercase;">' + t.category + '</span>' +
+            '<div style="display:flex;gap:4px;align-items:center;">' +
+              fmtBadge +
+              '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:' + catColor + '20;color:' + catColor + ';border:1px solid ' + catColor + '40;text-transform:uppercase;">' + t.category + '</span>' +
+            '</div>' +
           '</div>' +
           '<div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;flex-wrap:wrap;">' +
             '<span style="font-size:11px;color:#38bdf8;font-weight:600;"><i class="fa fa-cubes"></i> ' + (t.nodes || 4) + ' Nodes</span>' +
@@ -1082,9 +1282,12 @@
         '</div>' +
         '<div>' +
           '<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px;">' + tagsHtml + '</div>' +
-          '<div style="display:flex;gap:6px;">' +
+          '<div style="display:flex;gap:6px;align-items:center;">' +
             '<button type="button" class="btn btn-primary btn-sm" style="flex:1;background:linear-gradient(135deg,' + catColor + ',#2563eb);border:none;color:#fff;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;" onclick="window.__azDeployTemplate(\'' + t.name + '\', this)">' +
               '<i class="fa fa-cloud-download"></i> Deploy & Auto-Fix' +
+            '</button>' +
+            '<button type="button" class="btn btn-ghost btn-sm" style="font-size:11.5px;padding:6px 10px;color:#10b981;border:1px solid rgba(16,185,129,0.3);border-radius:6px;" title="Run in-place schema repair for this lab" onclick="window.__azFixSingleTemplate(\'' + t.name + '\', this)">' +
+              '<i class="fa fa-wrench"></i> Fix' +
             '</button>' +
             '<a href="' + srcUrl + '" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm" style="font-size:11px;padding:6px 10px;color:#94a3b8;border:1px solid rgba(255,255,255,0.1);border-radius:6px;display:inline-flex;align-items:center;text-decoration:none;" title="Open original repository in new tab"><i class="fa fa-github"></i></a>' +
           '</div>' +
@@ -1094,9 +1297,27 @@
     target.innerHTML = html;
   }
 
+  window.__azClearTemplateFilters = function () {
+    activeFormatFilter = 'all';
+    activeCategoryFilter = 'all';
+    activeSearchText = '';
+    var sInput = document.getElementById('tmpl-search');
+    if (sInput) sInput.value = '';
+    var sBtn = document.getElementById('btn-tmpl-search-clear');
+    if (sBtn) sBtn.style.display = 'none';
+    renderFormatChips();
+    renderCategoryChips();
+    applyTemplateFilters();
+  };
+
   window.__azDeployTemplate = function(name, btn) {
-    if (!confirm('Deploy template lab "' + name + '" to your PNetLab repository?\n\nThis creates the topology in /opt/unetlab/labs/Azam-Templates/')) return;
+    if (!confirm('Deploy & auto-convert template lab "' + name + '" to your PNetLab repository?\n\nThis automatically converts links, fixes hypervisor device types, injects base configs, and builds the HTML workbook.')) return;
     runTool('templates-deploy', { template: name }, btn, 'term-templates');
+  };
+
+  window.__azFixSingleTemplate = function(name, btn) {
+    var path = '/opt/unetlab/labs/Azam-Templates/' + name + '.unl';
+    runTool('templates-fix', { file: path }, btn, 'term-templates');
   };
 
   /* ── Perf Loader ────────────────────────────────────────── */

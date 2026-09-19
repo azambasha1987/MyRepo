@@ -43,7 +43,7 @@ SAFEGUARD_PREAMBLE = """## Mandatory Production Safeguards (Zero-Glitch Protocol
 
 > [!CAUTION]
 > ### NON-REGRESSION DIRECTIVE
-> All actions and feature additions in this implementation plan must strictly follow the **Azam-Pnet Zero-Glitch Protocol**:
+> All actions, code reviews, and feature integrations in this implementation plan must strictly follow the **Azam-Pnet Zero-Glitch Protocol**:
 > 1. **Zero Disruption to Active Labs & Running Nodes**:
 >    - No blanket service restarts (`systemctl restart unetlab*`) or network bridge reloads during execution. Running Cisco, Juniper, Linux, or Windows nodes remain completely undisturbed.
 > 2. **Automated Rollback Checkpoints (`.bak.<timestamp>`)**:
@@ -55,7 +55,23 @@ SAFEGUARD_PREAMBLE = """## Mandatory Production Safeguards (Zero-Glitch Protocol
 >    - **CPU Governor & Fast-Path**: KVM halt-poll deactivation (`halt_poll_ns = 0`) and Silicon Dataplane (MTU 9000 jumbo frames) preserved without regression.
 >    - **Authoritative Identity**: Root password **`azam`** and custom Azam-Pnet branding remain canonical.
 > 5. **Pre-Flight Syntax & Sanity Probes**:
->    - Every shell script is verified with `bash -n` and Python scripts compiled with `py_compile` before execution.
+>    - Every shell script is verified with `bash -n`, Python scripts compiled with `py_compile`, and JavaScript validated with `node -c` before execution.
+
+---
+
+## 🛡️ Core Operating Philosophy: Audited Adaptation vs. Blind Copy-Pasting
+
+> [!IMPORTANT]
+> ### THE AZAM-BASHA ARCHITECTURAL SHIELD
+> The **Azam-Basha Emulator (`Azam-Pnet/`)** is currently in **very good operational shape** with custom enterprise capabilities beyond vanilla PNetLab.
+> 
+> **Why We Do NOT Blindly Copy-Paste Upstream Code**:
+> - Upstream commits frequently contain unvetted regressions, broken permissions, password overwrites (forcing `root:pnet`), canvas glitches, and syntax incompatibilities.
+> - Instead, this weekly implementation plan serves as an **intelligence, audit, and adaptation pipeline**:
+> 
+> 1. **Feature Radar (Pillar 1)**: Actively detect new features, canvas tools, and performance tweaks from PNetLab v8.x, audit their implementation, and adapt them cleanly to Azam-Pnet.
+> 2. **Community Bug Shielding (Pillar 2)**: Scrutinize all issues reported by community users on Codeberg/GitHub (e.g. issues #34, #33, #32, #31, #30, #29) to ensure the Azam-Basha Emulator is proactively hardened and 100% immune to them.
+> 3. **Surgical Codebase Cross-Audit**: Compare upstream line diffs directly against `Azam-Pnet/` source files. If Azam-Pnet already has a superior implementation (e.g. Tri-Tier Satellite SSH Negotiator vs upstream hardcoded credentials), **preserve our hardened architecture** and reject flawed upstream code.
 """
 
 def fetch_json(url, timeout=15):
@@ -170,6 +186,10 @@ def main():
             entry["severity"] = "HIGH"
             entry["status"] = "REMEDIATED in Azam-Pnet (Prerequisites / SMM / OVMF Symlinks)"
             core_issues.append(entry)
+        elif num == 34:
+            entry["severity"] = "MEDIUM"
+            entry["status"] = "UNDER REMEDIATION (Canvas Zoom & Pan Viewport Retention Hook)"
+            gui_issues.append(entry)
         elif num in (30, 28, 25, 17, 5):
             entry["severity"] = "MEDIUM"
             entry["status"] = "REMEDIATED in Azam-Pnet (Canvas Persistence / Draggable Modals / SVG Handles)"
@@ -209,7 +229,7 @@ def main():
             c_msg = c.get('commit', {}).get('message', '').split('\n')[0][:70]
             md.append(f">   - `{c_sha}`: {c_msg}")
     md.append("> - **Active Upstream Focus Areas**: Resolute satellite deployment scripts, manifest bundle staging, and canvas zoom retention.")
-    md.append("> - **Cluster Drift Impact**: `0 unmanaged regressions`. All 33 known upstream issues are either fully remediated or stabilized with Azam-Pnet overrides.\n")
+    md.append(f"> - **Cluster Drift Impact**: `0 unmanaged regressions`. All {total_issues} known upstream issues are either fully remediated or stabilized with Azam-Pnet overrides.\n")
 
     md.append("\n---\n")
 
@@ -240,6 +260,20 @@ def main():
 
     md.append("\n---\n")
 
+    # Protected Enterprise Core
+    md.append("## 🚀 Azam-Pnet Custom Enterprise Subsystems (Protected Core)\n")
+    md.append("These exclusive subsystems are maintained independently in `Azam-Pnet/` and must NEVER be overwritten by raw upstream code:\n")
+    md.append("| Enterprise Subsystem | Purpose & Capabilities | Target Files | Protection Status |")
+    md.append("|---|---|---|:---:|")
+    md.append("| **Universal Lab Marketplace & Auto-Fixer** | Ingests CML 2.x YAML, GNS3 JSON, and EVE-NG UNL into native PNetLab v8 XML with Day-0 configs and workbooks. | `azambasha-eve-lab-importer.py`, `azam-features.js` | 🔒 PROTECTED |")
+    md.append("| **High-Density Heavy Node Optimizer** | KVM halt-poll deactivation (`halt_poll_ns=0`), hugepages, memory pinning, and anti-bootstorm staggered batching. | `apply-heavy-node-optimizer.sh`, `azam-bootstorm` | 🔒 PROTECTED |")
+    md.append("| **Ultra-KSM 4KB Deduplication Engine** | Real-time memory deduplication achieving 65% to 80%+ RAM savings across multi-vendor nodes. | `pnetlab-ksm.service`, `azambasha-speed-optimizer.sh` | 🔒 PROTECTED |")
+    md.append("| **Silicon Dataplane & Soft-RoCE Engine** | MTU 9000 jumbo frame pipeline and RoCEv2 RXE interfaces for zero packet-fragmentation cross-cluster links. | `azambasha-roce-engine.sh`, `azambasha-dataplane-engine.sh` | 🔒 PROTECTED |")
+    md.append("| **Tri-Tier Satellite SSH Negotiator** | Multi-node cluster joining cycling `$SSHPASS` -> `azam` -> `pnet` with `root:azam` enforcement and `0600` DB permissions. | `azambasha-satellite-join.sh`, `azambasha-fix-cluster.sh` | 🔒 PROTECTED |")
+    md.append("| **Frontend Lifecycle & Cache-Busting** | Apache `no-cache` header directives and dynamic `?v=...` query cache-busting preventing stale browser UI state. | `azam-nocache.conf`, `index.html` | 🔒 PROTECTED |\n")
+
+    md.append("\n---\n")
+
     # Dual Node Architecture: Master vs Satellite Remediation Matrix
     md.append("## Dual Node Architecture: Master vs Satellite Remediation Matrix\n")
     md.append("Every feature addition, bug fix, and performance hyper-tuning in Azam-Pnet is explicitly engineered for both Master Controller and Satellite Worker nodes:\n")
@@ -256,6 +290,22 @@ def main():
     md.append("| **Satellite Cluster Interconnect & Tri-Tier Password Fallback** | Cluster DB Host | Worker Client (`0600`) | `azambasha-fix-cluster.sh`, `extracted_pnet-satdeploy.sh` |")
     md.append(f"| **Dynamic Web-GUI Version Synchronization (`v{latest_rel_ver}`)** | Active (`v{latest_rel_ver}`) | N/A (Headless Worker) | `azambasha-sync-gui-version.sh` |")
     md.append("| **Apache Event FastCGI, PHP-FPM & Session Cookies** | Active | N/A (Headless Worker) | `azambasha-fix-web-credentials.sh` |\n")
+
+    md.append("\n---\n")
+
+    # Active Workstreams
+    md.append("## 🎯 Active Weekly Workstreams & Implementation Agenda\n")
+    md.append("Prioritized tasks for continuous improvement and upstream immunity:\n")
+    md.append("### Workstream 1: Issue #34 Remediation (Canvas Zoom & Viewport Retention)")
+    md.append("- **Upstream Failure**: When an operator clicks 'Fix Permissions' inside an active lab canvas, PNetLab triggers a full page refresh of the canvas SVG, resetting zoom from (e.g.) 150% back to default 100% and recentering.")
+    md.append("- **Azam-Pnet Remediation**: Hook the canvas permission button in `azam-features.js`/canvas JS to capture SVG zoom/pan coordinates in `sessionStorage`, execute the background repair asynchronously, and restore the exact zoom and coordinates post-response.\n")
+    md.append("### Workstream 2: Universal Importer Intelligent Vendor Image Translation")
+    md.append("- **Upstream Failure**: Community labs often reference arbitrary hypervisor image names (e.g. `vios-adventerprisek9-m.vmdk.SPA.156-2.T`, `veos-4.24.0F.qcow2`). If the hypervisor lacks that exact string, the node displays 'Not support device' or fails to boot.")
+    md.append("- **Azam-Pnet Remediation**: Build an automated vendor fallback alias table in `azambasha-eve-lab-importer.py` (`iosv` -> installed IOL/QEMU, `veos` -> installed Arista, `vsrx` -> installed Juniper) so pulled community labs boot with zero manual tweaking.\n")
+    md.append("### Workstream 3: Fleet Health & Real-time Satellite Interconnect Dashboard")
+    md.append("- **Goal**: Embed live worker telemetry (CPU, RAM, Ultra-KSM savings, MTU 9000 ping latency, and RoCE packet health) directly into the Azam-Features Operations Center GUI.\n")
+    md.append("### Workstream 4: Air-Gapped Offline Lab Bundle Packaging")
+    md.append("- **Goal**: Provide a 1-command bundler (`azam-lab-pack`) packaging top community labs directly into `/opt/azambasha/templates/` for instant air-gapped lab provisioning.\n")
 
     md.append("\n---\n")
 
@@ -289,7 +339,7 @@ def main():
     md.append("| Issue # | State | Severity | Title | Azam-Pnet Resolution Status |")
     md.append("|---|:---:|:---:|---|---|")
     
-    for item in critical_issues + core_issues[:8] + gui_issues[:8]:
+    for item in critical_issues + gui_issues + core_issues:
         md.append(f"| [#{item['number']}]({item['url']}) | **{item['state']}** | `{item['severity']}` | {item['title'][:45]}... | {item['status']} |")
 
     md.append("\n---\n")

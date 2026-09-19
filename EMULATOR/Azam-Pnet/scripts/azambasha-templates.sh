@@ -24,7 +24,7 @@ RESET="\033[0m"
 
 CATALOG_DIR="/opt/azambasha/templates"
 LABS_DIR="/opt/unetlab/labs"
-API_HOST="${AZAM_HOST:-192.168.1.23}"
+API_HOST="${AZAM_HOST:-127.0.0.1}"
 
 MODE="${1:-}"
 

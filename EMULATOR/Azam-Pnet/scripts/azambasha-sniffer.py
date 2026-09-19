@@ -15,10 +15,21 @@ import json
 import time
 import socket
 import struct
+import signal
 import argparse
 import subprocess
 
 CAPTURE_DIR = "/opt/azambasha/captures"
+stop_requested = False
+
+
+def handle_stop(signum, frame):
+    global stop_requested
+    stop_requested = True
+
+
+signal.signal(signal.SIGINT, handle_stop)
+signal.signal(signal.SIGTERM, handle_stop)
 
 
 def ensure_capture_dir():
@@ -128,8 +139,9 @@ def write_pcap_packet(f, raw_data):
     f.write(raw_data)
 
 
-def capture_stream(interface="eth0", count=20, pcap_out=None, timeout_sec=10):
+def capture_stream(interface="eth0", count=20, pcap_out=None, timeout_sec=10, continuous=False):
     """Capture raw packets and stream dissected lines."""
+    global stop_requested
     ensure_capture_dir()
     if not pcap_out:
         ts = time.strftime("%Y%m%d_%H%M%S")
@@ -137,6 +149,7 @@ def capture_stream(interface="eth0", count=20, pcap_out=None, timeout_sec=10):
 
     pcap_file = open(pcap_out, "wb")
     write_pcap_header(pcap_file)
+    pcap_file.flush()
 
     captured = 0
     start_time = time.time()
@@ -145,15 +158,18 @@ def capture_stream(interface="eth0", count=20, pcap_out=None, timeout_sec=10):
     try:
         sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW, socket.ntohs(3))
         sock.bind((interface, 0))
-        sock.settimeout(2.0)
+        sock.settimeout(0.5)
 
-        while captured < count:
-            if time.time() - start_time > timeout_sec:
-                print(f"\n[*] Capture timeout ({timeout_sec}s reached). Processed {captured} packets.")
+        while not stop_requested:
+            if not continuous and captured >= count:
+                break
+            if not continuous and timeout_sec > 0 and (time.time() - start_time > timeout_sec):
+                print(f"\n[*] Capture timeout ({timeout_sec}s reached). Processed {captured} packets.", flush=True)
                 break
             try:
                 raw_data, _ = sock.recvfrom(65535)
                 write_pcap_packet(pcap_file, raw_data)
+                pcap_file.flush()
                 parsed = parse_packet(raw_data)
                 if parsed:
                     captured += 1
@@ -163,27 +179,44 @@ def capture_stream(interface="eth0", count=20, pcap_out=None, timeout_sec=10):
                     elif parsed["protocol"] == "ICMP": proto_color = "\033[35m"
                     reset_color = "\033[0m"
 
-                    print(f"[{parsed['timestamp']}] {parsed['src']:<20} -> {parsed['dst']:<20} | {proto_color}{parsed['protocol']:<6}{reset_color} ({parsed['length']}B) {parsed['info']}")
+                    print(f"[{parsed['timestamp']}] {parsed['src']:<20} -> {parsed['dst']:<20} | {proto_color}{parsed['protocol']:<6}{reset_color} ({parsed['length']}B) {parsed['info']}", flush=True)
             except socket.timeout:
                 continue
         sock.close()
     except Exception as e:
-        print(f"[!] Raw socket capture failed ({e}). Falling back to simulated network trace...")
-        # Synthetic packet demo for testing
-        mock_packets = [
-            {"timestamp": time.strftime("%H:%M:%S.102"), "src": "192.168.1.23", "dst": "224.0.0.5", "protocol": "OSPF", "length": 82, "info": "Hello Packet, Area 0.0.0.0, Priority 1, Hello Interval 10"},
-            {"timestamp": time.strftime("%H:%M:%S.145"), "src": "192.168.1.22", "dst": "224.0.0.5", "protocol": "OSPF", "length": 82, "info": "Hello Packet, Area 0.0.0.0, Adjacency ACK"},
-            {"timestamp": time.strftime("%H:%M:%S.210"), "src": "192.168.1.23", "dst": "192.168.1.22", "protocol": "BGP", "length": 94, "info": "KEEPALIVE Message"},
-            {"timestamp": time.strftime("%H:%M:%S.280"), "src": "192.168.1.22", "dst": "192.168.1.23", "protocol": "BGP", "length": 94, "info": "KEEPALIVE Message"},
-            {"timestamp": time.strftime("%H:%M:%S.330"), "src": "192.168.1.23", "dst": "192.168.1.1", "protocol": "ICMP", "length": 98, "info": "Echo (Ping) Request id=0x1234, seq=1"}
-        ]
-        for p in mock_packets:
-            print(f"[{p['timestamp']}] {p['src']:<20} -> {p['dst']:<20} | \033[32m{p['protocol']:<6}\033[0m ({p['length']}B) {p['info']}")
-            time.sleep(0.3)
+        if not stop_requested:
+            print(f"[!] Raw socket capture failed ({e}). Falling back to simulated network trace...", flush=True)
+            mock_templates = [
+                {"src": "192.168.1.23", "dst": "224.0.0.5", "protocol": "OSPF", "length": 82, "info": "Hello Packet, Area 0.0.0.0, Priority 1, Hello Interval 10"},
+                {"src": "192.168.1.22", "dst": "224.0.0.5", "protocol": "OSPF", "length": 82, "info": "Hello Packet, Area 0.0.0.0, Adjacency ACK"},
+                {"src": "192.168.1.23", "dst": "192.168.1.22", "protocol": "BGP", "length": 94, "info": "KEEPALIVE Message"},
+                {"src": "192.168.1.22", "dst": "192.168.1.23", "protocol": "BGP", "length": 94, "info": "KEEPALIVE Message"},
+                {"src": "192.168.1.23", "dst": "192.168.1.1", "protocol": "ICMP", "length": 98, "info": "Echo (Ping) Request id=0x1234, seq=1"}
+            ]
+            idx = 0
+            while not stop_requested:
+                if not continuous and captured >= count:
+                    break
+                p = mock_templates[idx % len(mock_templates)]
+                idx += 1
+                captured += 1
+                ts_str = time.strftime("%H:%M:%S.") + f"{int(time.time()*1000)%1000:03d}"
+                proto_color = "\033[32m" if p["protocol"] in ("OSPF", "BGP") else "\033[35m"
+                reset_color = "\033[0m"
+                print(f"[{ts_str}] {p['src']:<20} -> {p['dst']:<20} | {proto_color}{p['protocol']:<6}{reset_color} ({p['length']}B) {p['info']}", flush=True)
+                for _ in range(6):
+                    if stop_requested:
+                        break
+                    time.sleep(0.1)
     finally:
-        pcap_file.close()
+        try:
+            pcap_file.flush()
+            pcap_file.close()
+        except Exception:
+            pass
 
-    print(f"\n[✔] Capture complete: {captured} packets captured. File saved: {pcap_out}")
+    action_text = "stopped" if stop_requested else "complete"
+    print(f"\n[✔] Capture {action_text}: {captured} packets captured. File saved: {pcap_out}", flush=True)
 
 
 def main():
@@ -191,6 +224,7 @@ def main():
     parser.add_argument("-i", "--interface", type=str, default="eth0", help="Interface name (e.g. eth0, pnet0)")
     parser.add_argument("-c", "--count", type=int, default=20, help="Number of packets to capture (default 20)")
     parser.add_argument("-t", "--timeout", type=int, default=10, help="Capture timeout in seconds (default 10)")
+    parser.add_argument("--continuous", action="store_true", help="Capture continuously until stopped via SIGINT/SIGTERM")
     parser.add_argument("--pcap", type=str, help="Output PCAP file path")
     parser.add_argument("--interfaces", action="store_true", help="List available capture interfaces")
     parser.add_argument("--json", action="store_true", help="Output in JSON format")
@@ -206,8 +240,10 @@ def main():
                 print(f"  • {i['interface'].ljust(15)} ({i['status']})")
         return
 
-    capture_stream(args.interface, args.count, args.pcap, args.timeout)
+    continuous_mode = args.continuous or (args.count <= 0)
+    capture_stream(args.interface, args.count, args.pcap, args.timeout, continuous=continuous_mode)
 
 
 if __name__ == "__main__":
     main()
+

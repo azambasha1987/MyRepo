@@ -318,12 +318,13 @@
               '<div style="width:38px;height:38px;border-radius:8px;background:rgba(56,189,248,0.15);color:#38bdf8;display:flex;align-items:center;justify-content:center;font-size:17px;"><i class="fa fa-rss"></i></div>' +
               '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">In-Browser Web Wireshark & Protocol Dissector</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Capture and dissect live packets on physical or virtual bridge interfaces</div></div>' +
             '</div>' +
-            '<div style="display:flex;gap:10px;align-items:center;">' +
+            '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">' +
               '<select id="sniff-iface" style="padding:7px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:12.5px;">' +
                 '<option value="eth0">eth0 (Management)</option>' +
                 '<option value="pnet0">pnet0 (Bridge)</option>' +
               '</select>' +
-              '<button type="button" id="btn-start-sniff" class="btn btn-primary"><i class="fa fa-play"></i> Start Live Capture</button>' +
+              '<button type="button" id="btn-start-sniff" class="btn btn-primary" style="background:#0284c7;border-color:#0284c7;color:#fff;font-weight:600;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-play"></i> Start Live Capture</button>' +
+              '<button type="button" id="btn-stop-sniff" class="btn btn-danger" style="background:#ef4444;border-color:#ef4444;color:#fff;font-weight:600;display:inline-flex;align-items:center;gap:6px;opacity:0.4;cursor:not-allowed;" disabled><i class="fa fa-stop"></i> Stop Capture</button>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -670,12 +671,200 @@
       };
     }
 
-    // Sniffer Start
-    var btnSniff = container.querySelector('#btn-start-sniff');
-    if (btnSniff) {
-      btnSniff.onclick = function () {
-        var iface = document.getElementById('sniff-iface').value;
-        runTool('sniffer-capture', { interface: iface, count: 15 }, btnSniff, 'term-sniffer');
+    // ── Sniffer Controller (Continuous Live Capture with Start & Stop) ──
+    var btnStartSniff = container.querySelector('#btn-start-sniff');
+    var btnStopSniff = container.querySelector('#btn-stop-sniff');
+    var ifaceSelect = container.querySelector('#sniff-iface');
+    var activeSniffAbort = null;
+    var isSniffing = false;
+
+    // Dynamically load available interfaces if possible
+    fetch(API_BASE + '/sniffer/interfaces')
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (data && data.interfaces && data.interfaces.length > 0 && ifaceSelect) {
+          var currentVal = ifaceSelect.value;
+          ifaceSelect.innerHTML = '';
+          data.interfaces.forEach(function (item) {
+            var opt = document.createElement('option');
+            opt.value = item.interface;
+            opt.textContent = item.interface + (item.status ? ' (' + item.status + ')' : '');
+            ifaceSelect.appendChild(opt);
+          });
+          if (currentVal) ifaceSelect.value = currentVal;
+        }
+      })
+      .catch(function () {});
+
+    function setSnifferState(capturing) {
+      isSniffing = capturing;
+      if (capturing) {
+        if (btnStartSniff) {
+          btnStartSniff.disabled = true;
+          btnStartSniff.style.opacity = '0.65';
+          btnStartSniff.innerHTML = '<i class="fa fa-circle" style="color:#22c55e;"></i> Capturing...';
+        }
+        if (btnStopSniff) {
+          btnStopSniff.disabled = false;
+          btnStopSniff.style.opacity = '1';
+          btnStopSniff.style.cursor = 'pointer';
+          btnStopSniff.innerHTML = '<i class="fa fa-stop"></i> Stop Capture';
+        }
+        if (ifaceSelect) ifaceSelect.disabled = true;
+      } else {
+        if (btnStartSniff) {
+          btnStartSniff.disabled = false;
+          btnStartSniff.style.opacity = '1';
+          btnStartSniff.innerHTML = '<i class="fa fa-play"></i> Start Live Capture';
+        }
+        if (btnStopSniff) {
+          btnStopSniff.disabled = true;
+          btnStopSniff.style.opacity = '0.4';
+          btnStopSniff.style.cursor = 'not-allowed';
+          btnStopSniff.innerHTML = '<i class="fa fa-stop"></i> Stop Capture';
+        }
+        if (ifaceSelect) ifaceSelect.disabled = false;
+      }
+    }
+
+    if (btnStartSniff) {
+      btnStartSniff.onclick = function () {
+        if (isSniffing) return;
+        var iface = ifaceSelect ? ifaceSelect.value : 'eth0';
+        var term = document.getElementById('term-sniffer');
+        if (!term) return;
+
+        setSnifferState(true);
+        term.style.display = 'block';
+        term.innerHTML = 
+          '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08);flex-wrap:wrap;gap:8px;">' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+              '<div style="display:flex;gap:6px;">' +
+                '<span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;"></span>' +
+                '<span style="width:10px;height:10px;border-radius:50%;background:#eab308;display:inline-block;"></span>' +
+                '<span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;"></span>' +
+              '</div>' +
+              '<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);padding:2px 8px;border-radius:12px;font-size:11px;color:#4ade80;font-weight:600;"><i class="fa fa-circle" style="font-size:8px;"></i> LIVE CAPTURE</span>' +
+              '<span style="font-size:11px;color:#94a3b8;font-family:monospace;">iface: <b>' + iface + '</b></span>' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:12px;">' +
+              '<span id="sniff-pkt-badge" style="font-size:11.5px;color:#38bdf8;font-family:monospace;font-weight:600;">0 packets captured</span>' +
+              '<span id="sniff-pcap-link"></span>' +
+            '</div>' +
+          '</div>' +
+          '<div id="term-sniffer-lines" style="display:flex;flex-direction:column;gap:2px;"></div>';
+
+        var linesContainer = document.getElementById('term-sniffer-lines');
+        var pktBadge = document.getElementById('sniff-pkt-badge');
+        var pcapSlot = document.getElementById('sniff-pcap-link');
+        var packetCount = 0;
+        var savedPcapFile = null;
+
+        activeSniffAbort = new AbortController();
+
+        fetch(API_BASE + '/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tool: 'sniffer-capture',
+            params: { interface: iface, continuous: true }
+          }),
+          signal: activeSniffAbort.signal
+        }).then(function (res) {
+          if (!res.body) throw new Error('No response body stream');
+          var reader = res.body.getReader();
+          var decoder = new TextDecoder();
+          var buf = '';
+
+          function pump() {
+            reader.read().then(function (r) {
+              if (r.done) {
+                setSnifferState(false);
+                return;
+              }
+              buf += decoder.decode(r.value, { stream: true });
+              var lines = buf.split('\n');
+              buf = lines.pop();
+
+              lines.forEach(function (line) {
+                if (!line.startsWith('data:')) return;
+                try {
+                  var obj = JSON.parse(line.slice(5).trim());
+                  if (obj.type === 'line') {
+                    var txt = stripAnsi(obj.data);
+                    if (!txt.trim()) return;
+
+                    if (txt.includes(' -> ') && (txt.includes('TCP') || txt.includes('UDP') || txt.includes('OSPF') || txt.includes('BGP') || txt.includes('ICMP') || txt.includes('ARP') || txt.includes('ETH'))) {
+                      packetCount++;
+                      if (pktBadge) pktBadge.textContent = packetCount + ' packets captured';
+                    }
+
+                    if (txt.includes('File saved:')) {
+                      var m = txt.match(/File saved:\s*(\S+\.pcap)/i);
+                      if (m && m[1]) {
+                        savedPcapFile = m[1].split('/').pop();
+                        if (pcapSlot) {
+                          pcapSlot.innerHTML = '<a href="' + API_BASE + '/sniffer/download?file=' + encodeURIComponent(savedPcapFile) + '" target="_blank" download class="btn btn-xs btn-success" style="background:#10b981;border:none;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;"><i class="fa fa-download"></i> Download PCAP</a>';
+                        }
+                      }
+                    }
+
+                    if (linesContainer) {
+                      var row = document.createElement('div');
+                      row.style.cssText = 'white-space:pre-wrap;word-break:break-all;line-height:1.45;color:' + getLineColor(txt) + ';';
+                      row.textContent = txt;
+                      linesContainer.appendChild(row);
+                      term.scrollTop = term.scrollHeight;
+                    }
+                  } else if (obj.type === 'done') {
+                    var doneRow = document.createElement('div');
+                    doneRow.style.cssText = 'border-top:1px solid rgba(255,255,255,0.08);margin-top:8px;padding-top:6px;font-size:11px;color:#64748b;';
+                    doneRow.textContent = '── Capture stopped (status ' + obj.code + ') ──';
+                    if (linesContainer) linesContainer.appendChild(doneRow);
+                    term.scrollTop = term.scrollHeight;
+                    setSnifferState(false);
+                    App.toast('✔ Packet capture stopped successfully', 'ok');
+                  }
+                } catch (e) {}
+              });
+              pump();
+            }).catch(function (err) {
+              setSnifferState(false);
+            });
+          }
+          pump();
+        }).catch(function (err) {
+          setSnifferState(false);
+          if (linesContainer) {
+            var errDiv = document.createElement('div');
+            errDiv.style.color = '#f87171';
+            errDiv.textContent = 'Capture error: ' + err.message;
+            linesContainer.appendChild(errDiv);
+          }
+        });
+      };
+    }
+
+    if (btnStopSniff) {
+      btnStopSniff.onclick = function () {
+        if (!isSniffing) return;
+        btnStopSniff.disabled = true;
+        btnStopSniff.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Stopping...';
+
+        fetch(API_BASE + '/sniffer/stop', { method: 'POST' })
+          .then(function (r) { return r.json(); })
+          .then(function () {
+            setTimeout(function () {
+              if (isSniffing) {
+                setSnifferState(false);
+                if (activeSniffAbort) activeSniffAbort.abort();
+              }
+            }, 2500);
+          })
+          .catch(function () {
+            setSnifferState(false);
+            if (activeSniffAbort) activeSniffAbort.abort();
+          });
       };
     }
 

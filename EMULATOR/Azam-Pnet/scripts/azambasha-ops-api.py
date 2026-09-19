@@ -81,6 +81,7 @@ COMMANDS = {
 
     # Web Wireshark Sniffer
     "sniffer-capture":    None,
+    "sniffer-stop":       None,
     "sniffer-interfaces": ["python3", "/opt/azambasha/scripts/azambasha-sniffer.py", "--interfaces"],
 
     # Cloud & Real-LAN Transit
@@ -215,8 +216,13 @@ def get_cluster_stats():
     return stats
 
 
-def stream_command(cmd: list, out_queue: queue.Queue):
+ACTIVE_SNIFFER_PROC = None
+ACTIVE_SNIFFER_LOCK = threading.Lock()
+
+
+def stream_command(cmd: list, out_queue: queue.Queue, is_sniffer: bool = False):
     """Run cmd in subprocess and push lines to out_queue."""
+    global ACTIVE_SNIFFER_PROC
     try:
         sub_env = os.environ.copy()
         sub_env["PYTHONUNBUFFERED"] = "1"
@@ -224,6 +230,9 @@ def stream_command(cmd: list, out_queue: queue.Queue):
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             text=True, bufsize=1, universal_newlines=True, env=sub_env
         )
+        if is_sniffer:
+            with ACTIVE_SNIFFER_LOCK:
+                ACTIVE_SNIFFER_PROC = proc
         for line in proc.stdout:
             out_queue.put({"type": "line", "data": line.rstrip()})
         proc.wait()
@@ -231,6 +240,11 @@ def stream_command(cmd: list, out_queue: queue.Queue):
     except Exception as e:
         out_queue.put({"type": "error", "data": str(e)})
         out_queue.put({"type": "done", "code": 1})
+    finally:
+        if is_sniffer:
+            with ACTIVE_SNIFFER_LOCK:
+                if ACTIVE_SNIFFER_PROC == proc:
+                    ACTIVE_SNIFFER_PROC = None
 
 
 class AzamOpsHandler(BaseHTTPRequestHandler):
@@ -467,6 +481,28 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
                 self.reply_json(json.loads(r.stdout))
             except Exception as e:
                 self.reply_json({"interfaces": [], "error": str(e)})
+
+        elif parsed.path in ("/azam-ops/api/sniffer/download", "/api/azam/sniffer/download"):
+            filename = params.get("file", [""])[0]
+            filename = os.path.basename(filename)
+            filepath = os.path.join("/opt/azambasha/captures", filename)
+            if filename and os.path.isfile(filepath):
+                try:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/vnd.tcpdump.pcap")
+                    self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+                    self.send_header("Content-Length", str(os.path.getsize(filepath)))
+                    self.send_cors()
+                    self.end_headers()
+                    with open(filepath, "rb") as f:
+                        shutil.copyfileobj(f, self.wfile)
+                    return
+                except Exception as e:
+                    self.reply_json({"error": str(e)}, status=500)
+                    return
+            else:
+                self.reply_json({"error": "Capture file not found"}, status=404)
+                return
 
         elif parsed.path == "/azam-ops/api/bridge/status":
             try:
@@ -845,9 +881,44 @@ print("[*] Azam-Pnet Python SDK Loaded.")
                 self.reply_json(res_data, status=200 if res_data.get("success") else 500)
             return
 
+        if parsed.path in ("/azam-ops/api/sniffer/stop", "/api/azam/sniffer/stop"):
+            global ACTIVE_SNIFFER_PROC
+            stopped = False
+            with ACTIVE_SNIFFER_LOCK:
+                if ACTIVE_SNIFFER_PROC and ACTIVE_SNIFFER_PROC.poll() is None:
+                    try:
+                        ACTIVE_SNIFFER_PROC.send_signal(signal.SIGINT)
+                        stopped = True
+                    except Exception:
+                        pass
+            try:
+                subprocess.run(["pkill", "-SIGINT", "-f", "azambasha-sniffer.py"], check=False)
+                stopped = True
+            except Exception:
+                pass
+            self.reply_json({"success": True, "stopped": stopped})
+            return
+
         if parsed.path in ("/azam-ops/api/run", "/api/azam/run", "/run"):
             tool = body.get("tool", "")
             params = body.get("params", {})
+
+            if tool == "sniffer-stop":
+                stopped = False
+                with ACTIVE_SNIFFER_LOCK:
+                    if ACTIVE_SNIFFER_PROC and ACTIVE_SNIFFER_PROC.poll() is None:
+                        try:
+                            ACTIVE_SNIFFER_PROC.send_signal(signal.SIGINT)
+                            stopped = True
+                        except Exception:
+                            pass
+                try:
+                    subprocess.run(["pkill", "-SIGINT", "-f", "azambasha-sniffer.py"], check=False)
+                    stopped = True
+                except Exception:
+                    pass
+                self.reply_json({"success": True, "stopped": stopped})
+                return
 
             if tool not in COMMANDS:
                 self.reply_json({"error": f"Unknown tool: {tool}"}, status=400)
@@ -917,8 +988,12 @@ print("[*] Azam-Pnet Python SDK Loaded.")
                         cmd += ["--quiz", quiz]
                 elif tool == "sniffer-capture":
                     iface = params.get("interface", "eth0")
-                    count = str(params.get("count", "15"))
-                    cmd = ["python3", "/opt/azambasha/scripts/azambasha-sniffer.py", "--interface", iface, "--count", count]
+                    continuous = params.get("continuous", True)
+                    if continuous:
+                        cmd = ["python3", "/opt/azambasha/scripts/azambasha-sniffer.py", "--interface", iface, "--continuous"]
+                    else:
+                        count = str(params.get("count", "15"))
+                        cmd = ["python3", "/opt/azambasha/scripts/azambasha-sniffer.py", "--interface", iface, "--count", count]
                 elif tool == "topology-doc":
                     lab = params.get("lab", "default_lab")
                     fmt = params.get("format", "all")
@@ -1018,7 +1093,8 @@ print("[*] Azam-Pnet Python SDK Loaded.")
             self.end_headers()
 
             q = queue.Queue()
-            t = threading.Thread(target=stream_command, args=(cmd, q), daemon=True)
+            is_sniff = (tool == "sniffer-capture")
+            t = threading.Thread(target=stream_command, args=(cmd, q, is_sniff), daemon=True)
             t.start()
 
             try:
@@ -1034,7 +1110,13 @@ print("[*] Azam-Pnet Python SDK Loaded.")
                         self.wfile.write(b"data: {\"type\":\"keepalive\"}\n\n")
                         self.wfile.flush()
             except (BrokenPipeError, ConnectionResetError):
-                pass
+                if is_sniff:
+                    with ACTIVE_SNIFFER_LOCK:
+                        if ACTIVE_SNIFFER_PROC and ACTIVE_SNIFFER_PROC.poll() is None:
+                            try:
+                                ACTIVE_SNIFFER_PROC.send_signal(signal.SIGINT)
+                            except Exception:
+                                pass
             finally:
                 self.close_connection = True
 

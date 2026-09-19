@@ -153,9 +153,17 @@ cat > "${APACHE_CONF}" << 'APACHEEOF'
     ProxyPassReverse http://127.0.0.1:8889/azam-ops/api
     Require all granted
 </Location>
+
+<IfModule mod_headers.c>
+    <FilesMatch "azam-features.*\.js$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate, max-age=0"
+        Header set Pragma "no-cache"
+        Header set Expires 0
+    </FilesMatch>
+</IfModule>
 APACHEEOF
 
-a2enmod proxy proxy_http 2>/dev/null || true
+a2enmod proxy proxy_http headers 2>/dev/null || true
 a2enconf azam-ops-api 2>/dev/null || true
 echo -e "  ${GREEN}[✔]${RESET} Apache proxy config installed and enabled."
 
@@ -172,14 +180,16 @@ fi
 
 # ── 4. Inject Nav Item and Script into Main GUI index.html ──────────────────
 echo -e "${CYAN}[4/7]${RESET} Injecting Azam-Features tab into Main GUI navigation…"
+CACHE_BUST="?v=$(date +%s)"
 if grep -q "azam-features" "${MAIN_INDEX}"; then
-    echo -e "  ${YELLOW}[!]${RESET} Main GUI already contains Azam-Features references."
+    echo -e "  ${YELLOW}[!]${RESET} Main GUI already contains Azam-Features references. Updating cache buster..."
+    sed -i "s|/main/js/azam-features.js[^\"]*|/main/js/azam-features.js${CACHE_BUST}|g" "${MAIN_INDEX}"
 else
     cp "${MAIN_INDEX}" "${MAIN_INDEX}.bak"
     # Inject sidebar nav item right after the 'ai' nav item
     sed -i '/data-route="ai"/a \			<a class="nav-item" data-route="azam-features" href="#/azam-features">\n				<i class="fa fa-bolt" aria-hidden="true" style="color:#0ea5e9;"></i><span>Azam-Features</span></a>' "${MAIN_INDEX}"
     # Inject script tag before </body>
-    sed -i 's|</body>|<script src="/main/js/azam-features.js"></script>\n</body>|' "${MAIN_INDEX}"
+    sed -i "s|</body>|<script src=\"/main/js/azam-features.js${CACHE_BUST}\"></script>\n</body>|" "${MAIN_INDEX}"
     echo -e "  ${GREEN}[✔]${RESET} Successfully injected Azam-Features into Main GUI navigation."
 fi
 

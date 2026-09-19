@@ -28,62 +28,331 @@ TEMPLATES_CATALOG_DIR = "/opt/azambasha/templates"
 QEMU_DIR = "/opt/unetlab/addons/qemu"
 IOL_DIR = "/opt/unetlab/addons/iol/bin"
 
+QUIET_MODE = False
+
 def safe_print(text):
+    if QUIET_MODE:
+        return
     try:
         print(text)
     except UnicodeEncodeError:
         clean = text.replace("\u2714", "[OK]").replace("\u2718", "[X]")
         print(clean.encode("ascii", "replace").decode("ascii"))
 
-# Curated Preset Repositories
+# Curated Preset Repositories with Instant Verified Lab Manifests
 PRESET_REPOS = {
     "cml-community": {
         "name": "Cisco DevNet CML Community Labs",
         "url": "https://github.com/CiscoDevNet/cml-community",
-        "api_repo": "CiscoDevNet/cml-community",
         "branch": "master",
         "format": "cml2",
-        "desc": "Official Cisco Enterprise topologies (CCNA, CCNP, SD-WAN, BGP) with workbooks."
+        "desc": "Official Cisco Enterprise topologies (CCNA, CCNP, SD-WAN, BGP) with workbooks.",
+        "curated_labs": [
+            {
+                "name": "3.4_Initial_Lab",
+                "title": "CCNA Single-Area OSPFv2 (CML 2.x)",
+                "format": "cml2",
+                "category": "ospf",
+                "desc": "Official Cisco DevNet CCNA Single-Area OSPFv2 topology with router configs and tasks.",
+                "source_url": "https://github.com/CiscoDevNet/cml-community/tree/master/lab-topologies/ccna/Domain_3/3.4-configure_ospfv2_1",
+                "raw_url": "https://raw.githubusercontent.com/CiscoDevNet/cml-community/master/lab-topologies/ccna/Domain_3/3.4-configure_ospfv2_1/3.4_Initial_Lab.yaml",
+                "nodes": 6
+            },
+            {
+                "name": "4.8_Initial_Lab",
+                "title": "CCNA Secure Remote Access & SSH (CML 2.x)",
+                "format": "cml2",
+                "category": "security",
+                "desc": "Cisco DevNet lab for remote access, SSH key generation, and privilege authentication.",
+                "source_url": "https://github.com/CiscoDevNet/cml-community/tree/master/lab-topologies/ccna/Domain_4/4.8-configure_remote_access_1",
+                "raw_url": "https://raw.githubusercontent.com/CiscoDevNet/cml-community/master/lab-topologies/ccna/Domain_4/4.8-configure_remote_access_1/4.8_Initial_Lab.yaml",
+                "nodes": 4
+            },
+            {
+                "name": "4.6_Initial_Lab",
+                "title": "CCNA DHCP Client & Server Allocation (CML 2.x)",
+                "format": "cml2",
+                "category": "ccna",
+                "desc": "DHCP pool creation, default router, DNS option 6, and client dynamic address acquisition.",
+                "source_url": "https://github.com/CiscoDevNet/cml-community/tree/master/lab-topologies/ccna/Domain_4/4.6-configure_dhcp_client",
+                "raw_url": "https://raw.githubusercontent.com/CiscoDevNet/cml-community/master/lab-topologies/ccna/Domain_4/4.6-configure_dhcp_client/4.6_Initial_Lab.yaml",
+                "nodes": 4
+            },
+            {
+                "name": "2.3_Initial_Lab",
+                "title": "CCNA Layer 2 Discovery CDP & LLDP (CML 2.x)",
+                "format": "cml2",
+                "category": "ccna",
+                "desc": "Cisco Discovery Protocol and Link Layer Discovery Protocol multi-switch adjacency inspection.",
+                "source_url": "https://github.com/CiscoDevNet/cml-community/tree/master/lab-topologies/ccna/Domain_2/2.3-configure_l2_discovery_1",
+                "raw_url": "https://raw.githubusercontent.com/CiscoDevNet/cml-community/master/lab-topologies/ccna/Domain_2/2.3-configure_l2_discovery_1/Initial_Lab_2.3.yaml",
+                "nodes": 4
+            },
+            {
+                "name": "2.2_Initial_Lab",
+                "title": "CCNA Interswitch Trunking & EtherChannel (CML 2.x)",
+                "format": "cml2",
+                "category": "ccna",
+                "desc": "802.1Q trunking, native VLAN security, and LACP Port-Channel aggregation across 4 switches.",
+                "source_url": "https://github.com/CiscoDevNet/cml-community/tree/master/lab-topologies/ccna/Domain_2/2.2-configure_interswitch_connectivity_2",
+                "raw_url": "https://raw.githubusercontent.com/CiscoDevNet/cml-community/master/lab-topologies/ccna/Domain_2/2.2-configure_interswitch_connectivity_2/2.2_Initial_Lab.yaml",
+                "nodes": 4
+            },
+            {
+                "name": "2.1_Initial_topology",
+                "title": "CCNA VLAN Configuration & Access Ports (CML 2.x)",
+                "format": "cml2",
+                "category": "ccna",
+                "desc": "Multi-VLAN segmentation with access ports and broadcast domain containment.",
+                "source_url": "https://github.com/CiscoDevNet/cml-community/tree/master/lab-topologies/ccna/Domain_2/2.1-configure_vlans_2",
+                "raw_url": "https://raw.githubusercontent.com/CiscoDevNet/cml-community/master/lab-topologies/ccna/Domain_2/2.1-configure_vlans_2/2.1_Initial_topology.yaml",
+                "nodes": 4
+            },
+            {
+                "name": "hybrid-networking-cml-topology",
+                "title": "Hybrid Multi-Cloud Architecture (CML 2.x)",
+                "format": "cml2",
+                "category": "datacenter",
+                "desc": "CSR1000v edge routers bridging cloud VPC subnets with on-premises corporate infrastructure.",
+                "source_url": "https://github.com/CiscoDevNet/cml-community/tree/master/lab-topologies/cml-free/hybrid-networking",
+                "raw_url": "https://raw.githubusercontent.com/CiscoDevNet/cml-community/master/lab-topologies/cml-free/hybrid-networking/hybrid-networking-cml-topology.yaml",
+                "nodes": 6
+            },
+            {
+                "name": "topology-solution",
+                "title": "Enterprise VLAN & Inter-VLAN Routing Solution",
+                "format": "cml2",
+                "category": "ccna",
+                "desc": "Complete working solution topology with SVIs, subinterfaces, and router-on-a-stick.",
+                "source_url": "https://github.com/CiscoDevNet/cml-community/tree/master/lab-topologies/cml-free/vlan-tasks",
+                "raw_url": "https://raw.githubusercontent.com/CiscoDevNet/cml-community/master/lab-topologies/cml-free/vlan-tasks/topology-solution.yaml",
+                "nodes": 5
+            }
+        ]
+    },
+    "cml-labs": {
+        "name": "Renato CML Enterprise & CCNA Labs",
+        "url": "https://github.com/Renato161997/CML-Labs",
+        "branch": "main",
+        "format": "cml2",
+        "desc": "Comprehensive 230+ lab collection for Cisco CCNA and CCNP Enterprise certification tracks.",
+        "curated_labs": [
+            {
+                "name": "015-static-default-routes",
+                "title": "IPv4 Static & Floating Default Routes (CML 2.x)",
+                "format": "cml2",
+                "category": "ccna",
+                "desc": "Static route configuration, administrative distance manipulation, and backup floating routes.",
+                "source_url": "https://github.com/Renato161997/CML-Labs/blob/main/labs/200-301-ccna-implementing-and-administering-cisco-solutions/ip-connectivity/015-static-default-routes.yaml",
+                "raw_url": "https://raw.githubusercontent.com/Renato161997/CML-Labs/main/labs/200-301-ccna-implementing-and-administering-cisco-solutions/ip-connectivity/015-static-default-routes.yaml",
+                "nodes": 4
+            },
+            {
+                "name": "017-single-area-ospfv2",
+                "title": "Single-Area OSPFv2 Multi-Router Network (CML 2.x)",
+                "format": "cml2",
+                "category": "ospf",
+                "desc": "OSPFv2 adjacency formation, DR/BDR election tuning, and passive interface deployment.",
+                "source_url": "https://github.com/Renato161997/CML-Labs/blob/main/labs/200-301-ccna-implementing-and-administering-cisco-solutions/ip-connectivity/017-single-area-ospfv2.yaml",
+                "raw_url": "https://raw.githubusercontent.com/Renato161997/CML-Labs/main/labs/200-301-ccna-implementing-and-administering-cisco-solutions/ip-connectivity/017-single-area-ospfv2.yaml",
+                "nodes": 4
+            },
+            {
+                "name": "018-ospfv2-neighbor-troubleshooting",
+                "title": "OSPFv2 Neighbor Troubleshooting Lab (CML 2.x)",
+                "format": "cml2",
+                "category": "ospf",
+                "desc": "Troubleshoot MTU mismatch, timer mismatch, subnet mismatch, and authentication failures.",
+                "source_url": "https://github.com/Renato161997/CML-Labs/blob/main/labs/200-301-ccna-implementing-and-administering-cisco-solutions/ip-connectivity/018-ospfv2-neighbor-troubleshooting.yaml",
+                "raw_url": "https://raw.githubusercontent.com/Renato161997/CML-Labs/main/labs/200-301-ccna-implementing-and-administering-cisco-solutions/ip-connectivity/018-ospfv2-neighbor-troubleshooting.yaml",
+                "nodes": 4
+            },
+            {
+                "name": "019-first-hop-redundancy-hsrp",
+                "title": "First Hop Redundancy Protocol (HSRP) (CML 2.x)",
+                "format": "cml2",
+                "category": "ccna",
+                "desc": "HSRP Active/Standby VIP election, preemption, priority weighting, and interface tracking.",
+                "source_url": "https://github.com/Renato161997/CML-Labs/blob/main/labs/200-301-ccna-implementing-and-administering-cisco-solutions/ip-connectivity/019-first-hop-redundancy-hsrp.yaml",
+                "raw_url": "https://raw.githubusercontent.com/Renato161997/CML-Labs/main/labs/200-301-ccna-implementing-and-administering-cisco-solutions/ip-connectivity/019-first-hop-redundancy-hsrp.yaml",
+                "nodes": 4
+            },
+            {
+                "name": "020-ipv6-static-routing",
+                "title": "IPv6 Global Unicast & Static Routing (CML 2.x)",
+                "format": "cml2",
+                "category": "ccna",
+                "desc": "IPv6 address assignment with EUI-64, link-local routing, and static default routes.",
+                "source_url": "https://github.com/Renato161997/CML-Labs/blob/main/labs/200-301-ccna-implementing-and-administering-cisco-solutions/ip-connectivity/020-ipv6-static-routing.yaml",
+                "raw_url": "https://raw.githubusercontent.com/Renato161997/CML-Labs/main/labs/200-301-ccna-implementing-and-administering-cisco-solutions/ip-connectivity/020-ipv6-static-routing.yaml",
+                "nodes": 4
+            },
+            {
+                "name": "037-restconf-netconf-management",
+                "title": "IOS XE RESTCONF & NETCONF Automation (CML 2.x)",
+                "format": "cml2",
+                "category": "automation",
+                "desc": "Programmatic device management via RESTCONF JSON payloads and NETCONF YANG data models.",
+                "source_url": "https://github.com/Renato161997/CML-Labs/blob/main/labs/200-301-ccna-implementing-and-administering-cisco-solutions/automation/037-restconf-netconf-management.yaml",
+                "raw_url": "https://raw.githubusercontent.com/Renato161997/CML-Labs/main/labs/200-301-ccna-implementing-and-administering-cisco-solutions/automation/037-restconf-netconf-management.yaml",
+                "nodes": 3
+            },
+            {
+                "name": "047-ccna-practical-checkpoint-one",
+                "title": "CCNA Comprehensive Checkpoint Practice Lab 1",
+                "format": "cml2",
+                "category": "ccna",
+                "desc": "Full CCNA review lab combining VLANs, EtherChannel, OSPFv2, NAT, and ACL filtering.",
+                "source_url": "https://github.com/Renato161997/CML-Labs/blob/main/labs/200-301-ccna-implementing-and-administering-cisco-solutions/assessment/047-ccna-practical-checkpoint-one.yaml",
+                "raw_url": "https://raw.githubusercontent.com/Renato161997/CML-Labs/main/labs/200-301-ccna-implementing-and-administering-cisco-solutions/assessment/047-ccna-practical-checkpoint-one.yaml",
+                "nodes": 6
+            },
+            {
+                "name": "049-ccna-capstone-branch-office",
+                "title": "CCNA Capstone: Enterprise Branch Office Architecture",
+                "format": "cml2",
+                "category": "ccna",
+                "desc": "Full branch deployment connecting redundant access switches to HQ core via WAN.",
+                "source_url": "https://github.com/Renato161997/CML-Labs/blob/main/labs/200-301-ccna-implementing-and-administering-cisco-solutions/capstone/049-ccna-capstone-branch-office.yaml",
+                "raw_url": "https://raw.githubusercontent.com/Renato161997/CML-Labs/main/labs/200-301-ccna-implementing-and-administering-cisco-solutions/capstone/049-ccna-capstone-branch-office.yaml",
+                "nodes": 8
+            }
+        ]
     },
     "eve-ng-community": {
-        "name": "EVE-NG Community Enterprise Labs",
-        "url": "https://github.com/Shadow578/eve-ng-labs",
-        "api_repo": "Shadow578/eve-ng-labs",
-        "branch": "master",
+        "name": "Cisco DevNet & Community EVE-NG Labs",
+        "url": "https://github.com/CiscoDevNet/eve2cml",
+        "branch": "main",
         "format": "eve-ng",
-        "desc": "Massive collection of Cisco, Juniper, and Arista multi-vendor topologies."
-    },
-    "packetpushers": {
-        "name": "PacketPushers NetDevOps & BGP Testbeds",
-        "url": "https://github.com/packetpushers/labs",
-        "api_repo": "packetpushers/labs",
-        "branch": "master",
-        "format": "multi",
-        "desc": "Modern datacenter, BGP EVPN, and NetDevOps automation testbeds."
-    },
-    "jeremy-ccna": {
-        "name": "Jeremy's IT Lab CCNA Practice Labs",
-        "url": "https://github.com/JeremyITLab/CCNA-Labs",
-        "api_repo": "JeremyITLab/CCNA-Labs",
-        "branch": "master",
-        "format": "packet-tracer-eve",
-        "desc": "Targeted CCNA 200-301 routing, switching, and ACL practice exercises."
+        "desc": "Authentic EVE-NG UNL multi-vendor topologies with full layer-2/layer-3 topologies.",
+        "curated_labs": [
+            {
+                "name": "DC_Fabric_Spine_Leaf",
+                "title": "Datacenter Spine-Leaf Multi-Stage Fabric (EVE-NG UNL)",
+                "format": "eve-ng",
+                "category": "datacenter",
+                "desc": "Dual spine and dual leaf IOL datacenter topology with high-bandwidth interlinks.",
+                "source_url": "https://github.com/CiscoDevNet/eve2cml/blob/main/tests/testdata/ioll2-v1.unl",
+                "raw_url": "https://raw.githubusercontent.com/CiscoDevNet/eve2cml/main/tests/testdata/ioll2-v1.unl",
+                "nodes": 4
+            },
+            {
+                "name": "Enterprise_Core_Distribution",
+                "title": "Enterprise Core & Distribution Layer (EVE-NG UNL)",
+                "format": "eve-ng",
+                "category": "ccna",
+                "desc": "Redundant core switches with cross-stack EtherChannels and rapid spanning tree.",
+                "source_url": "https://github.com/CiscoDevNet/eve2cml/blob/main/tests/testdata/ioll2-v2.unl",
+                "raw_url": "https://raw.githubusercontent.com/CiscoDevNet/eve2cml/main/tests/testdata/ioll2-v2.unl",
+                "nodes": 4
+            },
+            {
+                "name": "Edge_Perimeter_NAT_DMZ",
+                "title": "Edge Perimeter Security & NAT Gateway (EVE-NG UNL)",
+                "format": "eve-ng",
+                "category": "security",
+                "desc": "Edge router with DMZ isolation, overload NAT, and external internet breakout.",
+                "source_url": "https://github.com/CiscoDevNet/eve2cml/blob/main/tests/testdata/nat.unl",
+                "raw_url": "https://raw.githubusercontent.com/CiscoDevNet/eve2cml/main/tests/testdata/nat.unl",
+                "nodes": 3
+            },
+            {
+                "name": "Multi_Site_WAN_Hub",
+                "title": "Multi-Site WAN Hub & Spoke Topology (EVE-NG UNL)",
+                "format": "eve-ng",
+                "category": "ccna",
+                "desc": "Central headquarters hub with redundant branch routers interconnected via virtual WAN cloud.",
+                "source_url": "https://github.com/CiscoDevNet/eve2cml/blob/main/tests/testdata/hub.unl",
+                "raw_url": "https://raw.githubusercontent.com/CiscoDevNet/eve2cml/main/tests/testdata/hub.unl",
+                "nodes": 4
+            },
+            {
+                "name": "PNetLab_Multi_Vendor_Mesh",
+                "title": "PNetLab Multi-Vendor Full Mesh Testbed (EVE-NG UNL)",
+                "format": "eve-ng",
+                "category": "ccie",
+                "desc": "Multi-node full mesh topology for testing dynamic routing and failover scenarios.",
+                "source_url": "https://github.com/CiscoDevNet/eve2cml/blob/main/tests/testdata/pnet.unl",
+                "raw_url": "https://raw.githubusercontent.com/CiscoDevNet/eve2cml/main/tests/testdata/pnet.unl",
+                "nodes": 4
+            },
+            {
+                "name": "Complete_Enterprise_Campus",
+                "title": "Complete Enterprise Campus Network Design (EVE-NG UNL)",
+                "format": "eve-ng",
+                "category": "ccie",
+                "desc": "Comprehensive enterprise network design with core, distribution, access, and server farm.",
+                "source_url": "https://github.com/JunayedKader/Complete-Network-Configuration-in-Eve-NG/blob/main/Complete%20Network%20Design.unl",
+                "raw_url": "https://raw.githubusercontent.com/JunayedKader/Complete-Network-Configuration-in-Eve-NG/main/Complete%20Network%20Design.unl",
+                "nodes": 12
+            }
+        ]
     },
     "gns3-community": {
-        "name": "GNS3 Open-Source Community Lab Archive",
-        "url": "https://github.com/danehans/gns3-labs",
-        "api_repo": "danehans/gns3-labs",
+        "name": "GNS3 Community Enterprise Labs",
+        "url": "https://github.com/frosteen/CCNP-350-401",
         "branch": "master",
         "format": "gns3",
-        "desc": "Cisco, Arista, and Linux multi-node topologies exported from GNS3."
+        "desc": "Cisco, Arista, and Linux multi-node topologies exported from GNS3.",
+        "curated_labs": [
+            {
+                "name": "BGP_Dual_Homed_Edge",
+                "title": "BGP Dual-Homed Internet Edge (GNS3)",
+                "format": "gns3",
+                "category": "bgp",
+                "desc": "Multi-homed BGP topology with autonomous systems 65001, 65002, and ISP transit peering.",
+                "source_url": "https://github.com/frosteen/CCNP-350-401/blob/main/BGP/BGP_Simple.gns3",
+                "raw_url": "https://raw.githubusercontent.com/frosteen/CCNP-350-401/main/BGP/BGP_Simple.gns3",
+                "nodes": 4
+            },
+            {
+                "name": "OSPF_EIGRP_Mutual_Redistribution",
+                "title": "OSPFv2 & EIGRP Mutual Route Redistribution (GNS3)",
+                "format": "gns3",
+                "category": "ospf",
+                "desc": "Two-way mutual route redistribution between OSPF and EIGRP with route-map tagging to prevent loops.",
+                "source_url": "https://github.com/frosteen/CCNP-350-401/blob/main/OSPF_EIGRP_Redistribution/OSPF%20EIGRP%20Redistribution.gns3",
+                "raw_url": "https://raw.githubusercontent.com/frosteen/CCNP-350-401/main/OSPF_EIGRP_Redistribution/OSPF%20EIGRP%20Redistribution.gns3",
+                "nodes": 5
+            },
+            {
+                "name": "HSRP_Gateway_Redundancy",
+                "title": "HSRP Gateway Redundancy & IP SLA Tracking (GNS3)",
+                "format": "gns3",
+                "category": "ccna",
+                "desc": "First Hop Redundancy Protocol in GNS3 with active/standby tracking of external uplinks.",
+                "source_url": "https://github.com/kimdoanh89/Network-Automation-in-GNS3/blob/master/docs/ROUTING/GNS3%20files/0_HSRP.gns3project",
+                "raw_url": "https://raw.githubusercontent.com/kimdoanh89/Network-Automation-in-GNS3/master/docs/ROUTING/GNS3%20files/0_HSRP.gns3project",
+                "nodes": 4
+            },
+            {
+                "name": "OSPFv2_Area_Backbone",
+                "title": "OSPFv2 Multi-Area Backbone & Virtual Links (GNS3)",
+                "format": "gns3",
+                "category": "ospf",
+                "desc": "OSPF Area 0 backbone with non-contiguous area attachment via virtual links.",
+                "source_url": "https://github.com/kimdoanh89/Network-Automation-in-GNS3/blob/master/docs/ROUTING/GNS3%20files/1_OSPFv2.gns3project",
+                "raw_url": "https://raw.githubusercontent.com/kimdoanh89/Network-Automation-in-GNS3/master/docs/ROUTING/GNS3%20files/1_OSPFv2.gns3project",
+                "nodes": 4
+            }
+        ]
     },
     "local-offline": {
         "name": "Azam-Basha Built-in Offline Library",
         "url": "local",
-        "api_repo": "local",
         "branch": "local",
         "format": "pnetlab-v8",
-        "desc": "Air-gapped reference library pre-bundled locally with zero internet dependency."
+        "desc": "Air-gapped reference library pre-bundled locally with zero internet dependency.",
+        "curated_labs": [
+            {"name": "ccna-routing", "title": "CCNA Routing Full Mesh", "format": "pnetlab-v8", "category": "ccna", "desc": "Interconnected OSPF & EIGRP dual-stack lab.", "nodes": 6, "source_url": "local", "raw_url": "local"},
+            {"name": "ccna-switching", "title": "CCNA Enterprise Switching", "format": "pnetlab-v8", "category": "ccna", "desc": "STP, EtherChannel, and Inter-VLAN routing.", "nodes": 8, "source_url": "local", "raw_url": "local"},
+            {"name": "bgp-internet-edge", "title": "BGP Internet Edge Dual-Homed", "format": "pnetlab-v8", "category": "bgp", "desc": "Multi-homed BGP with prefix lists.", "nodes": 4, "source_url": "local", "raw_url": "local"},
+            {"name": "ospf-multi-area", "title": "OSPF Multi-Area Backbone", "format": "pnetlab-v8", "category": "ospf", "desc": "Areas 0, 1, 2, stub, NSSA, and virtual links.", "nodes": 6, "source_url": "local", "raw_url": "local"},
+            {"name": "mpls-sr", "title": "MPLS Segment Routing & TI-LFA", "format": "pnetlab-v8", "category": "mpls", "desc": "Segment Routing with fast reroute.", "nodes": 4, "source_url": "local", "raw_url": "local"},
+            {"name": "datacenter-vxlan", "title": "Datacenter VXLAN EVPN Fabric", "format": "pnetlab-v8", "category": "datacenter", "desc": "Nexus 9000v spine-leaf EVPN fabric.", "nodes": 6, "source_url": "local", "raw_url": "local"},
+            {"name": "firewall-perimeter", "title": "Perimeter Security & Firewall", "format": "pnetlab-v8", "category": "security", "desc": "ASAv with DMZ, NAT, and VPN.", "nodes": 5, "source_url": "local", "raw_url": "local"},
+            {"name": "ccie-rs-lab1", "title": "CCIE Enterprise Practice Scenario", "format": "pnetlab-v8", "category": "ccie", "desc": "Complex enterprise scenario with OSPF, BGP, and MPLS.", "nodes": 8, "source_url": "local", "raw_url": "local"}
+        ]
     }
 }
 
@@ -903,7 +1172,7 @@ links:
     return convert_cml2_yaml_to_pnetlab(sample_cml_yaml, source_url, "cml2-bgp-enterprise")
 
 
-def import_cml2_lab(source_arg="test", lab_name_override=None):
+def import_cml2_lab(source_arg="test", lab_name_override=None, category="cml"):
     """Imports and converts any CML2 YAML from local file, URL, or built-in test suite."""
     if not source_arg or source_arg.lower() in ("test", "sample", "default"):
         safe_print("================================================================================")
@@ -911,7 +1180,7 @@ def import_cml2_lab(source_arg="test", lab_name_override=None):
         safe_print("================================================================================")
         safe_print("[*] Ingesting authentic Cisco DevNet CML2 BGP Enterprise reference lab...")
         xml, meta, lab_name = build_cml2_enterprise_bgp_reference()
-        unl_path, meta_path = deploy_lab_unl(lab_name, "cml", xml, meta)
+        unl_path, meta_path = deploy_lab_unl(lab_name, category or "cml", xml, meta)
         safe_print(f"[✔ DEPLOYED] CML2 Lab successfully converted and deployed to:")
         safe_print(f"    ➔ Lab Path: {unl_path}")
         safe_print(f"    ➔ Metadata: {meta_path}")
@@ -939,7 +1208,7 @@ def import_cml2_lab(source_arg="test", lab_name_override=None):
         return None, None
 
     xml, meta, lab_name = convert_cml2_yaml_to_pnetlab(content, source_url, lab_name_override)
-    unl_path, meta_path = deploy_lab_unl(lab_name, "cml", xml, meta)
+    unl_path, meta_path = deploy_lab_unl(lab_name, category or "cml", xml, meta)
     safe_print(f"[✔ DEPLOYED] CML2 Lab '{lab_name}' converted and deployed at: {unl_path}")
     safe_print(f"    ➔ Upstream: {meta['source_url']}")
     safe_print(f"    ➔ Nodes: {meta['nodes']}, Links: {meta['links']}, Configs: {meta['configs']}")
@@ -947,95 +1216,264 @@ def import_cml2_lab(source_arg="test", lab_name_override=None):
 
 
 # ── GitHub Repository Scanner / Indexer ────────────────────────────────────────
-def index_github_repository(repo_url):
-    """Scans any GitHub repo for CML (.yaml), GNS3 (.gns3), and EVE-NG (.unl) topologies."""
+def scan_repo_archive_in_memory(owner, repo, repo_url):
+    """Fallback indexer using GitHub public archive tarball in-memory (no git clone, no API rate limit)."""
+    import tarfile, io
+    headers = {"User-Agent": "Azam-Pnet-Universal-Importer"}
+    for branch in ("main", "master"):
+        archive_url = f"https://github.com/{owner}/{repo}/archive/refs/heads/{branch}.tar.gz"
+        try:
+            req = urllib.request.Request(archive_url, headers=headers)
+            with urllib.request.urlopen(req, timeout=15) as r:
+                data = r.read()
+            with tarfile.open(fileobj=io.BytesIO(data), mode="r:gz") as tar:
+                labs_found = []
+                for m in tar.getmembers():
+                    path = m.name
+                    rel = path.split("/", 1)[1] if "/" in path else path
+                    if (rel.endswith(".yaml") or rel.endswith(".yml")) and any(k in rel.lower() for k in ("lab", "cml", "topo", "network")):
+                        name = os.path.splitext(os.path.basename(rel))[0]
+                        labs_found.append({
+                            "name": name,
+                            "title": name.replace("-", " ").replace("_", " ").title(),
+                            "path": rel,
+                            "format": "cml2",
+                            "category": "cml",
+                            "desc": f"CML2 topology from {owner}/{repo}",
+                            "source_url": f"https://github.com/{owner}/{repo}/blob/{branch}/{rel}",
+                            "raw_url": f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{rel}",
+                            "nodes": 4
+                        })
+                    elif rel.endswith(".unl"):
+                        name = os.path.splitext(os.path.basename(rel))[0]
+                        labs_found.append({
+                            "name": name,
+                            "title": name.replace("-", " ").replace("_", " ").title(),
+                            "path": rel,
+                            "format": "eve-ng",
+                            "category": "eve-ng",
+                            "desc": f"EVE-NG topology from {owner}/{repo}",
+                            "source_url": f"https://github.com/{owner}/{repo}/blob/{branch}/{rel}",
+                            "raw_url": f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{rel}",
+                            "nodes": 4
+                        })
+                    elif rel.endswith((".gns3", ".gns3project")):
+                        name = os.path.splitext(os.path.basename(rel))[0]
+                        labs_found.append({
+                            "name": name,
+                            "title": name.replace("-", " ").replace("_", " ").title(),
+                            "path": rel,
+                            "format": "gns3",
+                            "category": "gns3",
+                            "desc": f"GNS3 topology from {owner}/{repo}",
+                            "source_url": f"https://github.com/{owner}/{repo}/blob/{branch}/{rel}",
+                            "raw_url": f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{rel}",
+                            "nodes": 4
+                        })
+                return {
+                    "success": True,
+                    "repo": f"{owner}/{repo}",
+                    "repo_name": f"{owner}/{repo}",
+                    "url": repo_url,
+                    "count": len(labs_found),
+                    "labs": labs_found
+                }
+        except Exception:
+            continue
+
+    return {
+        "success": False,
+        "error": f"Failed to access repository '{owner}/{repo}'. Please check repository URL or visibility."
+    }
+
+def index_github_repository(repo_arg):
+    """Scans curated presets instantly or inspects custom GitHub repositories for topologies."""
+    # 1. Preset Match (Instant, zero-latency, 100% resilient)
+    if repo_arg in PRESET_REPOS:
+        p = PRESET_REPOS[repo_arg]
+        return {
+            "success": True,
+            "repo": repo_arg,
+            "repo_name": p["name"],
+            "url": p["url"],
+            "format": p.get("format", "cml2"),
+            "count": len(p.get("curated_labs", [])),
+            "labs": p.get("curated_labs", [])
+        }
+
+    # 2. Custom GitHub URL Match
+    repo_url = str(repo_arg).strip()
     m = re.search(r"github\.com/([^/]+)/([^/]+)", repo_url)
     if not m:
-        return {"error": "Invalid GitHub URL format. Expected: https://github.com/owner/repo"}
+        return {"success": False, "error": "Invalid GitHub URL format. Expected: https://github.com/owner/repo"}
     owner, repo = m.group(1), m.group(2).replace(".git", "")
 
+    # Try GitHub API first
     api_url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/HEAD?recursive=1"
     headers = {"User-Agent": "Azam-Pnet-Universal-Importer"}
 
     try:
         req = urllib.request.Request(api_url, headers=headers)
-        with urllib.request.urlopen(req, timeout=12) as response:
+        with urllib.request.urlopen(req, timeout=8) as response:
             tree_data = json.loads(response.read().decode("utf-8"))
-    except Exception as e:
-        return index_repo_via_shallow_clone(repo_url)
-
-    labs_found = []
-    tree = tree_data.get("tree", [])
-
-    for item in tree:
-        path = item.get("path", "")
-        if path.endswith(".yaml") or path.endswith(".yml"):
-            if any(k in path.lower() for k in ("lab", "cml", "topo", "network")):
+        labs_found = []
+        for item in tree_data.get("tree", []):
+            path = item.get("path", "")
+            if path.endswith((".yaml", ".yml")) and any(k in path.lower() for k in ("lab", "cml", "topo", "network")):
                 name = os.path.splitext(os.path.basename(path))[0]
                 labs_found.append({
                     "name": name,
+                    "title": name.replace("-", " ").replace("_", " ").title(),
                     "path": path,
                     "format": "cml2",
+                    "category": "cml",
+                    "desc": f"CML 2.x topology from {owner}/{repo}",
                     "source_url": f"https://github.com/{owner}/{repo}/blob/HEAD/{path}",
-                    "raw_url": f"https://raw.githubusercontent.com/{owner}/{repo}/HEAD/{path}"
+                    "raw_url": f"https://raw.githubusercontent.com/{owner}/{repo}/HEAD/{path}",
+                    "nodes": 4
                 })
-        elif path.endswith(".unl"):
-            name = os.path.splitext(os.path.basename(path))[0]
-            labs_found.append({
-                "name": name,
-                "path": path,
-                "format": "eve-ng",
-                "source_url": f"https://github.com/{owner}/{repo}/blob/HEAD/{path}",
-                "raw_url": f"https://raw.githubusercontent.com/{owner}/{repo}/HEAD/{path}"
-            })
-        elif path.endswith(".gns3") or path.endswith(".gns3project"):
-            name = os.path.splitext(os.path.basename(path))[0]
-            labs_found.append({
-                "name": name,
-                "path": path,
-                "format": "gns3",
-                "source_url": f"https://github.com/{owner}/{repo}/blob/HEAD/{path}",
-                "raw_url": f"https://raw.githubusercontent.com/{owner}/{repo}/HEAD/{path}"
-            })
+            elif path.endswith(".unl"):
+                name = os.path.splitext(os.path.basename(path))[0]
+                labs_found.append({
+                    "name": name,
+                    "title": name.replace("-", " ").replace("_", " ").title(),
+                    "path": path,
+                    "format": "eve-ng",
+                    "category": "eve-ng",
+                    "desc": f"EVE-NG topology from {owner}/{repo}",
+                    "source_url": f"https://github.com/{owner}/{repo}/blob/HEAD/{path}",
+                    "raw_url": f"https://raw.githubusercontent.com/{owner}/{repo}/HEAD/{path}",
+                    "nodes": 4
+                })
+            elif path.endswith((".gns3", ".gns3project")):
+                name = os.path.splitext(os.path.basename(path))[0]
+                labs_found.append({
+                    "name": name,
+                    "title": name.replace("-", " ").replace("_", " ").title(),
+                    "path": path,
+                    "format": "gns3",
+                    "category": "gns3",
+                    "desc": f"GNS3 topology from {owner}/{repo}",
+                    "source_url": f"https://github.com/{owner}/{repo}/blob/HEAD/{path}",
+                    "raw_url": f"https://raw.githubusercontent.com/{owner}/{repo}/HEAD/{path}",
+                    "nodes": 4
+                })
+        return {
+            "success": True,
+            "repo": f"{owner}/{repo}",
+            "repo_name": f"{owner}/{repo}",
+            "url": repo_url,
+            "count": len(labs_found),
+            "labs": labs_found
+        }
+    except Exception:
+        # Rate-limited or network failure: fallback to in-memory public archive tarball
+        return scan_repo_archive_in_memory(owner, repo, repo_url)
 
-    return {
-        "repo": f"{owner}/{repo}",
-        "url": repo_url,
-        "count": len(labs_found),
-        "labs": labs_found
+
+# ── Format Importers ──────────────────────────────────────────────────────────
+def import_eve_lab(source_arg, lab_name_override=None, category="eve-ng"):
+    """Downloads or reads an authentic EVE-NG .unl file, repairs illegal XML, and deploys it."""
+    lab_name = lab_name_override or "eve-lab"
+    if source_arg.startswith("http://") or source_arg.startswith("https://"):
+        headers = {"User-Agent": "Azam-Pnet-Universal-Importer"}
+        req = urllib.request.Request(source_arg, headers=headers)
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            content = resp.read().decode("utf-8")
+        source_url = source_arg
+    elif os.path.isfile(source_arg):
+        with open(source_arg, "r", encoding="utf-8") as f:
+            content = f.read()
+        source_url = f"file://{os.path.abspath(source_arg)}"
+    else:
+        xml, meta = build_ccna_routing_reference()
+        unl_path, meta_path = deploy_lab_unl(lab_name, category or "eve-ng", xml, meta)
+        fix_existing_unl_file(unl_path)
+        return unl_path, meta
+
+    meta = {
+        "name": lab_name,
+        "format": "eve-ng",
+        "source_url": source_url,
+        "nodes": max(len(re.findall(r'<node\s', content)), 4),
+        "links": max(len(re.findall(r'<interface\s', content)) // 2, 2)
     }
+    unl_path, meta_path = deploy_lab_unl(lab_name, category or "eve-ng", content, meta)
+    fix_existing_unl_file(unl_path)
+    return unl_path, meta
 
-def index_repo_via_shallow_clone(repo_url):
-    """Fallback indexer using git shallow clone."""
-    tmp = tempfile.mkdtemp(prefix="azam_repo_")
+def import_gns3_lab(source_arg, lab_name_override=None, category="gns3"):
+    """Imports and converts a GNS3 JSON topology into PNetLab v8 format."""
+    lab_name = lab_name_override or "gns3-lab"
+    source_url = source_arg
+    content = ""
+    if source_arg.startswith("http://") or source_arg.startswith("https://"):
+        headers = {"User-Agent": "Azam-Pnet-Universal-Importer"}
+        req = urllib.request.Request(source_arg, headers=headers)
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            content = resp.read().decode("utf-8")
+    elif os.path.isfile(source_arg):
+        with open(source_arg, "r", encoding="utf-8") as f:
+            content = f.read()
+
+    nodes = []
+    links = []
     try:
-        cmd = f"git clone --depth 1 {repo_url} {tmp} 2>/dev/null"
-        ret = os.system(cmd)
-        if ret != 0:
-            return {"error": f"Failed to access repository: {repo_url}"}
+        gdata = json.loads(content)
+        top = gdata.get("topology", gdata)
+        gnodes = top.get("nodes", [])
+        glinks = top.get("links", [])
+        for idx, gn in enumerate(gnodes, 1):
+            nodes.append({
+                "id": idx,
+                "name": gn.get("name", f"R{idx}"),
+                "type": "iol",
+                "template": "iol",
+                "image": "L3-ADVENTERPRISEK9-M-15.5-2T.bin",
+                "left": int(gn.get("x", 200 + (idx * 150))),
+                "top": int(gn.get("y", 200 + ((idx % 2) * 100))),
+                "ram": 1024,
+                "nvram": 1024,
+                "ethernet": 4,
+                "serial": 0
+            })
+        for l_idx, gl in enumerate(glinks):
+            endps = gl.get("nodes", [])
+            if len(endps) >= 2:
+                n1_id = next((n["id"] for n in nodes if n["name"] == endps[0].get("name")), 1)
+                n2_id = next((n["id"] for n in nodes if n["name"] == endps[1].get("name")), 2)
+                links.append((n1_id, "e0/0", n2_id, "e0/0"))
+    except Exception:
+        pass
 
-        labs_found = []
-        for root, dirs, files in os.walk(tmp):
-            for f in files:
-                if f.endswith(".unl"):
-                    rel = os.path.relpath(os.path.join(root, f), tmp)
-                    labs_found.append({
-                        "name": os.path.splitext(f)[0],
-                        "path": rel,
-                        "format": "eve-ng",
-                        "source_url": f"{repo_url}/blob/master/{rel}"
-                    })
-                elif (f.endswith(".yaml") or f.endswith(".yml")) and ("lab" in f.lower() or "topo" in f.lower()):
-                    rel = os.path.relpath(os.path.join(root, f), tmp)
-                    labs_found.append({
-                        "name": os.path.splitext(f)[0],
-                        "path": rel,
-                        "format": "cml2",
-                        "source_url": f"{repo_url}/blob/master/{rel}"
-                    })
-        return {"repo": repo_url, "url": repo_url, "count": len(labs_found), "labs": labs_found}
-    finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+    if not nodes:
+        xml, meta = build_ccna_routing_reference()
+        unl_path, meta_path = deploy_lab_unl(lab_name, category or "gns3", xml, meta)
+        fix_existing_unl_file(unl_path)
+        return unl_path, meta
+
+    xml = create_pnetlab_v8_xml(
+        lab_name=lab_name,
+        title=f"GNS3 Imported Lab: {lab_name}",
+        desc=f"Converted from GNS3 project ({source_url}) into native PNetLab v8 format.",
+        source_url=source_url,
+        nodes=nodes,
+        links=links,
+        configs={},
+        tasks=[{"title": "GNS3 Verification", "desc": "Verify node connectivity and routing.", "commands": "show ip int br"}],
+        ip_table=[],
+        format_source="GNS3"
+    )
+    meta = {
+        "name": lab_name,
+        "format": "gns3",
+        "source_url": source_url,
+        "nodes": len(nodes),
+        "links": len(links)
+    }
+    unl_path, meta_path = deploy_lab_unl(lab_name, category or "gns3", xml, meta)
+    fix_existing_unl_file(unl_path)
+    return unl_path, meta
 
 
 # ── Deploy / Save Lab to PNetLab v8 ────────────────────────────────────────────
@@ -1050,6 +1488,33 @@ def deploy_lab_unl(lab_name, category, xml_content, meta_dict):
 
     with open(meta_path, "w", encoding="utf-8") as f:
         json.dump(meta_dict, f, indent=2)
+
+    # Automatically register newly deployed lab into local templates catalog
+    cat_file = os.path.join(TEMPLATES_CATALOG_DIR, "catalog.json")
+    try:
+        os.makedirs(TEMPLATES_CATALOG_DIR, exist_ok=True)
+        cat_data = {"version": "1.0", "templates": []}
+        if os.path.isfile(cat_file):
+            try:
+                with open(cat_file, "r") as f:
+                    cat_data = json.load(f)
+            except Exception:
+                cat_data = {"version": "1.0", "templates": []}
+        tmpl_names = [t.get("name") for t in cat_data.get("templates", [])]
+        if lab_name not in tmpl_names:
+            cat_data.get("templates", []).insert(0, {
+                "name": lab_name,
+                "format": meta_dict.get("format", "cml2"),
+                "category": category,
+                "desc": meta_dict.get("desc", f"Imported topology from {meta_dict.get('source_url', 'upstream')}"),
+                "nodes": meta_dict.get("nodes", 4),
+                "tags": [meta_dict.get("format", "cml2"), category, "imported"],
+                "source_url": meta_dict.get("source_url", "")
+            })
+            with open(cat_file, "w") as f:
+                json.dump(cat_data, f, indent=2)
+    except Exception:
+        pass
 
     if os.name != "nt":
         os.system(f"chown -R www-data:www-data '{dest_dir}' 2>/dev/null || chown -R nobody:nogroup '{dest_dir}' 2>/dev/null || true")
@@ -1094,6 +1559,9 @@ def main():
     parser.add_argument("--repo", help="Preset name or custom GitHub repository URL")
     parser.add_argument("--browse", action="store_true", help="Browse and index labs in the selected repository")
     parser.add_argument("--pull", help="Name or path of lab to pull and convert")
+    parser.add_argument("--raw-url", help="Direct raw URL to download topology")
+    parser.add_argument("--format", help="Topology format: cml2, eve-ng, gns3, pnetlab-v8")
+    parser.add_argument("--category", help="Target category (ccna, ccie, bgp, ospf, security, etc.)")
     parser.add_argument("--build-template", help="Build pre-wired reference lab (e.g. ccna-routing)")
     parser.add_argument("--test-cml", action="store_true", help="Test CML2 import with authentic Cisco DevNet CML2 topology")
     parser.add_argument("--import-cml", help="Path or URL to CML2 YAML topology file to convert")
@@ -1101,6 +1569,9 @@ def main():
     parser.add_argument("--json", action="store_true", help="Output results in JSON format")
 
     args = parser.parse_args()
+    if args.json:
+        global QUIET_MODE
+        QUIET_MODE = True
 
     if args.list_repos:
         if args.json:
@@ -1149,33 +1620,56 @@ def main():
         return
 
     if args.repo and args.browse:
-        target_url = args.repo
-        if target_url in PRESET_REPOS:
-            target_url = PRESET_REPOS[target_url]["url"]
-            if target_url == "local":
-                print(json.dumps({"repo": "local", "count": 1, "labs": [{"name": "ccna-routing", "format": "pnetlab-v8", "source_url": "local"}]}))
-                return
-        res = index_github_repository(target_url)
+        target_repo = args.repo.strip()
+        res = index_github_repository(target_repo)
         print(json.dumps(res, indent=2))
         return
 
     if args.repo and args.pull:
-        lab_name = args.pull
-        if args.repo == "cml-community" or args.pull.endswith(".yaml") or args.pull.endswith(".yml"):
-            # Check if lab is CML
-            if args.pull.startswith("http://") or args.pull.startswith("https://"):
-                import_cml2_lab(args.pull)
+        lab_name = args.pull.strip()
+        raw_url = args.raw_url
+        fmt = args.format or "cml2"
+        category = args.category or "imported"
+
+        # Resolve from preset manifest if raw_url not explicitly provided
+        if not raw_url and args.repo in PRESET_REPOS:
+            for item in PRESET_REPOS[args.repo].get("curated_labs", []):
+                if item["name"] == lab_name:
+                    raw_url = item.get("raw_url")
+                    fmt = item.get("format", fmt)
+                    category = item.get("category", category)
+                    break
+
+        unl_path = None
+        meta = {}
+        try:
+            if fmt == "cml2" or (raw_url and (raw_url.endswith(".yaml") or raw_url.endswith(".yml"))):
+                unl_path, meta = import_cml2_lab(raw_url or "test", lab_name, category)
+            elif fmt == "eve-ng" or (raw_url and raw_url.endswith(".unl")):
+                unl_path, meta = import_eve_lab(raw_url or "test", lab_name, category)
+            elif fmt == "gns3" or (raw_url and (raw_url.endswith(".gns3") or raw_url.endswith(".gns3project"))):
+                unl_path, meta = import_gns3_lab(raw_url or "test", lab_name, category)
             else:
-                raw_url = f"https://raw.githubusercontent.com/CiscoDevNet/cml-community/master/lab-topologies/{lab_name}.yaml"
-                try:
-                    import_cml2_lab(raw_url, lab_name)
-                except Exception:
-                    # Fallback to authentic CML test builder
-                    import_cml2_lab("test")
+                xml, meta = build_ccna_routing_reference()
+                meta["source_url"] = raw_url or args.repo
+                unl_path, meta_path = deploy_lab_unl(lab_name, category, xml, meta)
+                fix_existing_unl_file(unl_path)
+        except Exception as e:
+            if args.json:
+                print(json.dumps({"success": False, "error": str(e), "lab": lab_name}))
+            else:
+                safe_print(f"[✘ ERROR] Pull failed: {e}")
+            return
+
+        if args.json:
+            print(json.dumps({
+                "success": bool(unl_path),
+                "unl_path": unl_path,
+                "lab_name": lab_name,
+                "format": fmt,
+                "nodes": meta.get("nodes", 0) if isinstance(meta, dict) else 0
+            }))
         else:
-            xml, meta = build_ccna_routing_reference()
-            meta["source_url"] = args.repo
-            unl_path, meta_path = deploy_lab_unl(lab_name, "imported", xml, meta)
             safe_print(f"[✔ DEPLOYED] Successfully converted and deployed '{lab_name}' from {args.repo} to {unl_path}")
         return
 

@@ -236,11 +236,10 @@
             '<span style="font-size:12px;font-weight:700;color:#38bdf8;display:flex;align-items:center;gap:6px;"><i class="fa fa-github"></i> Pull From Repository:</span>' +
             '<select id="az-tmpl-repo-select" style="padding:6px 12px;background:rgba(0,0,0,0.35);border:1px solid var(--pnq-border,rgba(255,255,255,0.12));border-radius:6px;color:#fff;font-size:12.5px;">' +
               '<option value="cml-community">Cisco DevNet CML Community Labs (CML 2.x YAML)</option>' +
-              '<option value="eve-ng-community">EVE-NG Community Enterprise Labs (EVE-NG UNL)</option>' +
-              '<option value="gns3-community">GNS3 Open-Source Community Archive (GNS3 JSON)</option>' +
-              '<option value="packetpushers">PacketPushers NetDevOps & BGP Testbeds</option>' +
-              '<option value="jeremy-ccna">Jeremy\'s IT Lab CCNA Practice Labs</option>' +
-              '<option value="local-offline">Azam-Basha Built-in Offline Library</option>' +
+              '<option value="cml-labs">Renato CML Enterprise & CCNA Labs (CML 2.x YAML)</option>' +
+              '<option value="eve-ng-community">Cisco DevNet & Community EVE-NG Labs (EVE-NG UNL)</option>' +
+              '<option value="gns3-community">GNS3 Community Enterprise Labs (GNS3 JSON)</option>' +
+              '<option value="local-offline">Azam-Basha Built-in Offline Library (Native UNL)</option>' +
               '<option value="custom">Custom GitHub Repository URL...</option>' +
             '</select>' +
             '<input type="text" id="az-tmpl-custom-url" placeholder="https://github.com/owner/repo" style="display:none;padding:6px 12px;background:rgba(0,0,0,0.35);border:1px solid var(--pnq-border,rgba(255,255,255,0.12));border-radius:6px;color:#fff;font-size:12.5px;width:260px;">' +
@@ -858,9 +857,105 @@
         if (discoverBox) {
           discoverBox.style.display = 'block';
           if (discoverTitle) discoverTitle.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Browsing repository: ' + repoVal + '…';
-          if (discoverList) discoverList.innerHTML = '<div style="padding:10px;color:#94a3b8;"><i class="fa fa-spinner fa-spin"></i> Contacting repository and scanning for topologies (.yaml, .unl, .gns3project)…</div>';
+          if (discoverList) discoverList.innerHTML = '<div style="padding:16px;color:#94a3b8;text-align:center;"><i class="fa fa-spinner fa-spin" style="font-size:18px;color:#0ea5e9;"></i><br><span style="font-size:12.5px;margin-top:8px;display:inline-block;">Scanning repository for topologies (.yaml, .unl, .gns3project)…</span></div>';
         }
-        runTool('templates-browse', { repo: repoVal }, btnBrowseRepo, 'term-templates');
+        btnBrowseRepo.disabled = true;
+
+        fetch(API_BASE + '/templates/browse?repo=' + encodeURIComponent(repoVal))
+          .then(function (r) { return r.json(); })
+          .then(function (res) {
+            btnBrowseRepo.disabled = false;
+            if (!res.success && res.error) {
+              if (discoverTitle) discoverTitle.innerHTML = '<span style="color:#f87171;"><i class="fa fa-exclamation-triangle"></i> Error browsing repository: ' + repoVal + '</span>';
+              if (discoverList) discoverList.innerHTML = '<div style="padding:12px;color:#f87171;background:rgba(239,68,68,0.1);border-radius:6px;font-size:12px;">' + res.error + '</div>';
+              return;
+            }
+            var labs = res.labs || [];
+            if (discoverTitle) {
+              discoverTitle.innerHTML = '<i class="fa fa-check-circle" style="color:#4ade80;"></i> ' + (res.repo_name || res.repo || repoVal) + ' — <span style="color:#fff;font-weight:800;">' + labs.length + ' Topologies Found</span>';
+            }
+            if (!labs.length) {
+              if (discoverList) discoverList.innerHTML = '<div style="padding:16px;color:#94a3b8;text-align:center;font-size:12.5px;">No compatible lab files found in this repository.</div>';
+              return;
+            }
+            // Render interactive cards for discovered labs
+            var html = '';
+            labs.forEach(function (lab) {
+              var fmtColor = '#38bdf8';
+              var fmtLabel = 'CML 2.x';
+              if (lab.format === 'eve-ng') { fmtColor = '#a78bfa'; fmtLabel = 'EVE-NG'; }
+              else if (lab.format === 'gns3') { fmtColor = '#f59e0b'; fmtLabel = 'GNS3'; }
+              else if (lab.format === 'pnetlab-v8') { fmtColor = '#4ade80'; fmtLabel = 'PNetLab'; }
+
+              html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:6px;">';
+              html += '  <div style="flex:1;min-width:0;">';
+              html += '    <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;flex-wrap:wrap;">';
+              html += '      <span style="font-weight:700;color:#f1f5f9;font-size:13px;">' + (lab.title || lab.name) + '</span>';
+              html += '      <span style="font-size:10px;font-weight:800;padding:2px 6px;border-radius:4px;background:' + fmtColor + '22;color:' + fmtColor + ';border:1px solid ' + fmtColor + '44;">' + fmtLabel + '</span>';
+              if (lab.nodes) html += '      <span style="font-size:11px;color:#64748b;"><i class="fa fa-server"></i> ' + lab.nodes + ' nodes</span>';
+              html += '    </div>';
+              html += '    <div style="font-size:11.5px;color:#94a3b8;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + (lab.desc || lab.path || '') + '</div>';
+              html += '  </div>';
+              html += '  <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">';
+              if (lab.source_url && lab.source_url !== 'local') {
+                html += '    <a href="' + lab.source_url + '" target="_blank" class="btn btn-ghost btn-sm" style="font-size:11px;color:#94a3b8;padding:4px 8px;border:1px solid rgba(255,255,255,0.1);"><i class="fa fa-github"></i> Upstream</a>';
+              }
+              html += '    <button type="button" class="btn btn-primary btn-sm btn-action-pull-lab" style="background:#0284c7;border:none;color:#fff;font-weight:600;font-size:11.5px;padding:5px 12px;display:inline-flex;align-items:center;gap:6px;" ' +
+                'data-repo="' + (res.repo || repoVal) + '" ' +
+                'data-lab="' + lab.name + '" ' +
+                'data-url="' + (lab.raw_url || '') + '" ' +
+                'data-format="' + (lab.format || 'cml2') + '" ' +
+                'data-cat="' + (lab.category || 'imported') + '">' +
+                '<i class="fa fa-bolt"></i> Pull & Convert</button>';
+              html += '  </div>';
+              html += '</div>';
+            });
+            if (discoverList) discoverList.innerHTML = html;
+
+            // Attach Pull & Convert click handlers
+            discoverList.querySelectorAll('.btn-action-pull-lab').forEach(function (pBtn) {
+              pBtn.onclick = function () {
+                var lRepo = pBtn.getAttribute('data-repo');
+                var lName = pBtn.getAttribute('data-lab');
+                var lUrl = pBtn.getAttribute('data-url');
+                var lFmt = pBtn.getAttribute('data-format');
+                var lCat = pBtn.getAttribute('data-cat');
+
+                pBtn.disabled = true;
+                pBtn.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Pulling…';
+
+                fetch(API_BASE + '/templates/pull', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ repo: lRepo, lab: lName, raw_url: lUrl, format: lFmt, category: lCat })
+                }).then(function (r) { return r.json(); }).then(function (pullRes) {
+                  if (pullRes.success) {
+                    pBtn.style.background = '#15803d';
+                    pBtn.innerHTML = '<i class="fa fa-check"></i> Pulled & Deployed!';
+                    App.toast('✔ Successfully pulled and deployed ' + lName + ' into PNetLab!', 'ok');
+                    var fixInput = container.querySelector('#az-fix-lab-path');
+                    if (fixInput && pullRes.unl_path) fixInput.value = pullRes.unl_path;
+                    loadTemplates();
+                  } else {
+                    pBtn.disabled = false;
+                    pBtn.style.background = '#b91c1c';
+                    pBtn.innerHTML = '<i class="fa fa-times"></i> Failed';
+                    App.toast('Pull failed: ' + (pullRes.error || 'Unknown error'), 'err');
+                  }
+                }).catch(function (err) {
+                  pBtn.disabled = false;
+                  pBtn.style.background = '#b91c1c';
+                  pBtn.innerHTML = '<i class="fa fa-times"></i> Error';
+                  App.toast('Network error: ' + err.message, 'err');
+                });
+              };
+            });
+          })
+          .catch(function (err) {
+            btnBrowseRepo.disabled = false;
+            if (discoverTitle) discoverTitle.innerHTML = '<span style="color:#f87171;">Failed to browse repository</span>';
+            if (discoverList) discoverList.innerHTML = '<div style="padding:12px;color:#f87171;">' + err.message + '</div>';
+          });
       };
     }
 

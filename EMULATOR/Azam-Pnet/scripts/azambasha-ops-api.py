@@ -288,57 +288,60 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
                 self.reply_json({"error": str(e)})
 
         elif parsed.path == "/azam-ops/api/templates":
+            cat_file = "/opt/azambasha/templates/catalog.json"
             data = None
-            if os.path.isfile("/opt/azambasha/templates/catalog.json"):
+            if os.path.isfile(cat_file):
                 try:
-                    with open("/opt/azambasha/templates/catalog.json") as f:
+                    with open(cat_file) as f:
                         data = json.load(f)
                 except Exception:
                     pass
             if not data or not data.get("templates"):
-                data = {"version": "1.0", "templates": DEFAULT_TEMPLATES}
-            self.reply_json(data)
+                data = {"version": "1.0", "templates": list(DEFAULT_TEMPLATES)}
 
-        elif parsed.path == "/azam-ops/api/templates/repos":
-            repos_data = {
-                "cml-community": {
-                    "name": "Cisco DevNet CML Community Labs",
-                    "url": "https://github.com/CiscoDevNet/cml-community",
-                    "format": "CML 2.x YAML",
-                    "desc": "Official Cisco Enterprise topologies (CCNA, CCNP, SD-WAN, BGP) with workbooks."
-                },
-                "eve-ng-community": {
-                    "name": "EVE-NG Community Enterprise Labs",
-                    "url": "https://github.com/Shadow578/eve-ng-labs",
-                    "format": "EVE-NG UNL",
-                    "desc": "Massive collection of Cisco, Juniper, and Arista multi-vendor topologies."
-                },
-                "packetpushers": {
-                    "name": "PacketPushers NetDevOps & BGP Testbeds",
-                    "url": "https://github.com/packetpushers/labs",
-                    "format": "NetDevOps",
-                    "desc": "Modern datacenter, BGP EVPN, and NetDevOps automation testbeds."
-                },
-                "jeremy-ccna": {
-                    "name": "Jeremy's IT Lab CCNA Practice Labs",
-                    "url": "https://github.com/JeremyITLab/CCNA-Labs",
-                    "format": "CCNA Practice",
-                    "desc": "Targeted CCNA 200-301 routing, switching, and ACL practice exercises."
-                },
-                "gns3-community": {
-                    "name": "GNS3 Open-Source Community Lab Archive",
-                    "url": "https://github.com/danehans/gns3-labs",
-                    "format": "GNS3 Project",
-                    "desc": "Cisco, Arista, and Linux multi-node topologies exported from GNS3."
-                },
-                "local-offline": {
-                    "name": "Azam-Basha Built-in Offline Library",
-                    "url": "local",
-                    "format": "PNetLab v8",
-                    "desc": "Air-gapped reference library pre-bundled locally with zero internet dependency."
-                }
-            }
-            self.reply_json(repos_data)
+            # Dynamically merge any locally deployed labs under /opt/unetlab/labs/Azam-Templates
+            az_dir = "/opt/unetlab/labs/Azam-Templates"
+            if os.path.isdir(az_dir):
+                existing_names = {t.get("name") for t in data.get("templates", [])}
+                discovered = []
+                for root, dirs, files in os.walk(az_dir):
+                    for f in files:
+                        if f.endswith(".unl"):
+                            lab_name = os.path.splitext(f)[0]
+                            if lab_name in existing_names:
+                                continue
+                            cat = os.path.basename(root)
+                            meta_path = os.path.join(root, f"{lab_name}.meta.json")
+                            meta = {}
+                            if os.path.isfile(meta_path):
+                                try:
+                                    with open(meta_path) as mf:
+                                        meta = json.load(mf)
+                                except Exception:
+                                    pass
+                            fmt = meta.get("format", "pnetlab-v8")
+                            nodes = meta.get("nodes", 4)
+                            desc = meta.get("desc", f"Imported {fmt.upper()} topology ready for emulation.")
+                            source_url = meta.get("source_url", "")
+                            discovered.append({
+                                "name": lab_name,
+                                "format": fmt,
+                                "category": cat,
+                                "desc": desc,
+                                "nodes": nodes,
+                                "tags": [fmt, cat, "imported"],
+                                "source_url": source_url
+                            })
+                            existing_names.add(lab_name)
+                if discovered:
+                    data["templates"] = discovered + data["templates"]
+                    try:
+                        os.makedirs(os.path.dirname(cat_file), exist_ok=True)
+                        with open(cat_file, "w") as f:
+                            json.dump(data, f, indent=2)
+                    except Exception:
+                        pass
+            self.reply_json(data)
 
         elif parsed.path == "/azam-ops/api/notify-config":
             conf = {}
@@ -515,6 +518,29 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
                     self.reply_json({"error": f"Failed reading PDF: {e}"}, status=500)
                     return
             self.reply_json({"error": "Manual PDF not found"}, status=404)
+
+        elif parsed.path == "/azam-ops/api/templates/repos":
+            importer_path = "/opt/azambasha/scripts/azambasha-eve-lab-importer.py"
+            if not os.path.isfile(importer_path):
+                importer_path = os.path.join(os.path.dirname(__file__), "azambasha-eve-lab-importer.py")
+            try:
+                proc = subprocess.run(["python3", importer_path, "--list-repos", "--json"], capture_output=True, text=True, timeout=10)
+                data = json.loads(proc.stdout)
+                self.reply_json({"success": True, "repos": data})
+            except Exception as e:
+                self.reply_json({"success": False, "error": str(e)}, status=500)
+
+        elif parsed.path == "/azam-ops/api/templates/browse":
+            repo = params.get("repo", ["cml-community"])[0].strip()
+            importer_path = "/opt/azambasha/scripts/azambasha-eve-lab-importer.py"
+            if not os.path.isfile(importer_path):
+                importer_path = os.path.join(os.path.dirname(__file__), "azambasha-eve-lab-importer.py")
+            try:
+                proc = subprocess.run(["python3", importer_path, "--repo", repo, "--browse", "--json"], capture_output=True, text=True, timeout=30)
+                data = json.loads(proc.stdout)
+                self.reply_json(data)
+            except Exception as e:
+                self.reply_json({"success": False, "error": str(e)}, status=500)
 
         elif parsed.path == "/azam-ops/api/link-stats":
             stats = []
@@ -739,6 +765,54 @@ print("[*] Azam-Pnet Python SDK Loaded.")
             except Exception:
                 body = {}
 
+        if parsed.path == "/azam-ops/api/templates/pull":
+            repo = body.get("repo", "cml-community")
+            lab = body.get("lab", "").strip()
+            raw_url = body.get("raw_url", "").strip()
+            fmt = body.get("format", "").strip()
+            cat = body.get("category", "").strip()
+            if not lab:
+                self.reply_json({"success": False, "error": "Lab name required"}, status=400)
+                return
+
+            importer_path = "/opt/azambasha/scripts/azambasha-eve-lab-importer.py"
+            if not os.path.isfile(importer_path):
+                importer_path = os.path.join(os.path.dirname(__file__), "azambasha-eve-lab-importer.py")
+
+            cmd = ["python3", importer_path, "--repo", repo, "--pull", lab, "--json"]
+            if raw_url:
+                cmd.extend(["--raw-url", raw_url])
+            if fmt:
+                cmd.extend(["--format", fmt])
+            if cat:
+                cmd.extend(["--category", cat])
+
+            try:
+                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                out = proc.stdout.strip()
+                res_data = None
+                for line in reversed(out.splitlines()):
+                    line = line.strip()
+                    if line.startswith("{") and line.endswith("}"):
+                        try:
+                            res_data = json.loads(line)
+                            break
+                        except Exception:
+                            pass
+                if not res_data:
+                    res_data = json.loads(out)
+                self.reply_json(res_data)
+            except Exception as e:
+                res_data = {
+                    "success": proc.returncode == 0 if 'proc' in locals() else False,
+                    "unl_path": f"/opt/unetlab/labs/Azam-Templates/{cat or 'imported'}/{lab}.unl",
+                    "lab_name": lab,
+                    "error": str(e),
+                    "output": proc.stdout.strip() if 'proc' in locals() else ""
+                }
+                self.reply_json(res_data, status=200 if res_data.get("success") else 500)
+            return
+
         if parsed.path == "/azam-ops/api/run":
             tool = body.get("tool", "")
             params = body.get("params", {})
@@ -837,10 +911,19 @@ print("[*] Azam-Pnet Python SDK Loaded.")
                 elif tool == "templates-pull":
                     repo = params.get("repo", "cml-community").strip()
                     lab = params.get("lab", "").strip()
+                    raw_url = params.get("raw_url", "").strip()
+                    fmt = params.get("format", "").strip()
+                    cat = params.get("category", "").strip()
                     if not lab:
                         self.reply_json({"error": "lab name required"}, status=400)
                         return
                     cmd = ["python3", "/opt/azambasha/scripts/azambasha-eve-lab-importer.py", "--repo", repo, "--pull", lab]
+                    if raw_url:
+                        cmd.extend(["--raw-url", raw_url])
+                    if fmt:
+                        cmd.extend(["--format", fmt])
+                    if cat:
+                        cmd.extend(["--category", cat])
                 elif tool == "templates-fix":
                     lab_file = params.get("file", "").strip()
                     if not lab_file:

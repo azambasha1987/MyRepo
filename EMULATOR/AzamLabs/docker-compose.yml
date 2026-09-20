@@ -1,0 +1,43 @@
+services:
+  azamlabs:
+    container_name: azamlabs-server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: azamlabs:latest
+    restart: unless-stopped
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    ports:
+      - "8000:8000"
+      - "30000-30100:30000-30100"
+    volumes:
+      - azamlabs-data:/var/lib/azamlabs
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /lib/modules:/lib/modules:ro
+    environment:
+      - AZAM_APP_NAME=AzamLabs
+      - AZAM_ENVIRONMENT=production
+      - AZAM_DATABASE_PATH=/var/lib/azamlabs/azamlabs.db
+      - AZAM_DATA_DIR=/var/lib/azamlabs
+    networks:
+      - azamlabs-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+networks:
+  azamlabs-net:
+    name: azamlabs-net
+    driver: bridge
+
+volumes:
+  azamlabs-data:
+    name: azamlabs-data

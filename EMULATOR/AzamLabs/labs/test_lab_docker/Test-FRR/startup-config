@@ -1,0 +1,2 @@
+hostname Test-FRR
+router ospf

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AzamLabs — Next-Gen Network, Cloud & Cybersecurity Studio</title>
+  <meta name="description" content="Clean-room, 100:1 consolidated network, cloud, and cybersecurity emulation platform featuring 60 FPS animated photon traffic, Web Wireshark, and universal lab compatibility.">
+  
+  <!-- Modern Fonts & Styles -->
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/canvas.css">
+  <link rel="stylesheet" href="/css/components.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Top Floating HUD Island -->
+    <header class="hud-header" id="hudHeader">
+      <div class="hud-left">
+        <div class="brand-logo">
+          <div class="brand-icon">
+            <svg viewBox="0 0 24 24">
+              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+          </div>
+          <span>AZAMLABS</span>
+        </div>
+        <div class="lab-title-badge">
+          <span style="color: var(--text-muted)">LAB:</span>
+          <span id="hudLabTitle">Multi-Vendor Spine-Leaf Mesh</span>
+        </div>
+      </div>
+
+      <div class="hud-center">
+        <div class="telemetry-pills">
+          <div class="pill-item">
+            <div class="pill-status-online"></div>
+            <span>ENGINE</span>
+            <span class="pill-value">ACTIVE</span>
+          </div>
+          <div class="pill-item">
+            <span>CPU</span>
+            <span id="hudCpuPercent" class="pill-value">3%</span>
+          </div>
+          <div class="pill-item">
+            <span>RAM</span>
+            <span id="hudRamUsage" class="pill-value">131 MB</span>
+          </div>
+          <div class="pill-item">
+            <span>100:1 KSM</span>
+            <span id="hudKsmSavings" class="pill-ksm">9.4x (2140MB)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hud-right">
+        <button id="btnStartAll" class="btn btn-success" title="Start All Nodes (Staggered Anti-Bootstorm)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Start All
+        </button>
+        <button id="btnStopAll" class="btn btn-danger" title="Gracefully Stop All Nodes">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
+          Stop
+        </button>
+        <button id="btnWipeLab" class="btn btn-ghost" title="Wipe Overlays & Reset to Day-0">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Wipe
+        </button>
+        <button id="btnDay0" class="btn btn-ghost" title="Auto-Generate Day-0 IP Planning & OSPF Configs">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Day-0
+        </button>
+        <button id="btnWireshark" class="btn btn-primary" title="Launch In-Browser Web Wireshark">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Wireshark
+        </button>
+        <button id="btnImport" class="btn btn-ghost" title="Universal Multi-Platform Lab Importer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Import
+        </button>
+        <button id="btnToggleTerminal" class="btn btn-ghost" title="Toggle Web Terminal Drawer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          Terminal
+        </button>
+        <button id="btnPalette" class="btn-icon-only" title="Command Palette (Ctrl+K)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- GPU-Accelerated Topology Canvas Viewport -->
+    <main class="canvas-viewport" id="canvasViewport">
+      <canvas id="topologyCanvas"></canvas>
+
+      <!-- Floating Left Tactical Tool Palette -->
+      <div class="canvas-tools" id="canvasTools">
+        <button id="toolSelect" class="tool-btn active" data-tooltip="Select & Drag (V)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7 18 3-7 7-3L3 3z"/></svg>
+        </button>
+        <button id="toolConnect" class="tool-btn" data-tooltip="Wire Cable (C)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+        </button>
+        <button id="toolAddNode" class="tool-btn" data-tooltip="Add Node (A)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <button id="toolPan" class="tool-btn" data-tooltip="Pan Viewport (H)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>
+        </button>
+      </div>
+
+      <!-- Floating Bottom-Right Zoom & Navigation Island -->
+      <div class="canvas-zoom-controls">
+        <button id="btnZoomIn" class="zoom-btn" title="Zoom In">+</button>
+        <span class="zoom-level-text">100%</span>
+        <button id="btnZoomOut" class="zoom-btn" title="Zoom Out">-</button>
+        <button id="btnZoomReset" class="zoom-btn" title="Reset Zoom">⟲</button>
+      </div>
+    </main>
+
+    <!-- Node Context Inspector Drawer (Right Sidebar) -->
+    <aside class="node-inspector" id="nodeInspector">
+      <div class="inspector-header">
+        <div class="inspector-title">
+          <span id="inspNodeName">Spine-01</span>
+          <span id="inspStatusBadge" class="status-badge status-running">RUNNING</span>
+        </div>
+        <button id="btnCloseInspector" class="btn-icon-only" title="Close Inspector">&times;</button>
+      </div>
+      <div class="inspector-body">
+        <div class="field-group">
+          <div class="field-label">Device Type</div>
+          <div id="inspDeviceType" class="field-value-box">ROUTER</div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Execution Driver</div>
+          <div id="inspDriver" class="field-value-box">QEMU</div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Operating Image</div>
+          <div id="inspImage" class="field-value-box">c8000v-17.09.03a</div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Resource Allocation</div>
+          <div id="inspResources" class="field-value-box">2 vCPU | 2048 MB RAM</div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Serial / Telnet Console</div>
+          <div id="inspConsolePort" class="field-value-box">30001 (telnet)</div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Virtual Interfaces</div>
+          <div id="inspInterfaces" class="field-value-box">
+            <div>• <b>Gi1</b> <span style="color: var(--neon-cyan)">[10.100.1.1/30]</span></div>
+            <div>• <b>Gi2</b> <span style="color: var(--neon-cyan)">[10.100.1.5/30]</span></div>
+          </div>
+        </div>
+        <div class="inspector-actions">
+          <button id="btnInspectorTerminal" class="btn btn-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            Open Web Terminal
+          </button>
+          <button id="btnInspectorStart" class="btn btn-success">Start Node</button>
+          <button id="btnInspectorStop" class="btn btn-danger">Stop Node</button>
+          <button id="btnInspectorCopyUri" class="btn btn-ghost">Copy Desktop URI (telnet://)</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Multi-Tab Web Terminal Drawer (Bottom Dock) -->
+    <div class="terminal-drawer" id="terminalDrawer">
+      <div class="terminal-tabs-bar">
+        <div id="terminalTabsList" class="tabs-list">
+          <!-- Populated dynamically by terminal.js -->
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:0.75rem; color:var(--text-muted); font-family:var(--font-mono);">Flow Paster: Ready</span>
+        </div>
+      </div>
+      <div class="terminal-container">
+        <div id="terminalScreen" class="terminal-screen"></div>
+        <div class="terminal-input-line">
+          <span id="terminalPrompt" class="terminal-prompt">AzamLabs#</span>
+          <input id="terminalInput" class="terminal-input" type="text" autocomplete="off" spellcheck="false" placeholder="Enter command or paste configuration...">
+        </div>
+      </div>
+    </div>
+
+    <!-- Web Wireshark Packet Sniffer Modal -->
+    <div class="modal-overlay" id="wiresharkModal">
+      <div class="modal-window wireshark-modal">
+        <div class="modal-header">
+          <div class="modal-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <span id="wiresharkTitle">Web Wireshark — Live Packet Sniffer</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <input id="wiresharkFilter" class="palette-input" style="font-size:0.8rem; padding:4px 10px; border:1px solid var(--border-subtle); border-radius:6px; width:220px; background:rgba(0,0,0,0.3);" placeholder="Filter (e.g. ospf, tcp)...">
+            <button id="btnDownloadPcap" class="btn btn-primary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export .pcap
+            </button>
+            <button id="btnCloseWireshark" class="btn-icon-only">&times;</button>
+          </div>
+        </div>
+        <div class="wireshark-layout">
+          <div class="packet-table-container">
+            <table class="packet-table">
+              <thead>
+                <tr>
+                  <th style="width: 60px;">No.</th>
+                  <th style="width: 90px;">Time</th>
+                  <th style="width: 130px;">Source</th>
+                  <th style="width: 130px;">Destination</th>
+                  <th style="width: 90px;">Protocol</th>
+                  <th style="width: 70px;">Length</th>
+                  <th>Info</th>
+                </tr>
+              </thead>
+              <tbody id="packetTableBody"></tbody>
+            </table>
+          </div>
+          <div class="wireshark-detail-split">
+            <div id="packetDecodeTree" class="decode-tree-pane">
+              Select a packet in the table above to dissect protocol headers and byte contents.
+            </div>
+            <div id="packetHexDump" class="hex-dump-pane">
+              0000  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  ................
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Command Palette Modal (Ctrl+K) -->
+    <div class="modal-overlay" id="paletteModal">
+      <div class="modal-window palette-modal">
+        <div class="palette-search-box">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="paletteInput" class="palette-input" placeholder="Type a command or search action..." autocomplete="off">
+          <span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted); background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px;">ESC</span>
+        </div>
+        <div id="paletteResults" class="palette-results">
+          <!-- Populated dynamically by palette.js -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Universal Lab Importer Modal -->
+    <div class="modal-overlay" id="importerModal">
+      <div class="modal-window importer-modal">
+        <div class="modal-header">
+          <div class="modal-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Universal Multi-Platform Lab Importer
+          </div>
+          <button id="btnCloseImporter" class="btn-icon-only">&times;</button>
+        </div>
+        
+        <div id="importerDropzone" class="dropzone">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="1.5" style="margin-bottom:12px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div style="font-weight:600; font-size:1rem; margin-bottom:4px;">Drag & Drop Lab File Here</div>
+          <div style="font-size:0.8rem; color:var(--text-muted);">or click to browse local filesystem</div>
+          <input id="importerFileInput" type="file" style="display:none;" accept=".clab.yml,.clab.yaml,.yaml,.yml,.unl,.gns3,.azaml,.cfg,.txt">
+          
+          <div class="format-tags">
+            <span class="format-tag">Containerlab (.clab.yml)</span>
+            <span class="format-tag">Cisco CML 2.x (.yaml)</span>
+            <span class="format-tag">EVE-NG / PNET (.unl)</span>
+            <span class="format-tag">GNS3 (.gns3)</span>
+            <span class="format-tag">P2V Config (.cfg)</span>
+            <span class="format-tag">AzamLabs (.azaml)</span>
+          </div>
+        </div>
+
+        <div id="importerDetectedBadge" class="format-tag" style="display:none; margin: 10px auto; width: fit-content; color: var(--neon-green); border-color: var(--neon-green);"></div>
+
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+          <button class="btn btn-ghost" onclick="document.getElementById('importerModal').classList.remove('open')">Cancel</button>
+          <button id="btnConfirmImport" class="btn btn-primary" disabled>Convert & Import Lab</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Toast Notification Container -->
+    <div id="toastContainer" style="position:fixed; bottom:24px; left:24px; z-index:999; display:flex; flex-direction:column; gap:8px; pointer-events:none;"></div>
+  </div>
+
+  <!-- Studio JavaScript Subsystems -->
+  <script src="/js/canvas.js"></script>
+  <script src="/js/terminal.js"></script>
+  <script src="/js/sniffer.js"></script>
+  <script src="/js/palette.js"></script>
+  <script src="/js/importer.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

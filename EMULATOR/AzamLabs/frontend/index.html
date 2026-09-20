@@ -6,10 +6,22 @@
   <title>AzamLabs — Next-Gen Network, Cloud & Cybersecurity Studio</title>
   <meta name="description" content="Clean-room, 100:1 consolidated network, cloud, and cybersecurity emulation platform featuring 60 FPS animated photon traffic, Web Wireshark, and universal lab compatibility.">
   
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="shortcut icon" href="/assets/favicon.ico">
+
   <!-- Modern Fonts & Styles -->
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/canvas.css">
   <link rel="stylesheet" href="/css/components.css">
+
+  <!-- Client-Side Authentication Gatekeeper -->
+  <script src="/js/auth.js"></script>
+  <script>
+    // Enforce immediate redirect to login if session missing or invalid
+    if (window.AzamAuth) {
+      window.AzamAuth.checkAuth(true);
+    }
+  </script>
 </head>
 <body>
   <div id="app">
@@ -17,11 +29,7 @@
     <header class="hud-header" id="hudHeader">
       <div class="hud-left">
         <div class="brand-logo">
-          <div class="brand-icon">
-            <svg viewBox="0 0 24 24">
-              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-            </svg>
-          </div>
+          <img src="/assets/logo-icon.png" alt="AzamLabs Logo" style="width:28px; height:28px; border-radius:6px; object-fit:contain; box-shadow:0 0 10px rgba(0,242,254,0.4);">
           <span>AZAMLABS</span>
         </div>
         <div class="lab-title-badge">
@@ -84,8 +92,39 @@
         <button id="btnPalette" class="btn-icon-only" title="Command Palette (Ctrl+K)">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         </button>
+
+        <div class="user-profile-badge" style="display:flex; align-items:center; gap:8px; padding:4px 10px; background:rgba(255,255,255,0.05); border:1px solid var(--border-subtle); border-radius:8px; font-size:0.8rem; margin-left:4px;">
+          <div style="width:8px; height:8px; border-radius:50%; background:var(--neon-green); box-shadow:0 0 6px var(--neon-green);"></div>
+          <span id="hudUsername" style="font-weight:600; color:var(--text-primary); font-family:var(--font-mono);">azam</span>
+          <button id="btnLogout" class="btn-icon-only" title="Sign Out (azam)" style="width:22px; height:22px; margin-left:2px; color:var(--text-muted); cursor:pointer;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+        </div>
       </div>
     </header>
+
+    <!-- Left-Side Folder-Wise Lab Explorer Drawer -->
+    <aside class="lab-explorer-drawer" id="labExplorerDrawer">
+      <div class="explorer-header">
+        <div class="explorer-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+          <span>LAB EXPLORER</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button id="btnNewFolder" class="btn-icon-only" title="New Category Folder">+</button>
+          <button id="btnCloseExplorer" class="btn-icon-only" title="Close Explorer">&times;</button>
+        </div>
+      </div>
+      <div class="explorer-toolbar">
+        <input id="explorerSearch" class="explorer-search-input" type="text" placeholder="Search labs or categories..." autocomplete="off">
+        <button id="btnExplorerImport" class="btn-icon-only" title="Import Lab to Current Folder">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </button>
+      </div>
+      <div class="explorer-tree" id="explorerTree">
+        <!-- Rendered dynamically by explorer.js -->
+      </div>
+    </aside>
 
     <!-- GPU-Accelerated Topology Canvas Viewport -->
     <main class="canvas-viewport" id="canvasViewport">
@@ -93,6 +132,9 @@
 
       <!-- Floating Left Tactical Tool Palette -->
       <div class="canvas-tools" id="canvasTools">
+        <button id="toolToggleExplorer" class="tool-btn" data-tooltip="Folder Explorer (E)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        </button>
         <button id="toolSelect" class="tool-btn active" data-tooltip="Select & Drag (V)">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3l7 18 3-7 7-3L3 3z"/></svg>
         </button>
@@ -110,9 +152,10 @@
       <!-- Floating Bottom-Right Zoom & Navigation Island -->
       <div class="canvas-zoom-controls">
         <button id="btnZoomIn" class="zoom-btn" title="Zoom In">+</button>
-        <span class="zoom-level-text">100%</span>
+        <span class="zoom-level-text" id="zoomLevelDisplay">100%</span>
         <button id="btnZoomOut" class="zoom-btn" title="Zoom Out">-</button>
         <button id="btnZoomReset" class="zoom-btn" title="Reset Zoom">⟲</button>
+        <button id="btnZoomFit" class="zoom-btn" title="Fit to Screen (Auto-Center)">⛶</button>
       </div>
     </main>
 
@@ -246,7 +289,7 @@
 
     <!-- Universal Lab Importer Modal -->
     <div class="modal-overlay" id="importerModal">
-      <div class="modal-window importer-modal">
+      <div class="modal-window importer-modal" style="max-width: 620px;">
         <div class="modal-header">
           <div class="modal-title">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -254,28 +297,50 @@
           </div>
           <button id="btnCloseImporter" class="btn-icon-only">&times;</button>
         </div>
+
+        <!-- Importer Tabs: File Upload vs Host Path -->
+        <div style="display:flex; gap:8px; margin-bottom:14px;">
+          <button id="tabImportUpload" class="btn btn-primary" style="font-size:0.8rem; padding:6px 14px;">Upload File / Archive</button>
+          <button id="tabImportHost" class="btn btn-ghost" style="font-size:0.8rem; padding:6px 14px;">Batch Import Host Path</button>
+        </div>
         
-        <div id="importerDropzone" class="dropzone">
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="1.5" style="margin-bottom:12px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <div style="font-weight:600; font-size:1rem; margin-bottom:4px;">Drag & Drop Lab File Here</div>
-          <div style="font-size:0.8rem; color:var(--text-muted);">or click to browse local filesystem</div>
-          <input id="importerFileInput" type="file" style="display:none;" accept=".clab.yml,.clab.yaml,.yaml,.yml,.unl,.gns3,.azaml,.cfg,.txt">
-          
-          <div class="format-tags">
-            <span class="format-tag">Containerlab (.clab.yml)</span>
-            <span class="format-tag">Cisco CML 2.x (.yaml)</span>
-            <span class="format-tag">EVE-NG / PNET (.unl)</span>
-            <span class="format-tag">GNS3 (.gns3)</span>
-            <span class="format-tag">P2V Config (.cfg)</span>
-            <span class="format-tag">AzamLabs (.azaml)</span>
+        <!-- Tab 1: Upload / Dropzone -->
+        <div id="importerUploadPane">
+          <div id="importerDropzone" class="dropzone">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--neon-cyan)" stroke-width="1.5" style="margin-bottom:12px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <div style="font-weight:600; font-size:1rem; margin-bottom:4px;">Drag & Drop Lab File or Archive Here</div>
+            <div style="font-size:0.8rem; color:var(--text-muted);">or click to browse (.unl, .gns3, .gns3project, .zip, .clab.yml, .yaml, .azaml)</div>
+            <input id="importerFileInput" type="file" style="display:none;" accept=".clab.yml,.clab.yaml,.yaml,.yml,.unl,.gns3,.gns3project,.azaml,.bundle,.zip,.cfg,.txt">
+            
+            <div class="format-tags">
+              <span class="format-tag">EVE-NG / PNET (.unl)</span>
+              <span class="format-tag">GNS3 (.gns3, .gns3project)</span>
+              <span class="format-tag">Batch Archive (.zip)</span>
+              <span class="format-tag">Containerlab (.clab.yml)</span>
+              <span class="format-tag">Cisco CML 2.x (.yaml)</span>
+              <span class="format-tag">P2V Config (.cfg)</span>
+              <span class="format-tag">AzamLabs (.azaml)</span>
+            </div>
+          </div>
+
+          <div id="importerDetectedBadge" class="format-tag" style="display:none; margin: 10px auto; width: fit-content; color: var(--neon-green); border-color: var(--neon-green);"></div>
+
+          <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <button class="btn btn-ghost" onclick="document.getElementById('importerModal').classList.remove('open')">Cancel</button>
+            <button id="btnConfirmImport" class="btn btn-primary" disabled>Convert & Import Lab</button>
           </div>
         </div>
 
-        <div id="importerDetectedBadge" class="format-tag" style="display:none; margin: 10px auto; width: fit-content; color: var(--neon-green); border-color: var(--neon-green);"></div>
-
-        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
-          <button class="btn btn-ghost" onclick="document.getElementById('importerModal').classList.remove('open')">Cancel</button>
-          <button id="btnConfirmImport" class="btn btn-primary" disabled>Convert & Import Lab</button>
+        <!-- Tab 2: Host Local Path / Batch Directory -->
+        <div id="importerHostPane" style="display:none; flex-direction:column; gap:12px;">
+          <div style="font-size:0.85rem; color:var(--text-secondary); line-height:1.4;">
+            Specify a local directory path or .zip archive on the host filesystem to automatically scan, convert, and organize all contained labs:
+          </div>
+          <input id="inputHostPath" class="palette-input" style="padding:10px 12px; border:1px solid var(--border-subtle); border-radius:8px; background:rgba(0,0,0,0.3); font-family:var(--font-mono); font-size:0.85rem;" placeholder="e.g. E:\Labs, Emulators & Tools\0. LABS CONFIGS\...">
+          <div style="display:flex; gap:10px; align-items:center;">
+            <input id="inputHostTargetFolder" class="palette-input" style="padding:8px 12px; border:1px solid var(--border-subtle); border-radius:8px; background:rgba(0,0,0,0.3); font-size:0.85rem; flex:1;" placeholder="Optional Target Folder in Explorer (e.g. /Enterprise Networks)">
+            <button id="btnHostBatchImport" class="btn btn-primary" style="white-space:nowrap;">Run Batch Import</button>
+          </div>
         </div>
       </div>
     </div>
@@ -290,6 +355,7 @@
   <script src="/js/sniffer.js"></script>
   <script src="/js/palette.js"></script>
   <script src="/js/importer.js"></script>
+  <script src="/js/explorer.js"></script>
   <script src="/js/app.js"></script>
 </body>
 </html>

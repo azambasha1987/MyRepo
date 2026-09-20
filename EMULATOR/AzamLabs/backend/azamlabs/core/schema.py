@@ -159,6 +159,7 @@ class AzamTopology(BaseModel):
     description: str = ""
     version: str = "1.0.0"
     author: str = "AzamLabs Architect"
+    folder_path: str = "/"
     nodes: List[AzamNode] = Field(default_factory=list)
     links: List[AzamLink] = Field(default_factory=list)
     networks: List[AzamNetwork] = Field(default_factory=list)

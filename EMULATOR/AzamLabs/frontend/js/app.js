@@ -14,6 +14,7 @@ class AzamLabsStudio {
     this.sniffer = null;
     this.palette = null;
     this.importer = null;
+    this.explorer = null;
 
     this.telemetryWs = null;
     this.inspector = document.getElementById('nodeInspector');
@@ -29,6 +30,15 @@ class AzamLabsStudio {
     this.sniffer = new WebWireshark();
     this.palette = new CommandPalette(this);
     this.importer = new UniversalImporter(this);
+    if (typeof LabExplorer !== 'undefined') {
+      this.explorer = new LabExplorer(this);
+    }
+
+    // Update authenticated user in HUD
+    const userEl = document.getElementById('hudUsername');
+    if (userEl && window.AzamAuth) {
+      userEl.textContent = window.AzamAuth.getUser();
+    }
 
     // 3. Bind Canvas Callbacks
     this.canvas.onNodeSelected = (node) => this.showNodeInspector(node);
@@ -55,6 +65,17 @@ class AzamLabsStudio {
     document.getElementById('btnImport')?.addEventListener('click', () => this.openImporter());
     document.getElementById('btnPalette')?.addEventListener('click', () => this.palette.open());
     document.getElementById('btnToggleTerminal')?.addEventListener('click', () => this.terminal.toggleDrawer());
+    document.getElementById('btnLogout')?.addEventListener('click', () => {
+      if (window.AzamAuth) window.AzamAuth.logout();
+    });
+
+    // Keyboard shortcut for explorer (E)
+    window.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'e' || e.key === 'E') {
+        if (this.explorer) this.explorer.toggleDrawer();
+      }
+    });
 
     // Left Toolbar
     document.getElementById('toolSelect')?.addEventListener('click', () => this.setCanvasMode('select'));
@@ -66,6 +87,7 @@ class AzamLabsStudio {
     document.getElementById('btnZoomIn')?.addEventListener('click', () => this.canvas.zoomIn());
     document.getElementById('btnZoomOut')?.addEventListener('click', () => this.canvas.zoomOut());
     document.getElementById('btnZoomReset')?.addEventListener('click', () => this.canvas.resetZoom());
+    document.getElementById('btnZoomFit')?.addEventListener('click', () => this.canvas.fitToViewport());
 
     // Inspector Close
     document.getElementById('btnCloseInspector')?.addEventListener('click', () => {

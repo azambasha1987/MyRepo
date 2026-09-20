@@ -22,6 +22,8 @@ from azamlabs.core.database import db
 from azamlabs.core.day0 import Day0ConfigGenerator
 from azamlabs.core.ksm import KsmManager
 from azamlabs.converters.universal import UniversalConverter
+from azamlabs.converters.batch import BatchLabImporter
+from azamlabs.core.folders import folder_service
 from azamlabs.console.uris import launcher_manager
 
 
@@ -197,6 +199,63 @@ def lab_delete(lab_id: str, yes: bool):
 
 
 # ==========================================
+# Folder Management Subcommands
+# ==========================================
+
+@cli.group()
+def folder():
+    """Organize labs into hierarchical folders and taxonomy."""
+    pass
+
+
+@folder.command("list")
+def folder_list():
+    """List all registered folders with lab counts."""
+    tree = folder_service.get_folder_tree()
+    if not tree:
+        click.secho("No folders found.", fg="yellow")
+        return
+
+    click.secho(f"\n{'FOLDER ID':<16} {'PATH':<35} {'LABS':<8}", fg="cyan", bold=True)
+    click.secho("-" * 65, fg="cyan")
+    for f in tree:
+        click.echo(f"{f['id']:<16} {f['path']:<35} {f.get('lab_count', len(f.get('labs', []))):<8}")
+    click.echo()
+
+
+@folder.command("create")
+@click.argument("name")
+@click.option("--parent", "-p", default="root", help="Parent folder ID (default: root)")
+def folder_create(name: str, parent: str):
+    """Create a new folder in the hierarchy."""
+    try:
+        res = folder_service.create_folder(name=name, parent_id=parent)
+        click.secho(f"[OK] Folder created: '{res['name']}' at '{res['path']}' (ID: {res['id']})", fg="green", bold=True)
+    except Exception as e:
+        click.secho(f"[ERR] Failed to create folder: {e}", fg="red", err=True)
+        sys.exit(1)
+
+
+@folder.command("delete")
+@click.argument("folder_id")
+@click.option("--cascade", "-c", is_flag=True, help="Cascade delete: permanently delete all contained labs inside this folder")
+@click.option("--yes", "-y", is_flag=True, help="Bypass confirmation prompt")
+def folder_delete(folder_id: str, cascade: bool, yes: bool):
+    """Delete a folder. Use --cascade to delete all contained labs as well."""
+    if not yes:
+        action_desc = "delete folder AND ALL contained labs permanently" if cascade else "delete folder and move contained labs to root '/'"
+        click.confirm(f"Are you sure you want to {action_desc} for folder '{folder_id}'?", abort=True)
+
+    success = folder_service.delete_folder(folder_id, delete_contents=cascade)
+    if success:
+        msg = f"[OK] Folder '{folder_id}' and all nested labs deleted." if cascade else f"[OK] Folder '{folder_id}' deleted (nested labs moved to root '/')."
+        click.secho(msg, fg="green", bold=True)
+    else:
+        click.secho(f"[ERR] Cannot delete root folder or folder '{folder_id}' not found.", fg="red", err=True)
+        sys.exit(1)
+
+
+# ==========================================
 # Universal Converter Subcommands
 # ==========================================
 
@@ -256,6 +315,45 @@ def convert_export(lab_id: str, target_format: str, output: Optional[str]):
     except Exception as e:
         click.secho(f"[ERR] Export error: {e}", fg="red", err=True)
         sys.exit(1)
+
+
+@convert.command("batch-import")
+@click.argument("source_path", type=click.Path(exists=True))
+@click.option("--target-folder", "-t", default=None, help="Target folder path in AzamLabs (e.g. /Enterprise)")
+@click.option("--dry-run", is_flag=True, help="Validate and parse topologies without writing to database")
+def convert_batch_import(source_path: str, target_folder: Optional[str], dry_run: bool):
+    """Batch convert and import labs from a ZIP archive or directory into AzamLabs."""
+    p = Path(source_path)
+    click.secho(f"Processing batch source '{p.name}' (dry-run={dry_run})...", fg="cyan", bold=True)
+
+    if p.is_file() and p.suffix.lower() == ".zip":
+        results = BatchLabImporter.import_zip(p, target_folder=target_folder, dry_run=dry_run)
+    elif p.is_dir():
+        results = BatchLabImporter.import_directory(p, target_folder=target_folder, dry_run=dry_run)
+    else:
+        click.secho(f"[ERR] Source must be a .zip file or directory.", fg="red", err=True)
+        sys.exit(1)
+
+    click.echo()
+    click.secho(f"Batch Import Summary:", fg="cyan", bold=True)
+    click.echo(f"  Total Found:    {results['total_found']}")
+    click.echo(f"  Imported Labs:  {click.style(str(results['imported_count']), fg='green', bold=True)}")
+    click.echo(f"  Failed Labs:    {click.style(str(results['failed_count']), fg='red' if results['failed_count'] > 0 else 'white')}")
+
+    if results["imported_labs"]:
+        click.secho("\nImported Topologies:", fg="cyan")
+        for lab_info in results["imported_labs"][:20]:
+            click.echo(f"  * [{lab_info['folder_path']}] {lab_info['name']} ({lab_info['node_count']} nodes)")
+        if len(results["imported_labs"]) > 20:
+            click.echo(f"  ... and {len(results['imported_labs']) - 20} more.")
+
+    if results["errors"]:
+        click.secho("\nEncountered Warnings / Errors:", fg="yellow")
+        for err in results["errors"][:10]:
+            click.echo(f"  ! {err['file']}: {err['error']}")
+        if len(results["errors"]) > 10:
+            click.echo(f"  ... and {len(results['errors']) - 10} more.")
+    click.echo()
 
 
 # ==========================================

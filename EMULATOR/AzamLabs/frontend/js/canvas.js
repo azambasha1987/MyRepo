@@ -12,6 +12,7 @@ class TopologyCanvas {
     // Topology Data
     this.nodes = [];
     this.links = [];
+    this.annotations = [];
     this.selectedNode = null;
     this.hoveredNode = null;
 
@@ -56,6 +57,7 @@ class TopologyCanvas {
   setTopology(topology) {
     this.nodes = topology.nodes || [];
     this.links = topology.links || [];
+    this.annotations = topology.annotations || [];
     this.particles = [];
 
     // Initialize photon traffic particles for running links
@@ -69,6 +71,48 @@ class TopologyCanvas {
         });
       }
     });
+
+    // Auto-center and fit topology comfortably in canvas viewport
+    this.fitToViewport();
+  }
+
+  fitToViewport() {
+    if (!this.nodes || this.nodes.length === 0) return;
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    this.nodes.forEach(n => {
+      minX = Math.min(minX, n.pos_x - 50);
+      maxX = Math.max(maxX, n.pos_x + 50);
+      minY = Math.min(minY, n.pos_y - 50);
+      maxY = Math.max(maxY, n.pos_y + 50);
+    });
+
+    if (this.annotations && this.annotations.length > 0) {
+      this.annotations.forEach(a => {
+        minX = Math.min(minX, a.pos_x);
+        maxX = Math.max(maxX, a.pos_x + (a.width || 200));
+        minY = Math.min(minY, a.pos_y);
+        maxY = Math.max(maxY, a.pos_y + (a.height || 150));
+      });
+    }
+
+    const bboxWidth = Math.max(maxX - minX, 100);
+    const bboxHeight = Math.max(maxY - minY, 100);
+    const padding = 80;
+
+    const availableWidth = Math.max(this.width - padding * 2, 200);
+    const availableHeight = Math.max(this.height - padding * 2, 200);
+
+    const scaleX = availableWidth / bboxWidth;
+    const scaleY = availableHeight / bboxHeight;
+    this.scale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.25), 1.5);
+
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    this.panX = this.width / 2 - centerX * this.scale;
+    this.panY = this.height / 2 - centerY * this.scale;
+    this.updateZoomDisplay();
   }
 
   screenToWorld(screenX, screenY) {
@@ -245,6 +289,9 @@ class TopologyCanvas {
     this.ctx.translate(this.panX, this.panY);
     this.ctx.scale(this.scale, this.scale);
 
+    // 0. Draw Visual Architectural Annotations & Zones
+    this.drawAnnotations();
+
     // 1. Draw Links & Virtual Wires
     this.drawLinks();
 
@@ -261,6 +308,43 @@ class TopologyCanvas {
 
     this.ctx.restore();
     requestAnimationFrame(this.animate);
+  }
+
+  drawAnnotations() {
+    if (!this.annotations || this.annotations.length === 0) return;
+
+    this.annotations.forEach(ann => {
+      const x = ann.pos_x || 0;
+      const y = ann.pos_y || 0;
+      const w = ann.width || 220;
+      const h = ann.height || 140;
+      const color = ann.color || '#00f2fe';
+      const bg = ann.background_color || 'rgba(0, 242, 254, 0.06)';
+
+      this.ctx.save();
+      this.ctx.fillStyle = bg;
+      this.ctx.strokeStyle = color;
+      this.ctx.lineWidth = 1.5;
+      this.ctx.setLineDash([4, 4]);
+
+      this.ctx.beginPath();
+      if (this.ctx.roundRect) {
+        this.ctx.roundRect(x, y, w, h, 8);
+      } else {
+        this.ctx.rect(x, y, w, h);
+      }
+      this.ctx.fill();
+      this.ctx.stroke();
+      this.ctx.setLineDash([]);
+
+      if (ann.label) {
+        this.ctx.fillStyle = color;
+        this.ctx.font = '600 12px Inter, sans-serif';
+        this.ctx.textAlign = 'left';
+        this.ctx.fillText(ann.label, x + 12, y + 22);
+      }
+      this.ctx.restore();
+    });
   }
 
   drawLinks() {

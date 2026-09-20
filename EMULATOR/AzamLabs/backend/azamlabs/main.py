@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from typing import Dict, List, Any, Optional
 from pydantic import BaseModel
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Response
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Form, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
@@ -20,6 +20,9 @@ from azamlabs.console.gateway import gateway
 from azamlabs.console.paster import flow_paster
 from azamlabs.console.uris import launcher_manager
 from azamlabs.mcp.server import mcp_server
+from azamlabs.auth.router import auth_router
+from azamlabs.core.folders import folder_service
+from azamlabs.converters.batch import BatchLabImporter
 
 
 class ImportLabRequest(BaseModel):
@@ -28,10 +31,29 @@ class ImportLabRequest(BaseModel):
     format_hint: Optional[str] = None
 
 
+class BatchImportRequest(BaseModel):
+    source_path: str
+    target_folder: Optional[str] = None
+    dry_run: bool = False
+
+
+class CloneLabRequest(BaseModel):
+    new_name: Optional[str] = None
+
+
 class PasteConfigRequest(BaseModel):
     config_text: str
     inter_line_delay_ms: int = 50
     stop_on_error: bool = False
+
+
+class CreateFolderRequest(BaseModel):
+    name: str
+    parent_id: Optional[str] = "root"
+
+
+class MoveLabRequest(BaseModel):
+    folder_path: str
 
 
 @asynccontextmanager
@@ -60,6 +82,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include Authentication Router
+app.include_router(auth_router)
 
 
 @app.get("/health", tags=["System"])
@@ -145,6 +170,65 @@ async def get_lab_status(lab_id: str) -> Dict[str, Any]:
 
 
 # ==========================================
+# Folder-Wise Lab Hierarchy Endpoints
+# ==========================================
+
+@app.get("/api/v1/folders", tags=["Folders"])
+async def get_folder_tree() -> List[Dict[str, Any]]:
+    """Returns structured folder tree with labs nested under each folder."""
+    return folder_service.get_folder_tree()
+
+
+@app.post("/api/v1/folders", tags=["Folders"])
+async def create_folder_endpoint(request: CreateFolderRequest) -> Dict[str, Any]:
+    """Creates a new folder in the hierarchy."""
+    return folder_service.create_folder(name=request.name, parent_id=request.parent_id)
+
+
+@app.delete("/api/v1/folders/{folder_id}", tags=["Folders"])
+async def delete_folder_endpoint(folder_id: str, delete_contents: bool = False) -> Dict[str, Any]:
+    """Deletes a folder. If delete_contents=true, deletes all nested labs; otherwise moves them to root."""
+    success = folder_service.delete_folder(folder_id, delete_contents=delete_contents)
+    if not success:
+        raise HTTPException(status_code=400, detail="Cannot delete root folder or folder not found.")
+    return {"status": "deleted", "folder_id": folder_id, "cascaded": delete_contents}
+
+
+@app.get("/api/v1/folders/{folder_id}/export", tags=["Folders"])
+async def export_folder_zip_endpoint(folder_id: str):
+    """Exports all labs in a folder tree into a downloadable ZIP archive."""
+    try:
+        zip_bytes = folder_service.export_folder_zip(folder_id)
+        return Response(
+            content=zip_bytes,
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename=folder_{folder_id}_export.zip"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.patch("/api/v1/labs/{lab_id}/move", tags=["Folders"])
+async def move_lab_endpoint(lab_id: str, request: MoveLabRequest) -> Dict[str, Any]:
+    """Moves a lab topology to target folder path."""
+    success = folder_service.move_lab(lab_id, request.folder_path)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Lab '{lab_id}' not found.")
+    return {"status": "moved", "lab_id": lab_id, "folder_path": request.folder_path}
+
+
+@app.post("/api/v1/labs/{lab_id}/clone", tags=["Labs"])
+async def clone_lab_endpoint(lab_id: str, request: Optional[CloneLabRequest] = None) -> Dict[str, Any]:
+    """Duplicates an existing lab into a new independent topology."""
+    new_name = request.new_name if request else None
+    cloned = folder_service.duplicate_lab(lab_id, new_name=new_name)
+    if not cloned:
+        raise HTTPException(status_code=404, detail=f"Lab '{lab_id}' not found.")
+    return cloned
+
+
+
+# ==========================================
 # Individual Node Control
 # ==========================================
 
@@ -214,11 +298,17 @@ async def import_lab_payload(request: ImportLabRequest) -> AzamTopology:
         raise HTTPException(status_code=400, detail=f"Conversion error: {str(e)}")
 
 
-@app.post("/api/v1/convert/upload", response_model=AzamTopology, tags=["Converters"])
-async def upload_and_import_lab(file: UploadFile = File(...)) -> AzamTopology:
-    """Uploads any lab file (*.clab.yml, *.yaml, *.unl, *.gns3, *.azaml, *.cfg) and imports it."""
+@app.post("/api/v1/convert/upload", tags=["Converters"])
+async def upload_and_import_lab(file: UploadFile = File(...)):
+    """Uploads any lab file (*.clab.yml, *.yaml, *.unl, *.gns3, *.gns3project, *.azaml, *.zip, *.cfg) and imports it."""
     try:
         content_bytes = await file.read()
+        filename_lower = (file.filename or "").lower()
+
+        if filename_lower.endswith(".zip"):
+            # Batch import archive
+            return BatchLabImporter.import_zip(content_bytes, dry_run=False)
+
         topo = UniversalConverter.import_lab(
             content=content_bytes,
             filename=file.filename
@@ -226,6 +316,50 @@ async def upload_and_import_lab(file: UploadFile = File(...)) -> AzamTopology:
         return engine.create_lab(topo)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Failed to import uploaded file: {str(e)}")
+
+
+@app.post("/api/v1/convert/upload-archive", tags=["Converters"])
+async def upload_archive_endpoint(
+    file: UploadFile = File(...),
+    target_folder: Optional[str] = Form(None),
+    dry_run: bool = Form(False)
+) -> Dict[str, Any]:
+    """Uploads a ZIP archive of labs, extracting and importing all topologies."""
+    try:
+        content = await file.read()
+        return BatchLabImporter.import_zip(
+            zip_source=content,
+            target_folder=target_folder,
+            dry_run=dry_run
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Archive import failed: {str(e)}")
+
+
+@app.post("/api/v1/convert/batch-import", tags=["Converters"])
+async def batch_import_endpoint(request: BatchImportRequest) -> Dict[str, Any]:
+    """Batch imports topologies from a local directory or ZIP file on the host machine."""
+    path = Path(request.source_path)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"Path '{request.source_path}' does not exist.")
+
+    try:
+        if path.is_file() and path.suffix.lower() == ".zip":
+            return BatchLabImporter.import_zip(
+                zip_source=path,
+                target_folder=request.target_folder,
+                dry_run=request.dry_run
+            )
+        elif path.is_dir():
+            return BatchLabImporter.import_directory(
+                dir_path=path,
+                target_folder=request.target_folder,
+                dry_run=request.dry_run
+            )
+        else:
+            raise HTTPException(status_code=400, detail="source_path must be a .zip archive or a directory.")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Batch import failed: {str(e)}")
 
 
 @app.get("/api/v1/convert/export/{lab_id}/{target_format}", tags=["Converters"])

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AzamLabs — Sign In</title>
+  <meta name="description" content="Sign in to AzamLabs Next-Gen Universal Network, Cloud & Cybersecurity Studio.">
+  <link rel="icon" type="image/png" href="/assets/favicon.png">
+  <link rel="shortcut icon" href="/assets/favicon.ico">
+  <link rel="stylesheet" href="/css/login.css">
+</head>
+<body>
+  <!-- Cyber Matrix Ambient Background -->
+  <div class="cyber-bg">
+    <div class="cyber-grid"></div>
+    <div class="cyber-scanlines"></div>
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+  </div>
+
+  <div class="login-container">
+    <!-- Holographic Floating Circular Avatar Unit -->
+    <div class="avatar-hero-unit">
+      <div class="avatar-aura-glow"></div>
+      <div class="laser-sweep-ring"></div>
+      <div class="avatar-circle">
+        <img class="avatar-img" src="/assets/logo.png" alt="AzamLabs Crest">
+      </div>
+    </div>
+
+    <!-- Login Card -->
+    <div class="login-card">
+      <div class="card-header">
+        <h1 class="brand-title">AZAMLABS</h1>
+        <p class="brand-subtitle">Universal Network & Cyber Simulation Studio</p>
+      </div>
+
+      <div id="loginError" class="error-banner">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span id="errorMessage">Invalid username or password.</span>
+      </div>
+
+      <form id="loginForm" autocomplete="on">
+        <div class="form-group">
+          <label class="input-label" for="username">Username</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+            </span>
+            <input id="username" class="cyber-input" type="text" placeholder="azam" autocomplete="username" required value="azam">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="input-label" for="password">Password</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </span>
+            <input id="password" class="cyber-input" type="password" placeholder="••••" autocomplete="current-password" required value="azam">
+            <button type="button" id="btnTogglePassword" class="toggle-password" title="Show/Hide Password">
+              <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="remember-row">
+          <label class="checkbox-label">
+            <input type="checkbox" id="rememberMe" class="cyber-checkbox" checked>
+            <span>Remember for 7 days</span>
+          </label>
+          <span style="font-size:0.75rem; color:var(--neon-cyan); font-family:var(--font-mono);">v1.0.0</span>
+        </div>
+
+        <button type="submit" id="btnLogin" class="btn-login">
+          <span>Sign In to Studio</span>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </button>
+      </form>
+
+      <div class="footer-info">
+        Default: <b>azam</b> / <b>azam</b> • 100:1 Memory Engine
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script>
+    // Password toggle handler
+    const btnToggle = document.getElementById('btnTogglePassword');
+    const pwdInput = document.getElementById('password');
+    btnToggle.addEventListener('click', () => {
+      const isPwd = pwdInput.type === 'password';
+      pwdInput.type = isPwd ? 'text' : 'password';
+    });
+
+    // Form submit handler
+    const form = document.getElementById('loginForm');
+    const errBanner = document.getElementById('loginError');
+    const errMsg = document.getElementById('errorMessage');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errBanner.classList.remove('show');
+      const user = document.getElementById('username').value.trim();
+      const pass = document.getElementById('password').value;
+      const remember = document.getElementById('rememberMe').checked;
+
+      const success = await window.AzamAuth.login(user, pass, remember);
+      if (!success) {
+        errMsg.textContent = 'Invalid credentials. Please enter azam / azam.';
+        errBanner.classList.add('show');
+      }
+    });
+
+    // If already logged in, redirect to main studio
+    window.addEventListener('DOMContentLoaded', async () => {
+      if (await window.AzamAuth.checkAuth(false)) {
+        window.location.href = '/';
+      }
+    });
+  </script>
+</body>
+</html>

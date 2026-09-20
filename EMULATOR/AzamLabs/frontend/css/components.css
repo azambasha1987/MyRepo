@@ -473,3 +473,298 @@
   font-size: 0.75rem;
   color: var(--text-secondary);
 }
+
+/* --------------------------------------------------------------------------
+   6. Left-Side Folder-Wise Lab Explorer Drawer
+   -------------------------------------------------------------------------- */
+.lab-explorer-drawer {
+  position: absolute;
+  top: 88px;
+  left: 20px;
+  bottom: 24px;
+  width: 320px;
+  background: var(--bg-surface-elevated);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(calc(-100% - 40px));
+  transition: transform var(--trans-smooth);
+}
+
+.lab-explorer-drawer.open {
+  transform: translateX(0);
+}
+
+.explorer-header {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.explorer-title {
+  font-family: var(--font-brand);
+  font-size: 1.05rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--neon-cyan);
+}
+
+.explorer-toolbar {
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.explorer-search-input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  padding: 6px 10px;
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  outline: none;
+}
+
+.explorer-search-input:focus {
+  border-color: var(--neon-cyan);
+}
+
+.explorer-tree {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.folder-node {
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.02);
+  margin-bottom: 4px;
+}
+
+.folder-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 6px;
+  transition: background var(--trans-fast);
+}
+
+.folder-header:hover {
+  background: rgba(0, 242, 254, 0.08);
+}
+
+.folder-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.folder-chevron {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  width: 12px;
+}
+
+.folder-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.folder-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.folder-badge {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.folder-del-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.folder-del-btn:hover {
+  color: var(--neon-crimson);
+}
+
+.folder-items {
+  padding-left: 14px;
+  border-left: 1px dashed rgba(255, 255, 255, 0.1);
+  margin-left: 14px;
+  margin-bottom: 4px;
+}
+
+.folder-items.collapsed {
+  display: none;
+}
+
+.empty-folder-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 4px 8px;
+}
+
+.lab-item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+  margin-bottom: 2px;
+}
+
+.lab-item-row:hover {
+  background: rgba(0, 242, 254, 0.1);
+}
+
+.lab-item-row.active-lab {
+  background: rgba(0, 242, 254, 0.18);
+  border: 1px solid rgba(0, 242, 254, 0.35);
+}
+
+.lab-row-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  overflow: hidden;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-running {
+  background: var(--neon-green);
+  box-shadow: 0 0 6px var(--neon-green);
+}
+
+.dot-stopped {
+  background: var(--text-muted);
+}
+
+.lab-row-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+
+.lab-row-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lab-nodes-badge {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.lab-row-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.lab-row-action-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Lab Context Menu */
+.lab-context-menu {
+  position: fixed;
+  z-index: 9999;
+  background: #0d1526;
+  border: 1px solid var(--border-glow);
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+  padding: 6px;
+  width: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ctx-item {
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ctx-item:hover {
+  background: rgba(0, 242, 254, 0.15);
+  color: var(--neon-cyan);
+}
+
+.ctx-divider {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 4px 0;
+}
+
+.ctx-danger {
+  color: var(--neon-crimson);
+}
+
+.ctx-danger:hover {
+  background: rgba(255, 51, 102, 0.15);
+  color: var(--neon-crimson);
+}
+

@@ -17,6 +17,7 @@ class CommandPalette {
       { id: 'wipe_all', title: 'Wipe Lab (Day-0 Reset)', badge: 'Lifecycle', action: () => this.app.wipeAllNodes() },
       { id: 'day0_ospf', title: 'Auto Day-0 Provisioning (OSPF Area 0)', badge: 'Automation', action: () => this.app.generateDay0('ospf') },
       { id: 'day0_bgp', title: 'Auto Day-0 Provisioning (BGP Mesh)', badge: 'Automation', action: () => this.app.generateDay0('bgp') },
+      { id: 'open_explorer', title: 'Toggle Folder-Wise Lab Explorer Drawer (E)', badge: 'Explorer', action: () => this.app.explorer?.toggleDrawer() },
       { id: 'open_wireshark', title: 'Launch In-Browser Web Wireshark', badge: 'Sniffer', action: () => this.app.openWireshark() },
       { id: 'open_terminal', title: 'Toggle Web Terminal Drawer', badge: 'Terminal', action: () => this.app.terminal.toggleDrawer() },
       { id: 'import_modal', title: 'Import Lab (CLAB / CML / EVE / GNS3 / P2V)', badge: 'Universal Importer', action: () => this.app.openImporter() },
@@ -28,6 +29,7 @@ class CommandPalette {
       { id: 'download_wt', title: 'Download Windows Terminal (wt.exe) 1-Click Launcher', badge: 'Desktop', action: () => this.app.downloadLauncher('wt') },
       { id: 'download_crt', title: 'Download SecureCRT 1-Click Multi-Tab Launcher', badge: 'Desktop', action: () => this.app.downloadLauncher('securecrt') },
       { id: 'zoom_reset', title: 'Reset Viewport Zoom to 100%', badge: 'View', action: () => this.app.canvas.resetZoom() },
+      { id: 'sign_out', title: 'Sign Out of AzamLabs Session', badge: 'Auth', action: () => window.AzamAuth?.logout() },
     ];
 
     this.initEvents();

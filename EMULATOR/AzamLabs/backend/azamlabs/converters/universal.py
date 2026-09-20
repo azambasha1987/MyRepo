@@ -21,7 +21,7 @@ from azamlabs.converters.bundle import LabBundleManager
 class UniversalConverter:
     """Master orchestrator for auto-detecting and translating network topologies."""
 
-    SUPPORTED_FORMATS = ["clab", "cml", "eve", "gns3", "p2v", "azaml", "azam_yaml", "azam_json"]
+    SUPPORTED_FORMATS = ["clab", "cml", "eve", "gns3", "gns3project", "p2v", "azaml", "azam_yaml", "azam_json", "zip"]
 
     @classmethod
     def auto_detect_format(
@@ -38,17 +38,26 @@ class UniversalConverter:
                 return "eve"
             elif ext in (".gns3",):
                 return "gns3"
+            elif ext in (".gns3project",):
+                return "gns3project"
             elif ext in (".clab.yml", ".clab.yaml"):
                 return "clab"
+            elif ext in (".zip",):
+                return "zip"
 
-        # Check for binary .azaml tar archive signature
+        # Check for binary .azaml tar archive signature or PK zip signature
         if isinstance(content, bytes):
             # Gzip magic bytes (1f 8b)
             if len(content) > 2 and content[:2] == b"\x1f\x8b":
                 return "azaml"
+            # Zip magic bytes (PK\x03\x04)
+            if len(content) > 4 and content[:4] == b"PK\x03\x04":
+                if filename and filename.lower().endswith(".gns3project"):
+                    return "gns3project"
+                return "zip"
             try:
-                content_str = content.decode("utf-8")
-            except UnicodeDecodeError:
+                content_str = content.decode("utf-8", errors="ignore")
+            except Exception:
                 return "azaml"
         else:
             content_str = content
@@ -111,10 +120,12 @@ class UniversalConverter:
 
         if detected == "azaml":
             return LabBundleManager.import_azaml_archive(content)
+        elif detected == "gns3project":
+            return Gns3Converter.gns3project_to_azam(content)
 
         # Convert bytes to string for text formats
         if isinstance(content, bytes):
-            content_str = content.decode("utf-8")
+            content_str = content.decode("utf-8", errors="ignore")
         else:
             content_str = content
 

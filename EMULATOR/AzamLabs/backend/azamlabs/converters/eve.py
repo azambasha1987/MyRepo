@@ -12,6 +12,8 @@ from azamlabs.core.schema import (
     AzamNode,
     AzamLink,
     AzamNetwork,
+    AzamAnnotation,
+    ImpairmentProfile,
     DeviceType,
     DriverType,
 )
@@ -72,11 +74,24 @@ class EveConverter:
         nodes_elem = topo_elem.find("nodes")
         net_to_endpoints: Dict[str, List[tuple]] = defaultdict(list)  # net_id -> [(node_name, iface_name)]
         node_id_map: Dict[str, AzamNode] = {}
+        seen_names_lower: Dict[str, int] = {}
 
         if nodes_elem is not None:
             for n_elem in nodes_elem.findall("node"):
                 node_id = n_elem.attrib.get("id", "")
-                node_name = n_elem.attrib.get("name", f"Node-{node_id}")
+                raw_name = n_elem.attrib.get("name", f"Node-{node_id}").strip()
+                if not raw_name:
+                    raw_name = f"Node-{node_id}"
+
+                # Case-insensitive duplicate resolution for EVE-NG & PNETLab nodes
+                name_lower = raw_name.lower()
+                if name_lower in seen_names_lower:
+                    seen_names_lower[name_lower] += 1
+                    node_name = f"{raw_name}-{seen_names_lower[name_lower]}"
+                else:
+                    seen_names_lower[name_lower] = 1
+                    node_name = raw_name
+
                 raw_type = n_elem.attrib.get("type", "qemu").lower()
                 template = n_elem.attrib.get("template", "").lower()
                 image = n_elem.attrib.get("image", template)
@@ -95,10 +110,22 @@ class EveConverter:
 
                 pos_x = float(n_elem.attrib.get("left", 100))
                 pos_y = float(n_elem.attrib.get("top", 100))
-                ram = int(n_elem.attrib.get("ram", 1024))
-                cpu = int(n_elem.attrib.get("cpu", 1))
+
+                # Handle PNETLab default ram="0" and EVE-NG cpu="0"
+                try:
+                    raw_ram = int(n_elem.attrib.get("ram") or 1024)
+                except (ValueError, TypeError):
+                    raw_ram = 1024
+                ram = max(128, raw_ram if raw_ram > 0 else 1024)
+
+                try:
+                    raw_cpu = int(n_elem.attrib.get("cpu") or 1)
+                except (ValueError, TypeError):
+                    raw_cpu = 1
+                cpu = max(1, raw_cpu if raw_cpu > 0 else 1)
 
                 azam_node = AzamNode(
+                    id=node_id,
                     name=node_name,
                     device_type=dev_type,
                     driver=driver_type,
@@ -158,6 +185,24 @@ class EveConverter:
                         metadata={"connected_to_network": cloud_net.name},
                     )
                     azam_topo.links.append(azam_link)
+
+        # 4. Parse Text Objects and Architectural Zones
+        text_objects_elem = root.find(".//textobjects")
+        if text_objects_elem is not None:
+            for txt_elem in text_objects_elem.findall("textobject"):
+                txt_id = txt_elem.attrib.get("id", "")
+                txt_data = txt_elem.text or txt_elem.attrib.get("data", "") or txt_elem.attrib.get("name", "")
+                txt_type = txt_elem.attrib.get("type", "text").lower()
+                azam_topo.annotations.append(AzamAnnotation(
+                    id=txt_id if txt_id else str(uuid.uuid4())[:8],
+                    type="zone" if "box" in txt_type or "zone" in txt_type else "text",
+                    label=txt_data.strip() if txt_data else "Zone",
+                    pos_x=float(txt_elem.attrib.get("left", 0)),
+                    pos_y=float(txt_elem.attrib.get("top", 0)),
+                    width=float(txt_elem.attrib.get("width", 200)),
+                    height=float(txt_elem.attrib.get("height", 100)),
+                    color=txt_elem.attrib.get("color", "#00f2fe"),
+                ))
 
         return azam_topo
 

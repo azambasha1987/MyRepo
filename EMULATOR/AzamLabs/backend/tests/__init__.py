@@ -1,3 +1,0 @@
-"""
-AzamLabs Automated Test Suite
-"""

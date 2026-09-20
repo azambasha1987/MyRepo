@@ -1,0 +1,6 @@
+format=1
+release=6.8.74resolute1
+packages=pnetlab-docker=6.8.74resolute1,pnetlab-qemu=6.8.74resolute1,pnetlab-satellite=6.8.74resolute1,pnetlab-vpcs=6.8.74resolute1
+assets=none
+optional_packages=pnetlab-bridge-dkms=6.8.74resolute1
+inventory_sha256=c33072063eb66332a457fb08652bd6b3d60f4735867b49de43994b90e8e2be36

@@ -1,0 +1,476 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Azam Basha Master Administration, Fix & Performance Toolkit
+# Unified launcher for all Azam Basha maintenance, optimization, and AI tools.
+#
+# Supports piped execution: curl -fsSL https://.../pnetlab-apply-all-fixes.sh | sudo bash
+# ==============================================================================
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Support non-root check/help modes
+if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
+    echo "Usage: sudo bash $0 [OPTION_NUMBER | --check]"
+    echo ""
+    echo "Options:"
+    echo "  1    Permanent Session Fix (Never-Logout, 10-Year Session)"
+    echo "  2    Lab Export & APT Sources Fix (zip/unzip, nested labs)"
+    echo "  3    512MB Upload Limits & Docker Routing Fix"
+    echo "  4    SSL IP-SAN Certificate, HTML5 Console & Cloud Bridge Fix"
+    echo "  5    Database SQL Mode, 1M Limits, Logrotate & THP Deep-Fix"
+    echo "  6    High-Performance Speed Optimizer Suite (KSM, OPcache, Gzip, Sysctl)"
+    echo "  7    Silicon Dataplane Fast-Path Accelerator (2x Throughput, 1/3 CPU, MTU 9000)"
+    echo "  8    Image Doctor & Virtual Disk Integrity Audit"
+    echo "  9    Link Quality & Impairment Controller (latency, jitter, loss)"
+    echo "  10   Packet Capture & Live Wireshark Streamer (TAP/Hub/Cloud)"
+    echo "  11   Real-Time Per-Link Telemetry Monitor"
+    echo "  12   Fix File Permissions, /dev/kvm & Clean Node Locks"
+    echo "  13   System Health & Diagnostic Dashboard"
+    echo "  14   Create Full Lab & Database Backup"
+    echo "  15   Configure AI Lab Builder & Ollama Integration"
+    echo "  16   Freeze Version & Block Future Updates (Anti-Conflict Lock)"
+    echo "  17   Azam Basha Pure Black Dark Mode Theme Engine"
+    echo "  18   Run Complete Node & Image Validation Suite (IOL, IOS, QEMU, Docker)"
+    echo "  19   Apply ALL Essential Fixes & Dark Mode Suite"
+    echo "  20   Deploy Home Screen Avatar Logo Everywhere"
+    echo "  21   Repair Cluster & Stage Satellite Deploy Bundle"
+    echo "  23   Soft-RoCE (RXE) & RDMA Dataplane Controller"
+    echo "  24   Run Weekly Codeberg Intelligence Scan & Implementation Plan"
+    echo "  25   Apply Full SATELLITE Worker Node Optimization Suite"
+    echo "  26   Exit"
+    echo "  --satellite  Apply full optimization suite directly in satellite worker mode"
+    echo "  --check      Run non-destructive diagnostic health check"
+    exit 0
+fi
+
+if [[ "${1:-}" =~ ^(--satellite)$ ]]; then
+    CHOICE="25"
+fi
+
+if [[ "${1:-}" =~ ^(--check|--status)$ ]]; then
+    if [ -f "${SCRIPT_DIR}/azambasha-node-test-suite.py" ]; then
+        python3 "${SCRIPT_DIR}/azambasha-node-test-suite.py" --all
+    elif [ -f "${SCRIPT_DIR}/azambasha-health-check.sh" ]; then
+        bash "${SCRIPT_DIR}/azambasha-health-check.sh"
+    elif [ -f "${SCRIPT_DIR}/azambasha-speed-optimizer.sh" ]; then
+        bash "${SCRIPT_DIR}/azambasha-speed-optimizer.sh" --check || true
+    fi
+    exit 0
+fi
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo "[ERROR] Please run this script as root (sudo bash $0)" >&2
+    exit 1
+fi
+
+echo "============================================================"
+echo "    Azam Basha Master Administration & Deployment Tool      "
+echo "============================================================"
+echo "1) Permanent Session Fix (Never-Logout, 10-Year Session)"
+echo "2) Lab Export & APT Sources Fix (zip/unzip, nested labs)"
+echo "3) 512MB Upload Limits & Docker IP Routing Fix"
+echo "4) SSL IP-SAN Certificate, HTML5 Console & Cloud Bridge Fix"
+echo "5) Database SQL Mode, 1M Limits, Logrotate & THP Deep-Fix"
+echo "6) High-Performance Speed Optimizer (KSM, OPcache, Gzip, Sysctl)"
+echo "7) Silicon Dataplane Fast-Path Accelerator (~2x Throughput, MTU 9000)"
+echo "8) Image Doctor & QCOW2 Disk Integrity Audit"
+echo "9) Link Impairment Controller (Latency, Jitter, Packet Loss)"
+echo "10) Packet Capture & Live Wireshark Streamer (TAP/Hub/Cloud)"
+echo "11) Real-Time Per-Link Telemetry Monitor"
+echo "12) Fix File Permissions, /dev/kvm & Node Recovery"
+echo "13) System Health & Diagnostic Dashboard"
+echo "14) Create Full Lab & Database Backup Archive"
+echo "15) AI Lab Builder & Ollama MCP Integration"
+echo "16) Freeze Version & Block Future Updates (Anti-Conflict Lock)"
+echo "17) Azam Basha Pure Black Dark Mode Theme Engine"
+echo "18) Run Complete Node & Image Validation Suite (IOL, IOS, QEMU, Docker)"
+echo "19) Apply ALL Essential Fixes & Dark Mode Suite"
+echo "20) Deploy Home Screen Avatar Logo Everywhere"
+echo "21) Repair Cluster & Stage Satellite Deploy Bundle"
+echo "22) High-Density Heavy Node Optimizer (Cat8000, Cisco 8000, Cat9000)"
+echo "23) Soft-RoCE (RXE) & RDMA Dataplane Controller"
+echo "24) [Retired] Upstream Codeberg Intelligence Scanner"
+echo "25) Apply Full SATELLITE Worker Node Optimization Suite"
+echo "26) Reset Web-GUI & Cluster Database Credentials (admin / azam)"
+echo "27) Synchronize Web-GUI Version to Latest Release (v6.8.79)"
+echo "28) Exit"
+echo "============================================================"
+
+# Handle interactive /dev/tty or non-interactive argument/fallback
+if [ -z "${CHOICE:-}" ]; then
+    if [ -n "${1:-}" ] && [[ "$1" =~ ^([1-9]|1[0-9]|2[0-8])$ ]]; then
+        CHOICE="$1"
+    elif [ -e /dev/tty ]; then
+        read -rp "Select an option [1-28, default: 19]: " USER_INPUT < /dev/tty || true
+        CHOICE="${USER_INPUT:-19}"
+    else
+        CHOICE="19"
+    fi
+fi
+
+case "$CHOICE" in
+    1)
+        bash "${SCRIPT_DIR}/azambasha-disable-logout.sh"
+        ;;
+    2)
+        bash "${SCRIPT_DIR}/azambasha-fix-export-and-apt.sh"
+        ;;
+    3)
+        bash "${SCRIPT_DIR}/azambasha-upload-and-docker-fix.sh"
+        ;;
+    4)
+        bash "${SCRIPT_DIR}/azambasha-system-and-console-fix.sh"
+        ;;
+    5)
+        bash "${SCRIPT_DIR}/azambasha-database-and-system-deep-fix.sh"
+        ;;
+    6)
+        bash "${SCRIPT_DIR}/azambasha-speed-optimizer.sh"
+        ;;
+    7)
+        bash "${SCRIPT_DIR}/azambasha-dataplane-engine.sh"
+        ;;
+    8)
+        bash "${SCRIPT_DIR}/azambasha-image-doctor.sh" --fix
+        ;;
+    9)
+        bash "${SCRIPT_DIR}/azambasha-link-impairment.sh" --help
+        ;;
+    10)
+        bash "${SCRIPT_DIR}/azambasha-capture-stream.sh" --help
+        ;;
+    11)
+        python3 "${SCRIPT_DIR}/azambasha-dataplane-stats.py"
+        ;;
+    12)
+        bash "${SCRIPT_DIR}/azambasha-fix-permissions.sh"
+        ;;
+    13)
+        bash "${SCRIPT_DIR}/azambasha-health-check.sh"
+        ;;
+    14)
+        bash "${SCRIPT_DIR}/azambasha-backup-restore.sh" backup
+        ;;
+    15)
+        HOST_IP=""
+        MODEL="qwen2.5:14b-instruct"
+        if [ -e /dev/tty ]; then
+            read -rp "Enter Ollama Host IP (e.g. 192.168.1.19): " HOST_IP < /dev/tty || true
+            read -rp "Enter Ollama Model [default: qwen2.5:14b-instruct]: " USER_MODEL < /dev/tty || true
+            MODEL="${USER_MODEL:-$MODEL}"
+        fi
+        bash "${SCRIPT_DIR}/setup-ollama.sh" "$HOST_IP" "$MODEL"
+        ;;
+    16)
+        bash "${SCRIPT_DIR}/azambasha-block-updates.sh"
+        ;;
+    17)
+        if [ -f "${SCRIPT_DIR}/azambasha-dark-theme.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-dark-theme.sh"
+        fi
+        ;;
+    18)
+        if [ -f "${SCRIPT_DIR}/azambasha-node-test-suite.py" ]; then
+            python3 "${SCRIPT_DIR}/azambasha-node-test-suite.py" --all
+        else
+            bash "${SCRIPT_DIR}/azambasha-image-doctor.sh" --check
+        fi
+        ;;
+    19)
+        # Check node role (Master vs Satellite)
+        IS_SATELLITE=0
+        if [ -f /etc/pnetlab-role ] && grep -q "satellite" /etc/pnetlab-role 2>/dev/null; then
+            IS_SATELLITE=1
+        elif dpkg -s pnetlab-satellite >/dev/null 2>&1 && ! dpkg -s pnetlab >/dev/null 2>&1; then
+            IS_SATELLITE=1
+        fi
+
+        if [ "$IS_SATELLITE" -eq 1 ]; then
+            echo "============================================================"
+            echo " [*] Detected Node Role: SATELLITE (Worker Node)"
+            echo " [*] Applying Full Satellite Optimization & Upstream Suite"
+            echo "============================================================"
+            echo "--> [1/11] Installing OS Prerequisites (OVMF, TPM, RoCE, Node.js)..."
+            if [ -f "${SCRIPT_DIR}/azambasha-os-prerequisites.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-os-prerequisites.sh" || true
+            fi
+            echo ""
+            echo "--> [2/11] Applying Bridge LACP BPDU, Wireshark & Store Fixes..."
+            if [ -f "${SCRIPT_DIR}/azambasha-system-and-console-fix.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-system-and-console-fix.sh" || true
+            fi
+            echo ""
+            echo "--> [3/11] Activating Silicon Dataplane Fast-Path Accelerator (MTU 9000)..."
+            if [ -f "${SCRIPT_DIR}/azambasha-dataplane-engine.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-dataplane-engine.sh" || true
+            fi
+            echo ""
+            echo "--> [4/11] Applying High-Performance Speed Optimizer & Ultra-KSM..."
+            if [ -f "${SCRIPT_DIR}/azambasha-speed-optimizer.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-speed-optimizer.sh" || true
+            fi
+            echo ""
+            echo "--> [5/11] Applying Cgroups v2 & System Limits..."
+            if [ -f "${SCRIPT_DIR}/azambasha-cgroups-v2-engine.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-cgroups-v2-engine.sh" || true
+            fi
+            echo ""
+            echo "--> [6/11] Applying Node Startup, Win11 SMM & Cisco IOSv Engine..."
+            if [ -f "${SCRIPT_DIR}/azambasha-fix-node-startup.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-fix-node-startup.sh" || true
+            fi
+            echo ""
+            echo "--> [7/11] Configuring Soft-RoCE (RXE) & RDMA Dataplane Drivers..."
+            if [ -f "${SCRIPT_DIR}/azambasha-roce-engine.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-roce-engine.sh" || true
+            fi
+            echo ""
+            echo "--> [8/11] Applying High-Density Heavy Node Optimizer (Worker Mode)..."
+            if [ -f "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" --satellite || true
+            fi
+            echo ""
+            echo "--> [9/11] Auditing Virtual Disks with Image Doctor..."
+            if [ -f "${SCRIPT_DIR}/azambasha-image-doctor.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-image-doctor.sh" --fix || true
+            fi
+            echo ""
+            echo "--> [10/11] Fixing File Permissions, TPM Sockets & Node Locks..."
+            if [ -f "${SCRIPT_DIR}/azambasha-fix-permissions.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-fix-permissions.sh" || true
+            fi
+            echo ""
+            echo "--> [11/11] Confirming Authoritative Credentials (azam) & Banner..."
+            echo "root:azam" | chpasswd 2>/dev/null || true
+            if [ -f "${SCRIPT_DIR}/azambasha-update-banner.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-update-banner.sh" || true
+            fi
+            echo ""
+            echo "============================================================"
+            echo " [SUCCESS] SATELLITE WORKER NODE ENHANCEMENTS APPLIED!      "
+            echo "============================================================"
+        else
+            echo "--> [1/15] Applying Permanent Session Fix..."
+            bash "${SCRIPT_DIR}/azambasha-disable-logout.sh"
+            echo ""
+            echo "--> [2/15] Applying Lab Export & APT Fix..."
+            bash "${SCRIPT_DIR}/azambasha-fix-export-and-apt.sh"
+        echo ""
+        echo "--> [3/15] Applying 512MB Upload Limits & Docker Routing..."
+        bash "${SCRIPT_DIR}/azambasha-upload-and-docker-fix.sh"
+        echo ""
+        echo "--> [4/15] Applying SSL IP-SAN, Console & Cloud Bridge Fix..."
+        bash "${SCRIPT_DIR}/azambasha-system-and-console-fix.sh"
+        echo ""
+        echo "--> [5/15] Applying Database SQL Mode, 1M Limits & Logrotate..."
+        bash "${SCRIPT_DIR}/azambasha-database-and-system-deep-fix.sh"
+        echo ""
+        echo "--> [6/15] Fixing File Permissions & Sockets..."
+        bash "${SCRIPT_DIR}/azambasha-fix-permissions.sh"
+        echo ""
+        echo "--> [7/15] Applying High-Performance Speed Optimizer (1024-Node Scaling)..."
+        bash "${SCRIPT_DIR}/azambasha-speed-optimizer.sh"
+        echo ""
+        echo "--> [8/15] Activating Silicon Dataplane Fast-Path Accelerator (MTU 9000)..."
+        bash "${SCRIPT_DIR}/azambasha-dataplane-engine.sh"
+        echo ""
+        echo "--> [9/15] Applying Cgroups v2 & System Limits..."
+        if [ -f "${SCRIPT_DIR}/azambasha-cgroups-v2-engine.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-cgroups-v2-engine.sh" || true
+        fi
+        echo ""
+        echo "--> [10/15] Freezing Version & Blocking Future Updates..."
+        bash "${SCRIPT_DIR}/azambasha-block-updates.sh"
+        echo ""
+        echo "--> [11/15] Applying Azam Basha Enterprise Branding & Logo Assets..."
+        if [ -f "${SCRIPT_DIR}/azambasha-apply-branding.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-apply-branding.sh" || true
+        fi
+        echo ""
+        echo "--> [12/16] Deploying Home Screen Avatar as Universal Platform Logo..."
+        if [ -f "${SCRIPT_DIR}/azambasha-deploy-homelogo.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-deploy-homelogo.sh" || true
+        fi
+        echo ""
+        echo "--> [13/16] Applying Node Startup & Cisco IOSv Repair Engine..."
+        if [ -f "${SCRIPT_DIR}/azambasha-fix-node-startup.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-fix-node-startup.sh" || true
+        fi
+        echo ""
+        echo "--> [14/16] Auditing Virtual Disks with Image Doctor..."
+        if [ -f "${SCRIPT_DIR}/azambasha-image-doctor.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-image-doctor.sh" --fix || true
+        fi
+        echo ""
+        echo "--> [15/16] Applying Azam Basha Pure Black Dark Mode Theme..."
+        if [ -f "${SCRIPT_DIR}/azambasha-dark-theme.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-dark-theme.sh" || true
+        fi
+        echo ""
+        echo "--> [16/17] Running Automated Node & Virtualization Validation Suite..."
+        if [ -f "${SCRIPT_DIR}/azambasha-node-test-suite.py" ]; then
+            python3 "${SCRIPT_DIR}/azambasha-node-test-suite.py" --all || true
+        fi
+        echo ""
+        echo "--> [17/18] Staging Satellite Cluster Deploy Bundle & Master Remote Sync..."
+        if [ -f "${SCRIPT_DIR}/azambasha-fix-cluster.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-fix-cluster.sh" || true
+        fi
+        echo ""
+        echo "--> [18/21] Applying High-Density Heavy Node Optimizer (Cat8000, Cisco 8000, Cat9000)..."
+        if [ -f "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" || true
+        fi
+        echo ""
+        echo "--> [19/21] Verifying Soft-RoCE (RXE) & RDMA Dataplane Drivers..."
+        if [ -f "${SCRIPT_DIR}/azambasha-roce-engine.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-roce-engine.sh" --status || true
+        fi
+        echo ""
+        echo "--> [20/21] Applying Web UI Usability, Canvas Settings & Draggable Modals..."
+        if [ -f "${SCRIPT_DIR}/azambasha-gui-enhancements.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-gui-enhancements.sh" || true
+        fi
+        echo ""
+        echo "--> [21/22] Running Non-Regression Pre/Post Sanity Health Probe..."
+        if [ -f "${SCRIPT_DIR}/azambasha-fix-permissions.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-fix-permissions.sh" --check || true
+        fi
+        echo ""
+        echo "--> [22/22] Resetting Web-GUI & Cluster Database Credentials (admin / azam)..."
+        if [ -f "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" || true
+        fi
+        if [ -f "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" auto || true
+        fi
+        echo ""
+        echo "============================================================"
+        echo "  [SUCCESS] ALL ESSENTIAL ENHANCEMENTS APPLIED SUCCESSFULLY! "
+        echo "============================================================"
+        fi
+        ;;
+    20)
+        if [ -f "${SCRIPT_DIR}/azambasha-deploy-homelogo.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-deploy-homelogo.sh"
+        else
+            echo "[!] azambasha-deploy-homelogo.sh not found." >&2
+        fi
+        ;;
+    21)
+        if [ -f "${SCRIPT_DIR}/azambasha-fix-cluster.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-fix-cluster.sh"
+        else
+            echo "[!] azambasha-fix-cluster.sh not found." >&2
+        fi
+        ;;
+    22)
+        if [ -f "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh"
+        else
+            echo "[!] azambasha-heavy-node-optimizer.sh not found." >&2
+        fi
+        ;;
+    23)
+        if [ -f "${SCRIPT_DIR}/azambasha-roce-engine.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-roce-engine.sh" --status
+        else
+            echo "[!] azambasha-roce-engine.sh not found." >&2
+        fi
+        ;;
+    24)
+        echo "[*] Upstream Codeberg scanner feature has been retired per user directive."
+        ;;
+    25)
+        echo "============================================================"
+        echo " [*] Running Dedicated Satellite Worker Optimization Suite   "
+        echo "============================================================"
+        echo "--> [1/11] Installing OS Prerequisites (OVMF, TPM, RoCE, Node.js)..."
+        if [ -f "${SCRIPT_DIR}/azambasha-os-prerequisites.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-os-prerequisites.sh" || true
+        fi
+        echo ""
+        echo "--> [2/11] Applying Bridge LACP BPDU, Wireshark & Store Fixes..."
+        if [ -f "${SCRIPT_DIR}/azambasha-system-and-console-fix.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-system-and-console-fix.sh" || true
+        fi
+        echo ""
+        echo "--> [3/11] Activating Silicon Dataplane Fast-Path Accelerator (MTU 9000)..."
+        if [ -f "${SCRIPT_DIR}/azambasha-dataplane-engine.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-dataplane-engine.sh" || true
+        fi
+        echo ""
+        echo "--> [4/11] Applying High-Performance Speed Optimizer & Ultra-KSM..."
+        if [ -f "${SCRIPT_DIR}/azambasha-speed-optimizer.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-speed-optimizer.sh" || true
+        fi
+        echo ""
+        echo "--> [5/11] Applying Cgroups v2 & System Limits..."
+        if [ -f "${SCRIPT_DIR}/azambasha-cgroups-v2-engine.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-cgroups-v2-engine.sh" || true
+        fi
+        echo ""
+        echo "--> [6/11] Applying Node Startup, Win11 SMM & Cisco IOSv Engine..."
+        if [ -f "${SCRIPT_DIR}/azambasha-fix-node-startup.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-fix-node-startup.sh" || true
+        fi
+        echo ""
+        echo "--> [7/11] Configuring Soft-RoCE (RXE) & RDMA Dataplane Drivers..."
+        if [ -f "${SCRIPT_DIR}/azambasha-roce-engine.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-roce-engine.sh" || true
+        fi
+        echo ""
+        echo "--> [8/11] Applying High-Density Heavy Node Optimizer (Worker Mode)..."
+        if [ -f "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" --satellite || true
+        fi
+        echo ""
+        echo "--> [9/11] Auditing Virtual Disks with Image Doctor..."
+        if [ -f "${SCRIPT_DIR}/azambasha-image-doctor.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-image-doctor.sh" --fix || true
+        fi
+        echo ""
+        echo "--> [10/11] Fixing File Permissions, TPM Sockets & Node Locks..."
+        if [ -f "${SCRIPT_DIR}/azambasha-fix-permissions.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-fix-permissions.sh" || true
+        fi
+        echo ""
+        echo "--> [11/12] Confirming Authoritative Credentials (azam) & Banner..."
+        echo "root:azam" | chpasswd 2>/dev/null || true
+        if [ -f "${SCRIPT_DIR}/azambasha-update-banner.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-update-banner.sh" || true
+        fi
+        echo ""
+        echo "--> [12/12] Synchronizing Satellite Root Credentials & Cluster DB Access..."
+        if [ -f "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" || true
+        fi
+        echo ""
+        echo "============================================================"
+        echo " [SUCCESS] SATELLITE WORKER NODE ENHANCEMENTS APPLIED!      "
+        echo "============================================================"
+        ;;
+    26)
+        if [ -f "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh"
+        else
+            echo "[!] azambasha-fix-web-credentials.sh not found." >&2
+        fi
+        ;;
+    27)
+        if [ -f "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" "${2:-auto}"
+        else
+            echo "[!] azambasha-sync-gui-version.sh not found." >&2
+        fi
+        ;;
+    28)
+        echo "Exiting."
+        exit 0
+        ;;
+    *)
+        echo "Invalid selection: $CHOICE"
+        exit 1
+        ;;
+esac

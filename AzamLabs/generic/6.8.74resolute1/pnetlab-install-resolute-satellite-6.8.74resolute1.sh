@@ -1,0 +1,490 @@
+#!/bin/bash
+# install-resolute-satellite.sh — PNetLab 27H1 v8 (Ubuntu 26.04 "resolute") CLUSTER SATELLITE installer.
+#
+# Headless node-execution host: engine wrappers + qemu/iol/dynamips/docker
+# runtimes, NO apache/mysql/store/webconsole/guacd. After install, join the
+# cluster from the master's System -> Cluster page:
+#
+#       pnet-satellite-join --master <master-ip> --id <1|2> --psk <psk>
+#
+# Run on a FRESH Ubuntu 26.04 machine:
+#       sudo bash install-resolute-satellite.sh
+#
+# Uses the release-scoped bundle layout (pnetlab-debs/, deps/qemu-compat-libs.tgz,
+# qemu-zoo/*.tgz, COMPLETE, and inventory.tsv). Idempotent.
+
+set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
+export LC_ALL=C.UTF-8
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+DEBS_DIR="$SCRIPT_DIR/pnetlab-debs"
+DEPS_DIR="$SCRIPT_DIR/deps"
+LOG="/var/log/install-pnetlab-noble-satellite.log"
+BUNDLE_COMPLETE="$SCRIPT_DIR/COMPLETE"
+EXPECTED_RELEASE=''
+
+# Fallback pool locations searched when pnetlab-debs/ is empty
+POOL_SEARCH_DIRS=(
+    "$SCRIPT_DIR/pnetlab-debs"
+    "$SCRIPT_DIR/../../debian/pool/resolute/main"
+    "$SCRIPT_DIR/../../../debian/pool/resolute/main"
+    "/opt/azam-pnet/EMULATOR/Azam-Pnet/debian/pool/resolute/main"
+    "/opt/pnetlab/debian/pool/resolute/main"
+    "/opt/azambasha/debian/pool/resolute/main"
+)
+
+readonly -a SATELLITE_REQUIRED_PACKAGES=(
+    pnetlab-docker pnetlab-qemu pnetlab-satellite pnetlab-vpcs
+)
+readonly -a SATELLITE_ZOO_VERSIONS=(2.4.0 2.12.0 4.1.0 5.2.0)
+
+DO_REBOOT=1
+for arg in "$@"; do
+    case $arg in
+        --no-reboot) DO_REBOOT=0 ;;
+    esac
+done
+
+log()  { echo "[$(date '+%H:%M:%S')] $*" | tee -a "$LOG"; }
+warn() { echo "[$(date '+%H:%M:%S')] WARNING: $*" | tee -a "$LOG" >&2; }
+die()  { echo "[$(date '+%H:%M:%S')] ERROR: $*" | tee -a "$LOG" >&2; exit 1; }
+have() { command -v "$1" >/dev/null 2>&1; }
+
+: > "$LOG"
+log "=== PNetLab 27H1 v8 SATELLITE Installer (Ubuntu 26.04 resolute, headless) ==="
+log "Log: $LOG ; bundle: $SCRIPT_DIR"
+
+# ── Preflight ─────────────────────────────────────────────────────────────────
+[ "$(id -u)" = "0" ] || die "Must run as root (sudo bash install-resolute-satellite.sh)"
+lsb_release -r -s 2>/dev/null | grep -q '26.04' || \
+    die "Requires Ubuntu 26.04. Detected: $(lsb_release -r -s 2>/dev/null || echo unknown)"
+[ -d "$DEBS_DIR" ] || die "pnetlab-debs/ not found in $SCRIPT_DIR"
+[ -d "$DEPS_DIR" ] || die "deps/ not found in $SCRIPT_DIR"
+dpkg -s pnetlab >/dev/null 2>&1 && \
+    die "pnetlab (master) is installed on this box — a host is master OR satellite, not both"
+
+marker_value() {
+    local key="$1"
+    awk -F= -v key="$key" '$1 == key { print substr($0, index($0, "=") + 1) }' "$BUNDLE_COMPLETE"
+}
+
+[ -f "$BUNDLE_COMPLETE" ] || die "satellite bundle COMPLETE marker is missing"
+[ "$(marker_value format)" = '1' ] || die "satellite bundle COMPLETE marker has an invalid format"
+EXPECTED_RELEASE="$(marker_value release)"
+[[ "$EXPECTED_RELEASE" =~ ^6\.8\.[0-9]+resolute1$ ]] \
+    || die "satellite bundle COMPLETE marker has an invalid release"
+[ "$(marker_value packages)" = "pnetlab-docker=$EXPECTED_RELEASE,pnetlab-qemu=$EXPECTED_RELEASE,pnetlab-satellite=$EXPECTED_RELEASE,pnetlab-vpcs=$EXPECTED_RELEASE" ] \
+    || die "satellite bundle COMPLETE marker has an incomplete package inventory"
+# assets=none is accepted for repo-based deployments where zoo tarballs are not bundled
+bundle_assets="$(marker_value assets)"
+if [ "$bundle_assets" != 'none' ] && [ -n "$bundle_assets" ]; then
+    expected_assets="qemu-compat-libs.tgz,qemu-zoo-2.4.0-net.tgz,qemu-zoo-2.12.0-net.tgz,qemu-zoo-4.1.0-net.tgz,qemu-zoo-5.2.0-net.tgz"
+    [ "$bundle_assets" = "$expected_assets" ] \
+        || warn "satellite bundle COMPLETE marker has a non-standard asset inventory (continuing anyway)"
+fi
+[ -z "$(marker_value optional_packages)" ] \
+    || [ "$(marker_value optional_packages)" = "pnetlab-bridge-dkms=$EXPECTED_RELEASE" ] \
+    || warn "satellite bundle COMPLETE marker has a non-standard optional package inventory"
+[ -f "$SCRIPT_DIR/inventory.tsv" ] || die "satellite bundle package inventory is missing"
+inventory_sha="$(sha256sum "$SCRIPT_DIR/inventory.tsv" | awk '{print $1}')"
+[ "$inventory_sha" = "$(marker_value inventory_sha256)" ] \
+    || die "satellite bundle package inventory digest does not match COMPLETE"
+
+# ── [1/8] DPKG cleanup & 32-bit compatibility ─────────────────────────────────
+log "[1/8] Cleaning dpkg locks / configuring pending packages..."
+rm -f /var/lib/dpkg/lock /var/lib/dpkg/lock-frontend /var/cache/apt/archives/lock 2>/dev/null || true
+
+# Multiarch and 32-bit dynamic linker symlink to prevent dracut initramfs crashes
+dpkg --add-architecture i386 2>/dev/null || true
+mkdir -p /lib /usr/lib32 2>/dev/null || true
+if [ -f /usr/lib32/ld-linux.so.2 ] && [ ! -f /lib/ld-linux.so.2 ]; then
+    ln -sfn /usr/lib32/ld-linux.so.2 /lib/ld-linux.so.2 2>/dev/null || true
+fi
+
+dpkg --configure -a >> "$LOG" 2>&1 || die "Initial dpkg configuration failed"
+
+# ── [2/8] SSH / systemd / root password ────────────────────────────────────────
+log "[2/8] Configuring SSH, systemd timeout..."
+sed -i 's/.*PermitRootLogin .*/PermitRootLogin yes/' /etc/ssh/sshd_config 2>/dev/null || true
+sed -i 's/.*DefaultTimeoutStopSec=.*/DefaultTimeoutStopSec=5s/' /etc/systemd/system.conf 2>/dev/null || true
+systemctl restart ssh >> "$LOG" 2>&1 || true
+# Ensure root password defaults to Azam-Pnet standard "azam" (Issue #33 Remediation)
+SATELLITE_ROOT_PASSWORD="${SATELLITE_ROOT_PASSWORD:-azam}"
+echo "root:$SATELLITE_ROOT_PASSWORD" | chpasswd >> "$LOG" 2>&1 || warn "Could not set root password"
+
+# ── [3/8] APT update ──────────────────────────────────────────────────────────
+log "[3/8] Running apt update..."
+apt-get update -q >> "$LOG" 2>&1 || die "apt-get update failed (need internet to Ubuntu mirrors)"
+
+# ── [4/8] Base apt dependencies (headless subset of the master list) ───────────
+# Engine + node runtimes only: php8.5 CLI stack (unl_wrapper is PHP), 32-bit IOL
+# libs, the qemu runtime lib zoo (same sonames as the master list), tooling the
+# wrappers/scripts call. NO apache/mysql/guac/websockify/java/freerdp/pango.
+log "[4/8] Installing base apt dependencies (headless engine subset)..."
+DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    -o Dpkg::Options::="--force-confdef" \
+    -o Dpkg::Options::="--force-confold" \
+    ifupdown unzip resolvconf \
+    build-essential dkms \
+    php8.5-cli php8.5-yaml php8.5-common php8.5-curl php8.5-gd \
+    php8.5-mbstring php8.5-mysql php8.5-sqlite3 php8.5-xml php8.5-zip \
+    libncurses6 libncursesw6 libtinfo6 vim dos2unix \
+    bridge-utils dmidecode genisoimage iptables \
+    lib32gcc-s1 lib32z1 libc6 libc6-i386 libelf1 libpcap0.8 \
+    libsdl1.2debian logrotate lsb-release lvm2 chrony rsync \
+    python3-pexpect sqlite3 tcpdump telnet uml-utilities zip \
+    cgroup-tools libyaml-0-2 net-tools jq zstd \
+    libaio1t64 libasound2t64 libbrlapi0.8 libcacard0 libepoxy0 libfdt1 libgbm1 \
+    libgcc-s1 libglib2.0-0 libgnutls30 libibverbs1 libjpeg8 \
+    libnettle8 libnuma1 libpixman-1-0 libpmem1 librdmacm1 libsasl2-2 \
+    libseccomp2 libslirp0 libspice-server1 libusb-1.0-0 \
+    libusbredirparser1 libvirglrenderer1 zlib1g qemu-system-common qemu-system-x86 qemu-utils \
+    libcapstone5 libvdeplug2 libnfs14 libxss1 libsdl2-2.0-0 libsnappy1v5 \
+    libspice-client-glib-2.0-8 inotify-tools curl ca-certificates gnupg \
+    bc lsof busybox-static open-vm-tools qemu-guest-agent \
+    openssh-server openssl \
+    swtpm swtpm-tools ovmf nodejs rdma-core ibverbs-providers infiniband-diags perftest wireshark-common tshark \
+    >> "$LOG" 2>&1 || die "Base dependency installation failed"
+update-alternatives --set php /usr/bin/php8.5 >> "$LOG" 2>&1 || true
+
+# ── [5/8] Side-load compat debs (libssl1.1 + lib32gcc1 transitional dummy) ─────
+log "[5/8] Side-loading libssl1.1 + lib32gcc1 transitional dummy..."
+if [ -d "$DEPS_DIR" ] && ls "$DEPS_DIR"/libssl1.1_*.deb >/dev/null 2>&1; then
+    dpkg -i "$DEPS_DIR"/libssl1.1_*.deb >> "$LOG" 2>&1 || warn "libssl1.1 install warning"
+else
+    warn "deps/libssl1.1_*.deb not found — skipping (Ubuntu 26.04 uses OpenSSL 3 natively)"
+fi
+if [ -d "$DEPS_DIR" ] && ls "$DEPS_DIR"/lib32gcc1_*.deb >/dev/null 2>&1; then
+    dpkg -i "$DEPS_DIR"/lib32gcc1_*.deb >> "$LOG" 2>&1 || warn "lib32gcc1 dummy install warning"
+fi
+
+# ── [6/8] Docker Runtime & Compatibility Bridge ───────────────────────────────
+log "[6/8] Provisioning Docker container runtime & dependency bridge..."
+install_docker_and_compat() {
+    # 1. Install Docker runtime (try docker-ce from noble channel if available, else docker.io)
+    local docker_installed=0
+    if have docker && docker --version >/dev/null 2>&1; then
+        docker_installed=1
+    else
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+            | gpg --dearmor -o /etc/apt/keyrings/docker.gpg 2>/dev/null || true
+        chmod a+r /etc/apt/keyrings/docker.gpg 2>/dev/null || true
+
+        # Try noble channel since resolute does not have upstream docker-ce builds yet
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu noble stable" \
+            > /etc/apt/sources.list.d/docker.list 2>/dev/null || true
+        if apt-get update -q >> "$LOG" 2>&1 && apt-get install -y --no-install-recommends docker-ce docker-ce-cli containerd.io >> "$LOG" 2>&1; then
+            docker_installed=1
+        else
+            rm -f /etc/apt/sources.list.d/docker.list
+            apt-get update -q >> "$LOG" 2>&1 || true
+            apt-get install -y --no-install-recommends docker.io containerd >> "$LOG" 2>&1 && docker_installed=1 || true
+        fi
+    fi
+
+    # 2. Bridge the strict 'docker-engine | docker-ce' package dependency requirement of pnetlab-docker
+    if ! dpkg -s docker-ce >/dev/null 2>&1 && ! dpkg -s docker-engine >/dev/null 2>&1; then
+        local dummy_dir="/tmp/docker-ce-dummy"
+        rm -rf "$dummy_dir" && mkdir -p "$dummy_dir/DEBIAN"
+        cat << 'EOF_DUMMY' > "$dummy_dir/DEBIAN/control"
+Package: docker-ce-dummy
+Version: 1:26.0.0-1
+Section: admin
+Priority: optional
+Architecture: all
+Provides: docker-ce, docker-engine
+Depends: docker.io | docker-ce
+Maintainer: Azam-Basha <admin@azam-pnet.local>
+Description: Compatibility bridge providing docker-ce virtual package for pnetlab-docker
+EOF_DUMMY
+        dpkg-deb --build "$dummy_dir" /tmp/docker-ce-dummy.deb >> "$LOG" 2>&1 || true
+        dpkg -i --force-depends /tmp/docker-ce-dummy.deb >> "$LOG" 2>&1 || true
+        rm -rf "$dummy_dir" /tmp/docker-ce-dummy.deb
+    fi
+
+    systemctl enable --now docker >> "$LOG" 2>&1 || true
+}
+install_docker_and_compat
+
+# ── [7/8] PNetLab packages (kernel, runtimes, satellite) ───────────────────────
+log "[7/8] Installing PNetLab packages from local files..."
+# v8/27H1: no custom kernel — 26.04 stock Linux 7.0 has in-tree KSM (userspace tuning ships in the satellite deb).
+select_deb_path() {
+    local package="$1" found dir
+    # Search each pool location in priority order
+    for dir in "${POOL_SEARCH_DIRS[@]}"; do
+        [ -d "$dir" ] || continue
+        found="$(ls "${dir}/${package}_"*_amd64.deb 2>/dev/null | sort -V | tail -1 || true)"
+        [ -n "$found" ] && [ -f "$found" ] && break
+        found=''
+    done
+    [ -n "$found" ] || die "Missing local deb for required package $package (searched: ${POOL_SEARCH_DIRS[*]})"
+    [ "$(dpkg-deb -f "$found" Package 2>/dev/null)" = "$package" ] \
+        || die "Local deb identity mismatch for $package: $found"
+    [ "$(dpkg-deb -f "$found" Version 2>/dev/null)" = "$EXPECTED_RELEASE" ] \
+        || die "Local deb version mismatch for $package: expected $EXPECTED_RELEASE"
+    printf '%s\n' "$found"
+}
+
+LOCAL_DEBS=()
+for package in "${SATELLITE_REQUIRED_PACKAGES[@]}"; do
+    found="$(select_deb_path "$package")"
+    LOCAL_DEBS+=("$found")
+    log "  verified $package: $(basename "$found")"
+done
+
+BRIDGE_DEB=''
+# Also search pool dirs for the optional bridge deb
+bridge_candidate=''
+for _bdir in "${POOL_SEARCH_DIRS[@]}"; do
+    [ -d "$_bdir" ] || continue
+    bridge_candidate="$(ls "${_bdir}/pnetlab-bridge-dkms_"*.deb 2>/dev/null | sort -V | tail -1 || true)"
+    [ -n "$bridge_candidate" ] && [ -f "$bridge_candidate" ] && break
+    bridge_candidate=''
+done
+if [ -n "$bridge_candidate" ]; then
+    [ "$(dpkg-deb -f "$bridge_candidate" Package 2>/dev/null)" = pnetlab-bridge-dkms ] \
+        || die "Optional bridge deb identity mismatch: $bridge_candidate"
+    [ "$(dpkg-deb -f "$bridge_candidate" Version 2>/dev/null)" = "$EXPECTED_RELEASE" ] \
+        || die "Optional bridge deb version mismatch: $bridge_candidate"
+    BRIDGE_DEB="$bridge_candidate"
+    LOCAL_DEBS+=("$BRIDGE_DEB")
+fi
+
+HOLD_PACKAGES=("${SATELLITE_REQUIRED_PACKAGES[@]}")
+[ -n "$BRIDGE_DEB" ] && HOLD_PACKAGES+=(pnetlab-bridge-dkms)
+# On a first deploy the local .debs below are not known to dpkg yet, so apt-mark
+# cannot look them up and would fail the install.  Only packages whose dpkg
+# selection is actually "hold" need clearing: the selection is independent of
+# the install status, so this excludes both unknown and rc/config-files-only
+# package records (as well as installed packages that are not held).
+already_held=()
+for package in "${HOLD_PACKAGES[@]}"; do
+    if [ "$(dpkg-query -W -f='${db:Status-Want}' "$package" 2>/dev/null)" = hold ]; then
+        already_held+=("$package")
+    fi
+done
+if [ "${#already_held[@]}" -gt 0 ]; then
+    apt-mark unhold "${already_held[@]}" >> "$LOG" 2>&1 \
+        || die "Could not unhold the satellite packages for redeploy"
+else
+    log "  no packages currently on hold; skipping unhold"
+fi
+DEBIAN_FRONTEND=noninteractive apt-get install -y --reinstall --allow-downgrades \
+    --allow-change-held-packages --no-install-recommends \
+    -o Dpkg::Options::="--force-confdef" \
+    -o Dpkg::Options::="--force-confold" \
+    "${LOCAL_DEBS[@]}" >> "$LOG" 2>&1 \
+    || die "The single satellite package transaction failed"
+
+assert_dpkg_audit_clean() {
+    local audit
+    audit="$(dpkg --audit 2>&1)" || die "dpkg --audit failed"
+    [ -z "$audit" ] || { printf '%s\n' "$audit" >> "$LOG"; die "dpkg --audit reported an incomplete package state"; }
+}
+
+assert_package_configured() {
+    local package="$1" status
+    status="$(dpkg-query -W -f='${db:Status-Abbrev}' "$package" 2>/dev/null || true)"
+    [ "$status" = 'ii ' ] || die "$package is not configured (status ${status:-missing})"
+}
+
+assert_dpkg_audit_clean
+dpkg --configure -a >> "$LOG" 2>&1 || die "dpkg --configure -a failed"
+assert_dpkg_audit_clean
+apt-get check >> "$LOG" 2>&1 || die "apt-get check failed after satellite installation"
+for package in "${SATELLITE_REQUIRED_PACKAGES[@]}"; do
+    assert_package_configured "$package"
+done
+
+# Deploy and preset all satellite systemd units to both /etc/systemd/system and /usr/lib/systemd/system
+for s_unit in pnetlab-brokerd.service pnetlab-docker-image-watcher.service pnetlab-ksm.service pnetlab-satd.service; do
+    for cand_dir in /lib/systemd/system /usr/lib/systemd/system /opt/unetlab/scripts; do
+        if [ -f "${cand_dir}/${s_unit}" ]; then
+            cp -f "${cand_dir}/${s_unit}" "/etc/systemd/system/${s_unit}" 2>/dev/null || true
+            cp -f "${cand_dir}/${s_unit}" "/usr/lib/systemd/system/${s_unit}" 2>/dev/null || true
+            chmod 644 "/etc/systemd/system/${s_unit}" 2>/dev/null || true
+            break
+        fi
+    done
+done
+
+# Ensure rrsync is available for master-to-satellite image syncing
+if [ ! -x /usr/bin/rrsync ]; then
+    for r_src in /usr/share/doc/rsync/scripts/rrsync /usr/share/rsync/scripts/rrsync; do
+        if [ -f "$r_src.gz" ]; then
+            gunzip -c "$r_src.gz" > /usr/bin/rrsync 2>/dev/null && chmod 755 /usr/bin/rrsync && break
+        elif [ -f "$r_src" ]; then
+            cp "$r_src" /usr/bin/rrsync 2>/dev/null && chmod 755 /usr/bin/rrsync && break
+        fi
+    done
+fi
+
+systemctl daemon-reload >> "$LOG" 2>&1 || die "systemd daemon-reload failed"
+# pnetlab-docker configures docker.service; the PNetLab package set provides
+# the image watcher. Verify both real units after the package transaction.
+for unit in pnetlab-brokerd.service docker.service pnetlab-docker-image-watcher.service; do
+    systemctl enable --now "$unit" >> "$LOG" 2>&1 || die "$unit failed to start"
+    systemctl is-active --quiet "$unit" || die "$unit is not active after start"
+done
+systemctl enable pnetlab-satd.service >> "$LOG" 2>&1 || die "pnetlab-satd.service could not be enabled"
+
+# Headless satellite nodes do not run the web GUI and must not create persistent unused cloud bridges (pnet0-9, nat0)
+log "Disabling persistent cloud bridge daemon and cleaning default interfaces..."
+systemctl stop pnetlab-pnet-bridges.service >> "$LOG" 2>&1 || true
+systemctl disable pnetlab-pnet-bridges.service >> "$LOG" 2>&1 || true
+rm -f /etc/systemd/system/pnetlab-pnet-bridges.service 2>/dev/null || true
+systemctl daemon-reload >> "$LOG" 2>&1 || true
+systemctl mask pnetlab-pnet-bridges.service >> "$LOG" 2>&1 || true
+
+# Neutralize /opt/ovf/pnet-bridges.sh so it is a no-op on satellites
+if [ -d /opt/ovf ]; then
+    cat << 'EOF_NOBRIDGES' > /opt/ovf/pnet-bridges.sh
+#!/bin/bash
+# Disabled on PNetLab satellite nodes — bridges are created dynamically by unl_wrapper as needed
+exit 0
+EOF_NOBRIDGES
+    chmod 0755 /opt/ovf/pnet-bridges.sh 2>/dev/null || true
+fi
+
+# Clean up any created bridge interfaces
+for br in nat0 pnet0 pnet1 pnet2 pnet3 pnet4 pnet5 pnet6 pnet7 pnet8 pnet9; do
+    ip link set "$br" down 2>/dev/null || true
+    ip link delete "$br" type bridge 2>/dev/null || true
+done
+
+# Remove interactive ovfconfig.sh from login profile on headless satellite
+if [ -f /etc/profile.d/ovf.sh ]; then
+    sed -i '/ovfconfig/d' /etc/profile.d/ovf.sh 2>/dev/null || true
+fi
+
+apt-mark hold "${HOLD_PACKAGES[@]}" >> "$LOG" 2>&1 \
+    || die "Could not restore the satellite package holds"
+
+# Verify the LACP bridge hotfix module is active
+if dkms status 2>/dev/null | grep -q "pnetlab-bridge" && modinfo bridge 2>/dev/null | grep -q "2.3.1-pnetlab"; then
+    log "  [ok] pnetlab-bridge-dkms 2.3.1-pnetlab active"
+else
+    warn "pnetlab-bridge-dkms NOT active — LACP/multi-chassis LAG will fail." \
+         "Run: dkms install pnetlab-bridge/1.0 --force; modprobe -r bridge; modprobe bridge"
+fi
+
+# ── [8/8] QEMU 9.2.4 default + legacy compat libs + permissions ────────────────
+# The zoo tarballs are rooted at qemu-<version>/ and extract under /opt; the
+# compat archive is a flat .so set extracted into /opt/qemu-compat-libs.
+log "[8/8] Extracting the four network QEMU zoo versions + compat libs..."
+log "qemu92/ is not present; v8 does not ship a qemu92 bundle (expected)"
+for version in "${SATELLITE_ZOO_VERSIONS[@]}"; do
+    zoo="$SCRIPT_DIR/qemu-zoo/qemu-zoo-$version-net.tgz"
+    if [ -f "$zoo" ]; then
+        tar xzf "$zoo" -C /opt >> "$LOG" 2>&1 \
+            || warn "QEMU zoo extraction warning: $zoo (non-fatal)"
+    else
+        warn "QEMU zoo archive not bundled: qemu-zoo-$version-net.tgz — nodes will use system QEMU"
+    fi
+done
+if [ -f "$DEPS_DIR/qemu-compat-libs.tgz" ]; then
+    mkdir -p /opt/qemu-compat-libs
+    tar xzf "$DEPS_DIR/qemu-compat-libs.tgz" -C /opt/qemu-compat-libs >> "$LOG" 2>&1 \
+        || warn "qemu compat libs extraction warning (non-fatal)"
+    echo "/opt/qemu-compat-libs" > /etc/ld.so.conf.d/pnetlab-qemu-compat.conf
+    ldconfig >> "$LOG" 2>&1 || warn "ldconfig warning after qemu-compat-libs"
+else
+    warn "qemu-compat-libs.tgz not bundled — legacy QEMU compat layer skipped"
+fi
+# Pre-join this fails on the missing cluster DB (the deb postinst already set
+# the workspace ownership DB-independently); on a joined re-run it heals.
+/opt/unetlab/wrappers/unl_wrapper -a fixpermissions >> "$LOG" 2>&1 || warn "fixpermissions warnings (expected pre-join)"
+
+# Ensure IOL binaries are executable and wrapper retains SUID
+chmod 0755 /opt/unetlab/addons/iol/bin/* >> "$LOG" 2>&1 || true
+chmod 0644 /opt/unetlab/addons/iol/bin/iourc* >> "$LOG" 2>&1 || true
+chmod 4755 /opt/unetlab/wrappers/iol_wrapper >> "$LOG" 2>&1 || true
+chmod 777 /tmp/netio* >> "$LOG" 2>&1 || true
+mkdir -p /etc/tmpfiles.d
+echo "d /tmp/netio* 1777 root unl -" > /etc/tmpfiles.d/pnetlab-iol.conf 2>/dev/null || true
+
+# Patch unl_wrapper so fixpermissions permanently retains iol_wrapper SUID & netio permissions
+if [ -f /opt/unetlab/wrappers/unl_wrapper ] && ! grep -q 'chmod 4755 /opt/unetlab/wrappers/iol_wrapper' /opt/unetlab/wrappers/unl_wrapper; then
+    sed -i '/wrappers\/\*_wrapper\*/a \t\t$cmd = '\''/bin/chmod 4755 /opt/unetlab/wrappers/iol_wrapper > /dev/null 2>&1'\'';\n\t\texec($cmd, $o, $rc);\n\t\t$cmd = '\''/bin/chmod 777 /tmp/netio* > /dev/null 2>&1'\'';\n\t\texec($cmd, $o, $rc);' /opt/unetlab/wrappers/unl_wrapper 2>/dev/null || true
+fi
+
+# Patch device_iol.php so netio socket directory is created with 0777 before dropping privileges
+if [ -f /opt/unetlab/html/devices/iol/device_iol.php ] && ! grep -q 'netio_dir' /opt/unetlab/html/devices/iol/device_iol.php; then
+    python3 - << 'PY_IOL_PATCH' 2>/dev/null || true
+import os
+php_file = "/opt/unetlab/html/devices/iol/device_iol.php"
+if os.path.isfile(php_file):
+    with open(php_file, "r", encoding="utf-8") as f:
+        c = f.read()
+    t = '$cmd = "id -u " . $user . " 2>&1";\n        exec($cmd, $o, $rc);\n        $uid = $o[0];\n        if (!posix_setuid($uid)) {'
+    r = '''$cmd = "id -u " . $user . " 2>&1";
+        exec($cmd, $o, $rc);
+        $uid = isset($o[0]) ? (int)$o[0] : 0;
+        if ($uid > 0) {
+            $netio_dir = "/tmp/netio" . $uid;
+            if (!is_dir($netio_dir)) {
+                @mkdir($netio_dir, 0777, true);
+            }
+            @chown($netio_dir, $uid);
+            @chgrp($netio_dir, "unl");
+            @chmod($netio_dir, 0777);
+            $iol_id = $this->node->getIolId();
+            if ($iol_id !== null) {
+                @unlink($netio_dir . "/" . (int)$iol_id);
+                @unlink($netio_dir . "/" . (int)$iol_id . ".lck");
+            }
+        }
+        if (!posix_setuid($uid)) {'''
+    if t in c:
+        with open(php_file, "w", encoding="utf-8") as f:
+            f.write(c.replace(t, r))
+PY_IOL_PATCH
+fi
+
+# Configure LACP BPDU forwarding across bridges (Issue #9 Remediation)
+mkdir -p /etc/sysctl.d
+echo "net.bridge.bridge-nf-call-iptables = 0" > /etc/sysctl.d/99-pnetlab-bridge.conf 2>/dev/null || true
+for br_mask in /sys/class/net/*/bridge/group_fwd_mask; do
+    [ -f "$br_mask" ] && echo 65535 > "$br_mask" 2>/dev/null || true
+done
+
+# Soft-RoCE (RXE) Kernel Module Auto-load (Issue #20 Remediation)
+mkdir -p /etc/modules-load.d
+echo "rdma_rxe" > /etc/modules-load.d/pnetlab-roce.conf 2>/dev/null || true
+modprobe rdma_rxe 2>/dev/null || true
+
+# OVMF 4M Symlink Compatibility for UEFI (Issue #14 Remediation)
+if [ -f /usr/share/OVMF/OVMF_CODE_4M.fd ] && [ ! -f /usr/share/OVMF/OVMF_CODE.fd ]; then
+    ln -sfn /usr/share/OVMF/OVMF_CODE_4M.fd /usr/share/OVMF/OVMF_CODE.fd 2>/dev/null || true
+fi
+
+# Mask dead store services on headless satellite (Issue #10 Remediation)
+for u in harddisk_limit mysql_recovery process_limit; do
+    systemctl mask "${u}.service" 2>/dev/null || true
+    systemctl mask "${u}.timer" 2>/dev/null || true
+done
+
+# Clean stale TPM sockets and locks (Suggestion D Remediation)
+rm -rf /tmp/*_swtpm-sock /tmp/netio*/*.lck 2>/dev/null || true
+
+# Authoritative root password confirmation ("azam")
+echo "root:${SATELLITE_ROOT_PASSWORD:-azam}" | chpasswd >> "$LOG" 2>&1 || true
+
+# Deploy Azam-Features CLI suite, watchdog, KSM tuning, and maintenance cron on Satellite
+if [ -f /opt/unetlab/scripts/azambasha-install-azam-features.sh ]; then
+    bash /opt/unetlab/scripts/azambasha-install-azam-features.sh --satellite >> "$LOG" 2>&1 || true
+elif [ -f /opt/azambasha/scripts/azambasha-install-azam-features.sh ]; then
+    bash /opt/azambasha/scripts/azambasha-install-azam-features.sh --satellite >> "$LOG" 2>&1 || true
+fi
+
+log "=== Satellite install complete ==="
+log "Next: on the MASTER, System -> Cluster -> Generate PSK, then run here:"
+log "    pnet-satellite-join --master <master-ip> --id <1|2> --psk <psk>"
+if [ "$DO_REBOOT" = 1 ]; then
+    log "Rebooting into the PNetLab kernel in 5s (Ctrl-C to abort; --no-reboot to skip)..."
+    sleep 5
+    reboot
+fi

@@ -31,7 +31,6 @@ class LoginCyberFX {
     this.resize();
     this.initParticlePool();
     this.bindEvents();
-    this.initBootSequence();
 
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
@@ -181,46 +180,6 @@ class LoginCyberFX {
     }
   }
 
-  // Fast 400ms Diagnostic Boot Sequence Overlay
-  initBootSequence() {
-    const bootOverlay = document.getElementById('bootOverlay');
-    if (!bootOverlay) return;
-
-    // Dismiss instantly if user clicks
-    bootOverlay.addEventListener('click', () => {
-      bootOverlay.classList.add('boot-done');
-    });
-
-    const lines = [
-      'AZAM-OS v2.4.0 KERNEL INITIALIZED',
-      'QUANTUM WAL ARMED // KSM 100:1 DEDUP ACTIVE',
-      'TOPOLOGY VIRTUAL MATRIX READY',
-      'SECURITY PROTOCOLS NOMINAL — ACCESS GRANTED'
-    ];
-
-    const logBox = document.getElementById('bootLog');
-    let idx = 0;
-
-    const timer = setInterval(() => {
-      if (idx < lines.length) {
-        if (logBox) {
-          const div = document.createElement('div');
-          div.className = 'boot-line';
-          div.textContent = `> ${lines[idx]}`;
-          logBox.appendChild(div);
-        }
-        idx++;
-      } else {
-        clearInterval(timer);
-        setTimeout(() => {
-          bootOverlay.classList.add('boot-done');
-          if (window.tacticalWidget) {
-            window.tacticalWidget.playChime();
-          }
-        }, 120);
-      }
-    }, 70);
-  }
 }
 
 // Auto-run on load

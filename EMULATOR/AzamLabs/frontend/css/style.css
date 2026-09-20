@@ -7,21 +7,21 @@
 
 :root {
   /* Surface Colors */
-  --bg-space: #070a13;
-  --bg-surface: rgba(13, 20, 36, 0.75);
-  --bg-surface-elevated: rgba(18, 28, 52, 0.85);
-  --bg-surface-glass: rgba(10, 16, 30, 0.65);
-  --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-glow: rgba(0, 242, 254, 0.3);
+  --bg-space: #040711;
+  --bg-surface: rgba(10, 15, 29, 0.75);
+  --bg-surface-elevated: rgba(11, 19, 38, 0.85);
+  --bg-surface-glass: rgba(10, 15, 29, 0.65);
+  --border-subtle: rgba(255, 255, 255, 0.09);
+  --border-glow: rgba(0, 242, 254, 0.24);
 
   /* Aurora Neon Accents */
   --neon-cyan: #00f2fe;
-  --neon-blue: #4facfe;
-  --neon-green: #00ff87;
+  --neon-blue: #38bdf8;
+  --neon-green: #10b981;
   --neon-amber: #ffd200;
   --neon-crimson: #ff3366;
-  --neon-purple: #a855f7;
-  --neon-pink: #ff007f;
+  --neon-purple: #8b5cf6;
+  --neon-pink: #d946ef;
 
   /* Text Colors */
   --text-primary: #f8fafc;
@@ -35,10 +35,10 @@
   --font-mono: 'JetBrains Mono', monospace;
 
   /* Shadows & Glows */
-  --glow-cyan: 0 0 20px rgba(0, 242, 254, 0.35);
-  --glow-green: 0 0 20px rgba(0, 255, 135, 0.35);
+  --glow-cyan: 0 0 20px rgba(0, 242, 254, 0.3);
+  --glow-green: 0 0 20px rgba(16, 185, 129, 0.3);
   --glow-crimson: 0 0 20px rgba(255, 51, 102, 0.35);
-  --shadow-hud: 0 16px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --shadow-hud: 0 16px 40px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 
   /* Transitions */
   --trans-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);

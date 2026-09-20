@@ -103,7 +103,8 @@ fi
 
 echo -e "${CYAN}[*] Step 6: Setting Up Python Runtime & Global 'azam' CLI...${NC}"
 python3 -m venv "${INSTALL_DIR}/venv"
-"${INSTALL_DIR}/venv/bin/pip" install --no-cache-dir -qq --upgrade pip
+"${INSTALL_DIR}/venv/bin/pip" install --no-cache-dir -qq --upgrade pip setuptools wheel
+"${INSTALL_DIR}/venv/bin/pip" install --no-cache-dir -qq "python-multipart>=0.0.9"
 if [ -d "${SCRIPT_DIR}/backend" ]; then
   "${INSTALL_DIR}/venv/bin/pip" install --no-cache-dir -qq "${SCRIPT_DIR}/backend"
 fi

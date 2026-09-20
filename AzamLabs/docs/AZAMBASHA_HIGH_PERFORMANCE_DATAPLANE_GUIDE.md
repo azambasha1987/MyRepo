@@ -1,12 +1,12 @@
-# Azam Basha Next-Generation High-Performance Dataplane Architecture Guide
+# AzamLabs Next-Generation High-Performance Dataplane Architecture Guide
 
-**Comprehensive Technical Reference for High-Throughput, Low-Latency Virtual Networking in Azam Basha**
+**Comprehensive Technical Reference for High-Throughput, Low-Latency Virtual Networking in AzamLabs**
 
 ---
 
 ## 1. Executive Summary & Architectural Goals
 
-The Next-Generation Azam Basha Dataplane Architecture modernizes packet movement across virtual network devices (Cisco IOL, QEMU KVM, Dynamips, Docker) by eliminating kernel bridge spinlocks, MAC learning delays, and netfilter firewall traversal on internal simulation links.
+The Next-Generation AzamLabs Dataplane Architecture modernizes packet movement across virtual network devices (Cisco IOL, QEMU KVM, Dynamips, Docker) by eliminating kernel bridge spinlocks, MAC learning delays, and netfilter firewall traversal on internal simulation links.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
@@ -115,7 +115,7 @@ sudo bash scripts/azambasha-link-impairment.sh clear all
 ## 5. Live Traffic Capture & Wireshark Streaming
 
 ### Method A: Stream Live Packets Directly to Windows Wireshark
-1. On the Azam Basha VM, start streaming interface `vnet0_1_0` on TCP port `19001`:
+1. On the AzamLabs VM, start streaming interface `vnet0_1_0` on TCP port `19001`:
    ```bash
    sudo bash scripts/azambasha-capture-stream.sh stream vnet0_1_0 19001
    ```

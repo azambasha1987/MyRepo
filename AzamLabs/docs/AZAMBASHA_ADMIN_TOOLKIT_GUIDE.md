@@ -1,12 +1,12 @@
-# Azam Basha Appliance Master Administration Toolkit
+# AzamLabs Appliance Master Administration Toolkit
 
-**Complete Reference & Operational Manual for Azam Basha Virtual Appliances**
+**Complete Reference & Operational Manual for AzamLabs Virtual Appliances**
 
 ---
 
 ## 1. Toolkit Overview
 
-The Azam Basha Administration Toolkit provides automated, enterprise-grade maintenance and optimization utilities located in [`scripts/`](../scripts/):
+The AzamLabs Administration Toolkit provides automated, enterprise-grade maintenance and optimization utilities located in [`scripts/`](../scripts/):
 
 | Utility Script | Purpose | Quick Command |
 | :--- | :--- | :--- |
@@ -17,7 +17,7 @@ The Azam Basha Administration Toolkit provides automated, enterprise-grade maint
 | [`scripts/azambasha-fix-permissions.sh`](../scripts/azambasha-fix-permissions.sh) | **Permission & Node Recovery**: Fixes `/opt/unetlab` ownership, `/dev/kvm`, locks, and IOL license. | `sudo bash scripts/azambasha-fix-permissions.sh` |
 | [`scripts/azambasha-fix-export-and-apt.sh`](../scripts/azambasha-fix-export-and-apt.sh) | **Export & APT Fix**: Solves repository conflicts, installs zip/unzip, and enables nested lab exports. | `sudo bash scripts/azambasha-fix-export-and-apt.sh` |
 | [`scripts/azambasha-backup-restore.sh`](../scripts/azambasha-backup-restore.sh) | **Automated Backup/Restore**: Full snapshot archive of labs, users, database, and configurations. | `sudo bash scripts/azambasha-backup-restore.sh backup` |
-| [`scripts/setup-ollama.sh`](../scripts/setup-ollama.sh) | **AI Lab Builder VM Setup**: Connects Azam Basha MCP service to local Ollama LLM on host. | `sudo bash scripts/setup-ollama.sh <HOST_IP>` |
+| [`scripts/setup-ollama.sh`](../scripts/setup-ollama.sh) | **AI Lab Builder VM Setup**: Connects AzamLabs MCP service to local Ollama LLM on host. | `sudo bash scripts/setup-ollama.sh <HOST_IP>` |
 | [`scripts/setup-ollama-host.ps1`](../scripts/setup-ollama-host.ps1) | **Windows Host Setup**: Binds Ollama to `0.0.0.0`, configures firewall, and pulls `qwen2.5:14b-instruct`. | `.\scripts\setup-ollama-host.ps1` |
 
 ---

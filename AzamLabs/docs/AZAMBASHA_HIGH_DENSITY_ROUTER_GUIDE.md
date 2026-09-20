@@ -1,4 +1,4 @@
-# Azam Basha High-Density Cisco Router Optimization Guide
+# AzamLabs High-Density Cisco Router Optimization Guide
 ### Catalyst 8000, Cisco 8000 & Catalyst 9000 Memory Deduplication and CPU Governor
 
 **Massive Virtual Router Scalability for Master and Satellite Nodes with Zero Performance Degradation**
@@ -11,7 +11,7 @@ Virtualizing enterprise and service-provider routing and switching platforms—s
 - **Multiplying Physical RAM**: Each node requests 4 GB to 18 GB RAM. Running 10 to 100 nodes would conventionally demand 400 GB to 1.8 TB of host memory.
 - **100% CPU Pegging**: DPDK Poll-Mode Drivers (PMD) inside each router run an infinite busy-poll loop (`while (1) { poll_nic(); }`), permanently pegging 100% of all assigned host vCPU cores even with 0 bps of lab traffic.
 
-The **Azam Basha High-Density Heavy Node Optimization Suite** ([`scripts/azambasha-heavy-node-optimizer.sh`](../scripts/azambasha-heavy-node-optimizer.sh)) solves both issues across **both Master and Satellite worker nodes**:
+The **AzamLabs High-Density Heavy Node Optimization Suite** ([`scripts/azambasha-heavy-node-optimizer.sh`](../scripts/azambasha-heavy-node-optimizer.sh)) solves both issues across **both Master and Satellite worker nodes**:
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────┐

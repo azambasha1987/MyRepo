@@ -367,6 +367,24 @@ main{padding:28px;max-width:1400px;margin:0 auto;width:100%}
 
     <div class="tool-card">
       <div class="tool-card-head">
+        <div class="tool-icon blue">🛡️</div>
+        <div class="tool-meta">
+          <div class="tool-name">Quarterly Intelligence & Audit</div>
+          <div class="tool-cli">azam-audit --check</div>
+          <div class="tool-desc">Runs scheduled 3-month Zero-Glitch audit, catalogs additive QEMU templates, and dispatches email digest to azambasha1987@gmail.com.</div>
+        </div>
+      </div>
+      <div class="tool-body">
+        <div class="tool-actions">
+          <button class="btn btn-primary" onclick="runTool('audit',{},this,'term-audit')">▶ Run Audit</button>
+          <button class="btn btn-secondary" onclick="runTool('audit-snapshot',{},this,'term-audit')">📦 Snapshot</button>
+        </div>
+        <div class="terminal" id="term-audit"></div>
+      </div>
+    </div>
+
+    <div class="tool-card">
+      <div class="tool-card-head">
         <div class="tool-icon blue">📊</div>
         <div class="tool-meta">
           <div class="tool-name">Fleet Dashboard</div>

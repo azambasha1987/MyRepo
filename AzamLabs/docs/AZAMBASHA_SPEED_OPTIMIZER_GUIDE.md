@@ -1,6 +1,6 @@
-# Azam Basha High-Performance Speed & Resource Optimizer Guide
+# AzamLabs High-Performance Speed & Resource Optimizer Guide
 
-**Comprehensive Performance Tuning for Azam Basha Virtual Appliances**
+**Comprehensive Performance Tuning for AzamLabs Virtual Appliances**
 
 ---
 
@@ -8,11 +8,11 @@
 
 As lab complexity grows to dozens of virtual nodes (Cisco IOL, Dynamips, QEMU, Docker), system resources—specifically **RAM allocation**, **PHP processing latency**, **network socket queues**, and **web UI asset delivery**—become primary bottlenecks.
 
-The **Azam Basha Speed Optimizer Suite** ([`scripts/azambasha-speed-optimizer.sh`](../scripts/azambasha-speed-optimizer.sh)) applies four layers of low-overhead system tuning:
+The **AzamLabs Speed Optimizer Suite** ([`scripts/azambasha-speed-optimizer.sh`](../scripts/azambasha-speed-optimizer.sh)) applies four layers of low-overhead system tuning:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│ Azam Basha High-Performance Tuning Matrix                                 │
+│ AzamLabs High-Performance Tuning Matrix                                 │
 ├─────────────────────────┬──────────────────────────────────────────────┤
 │ 1. KSM Deduplication    │ Merges identical RAM pages across nodes      │
 │                         │ (~30% to 50% RAM savings)                    │
@@ -33,7 +33,7 @@ The **Azam Basha Speed Optimizer Suite** ([`scripts/azambasha-speed-optimizer.sh
 ## 2. Quick Deployment
 
 ### One-Click Application
-Execute as root on your Azam Basha VM:
+Execute as root on your AzamLabs VM:
 ```bash
 chmod +x scripts/azambasha-speed-optimizer.sh
 sudo bash scripts/azambasha-speed-optimizer.sh
@@ -63,7 +63,7 @@ sudo bash scripts/azambasha-speed-optimizer.sh --rollback
 - **Result**: **30% to 50% reduction in active RAM usage** for multi-node labs.
 
 ### 2. PHP OPcache & Realpath Cache (256MB Bytecode Cache)
-- **Mechanism**: Azam Basha's web UI relies heavily on PHP for lab node status polling, canvas rendering, and REST API calls. OPcache stores precompiled PHP script bytecode directly in RAM, completely eliminating filesystem reading and script recompilation on every click.
+- **Mechanism**: AzamLabs's web UI relies heavily on PHP for lab node status polling, canvas rendering, and REST API calls. OPcache stores precompiled PHP script bytecode directly in RAM, completely eliminating filesystem reading and script recompilation on every click.
 - **Configuration**:
   - `opcache.memory_consumption = 256`
   - `opcache.max_accelerated_files = 20000`

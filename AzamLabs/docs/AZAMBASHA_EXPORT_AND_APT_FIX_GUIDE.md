@@ -1,12 +1,12 @@
-# Azam Basha Lab Export & APT Sources Fix Guide
+# AzamLabs Lab Export & APT Sources Fix Guide
 
-**Troubleshooting & Resolution Guide for Azam Basha Appliance Administration**
+**Troubleshooting & Resolution Guide for AzamLabs Appliance Administration**
 
 ---
 
 ## 1. Overview & Issues Addressed
 
-This guide addresses two common administrative and functional issues in Azam Basha deployments:
+This guide addresses two common administrative and functional issues in AzamLabs deployments:
 1. **APT Repository Conflicts / Duplicate Lists:**
    - Error messages during `apt update` caused by stale or duplicate installer repository configurations in `/etc/apt/sources.list.d/azambasha-netinstall-codeberg.list`.
 2. **Lab Export Failures & Subfolder Support:**
@@ -18,7 +18,7 @@ This guide addresses two common administrative and functional issues in Azam Bas
 
 ## 2. Automated Fix Deployment
 
-Run [`scripts/azambasha-fix-export-and-apt.sh`](../scripts/azambasha-fix-export-and-apt.sh) on your Azam Basha VM as root:
+Run [`scripts/azambasha-fix-export-and-apt.sh`](../scripts/azambasha-fix-export-and-apt.sh) on your AzamLabs VM as root:
 
 ```bash
 chmod +x azambasha-fix-export-and-apt.sh
@@ -97,7 +97,7 @@ systemctl restart apache2
    ```
    *Expected result: Clean update without warnings or duplicate target errors.*
 
-2. **Test Lab Export in Azam Basha Web UI:**
-   - Open Azam Basha Web Interface.
+2. **Test Lab Export in AzamLabs Web UI:**
+   - Open AzamLabs Web Interface.
    - Navigate to any lab (including nested folders).
    - Click **Export** &rarr; Verify the `.zip` archive downloads successfully without errors.

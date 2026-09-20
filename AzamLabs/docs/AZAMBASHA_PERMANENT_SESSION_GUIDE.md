@@ -1,7 +1,7 @@
-# Azam Basha Permanent Session & Never-Logout Guide
+# AzamLabs Permanent Session & Never-Logout Guide
 
 **Complete Fix for Session Timeouts, Cookie Expiry, and Auto-Logout**
-- **Applicable:** Azam Basha Virtual Appliances
+- **Applicable:** AzamLabs Virtual Appliances
 - **Target OS:** Ubuntu 18.04 - 26.04
 
 ---
@@ -54,7 +54,7 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/.../scripts/azambas
 
 ## 4. Verification & Validation Steps
 
-1. **Log into Azam Basha Web Interface**: Open your browser, navigate to `https://<azambasha-ip>/` and log in.
+1. **Log into AzamLabs Web Interface**: Open your browser, navigate to `https://<azambasha-ip>/` and log in.
 2. **Check Cookie Expiry**:
    - Press `F12` to open Developer Tools.
    - Navigate to **Application** (Chrome/Edge) or **Storage** (Firefox) &rarr; **Cookies** &rarr; `https://<azambasha-ip>`.
@@ -69,7 +69,7 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/.../scripts/azambas
 
 ## 5. Important Note on Single-Session Concurrency
 
-Azam Basha stores a single active authentication token per user account in the `users.cookie` table column. If you log into the **same user account** (e.g. `admin`) from a different computer or private window, the previous device's token is rotated.
+AzamLabs stores a single active authentication token per user account in the `users.cookie` table column. If you log into the **same user account** (e.g. `admin`) from a different computer or private window, the previous device's token is rotated.
 
 > [!TIP]
 > **Best Practice**: To keep multiple browser windows or devices open simultaneously without conflict, create separate sub-accounts in **System &rarr; User Management** (e.g. `admin2`, `laptop`, `desktop`) and grant them Admin roles.

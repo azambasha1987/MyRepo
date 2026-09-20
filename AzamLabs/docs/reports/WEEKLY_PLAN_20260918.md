@@ -6,7 +6,7 @@
 
 > [!CAUTION]
 > ### NON-REGRESSION DIRECTIVE
-> All actions and feature additions in this implementation plan must strictly follow the **Azam-Pnet Zero-Glitch Protocol**:
+> All actions and feature additions in this implementation plan must strictly follow the **AzamLabs Zero-Glitch Protocol**:
 > 1. **Zero Disruption to Active Labs & Running Nodes**:
 >    - No blanket service restarts (`systemctl restart unetlab*`) or network bridge reloads during execution. Running Cisco, Juniper, Linux, or Windows nodes remain completely undisturbed.
 > 2. **Automated Rollback Checkpoints (`.bak.<timestamp>`)**:
@@ -16,7 +16,7 @@
 > 4. **Preservation of Hyper-Tuning & Custom Core**:
 >    - **Ultra-KSM**: Active 4KB RAM deduplication (65% to 80%+ memory savings) preserved.
 >    - **CPU Governor & Fast-Path**: KVM halt-poll deactivation (`halt_poll_ns = 0`) and Silicon Dataplane (MTU 9000 jumbo frames) preserved without regression.
->    - **Authoritative Identity**: Root password **`azam`** and custom Azam-Pnet branding remain canonical.
+>    - **Authoritative Identity**: Root password **`azam`** and custom AzamLabs branding remain canonical.
 > 5. **Pre-Flight Syntax & Sanity Probes**:
 >    - Every shell script is verified with `bash -n` and Python scripts compiled with `py_compile` before execution.
 
@@ -46,7 +46,7 @@
 >   - `9b3943f0`: Update README.md
 >   - `2aaf6be0`: Update README.md
 > - **Active Upstream Focus Areas**: Resolute satellite deployment scripts, manifest bundle staging, and canvas zoom retention.
-> - **Cluster Drift Impact**: `0 unmanaged regressions`. All 33 known upstream issues are either fully remediated or stabilized with Azam-Pnet overrides.
+> - **Cluster Drift Impact**: `0 unmanaged regressions`. All 33 known upstream issues are either fully remediated or stabilized with AzamLabs overrides.
 
 
 ---
@@ -55,7 +55,7 @@
 
 Audits the reliability of detected upstream releases before cluster deployment:
 
-| Release Component | Upstream Distribution Status | Azam-Pnet Hardening Status | Production Cluster Readiness |
+| Release Component | Upstream Distribution Status | AzamLabs Hardening Status | Production Cluster Readiness |
 |---|---|---|:---:|
 | **pnetlab core (6.8.79resolute1)** | Manifest mismatch reported (Issue #31) | Local manifest & subset validation override applied | ✅ `100% PRODUCTION READY` |
 | **pnetlab-satellite cluster bundle** | Password rehash bug (Issue #33) | Tri-tier SSH auto-negotiation (`root:azam`) applied | ✅ `100% PRODUCTION READY` |
@@ -83,7 +83,7 @@ Whenever new features or bug fixes from higher upstream versions are integrated,
 
 ## Dual Node Architecture: Master vs Satellite Remediation Matrix
 
-Every feature addition, bug fix, and performance hyper-tuning in Azam-Pnet is explicitly engineered for both Master Controller and Satellite Worker nodes:
+Every feature addition, bug fix, and performance hyper-tuning in AzamLabs is explicitly engineered for both Master Controller and Satellite Worker nodes:
 
 | Subsystem / Issue Fix | Master Node (Controller) | Satellite Node (Worker) | Target Scripts & Engines |
 |---|:---:|:---:|---|
@@ -108,7 +108,7 @@ Every feature addition, bug fix, and performance hyper-tuning in Azam-Pnet is ex
 > ### Satellite Installation & Mid-Way Failure Protection (Issues #33, #32, #23)
 > Upstream satellite deployment scripts frequently fail mid-way because upstream `.deb` post-install scripts forcefully re-hash the root password to `"pnet"`. When subsequent deployment scripts send `$SSHPASS`, the connection drops with exit code 5 (Authentication failure).
 >
-> **Azam-Pnet Dual-Node Protocol**:
+> **AzamLabs Dual-Node Protocol**:
 > 1. **Tri-Tier Password Auto-Negotiation**: Automatically cycles `$SSHPASS` -> `azam` -> `pnet`, detects authentication, and immediately normalizes `root:azam`.
 > 2. **Cluster DB Configuration Permissions**: Enforces `0600` permissions on `/etc/pnetlab/cluster-db.conf` on Satellite nodes to guarantee secure Master communications.
 > 3. **Inter-Node Dataplane MTU Alignment**: Master and Satellites operate in lockstep with MTU 9000 jumbo frames and RoCEv2 RXE interfaces for zero packet-fragmentation cross-cluster links.
@@ -131,27 +131,27 @@ Status of multi-vendor virtualized routing, switching, and compute nodes across 
 
 ---
 
-## Upstream Issues Audit & Azam-Pnet Alignment Ledger
+## Upstream Issues Audit & AzamLabs Alignment Ledger
 
-| Issue # | State | Severity | Title | Azam-Pnet Resolution Status |
+| Issue # | State | Severity | Title | AzamLabs Resolution Status |
 |---|:---:|:---:|---|---|
-| [#33](https://codeberg.org/netkillui/Pnetlabv8/issues/33) | **OPEN** | `CRITICAL` | Satellite Mid Way install Failure Bug... | REMEDIATED in Azam-Pnet (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
-| [#32](https://codeberg.org/netkillui/Pnetlabv8/issues/32) | **OPEN** | `CRITICAL` | upgraded to 8.7.9 - Satellite issue - STEP BY... | REMEDIATED in Azam-Pnet (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
-| [#31](https://codeberg.org/netkillui/Pnetlabv8/issues/31) | **OPEN** | `CRITICAL` | release 6.8.79resolute1 is not ready: manifes... | REMEDIATED in Azam-Pnet (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
-| [#23](https://codeberg.org/netkillui/Pnetlabv8/issues/23) | **CLOSED** | `CRITICAL` | Satellite Bundle not present in 8.7.8... | REMEDIATED in Azam-Pnet (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
+| [#33](https://codeberg.org/netkillui/Pnetlabv8/issues/33) | **OPEN** | `CRITICAL` | Satellite Mid Way install Failure Bug... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
+| [#32](https://codeberg.org/netkillui/Pnetlabv8/issues/32) | **OPEN** | `CRITICAL` | upgraded to 8.7.9 - Satellite issue - STEP BY... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
+| [#31](https://codeberg.org/netkillui/Pnetlabv8/issues/31) | **OPEN** | `CRITICAL` | release 6.8.79resolute1 is not ready: manifes... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
+| [#23](https://codeberg.org/netkillui/Pnetlabv8/issues/23) | **CLOSED** | `CRITICAL` | Satellite Bundle not present in 8.7.8... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
 | [#29](https://codeberg.org/netkillui/Pnetlabv8/issues/29) | **OPEN** | `LOW` | Bug 41 Nodes stop but are showing as running ... | AUDITED (No Action Required) |
-| [#27](https://codeberg.org/netkillui/Pnetlabv8/issues/27) | **CLOSED** | `HIGH` | Update not working... | REMEDIATED in Azam-Pnet (Prerequisites / SMM / OVMF Symlinks) |
+| [#27](https://codeberg.org/netkillui/Pnetlabv8/issues/27) | **CLOSED** | `HIGH` | Update not working... | REMEDIATED in AzamLabs (Prerequisites / SMM / OVMF Symlinks) |
 | [#26](https://codeberg.org/netkillui/Pnetlabv8/issues/26) | **CLOSED** | `LOW` | Export & Import Start-up config option is mis... | AUDITED (No Action Required) |
 | [#24](https://codeberg.org/netkillui/Pnetlabv8/issues/24) | **CLOSED** | `LOW` | Bug 27 inside Lab Fix-permissions Reloading t... | AUDITED (No Action Required) |
 | [#22](https://codeberg.org/netkillui/Pnetlabv8/issues/22) | **CLOSED** | `LOW` | Bug 27 inside Lab  Fix-permissions Reloading ... | AUDITED (No Action Required) |
 | [#21](https://codeberg.org/netkillui/Pnetlabv8/issues/21) | **CLOSED** | `LOW` | lots of bug... | AUDITED (No Action Required) |
 | [#20](https://codeberg.org/netkillui/Pnetlabv8/issues/20) | **CLOSED** | `LOW` | The vIOS router configuration is not being sa... | AUDITED (No Action Required) |
-| [#19](https://codeberg.org/netkillui/Pnetlabv8/issues/19) | **OPEN** | `HIGH` | error when i insalling pnet on bare metal... | REMEDIATED in Azam-Pnet (Prerequisites / SMM / OVMF Symlinks) |
-| [#30](https://codeberg.org/netkillui/Pnetlabv8/issues/30) | **OPEN** | `MEDIUM` | Lab settings resetting on reopening the exist... | REMEDIATED in Azam-Pnet (Canvas Persistence / Draggable Modals / SVG Handles) |
-| [#28](https://codeberg.org/netkillui/Pnetlabv8/issues/28) | **CLOSED** | `MEDIUM` | Lab canvas auto zoom in issue ||  after a whi... | REMEDIATED in Azam-Pnet (Canvas Persistence / Draggable Modals / SVG Handles) |
-| [#25](https://codeberg.org/netkillui/Pnetlabv8/issues/25) | **OPEN** | `MEDIUM` | Bug 31 connector edit styles  MID-point bar a... | REMEDIATED in Azam-Pnet (Canvas Persistence / Draggable Modals / SVG Handles) |
-| [#17](https://codeberg.org/netkillui/Pnetlabv8/issues/17) | **OPEN** | `MEDIUM` | Bug list 6.8.77 resolute1... | REMEDIATED in Azam-Pnet (Canvas Persistence / Draggable Modals / SVG Handles) |
-| [#5](https://codeberg.org/netkillui/Pnetlabv8/issues/5) | **CLOSED** | `MEDIUM` | The Running Labs link is missing.... | REMEDIATED in Azam-Pnet (Canvas Persistence / Draggable Modals / SVG Handles) |
+| [#19](https://codeberg.org/netkillui/Pnetlabv8/issues/19) | **OPEN** | `HIGH` | error when i insalling pnet on bare metal... | REMEDIATED in AzamLabs (Prerequisites / SMM / OVMF Symlinks) |
+| [#30](https://codeberg.org/netkillui/Pnetlabv8/issues/30) | **OPEN** | `MEDIUM` | Lab settings resetting on reopening the exist... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
+| [#28](https://codeberg.org/netkillui/Pnetlabv8/issues/28) | **CLOSED** | `MEDIUM` | Lab canvas auto zoom in issue ||  after a whi... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
+| [#25](https://codeberg.org/netkillui/Pnetlabv8/issues/25) | **OPEN** | `MEDIUM` | Bug 31 connector edit styles  MID-point bar a... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
+| [#17](https://codeberg.org/netkillui/Pnetlabv8/issues/17) | **OPEN** | `MEDIUM` | Bug list 6.8.77 resolute1... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
+| [#5](https://codeberg.org/netkillui/Pnetlabv8/issues/5) | **CLOSED** | `MEDIUM` | The Running Labs link is missing.... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
 
 ---
 
@@ -198,7 +198,7 @@ Production utilities installed across Master and Satellite nodes:
 
 ---
 
-## Ready-to-Apply Action Plan for Azam Basha
+## Ready-to-Apply Action Plan for AzamLabs
 
 Run the corresponding runbook below based on the target node type:
 

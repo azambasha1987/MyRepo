@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Azam Basha Automated 3-Months Intelligence Scanner & Alert Scheduler
+# AzamLabs Automated 3-Months Intelligence & Alert Scheduler Setup
 # ==============================================================================
-# Installs a systemd timer and cron job to automatically run the Codeberg 
-# Intelligence Scanner every 3 months on the 19th at 09:00 IST (03:30 UTC)
-# and dispatch WhatsApp / Webhook alerts.
+# Configures notification credentials (/etc/pnetlab/azambasha-notify.conf)
+# targeting azambasha1987@gmail.com and installs the turnkey azam-audit tool.
 # ==============================================================================
 set -euo pipefail
 
-PHONE="${1:-}"
-APIKEY="${2:-}"
-WEBHOOK="${3:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+EMAIL="${1:-azambasha1987@gmail.com}"
+PHONE="${2:-}"
+APIKEY="${3:-}"
+WEBHOOK="${4:-}"
 
 echo "================================================================================"
-echo "    Azam-Pnet Automated 3-Months Intelligence & Alert Scheduler Setup"
+echo "    AzamLabs Automated 3-Months Intelligence & Alert Setup                      "
+echo "    Target Recipient: ${EMAIL}                                                  "
 echo "================================================================================"
 
 # Check root
@@ -25,31 +27,41 @@ fi
 NOTIFY_CONF="/etc/pnetlab/azambasha-notify.conf"
 mkdir -p /etc/pnetlab
 
-# If credentials provided, write them to /etc/pnetlab/azambasha-notify.conf
-if [ -n "$PHONE" ] || [ -n "$APIKEY" ] || [ -n "$WEBHOOK" ]; then
-    echo "[*] Storing notification credentials in $NOTIFY_CONF..."
-    cat > "$NOTIFY_CONF" << EOF
-# Azam-Pnet Cluster Notification Configuration
+# Store notification configuration
+echo "[*] Storing notification configuration in $NOTIFY_CONF..."
+cat > "$NOTIFY_CONF" << EOF
+# AzamLabs Cluster Notification Configuration
+EMAIL_TO="${EMAIL}"
+EMAIL_USER=""
+EMAIL_PASS=""
+SMTP_SERVER=""
+SMTP_PORT=""
 WHATSAPP_PHONE="${PHONE}"
 WHATSAPP_APIKEY="${APIKEY}"
 WEBHOOK_URL="${WEBHOOK}"
 EOF
-    chmod 0600 "$NOTIFY_CONF"
-    echo "[✔] Credentials saved."
-fi
+chmod 0600 "$NOTIFY_CONF"
+echo "[✔] Configuration saved."
 
-# 1. Cleanup / Decommission Scanner Service and Timer
-echo "[*] Decommissioning Upstream Scanner systemd units and cron jobs..."
+# 1. Cleanup / Decommission Retired Scanner Service and Timer
+echo "[*] Decommissioning legacy Upstream Scanner systemd units and cron jobs..."
 systemctl stop azambasha-scanner.timer 2>/dev/null || true
 systemctl disable azambasha-scanner.timer 2>/dev/null || true
 systemctl stop azambasha-scanner.service 2>/dev/null || true
 rm -f /etc/systemd/system/azambasha-scanner.service /etc/systemd/system/azambasha-scanner.timer
 rm -f /etc/cron.d/azambasha-quarterly-scanner /etc/cron.weekly/azambasha-scanner
 
-systemctl daemon-reload
+systemctl daemon-reload 2>/dev/null || true
+
+# 2. Symlink azam-audit command
+if [ -f "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" ]; then
+    ln -sf "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit
+    chmod +x "${SCRIPT_DIR}/azambasha-quarterly-audit.sh"
+    echo "[✔] Installed /usr/local/bin/azam-audit"
+fi
 
 echo "================================================================================"
-echo "[✔] Scanner systemd services and timers have been completely removed."
-echo "    - Configuration preserved: $NOTIFY_CONF"
+echo "[✔] Setup complete. Turnkey quarterly audit is ready:"
+echo "    Run: sudo azam-audit --check"
+echo "    Configuration: $NOTIFY_CONF"
 echo "================================================================================"
-

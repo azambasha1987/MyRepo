@@ -2021,9 +2021,101 @@
     }
   }
 
+  /* ── Issue #34 Hardening: Canvas Viewport & Zoom Retention ── */
+  (function initCanvasRetentionHook() {
+    function saveCanvasViewport() {
+      try {
+        var svg = document.querySelector('#topology, #canvas svg, svg.topology-canvas, svg');
+        var canvasContainer = document.querySelector('#canvas, .canvas-container, #topology_wrapper');
+        var viewport = {};
+
+        if (svg) {
+          var g = svg.querySelector('g') || svg;
+          viewport.transform = g.getAttribute('transform') || '';
+        }
+        if (canvasContainer) {
+          viewport.scrollLeft = canvasContainer.scrollLeft || 0;
+          viewport.scrollTop = canvasContainer.scrollTop || 0;
+        }
+
+        if (window.panzoom && typeof window.panzoom.getTransform === 'function') {
+          viewport.panzoom = window.panzoom.getTransform();
+        }
+
+        if (viewport.transform || viewport.scrollLeft || viewport.scrollTop || viewport.panzoom) {
+          sessionStorage.setItem('azam_canvas_viewport_retention', JSON.stringify(viewport));
+        }
+      } catch (e) {
+        // Non-fatal
+      }
+    }
+
+    function restoreCanvasViewport() {
+      try {
+        var raw = sessionStorage.getItem('azam_canvas_viewport_retention');
+        if (!raw) return;
+        var viewport = JSON.parse(raw);
+
+        setTimeout(function () {
+          var svg = document.querySelector('#topology, #canvas svg, svg.topology-canvas, svg');
+          var canvasContainer = document.querySelector('#canvas, .canvas-container, #topology_wrapper');
+
+          if (svg && viewport.transform) {
+            var g = svg.querySelector('g') || svg;
+            if (g) g.setAttribute('transform', viewport.transform);
+          }
+          if (canvasContainer) {
+            if (viewport.scrollLeft) canvasContainer.scrollLeft = viewport.scrollLeft;
+            if (viewport.scrollTop) canvasContainer.scrollTop = viewport.scrollTop;
+          }
+          if (window.panzoom && viewport.panzoom && typeof window.panzoom.setTransform === 'function') {
+            window.panzoom.setTransform(viewport.panzoom.x, viewport.panzoom.y, viewport.panzoom.scale);
+          }
+          console.log('[AzamLabs] Issue #34: Canvas zoom and viewport preserved post-operation.');
+        }, 150);
+      } catch (e) {
+        // Non-fatal
+      }
+    }
+
+    // Intercept click on permission fix buttons
+    document.addEventListener('click', function (ev) {
+      var target = ev.target && ev.target.closest ? ev.target.closest('button, a, [role="button"], li') : null;
+      if (!target) return;
+      var txt = (target.textContent || '').toLowerCase();
+      var action = (target.getAttribute('data-action') || '').toLowerCase();
+      var id = (target.id || '').toLowerCase();
+      var title = (target.getAttribute('title') || '').toLowerCase();
+
+      if (txt.includes('permission') || action.includes('permission') || id.includes('permission') || title.includes('permission')) {
+        saveCanvasViewport();
+        setTimeout(restoreCanvasViewport, 1200);
+      }
+    }, true);
+
+    // Also wrap XMLHttpRequest for /api/labs/.../permission or /api/system/fix_permissions
+    if (window.XMLHttpRequest) {
+      var origOpen = XMLHttpRequest.prototype.open;
+      var origSend = XMLHttpRequest.prototype.send;
+      XMLHttpRequest.prototype.open = function (method, url) {
+        this._azamUrl = url;
+        return origOpen.apply(this, arguments);
+      };
+      XMLHttpRequest.prototype.send = function () {
+        if (this._azamUrl && /permission/i.test(this._azamUrl)) {
+          saveCanvasViewport();
+          this.addEventListener('load', function () {
+            restoreCanvasViewport();
+          });
+        }
+        return origSend.apply(this, arguments);
+      };
+    }
+  })();
+
   /* ── Register with App Router ───────────────────────────── */
   App.register('azam-features', {
-    title: 'Azam-Features',
+    title: 'AzamLabs',
     icon: 'fa-bolt',
     admin: false,
     render: render

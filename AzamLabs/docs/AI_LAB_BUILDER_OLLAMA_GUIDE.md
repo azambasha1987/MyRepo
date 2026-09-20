@@ -1,8 +1,8 @@
-# Azam Basha AI Lab Builder & Local Ollama Integration
+# AzamLabs AI Lab Builder & Local Ollama Integration
 
-**Technical Reference & Deployment Guide | Azam Basha**
+**Technical Reference & Deployment Guide | AzamLabs**
 
-This guide details the architecture, host preparation, automated virtual machine provisioning, troubleshooting matrix, and diagnostic procedures required to integrate **Azam Basha** with a local **Ollama LLM engine**.
+This guide details the architecture, host preparation, automated virtual machine provisioning, troubleshooting matrix, and diagnostic procedures required to integrate **AzamLabs** with a local **Ollama LLM engine**.
 
 ---
 
@@ -18,19 +18,19 @@ This guide details the architecture, host preparation, automated virtual machine
 └──────────────────────────────────┼─────────────────────────────────────┘
                                    │ OpenAI-Compatible API (HTTP /v1)
 ┌──────────────────────────────────┼─────────────────────────────────────┐
-│ Azam Basha VM (Linux Backend)       ▼                                     │
+│ AzamLabs VM (Linux Backend)       ▼                                     │
 │ ┌──────────────────────────────────────────────────────────────────┐   │
 │ │ AI Lab Agent Client (ai_lab_agent.py / Python Async Engine)      │   │
 │ └────────────────────────────────▲─────────────────────────────────┘   │
 │                                  │ Model Context Protocol (MCP)        │
 │                                  │ Streamable-HTTP / SSE Transport     │
 │ ┌────────────────────────────────▼─────────────────────────────────┐   │
-│ │ Azam Basha MCP Server (azambasha-mcp.service on 127.0.0.1:5701)       │   │
+│ │ AzamLabs MCP Server (azambasha-mcp.service on 127.0.0.1:5701)       │   │
 │ │ Tools: add_node, connect_nodes, start_node, provide_config, etc. │   │
 │ └────────────────────────────────▲─────────────────────────────────┘   │
 │                                  │ Internal Unix Sockets / Bridge      │
 │ ┌────────────────────────────────▼─────────────────────────────────┐   │
-│ │ Azam Basha Web Server (Apache / PHP) & Canvas UI (AI Side-Panel)    │   │
+│ │ AzamLabs Web Server (Apache / PHP) & Canvas UI (AI Side-Panel)    │   │
 │ └──────────────────────────────────────────────────────────────────┘   │
 └────────────────────────────────────────────────────────────────────────┘
 ```
@@ -78,7 +78,7 @@ ipconfig | Select-String "IPv4 Address"
 
 ---
 
-## 3. Azam Basha VM Automated Deployment Script
+## 3. AzamLabs VM Automated Deployment Script
 
 Copy [`scripts/setup-ollama.sh`](../scripts/setup-ollama.sh) to the VM or execute:
 
@@ -108,13 +108,13 @@ This script will:
 | Connection refused / Timed out on port 11434 | 1. Ollama listening only on 127.0.0.1.<br>2. Windows Firewall blocking port 11434.<br>3. Wrong Host IP. | 1. Set `OLLAMA_HOST=0.0.0.0:11434` and restart Ollama.<br>2. Run `New-NetFirewallRule` on Windows.<br>3. Verify IP with `ipconfig`. |
 | 401 Unauthorized on MCP calls | Missing or mismatched SHA-256 Bearer token hash in `config.json`. | Re-run `/root/setup-ollama.sh <HOST_IP>` to refresh token hashes and restart `azambasha-mcp`. |
 | Agent failure: unhandled errors in TaskGroup | 1. File permission denied on `config.json` for `azambasha-mcp`.<br>2. Malformed Base URL (e.g., trailing slashes or Markdown brackets). | 1. `chmod 640 /opt/unetlab/data/ai/config.json`<br>2. `chown root:azambasha-mcp /opt/unetlab/data/ai/config.json`<br>3. Clean URL to: `http://<HOST_IP>:11434/v1` |
-| Agent loops infinitely or fails schema validation | Configured LLM lacks structured OpenAI tool-calling capabilities. | Switch model in Azam Basha AI settings to verified tool-calling model: `qwen2.5:14b-instruct` or `llama3.1:8b`. |
+| Agent loops infinitely or fails schema validation | Configured LLM lacks structured OpenAI tool-calling capabilities. | Switch model in AzamLabs AI settings to verified tool-calling model: `qwen2.5:14b-instruct` or `llama3.1:8b`. |
 
 ---
 
 ## 5. Verification & Diagnostic Commands
 
-| Test Layer | Command (Azam Basha CLI) | Expected Result |
+| Test Layer | Command (AzamLabs CLI) | Expected Result |
 | :--- | :--- | :--- |
 | **Ollama Reachability** | `curl -m 3 http://<HOST_IP>:11434/v1/models` | HTTP 200 with model JSON list |
 | **MCP Daemon State** | `systemctl status azambasha-mcp` | `active (running)` |

@@ -132,7 +132,14 @@ class DatabaseManager:
                 raw_json,
                 now,
             ))
-            # Sync node states
+            # Sync node states: purge nodes no longer present in topology
+            current_node_ids = [node.id for node in topology.nodes]
+            if current_node_ids:
+                placeholders = ",".join("?" for _ in current_node_ids)
+                conn.execute(f"DELETE FROM node_states WHERE lab_id = ? AND node_id NOT IN ({placeholders});", (topology.id, *current_node_ids))
+            else:
+                conn.execute("DELETE FROM node_states WHERE lab_id = ?;", (topology.id,))
+
             for node in topology.nodes:
                 conn.execute("""
                     INSERT INTO node_states (lab_id, node_id, node_name, status, pid, console_port, updated_at)

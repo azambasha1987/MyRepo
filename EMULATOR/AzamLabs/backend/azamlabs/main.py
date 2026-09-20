@@ -9,8 +9,14 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 from azamlabs.config import settings
-from azamlabs.core.schema import AzamTopology, AzamNode
+from azamlabs.core.schema import (
+    AzamTopology, AzamNode, AzamLink, AzamInterface, AzamNetwork,
+    DeviceType, DriverType, ImpairmentProfile, LinkStatus, NodeStatus
+)
+from azamlabs.network.fabric import fabric
 from azamlabs.core.engine import engine
+from azamlabs.core.database import db
+from azamlabs.core.catalog import catalog_service
 from azamlabs.core.day0 import Day0ConfigGenerator
 from azamlabs.core.ksm import KsmManager
 from azamlabs.core.cluster import cluster_manager
@@ -23,6 +29,7 @@ from azamlabs.mcp.server import mcp_server
 from azamlabs.auth.router import auth_router
 from azamlabs.core.folders import folder_service
 from azamlabs.converters.batch import BatchLabImporter
+from azamlabs.drivers.factory import DriverFactory
 
 
 class ImportLabRequest(BaseModel):
@@ -54,6 +61,61 @@ class CreateFolderRequest(BaseModel):
 
 class MoveLabRequest(BaseModel):
     folder_path: str
+
+
+class CreateNodeRequest(BaseModel):
+    template_id: Optional[str] = None
+    name: Optional[str] = None
+    device_type: Optional[str] = None
+    driver: Optional[str] = None
+    image: Optional[str] = None
+    cpu: Optional[int] = None
+    vcpus: Optional[int] = None
+    ram_mb: Optional[int] = None
+    interfaces: Optional[List[str]] = None
+    pos_x: Optional[float] = None
+    pos_y: Optional[float] = None
+    x: Optional[float] = None
+    y: Optional[float] = None
+    count: int = 1
+    startup_config: Optional[str] = None
+
+
+class BatchDeleteNodesRequest(BaseModel):
+    node_ids: List[str]
+
+
+class CreateNetworkRequest(BaseModel):
+    name: str
+    net_type: str = "bridge"  # mgmt, nat, isolated
+    network_type: Optional[str] = None
+    subnet: Optional[str] = None
+    bridge_name: Optional[str] = None
+    pos_x: Optional[float] = 100.0
+    pos_y: Optional[float] = 100.0
+    x: Optional[float] = None
+    y: Optional[float] = None
+
+
+class CreateLinkRequest(BaseModel):
+    source_node: str
+    source_interface: str
+    target_node: str
+    target_interface: str
+    source_port: Optional[str] = None
+    target_port: Optional[str] = None
+
+
+class LinkImpairmentRequest(BaseModel):
+    delay_ms: float = 0.0
+    latency_ms: Optional[float] = None
+    jitter_ms: float = 0.0
+    loss_percent: float = 0.0
+    rate_limit_kbps: Optional[int] = 0
+    rate_kbps: Optional[int] = None
+    corrupt_percent: float = 0.0
+
+
 
 
 @asynccontextmanager
@@ -226,6 +288,357 @@ async def clone_lab_endpoint(lab_id: str, request: Optional[CloneLabRequest] = N
         raise HTTPException(status_code=404, detail=f"Lab '{lab_id}' not found.")
     return cloned
 
+
+
+# ==========================================
+# Appliance Catalog & Hardware Endpoints
+# ==========================================
+
+@app.get("/api/v1/devices/catalog", tags=["Catalog"])
+async def get_device_catalog() -> List[Dict[str, Any]]:
+    """Returns detected appliance templates with real-time host image discovery."""
+    return catalog_service.get_catalog()
+
+
+# ==========================================
+# Individual & Batch Node Operations
+# ==========================================
+
+@app.post("/api/v1/labs/{lab_id}/nodes", tags=["Nodes"])
+async def create_nodes_endpoint(lab_id: str, req: CreateNodeRequest) -> List[Dict[str, Any]]:
+    """Creates single or batch nodes with auto-allocated console ports, names, and coordinates."""
+    import re
+    topo = engine.get_lab(lab_id)
+    if not topo:
+        raise HTTPException(status_code=404, detail=f"Lab '{lab_id}' not found.")
+
+    catalog_map = {t["id"]: t for t in catalog_service.get_catalog()}
+    template = catalog_map.get(req.template_id) if req.template_id else None
+
+    # Resolve device specs
+    dev_type = DeviceType(req.device_type) if req.device_type else (template["device_type"] if template else DeviceType.ROUTER)
+    drv_type = DriverType(req.driver) if req.driver else (template["driver"] if template else DriverType.QEMU)
+
+    if req.image:
+        image_name = req.image
+    elif template and template.get("installed_images"):
+        image_name = template["installed_images"][0]
+    elif template:
+        image_name = template["id"]
+    else:
+        image_name = "alpine:latest"
+
+    cpu = req.cpu or req.vcpus or (template["default_cpu"] if template else 1)
+    ram_mb = req.ram_mb or (template["default_ram_mb"] if template else 1024)
+    default_ifaces = req.interfaces or (template["default_interfaces"] if template else ["eth0", "eth1"])
+    console_type = template["console_type"] if template else "telnet"
+
+    # Naming logic
+    raw_prefix = req.name or ("SW" if dev_type == DeviceType.SWITCH else ("FW" if dev_type == DeviceType.FIREWALL else "R"))
+    raw_prefix = raw_prefix.strip()
+    match = re.match(r"^([A-Za-z_-]+)(\d*)$", raw_prefix)
+    clean_prefix = match.group(1) if match else raw_prefix
+
+    existing_nums = []
+    for n in topo.nodes:
+        m = re.search(rf"^{re.escape(clean_prefix)}(\d+)$", n.name, re.IGNORECASE)
+        if m:
+            existing_nums.append(int(m.group(1)))
+    next_num = max(existing_nums, default=0) + 1
+
+    existing_ports = {n.console_port for n in topo.nodes if n.console_port}
+    next_port = 30001
+
+    base_x = req.pos_x if req.pos_x is not None else (req.x if req.x is not None else 200.0)
+    base_y = req.pos_y if req.pos_y is not None else (req.y if req.y is not None else 200.0)
+    count = max(1, min(req.count, 32))
+
+    created_nodes: List[AzamNode] = []
+    for i in range(count):
+        node_name = f"{clean_prefix}{next_num + i}"
+        while next_port in existing_ports:
+            next_port += 1
+        console_port = next_port
+        existing_ports.add(console_port)
+
+        iface_objs = [AzamInterface(name=ifn) for ifn in default_ifaces]
+        new_node = AzamNode(
+            name=node_name,
+            device_type=dev_type,
+            driver=drv_type,
+            image=image_name,
+            cpu=cpu,
+            ram_mb=ram_mb,
+            interfaces=iface_objs,
+            pos_x=base_x + (i * 140.0),
+            pos_y=base_y,
+            console_port=console_port,
+            console_type=console_type,
+            startup_config=req.startup_config
+        )
+        topo.nodes.append(new_node)
+        created_nodes.append(new_node)
+
+    db.save_topology(topo)
+    return [n.model_dump(mode="json") for n in created_nodes]
+
+
+@app.delete("/api/v1/labs/{lab_id}/nodes/{node_id}", tags=["Nodes"])
+async def delete_single_node(lab_id: str, node_id: str) -> Dict[str, Any]:
+    """Deletes node, halts its execution, and cascades deletion of attached wires."""
+    topo = engine.get_lab(lab_id)
+    if not topo:
+        raise HTTPException(status_code=404, detail=f"Lab '{lab_id}' not found.")
+
+    node = topo.get_node(node_id)
+    if not node:
+        raise HTTPException(status_code=404, detail=f"Node '{node_id}' not found.")
+
+    try:
+        await engine.stop_node(lab_id, node.id)
+    except Exception:
+        pass
+
+    cascaded_links = [l.id for l in topo.links if l.source_node == node.name or l.target_node == node.name]
+    topo.links = [l for l in topo.links if l.id not in cascaded_links]
+    topo.nodes = [n for n in topo.nodes if n.id != node.id]
+
+    db.save_topology(topo)
+    return {"status": "deleted", "node_id": node.id, "node_name": node.name, "cascaded_links": cascaded_links}
+
+
+@app.post("/api/v1/labs/{lab_id}/nodes/batch-delete", tags=["Nodes"])
+async def batch_delete_nodes_endpoint(lab_id: str, req: BatchDeleteNodesRequest) -> Dict[str, Any]:
+    """Deletes multiple selected nodes in batch with cascading link cleanup."""
+    topo = engine.get_lab(lab_id)
+    if not topo:
+        raise HTTPException(status_code=404, detail=f"Lab '{lab_id}' not found.")
+
+    target_ids = set(req.node_ids)
+    target_names = {n.name for n in topo.nodes if n.id in target_ids or n.name in target_ids}
+
+    for n in topo.nodes:
+        if n.id in target_ids or n.name in target_names:
+            try:
+                await engine.stop_node(lab_id, n.id)
+            except Exception:
+                pass
+
+    cascaded_links = [l.id for l in topo.links if l.source_node in target_names or l.target_node in target_names]
+    topo.links = [l for l in topo.links if l.id not in cascaded_links]
+    topo.nodes = [n for n in topo.nodes if n.id not in target_ids and n.name not in target_names]
+
+    db.save_topology(topo)
+    return {"status": "batch_deleted", "deleted_nodes": list(target_ids), "cascaded_links": cascaded_links}
+
+
+@app.post("/api/v1/labs/{lab_id}/nodes/{node_id}/wipe", tags=["Nodes"])
+async def wipe_single_node(lab_id: str, node_id: str) -> Dict[str, Any]:
+    """Wipes node ephemeral overlay or NVRAM back to Day-0 state."""
+    topo = engine.get_lab(lab_id)
+    if not topo:
+        raise HTTPException(status_code=404, detail=f"Lab '{lab_id}' not found.")
+
+    node = topo.get_node(node_id)
+    if not node:
+        raise HTTPException(status_code=404, detail=f"Node '{node_id}' not found.")
+
+    driver = DriverFactory.get_driver(node.driver)
+    await driver.wipe_node(node, lab_id)
+    node.running_config = None
+    db.update_node_status(lab_id, node.id, NodeStatus.STOPPED)
+    return {"status": "wiped", "node_id": node.id}
+
+
+@app.post("/api/v1/labs/{lab_id}/nodes/{node_id}/clone", tags=["Nodes"])
+async def clone_single_node(lab_id: str, node_id: str) -> Dict[str, Any]:
+    """Duplicates an existing node with offset coordinates and auto-allocated console port."""
+    import re
+    topo = engine.get_lab(lab_id)
+    if not topo:
+        raise HTTPException(status_code=404, detail=f"Lab '{lab_id}' not found.")
+
+    node = topo.get_node(node_id)
+    if not node:
+        raise HTTPException(status_code=404, detail=f"Node '{node_id}' not found.")
+
+    m = re.search(r"^(.*?)(\d+)$", node.name)
+    if m:
+        base_name, num = m.group(1), int(m.group(2))
+        new_name = f"{base_name}{num + 1}"
+    else:
+        new_name = f"{node.name}_clone"
+
+    while topo.get_node(new_name):
+        new_name = f"{new_name}_1"
+
+    existing_ports = {n.console_port for n in topo.nodes if n.console_port}
+    new_port = 30001
+    while new_port in existing_ports:
+        new_port += 1
+
+    cloned_ifaces = [AzamInterface(name=i.name) for i in node.interfaces]
+    cloned_node = AzamNode(
+        name=new_name,
+        device_type=node.device_type,
+        driver=node.driver,
+        image=node.image,
+        cpu=node.cpu,
+        ram_mb=node.ram_mb,
+        interfaces=cloned_ifaces,
+        pos_x=node.pos_x + 50.0,
+        pos_y=node.pos_y + 50.0,
+        console_port=new_port,
+        console_type=node.console_type,
+        startup_config=node.startup_config
+    )
+    topo.nodes.append(cloned_node)
+    db.save_topology(topo)
+    return cloned_node.model_dump(mode="json")
+
+
+@app.post("/api/v1/labs/{lab_id}/nodes/{node_id}/isolate", tags=["Nodes"])
+async def isolate_node_endpoint(lab_id: str, node_id: str, isolate: bool = True) -> Dict[str, Any]:
+    """Atomically detaches/isolates node interfaces from network bridges to simulate airgap quarantine."""
+    topo = engine.get_lab(lab_id)
+    if not topo:
+        raise HTTPException(status_code=404, detail=f"Lab '{lab_id}' not found.")
+
+    node = topo.get_node(node_id)
+    if not node:
+        raise HTTPException(status_code=404, detail=f"Node '{node_id}' not found.")
+
+    for link in topo.links:
+        if link.source_node == node.name or link.target_node == node.name:
+            link.status = LinkStatus.DOWN if isolate else LinkStatus.UP
+    db.save_topology(topo)
+    return {"status": "isolated" if isolate else "restored", "node_id": node.id, "isolated": isolate}
+
+
+# ==========================================
+# Network Cloud & Link Wire Endpoints
+# ==========================================
+
+@app.post("/api/v1/labs/{lab_id}/networks", tags=["Networks"])
+async def create_network_endpoint(lab_id: str, req: CreateNetworkRequest) -> Dict[str, Any]:
+    """Creates a virtual network cloud (Management azam0, NAT, Isolated)."""
+    topo = engine.get_lab(lab_id)
+    if not topo:
+        raise HTTPException(status_code=404, detail=f"Lab '{lab_id}' not found.")
+
+    resolved_type = req.network_type or req.net_type or "bridge"
+    bridge_name = req.bridge_name or ("azam0" if resolved_type in ("mgmt", "management") else ("azam_nat0" if resolved_type == "nat" else None))
+    base_x = req.pos_x if req.pos_x is not None else (req.x if req.x is not None else 100.0)
+    base_y = req.pos_y if req.pos_y is not None else (req.y if req.y is not None else 100.0)
+
+    new_net = AzamNetwork(
+        name=req.name,
+        net_type=resolved_type,
+        subnet=req.subnet,
+        bridge_name=bridge_name
+    )
+    topo.networks.append(new_net)
+    db.save_topology(topo)
+    return new_net.model_dump(mode="json")
+
+
+@app.post("/api/v1/labs/{lab_id}/links", tags=["Links"])
+@app.post("/api/v1/labs/{lab_id}/connect", tags=["Links"])
+async def create_link_endpoint(lab_id: str, req: CreateLinkRequest) -> Dict[str, Any]:
+    """Connects two node interfaces with a virtual wire."""
+    topo = engine.get_lab(lab_id)
+    if not topo:
+        raise HTTPException(status_code=404, detail=f"Lab '{lab_id}' not found.")
+
+    src_node = topo.get_node(req.source_node)
+    dst_node = topo.get_node(req.target_node)
+    if not src_node:
+        raise HTTPException(status_code=404, detail=f"Source node '{req.source_node}' not found.")
+    if not dst_node:
+        raise HTTPException(status_code=404, detail=f"Target node '{req.target_node}' not found.")
+
+    src_iface = req.source_interface or req.source_port or "eth0"
+    dst_iface = req.target_interface or req.target_port or "eth0"
+
+    new_link = AzamLink(
+        source_node=src_node.name,
+        source_interface=src_iface,
+        target_node=dst_node.name,
+        target_interface=dst_iface,
+        status=LinkStatus.UP
+    )
+    topo.links.append(new_link)
+    db.save_topology(topo)
+
+    # If both nodes are running, connect live link wire
+    if src_node.status == NodeStatus.RUNNING and dst_node.status == NodeStatus.RUNNING:
+        try:
+            await fabric.connect_link(new_link, lab_id)
+        except Exception:
+            pass
+
+    return {"status": "connected", "link": new_link.model_dump(mode="json")}
+
+
+@app.delete("/api/v1/labs/{lab_id}/links/{link_id}", tags=["Links"])
+async def delete_link_endpoint(lab_id: str, link_id: str) -> Dict[str, Any]:
+    """Deletes a virtual link wire between two devices."""
+    topo = engine.get_lab(lab_id)
+    if not topo:
+        raise HTTPException(status_code=404, detail=f"Lab '{lab_id}' not found.")
+
+    link = topo.get_link(link_id)
+    if not link:
+        raise HTTPException(status_code=404, detail=f"Link '{link_id}' not found.")
+
+    topo.links = [l for l in topo.links if l.id != link_id]
+    db.save_topology(topo)
+    return {"status": "deleted", "link_id": link_id}
+
+
+@app.post("/api/v1/labs/{lab_id}/links/{link_id}/suspend", tags=["Links"])
+async def suspend_link_endpoint(lab_id: str, link_id: str) -> Dict[str, Any]:
+    """Toggles link wire between UP and DOWN to simulate a physical cable cut."""
+    topo = engine.get_lab(lab_id)
+    if not topo:
+        raise HTTPException(status_code=404, detail=f"Lab '{lab_id}' not found.")
+
+    link = topo.get_link(link_id)
+    if not link:
+        raise HTTPException(status_code=404, detail=f"Link '{link_id}' not found.")
+
+    link.status = LinkStatus.DOWN if link.status == LinkStatus.UP else LinkStatus.UP
+    db.save_topology(topo)
+    return {
+        "status": "updated",
+        "link_id": link.id,
+        "link_status": link.status.value,
+        "suspended": (link.status == LinkStatus.DOWN)
+    }
+
+
+@app.post("/api/v1/labs/{lab_id}/links/{link_id}/impairment", tags=["Links"])
+async def update_link_impairment_endpoint(lab_id: str, link_id: str, req: LinkImpairmentRequest) -> Dict[str, Any]:
+    """Applies real-time NetEm latency, jitter, loss, and rate limiting to a virtual wire."""
+    topo = engine.get_lab(lab_id)
+    if not topo:
+        raise HTTPException(status_code=404, detail=f"Lab '{lab_id}' not found.")
+
+    link = topo.get_link(link_id)
+    if not link:
+        raise HTTPException(status_code=404, detail=f"Link '{link_id}' not found.")
+
+    delay = req.latency_ms if req.latency_ms is not None else req.delay_ms
+    rate = req.rate_kbps if req.rate_kbps is not None else (req.rate_limit_kbps or 0)
+    link.impairment = ImpairmentProfile(
+        delay_ms=delay,
+        jitter_ms=req.jitter_ms,
+        loss_percent=req.loss_percent,
+        rate_limit_kbps=rate,
+        corrupt_percent=req.corrupt_percent
+    )
+    db.save_topology(topo)
+    return {"status": "impaired", "link_id": link.id, "profile": link.impairment.model_dump(mode="json")}
 
 
 # ==========================================

@@ -20,7 +20,12 @@ def test_frontend_index_html():
     assert "importerModal" in response.text
     assert "labExplorerDrawer" in response.text
     assert "toolToggleExplorer" in response.text
-    assert "btnLogout" in response.text
+    assert "addNodeModal" in response.text
+    assert "addNetworkModal" in response.text
+    assert "linkImpairModal" in response.text
+    assert "alignmentToolbar" in response.text
+    assert "azamOpsModal" in response.text
+    assert "btnAddAppliance" in response.text
     assert "logo-icon.png" in response.text
 
 

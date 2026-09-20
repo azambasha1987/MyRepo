@@ -66,13 +66,36 @@ class IolDriver(BaseDeviceDriver):
         console_port = self.allocate_console_port(node)
         instance_id = abs(hash(node.name)) % 1000 + 1
 
-        # Look for binary
-        binary_path = settings.IOL_IMAGES_DIR / node.image
-        if not binary_path.exists():
-            # Check direct path
-            direct = Path(node.image)
-            if direct.exists() and direct.is_file():
-                binary_path = direct
+        # Look for binary across multiple potential host paths
+        candidate_paths = [
+            settings.IOL_IMAGES_DIR / node.image,
+            Path("/opt/azamlabs/images/iol/bin") / node.image,
+            Path("/opt/azamlabs/images/iol") / node.image,
+            Path(node.image),
+        ]
+        binary_path = None
+        for cp in candidate_paths:
+            if cp.exists() and cp.is_file():
+                binary_path = cp
+                break
+
+        # If not found directly, scan IOL directories for any binary
+        if not binary_path:
+            for d in [Path("/opt/azamlabs/images/iol/bin"), Path("/opt/azamlabs/images/iol"), settings.IOL_IMAGES_DIR]:
+                if d.exists() and d.is_dir():
+                    for f in d.iterdir():
+                        if f.is_file() and (f.suffix == ".bin" or os.access(f, os.X_OK)):
+                            if node.device_type == DeviceType.SWITCH and ("l2" in f.name.lower() or "switch" in f.name.lower()):
+                                binary_path = f
+                                break
+                            elif node.device_type == DeviceType.ROUTER and ("l2" not in f.name.lower() and "switch" not in f.name.lower()):
+                                binary_path = f
+                                break
+                    if binary_path:
+                        break
+
+        if not binary_path:
+            binary_path = settings.IOL_IMAGES_DIR / node.image
 
         env = os.environ.copy()
         env["IOU_LICENSE"] = str((node_dir / "iourc").resolve())

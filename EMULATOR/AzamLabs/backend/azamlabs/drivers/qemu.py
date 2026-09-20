@@ -26,16 +26,19 @@ class QemuDriver(BaseDeviceDriver):
         if direct.exists() and direct.is_file():
             return direct
 
-        # Search inside QEMU_IMAGES_DIR
-        candidate_dir = settings.QEMU_IMAGES_DIR / node.image
-        if candidate_dir.exists():
-            for name in ["system.qcow2", "virtioa.qcow2", "hda.qcow2", "disk1.qcow2"]:
-                if (candidate_dir / name).exists():
-                    return candidate_dir / name
-            # Return first .qcow2 or .vmdk found
-            for file in candidate_dir.iterdir():
-                if file.suffix.lower() in (".qcow2", ".vmdk", ".img"):
-                    return file
+        # Search inside standard QEMU image directories
+        for parent in [Path("/opt/azamlabs/images/qemu"), settings.QEMU_IMAGES_DIR]:
+            candidate_dir = parent / node.image
+            if candidate_dir.exists():
+                if candidate_dir.is_file():
+                    return candidate_dir
+                for name in ["system.qcow2", "virtioa.qcow2", "hda.qcow2", "disk1.qcow2"]:
+                    if (candidate_dir / name).exists():
+                        return candidate_dir / name
+                # Return first .qcow2, .vmdk, or .img found
+                for file in candidate_dir.iterdir():
+                    if file.suffix.lower() in (".qcow2", ".vmdk", ".img"):
+                        return file
 
         # Default fallback placeholder
         return settings.QEMU_IMAGES_DIR / node.image / "system.qcow2"

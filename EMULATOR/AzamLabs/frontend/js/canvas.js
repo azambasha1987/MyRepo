@@ -211,21 +211,34 @@ class TopologyCanvas {
   initEvents() {
     window.addEventListener('resize', () => this.resize(), { passive: true });
 
-    // Prevent default browser context menu for our Radial Action Wheel
+    // Close open context menus when clicking outside
+    window.addEventListener('click', (e) => {
+      if (!e.target.closest('.tactical-context-menu')) {
+        this.hideContextMenus();
+      }
+    });
+
+    // Right-Click Tactical Context Menu (Node, Link, or Canvas Background)
     this.canvas.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       const rect = this.canvas.getBoundingClientRect();
       const screenX = e.clientX - rect.left;
       const screenY = e.clientY - rect.top;
       const world = this.screenToWorld(screenX, screenY);
-      const clicked = this.getNodeAt(world.x, world.y);
+      const clickedNode = this.getNodeAt(world.x, world.y);
+      const clickedLink = !clickedNode ? this.getLinkAt(world.x, world.y) : null;
 
-      if (clicked) {
-        this.radialMenuNode = clicked;
-        this.radialHoverIndex = -1;
+      this.hideContextMenus();
+
+      if (clickedNode) {
+        this.showNodeContextMenu(clickedNode, e.clientX, e.clientY);
         if (window.tacticalWidget) window.tacticalWidget.playClick(1100, 0.04);
+      } else if (clickedLink) {
+        this.showLinkContextMenu(clickedLink, e.clientX, e.clientY);
+        if (window.tacticalWidget) window.tacticalWidget.playClick(1000, 0.04);
       } else {
-        this.radialMenuNode = null;
+        this.showCanvasContextMenu(e.clientX, e.clientY);
+        if (window.tacticalWidget) window.tacticalWidget.playClick(900, 0.03);
       }
     });
 
@@ -287,8 +300,11 @@ class TopologyCanvas {
 
       if (clickedNode) {
         this.selectedNode = clickedNode;
-        this.selectedNodes.clear();
+        if (!e.ctrlKey && !e.metaKey && !this.selectedNodes.has(clickedNode.id)) {
+          this.selectedNodes.clear();
+        }
         this.selectedNodes.add(clickedNode.id);
+        this.syncAlignmentToolbar();
         this.isDraggingNode = true;
         this.dragStart = { x: world.x - clickedNode.pos_x, y: world.y - clickedNode.pos_y };
         if (this.onNodeSelected) {
@@ -298,6 +314,7 @@ class TopologyCanvas {
       } else {
         this.selectedNode = null;
         this.selectedNodes.clear();
+        this.syncAlignmentToolbar();
         this.isPanning = true;
         this.dragStart = { x: screenX - this.panX, y: screenY - this.panY };
         if (this.onNodeSelected) {
@@ -371,6 +388,9 @@ class TopologyCanvas {
 
     // Mouse Up
     window.addEventListener('mouseup', () => {
+      if (this.isDraggingNode && window.studio) {
+        window.studio.debouncedSaveTopology();
+      }
       this.isPanning = false;
       this.isDraggingNode = false;
       this.isBoxSelecting = false;
@@ -403,9 +423,51 @@ class TopologyCanvas {
       }
     });
 
-    // Keyboard Shortcuts: Camera Bookmarks (Shift+1..9 to save, 1..9 to jump)
+    // Keyboard Shortcuts (Delete, Backspace, A, N, Ctrl+D, Escape, Camera Bookmarks)
     window.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      // Delete or Backspace -> Delete Selected Nodes or Link
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (this.selectedNodes.size > 0 && window.studio) {
+          window.studio.deleteSelectedNodes();
+          e.preventDefault();
+          return;
+        } else if (this.hoveredLink && window.studio) {
+          window.studio.deleteSingleLink(this.hoveredLink.id);
+          e.preventDefault();
+          return;
+        }
+      }
+
+      // 'A' key -> Open Appliance Catalog
+      if ((e.key === 'a' || e.key === 'A') && !e.ctrlKey && !e.metaKey) {
+        if (window.studio) window.studio.openAddNodeModal();
+        e.preventDefault();
+        return;
+      }
+
+      // 'N' key -> Open Cloud Network Modal
+      if ((e.key === 'n' || e.key === 'N') && !e.ctrlKey && !e.metaKey) {
+        if (window.studio) window.studio.openAddNetworkModal();
+        e.preventDefault();
+        return;
+      }
+
+      // 'Ctrl+D' -> Duplicate / Clone selected node
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
+        if (this.selectedNode && window.studio) {
+          window.studio.cloneSingleNode(this.selectedNode.id);
+          e.preventDefault();
+          return;
+        }
+      }
+
+      // Escape -> Hide Context Menus
+      if (e.key === 'Escape') {
+        this.hideContextMenus();
+        return;
+      }
 
       const num = parseInt(e.key, 10);
       if (num >= 1 && num <= 9) {
@@ -423,12 +485,304 @@ class TopologyCanvas {
     });
   }
 
-  glideToBookmark(target) {
-    this.targetPanX = target.panX;
-    this.targetPanY = target.panY;
-    this.targetScale = target.scale;
-    this.isGliding = true;
-    if (window.tacticalWidget) window.tacticalWidget.playClick(1200, 0.05);
+  hideContextMenus() {
+    const canvasMenu = document.getElementById('canvasContextMenu');
+    const linkMenu = document.getElementById('linkContextMenu');
+    if (canvasMenu) canvasMenu.style.display = 'none';
+    if (linkMenu) linkMenu.style.display = 'none';
+    this.contextMenuLink = null;
+    this.contextMenuNode = null;
+  }
+
+  showNodeContextMenu(node, screenX, screenY) {
+    const menu = document.getElementById('canvasContextMenu');
+    if (!menu) return;
+    this.contextMenuNode = node;
+    this.selectedNode = node;
+    this.selectedNodes.clear();
+    this.selectedNodes.add(node.id);
+    this.syncAlignmentToolbar();
+
+    const isRunning = node.status === 'running';
+    menu.innerHTML = `
+      <div style="padding: 6px 10px; font-weight: 700; color: var(--neon-cyan); border-bottom: 1px solid var(--border-subtle); margin-bottom: 4px; font-size: 0.85rem; font-family: var(--font-brand);">
+        ${node.name} <span style="font-size: 0.7rem; color: ${isRunning ? 'var(--neon-green)' : 'var(--text-muted)'}; font-family: var(--font-mono);">[${(node.status || 'STOPPED').toUpperCase()}]</span>
+      </div>
+      <div class="ctx-item" data-action="start" style="${isRunning ? 'opacity: 0.5;' : ''}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Start Node</span>
+      </div>
+      <div class="ctx-item" data-action="stop" style="${!isRunning ? 'opacity: 0.5;' : ''}">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
+        <span>Stop Node</span>
+      </div>
+      <div class="ctx-item" data-action="terminal">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        <span>Web Terminal</span>
+      </div>
+      <div class="ctx-item" data-action="clone">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+        <span>Duplicate Node (Ctrl+D)</span>
+      </div>
+      <div class="ctx-item" data-action="wipe">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span>Wipe Node (Factory Reset)</span>
+      </div>
+      <div class="ctx-item" data-action="isolate">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span>Isolate Node (Airgap)</span>
+      </div>
+      <div class="ctx-divider"></div>
+      <div class="ctx-item ctx-danger" data-action="delete">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        <span>Delete Node (Del)</span>
+      </div>
+    `;
+
+    menu.style.display = 'flex';
+    menu.style.left = `${Math.min(screenX, window.innerWidth - 240)}px`;
+    menu.style.top = `${Math.min(screenY, window.innerHeight - 300)}px`;
+
+    menu.querySelectorAll('.ctx-item').forEach(item => {
+      item.onclick = (ev) => {
+        ev.stopPropagation();
+        const action = item.getAttribute('data-action');
+        this.hideContextMenus();
+        if (!window.studio) return;
+        if (action === 'start') window.studio.startSingleNode(node.id);
+        else if (action === 'stop') window.studio.stopSingleNode(node.id);
+        else if (action === 'terminal') window.studio.terminal.openTerminal(node, window.studio.activeLabId);
+        else if (action === 'clone') window.studio.cloneSingleNode(node.id);
+        else if (action === 'wipe') window.studio.wipeSingleNode(node.id);
+        else if (action === 'isolate') window.studio.isolateSingleNode(node.id);
+        else if (action === 'delete') window.studio.deleteSingleNode(node.id);
+      };
+    });
+  }
+
+  showLinkContextMenu(link, screenX, screenY) {
+    const menu = document.getElementById('linkContextMenu');
+    if (!menu) return;
+    this.contextMenuLink = link;
+
+    const suspendLabel = document.getElementById('ctxLinkSuspendLabel');
+    if (suspendLabel) {
+      suspendLabel.textContent = link.status === 'down' ? '🔌 Reconnect Cable (Link UP)' : '✂️ Cut Cable (Suspend Link)';
+    }
+
+    menu.style.display = 'flex';
+    menu.style.left = `${Math.min(screenX, window.innerWidth - 240)}px`;
+    menu.style.top = `${Math.min(screenY, window.innerHeight - 200)}px`;
+
+    document.getElementById('ctxLinkImpair').onclick = (ev) => {
+      ev.stopPropagation();
+      this.hideContextMenus();
+      if (window.studio) window.studio.openLinkImpairModal(link);
+    };
+
+    document.getElementById('ctxLinkSuspend').onclick = (ev) => {
+      ev.stopPropagation();
+      this.hideContextMenus();
+      if (window.studio) window.studio.toggleLinkSuspend(link);
+    };
+
+    document.getElementById('ctxLinkSniff').onclick = (ev) => {
+      ev.stopPropagation();
+      this.hideContextMenus();
+      if (window.studio) window.studio.openWireshark(link);
+    };
+
+    document.getElementById('ctxLinkDelete').onclick = (ev) => {
+      ev.stopPropagation();
+      this.hideContextMenus();
+      if (window.studio) window.studio.deleteSingleLink(link.id);
+    };
+  }
+
+  showCanvasContextMenu(screenX, screenY) {
+    const menu = document.getElementById('canvasContextMenu');
+    if (!menu) return;
+
+    menu.innerHTML = `
+      <div style="padding: 6px 10px; font-weight: 700; color: var(--text-primary); border-bottom: 1px solid var(--border-subtle); margin-bottom: 4px; font-size: 0.85rem; font-family: var(--font-brand);">
+        CANVAS ACTIONS
+      </div>
+      <div class="ctx-item" data-action="add-appliance">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span>+ Add Virtual Appliance (A)</span>
+      </div>
+      <div class="ctx-item" data-action="add-network">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span>Deploy Cloud Network (N)</span>
+      </div>
+      <div class="ctx-divider"></div>
+      <div class="ctx-item" data-action="start-all">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        <span>Start All Nodes</span>
+      </div>
+      <div class="ctx-item" data-action="stop-all">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12"/></svg>
+        <span>Stop All Nodes</span>
+      </div>
+      <div class="ctx-divider"></div>
+      <div class="ctx-item" data-action="fit-screen">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        <span>Fit to Viewport</span>
+      </div>
+      <div class="ctx-item" data-action="blueprint">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <span>Export Holo-Blueprint</span>
+      </div>
+    `;
+
+    menu.style.display = 'flex';
+    menu.style.left = `${Math.min(screenX, window.innerWidth - 240)}px`;
+    menu.style.top = `${Math.min(screenY, window.innerHeight - 260)}px`;
+
+    menu.querySelectorAll('.ctx-item').forEach(item => {
+      item.onclick = (ev) => {
+        ev.stopPropagation();
+        const action = item.getAttribute('data-action');
+        this.hideContextMenus();
+        if (action === 'add-appliance' && window.studio) window.studio.openAddNodeModal();
+        else if (action === 'add-network' && window.studio) window.studio.openAddNetworkModal();
+        else if (action === 'start-all' && window.studio) window.studio.startAllNodes();
+        else if (action === 'stop-all' && window.studio) window.studio.stopAllNodes();
+        else if (action === 'fit-screen') this.fitToViewport();
+        else if (action === 'blueprint') this.exportHoloBlueprint();
+      };
+    });
+  }
+
+  syncAlignmentToolbar() {
+    const bar = document.getElementById('alignmentToolbar');
+    const label = document.getElementById('alignSelectedCount');
+    if (!bar) return;
+
+    if (this.selectedNodes.size >= 2) {
+      bar.style.display = 'flex';
+      if (label) label.textContent = `${this.selectedNodes.size} Nodes`;
+    } else {
+      bar.style.display = 'none';
+    }
+  }
+
+  getSelectedNodeObjects() {
+    return this.nodes.filter(n => this.selectedNodes.has(n.id));
+  }
+
+  persistNodePositions() {
+    if (window.studio) {
+      window.studio.debouncedSaveTopology();
+    }
+  }
+
+  alignLeft() {
+    const selected = this.getSelectedNodeObjects();
+    if (selected.length < 2) return;
+    const minX = Math.min(...selected.map(n => n.pos_x));
+    selected.forEach(n => n.pos_x = minX);
+    this.persistNodePositions();
+    if (window.tacticalWidget) window.tacticalWidget.playClick(1050, 0.03);
+  }
+
+  alignCenterH() {
+    const selected = this.getSelectedNodeObjects();
+    if (selected.length < 2) return;
+    const avgX = selected.reduce((sum, n) => sum + n.pos_x, 0) / selected.length;
+    selected.forEach(n => n.pos_x = Math.round(avgX));
+    this.persistNodePositions();
+    if (window.tacticalWidget) window.tacticalWidget.playClick(1050, 0.03);
+  }
+
+  alignRight() {
+    const selected = this.getSelectedNodeObjects();
+    if (selected.length < 2) return;
+    const maxX = Math.max(...selected.map(n => n.pos_x));
+    selected.forEach(n => n.pos_x = maxX);
+    this.persistNodePositions();
+    if (window.tacticalWidget) window.tacticalWidget.playClick(1050, 0.03);
+  }
+
+  alignTop() {
+    const selected = this.getSelectedNodeObjects();
+    if (selected.length < 2) return;
+    const minY = Math.min(...selected.map(n => n.pos_y));
+    selected.forEach(n => n.pos_y = minY);
+    this.persistNodePositions();
+    if (window.tacticalWidget) window.tacticalWidget.playClick(1050, 0.03);
+  }
+
+  alignMiddleV() {
+    const selected = this.getSelectedNodeObjects();
+    if (selected.length < 2) return;
+    const avgY = selected.reduce((sum, n) => sum + n.pos_y, 0) / selected.length;
+    selected.forEach(n => n.pos_y = Math.round(avgY));
+    this.persistNodePositions();
+    if (window.tacticalWidget) window.tacticalWidget.playClick(1050, 0.03);
+  }
+
+  alignBottom() {
+    const selected = this.getSelectedNodeObjects();
+    if (selected.length < 2) return;
+    const maxY = Math.max(...selected.map(n => n.pos_y));
+    selected.forEach(n => n.pos_y = maxY);
+    this.persistNodePositions();
+    if (window.tacticalWidget) window.tacticalWidget.playClick(1050, 0.03);
+  }
+
+  distributeH() {
+    const selected = this.getSelectedNodeObjects();
+    if (selected.length < 3) return;
+    selected.sort((a, b) => a.pos_x - b.pos_x);
+    const minX = selected[0].pos_x;
+    const maxX = selected[selected.length - 1].pos_x;
+    const step = (maxX - minX) / (selected.length - 1);
+    selected.forEach((n, idx) => {
+      n.pos_x = Math.round(minX + idx * step);
+    });
+    this.persistNodePositions();
+    if (window.tacticalWidget) window.tacticalWidget.playClick(1150, 0.03);
+  }
+
+  distributeV() {
+    const selected = this.getSelectedNodeObjects();
+    if (selected.length < 3) return;
+    selected.sort((a, b) => a.pos_y - b.pos_y);
+    const minY = selected[0].pos_y;
+    const maxY = selected[selected.length - 1].pos_y;
+    const step = (maxY - minY) / (selected.length - 1);
+    selected.forEach((n, idx) => {
+      n.pos_y = Math.round(minY + idx * step);
+    });
+    this.persistNodePositions();
+    if (window.tacticalWidget) window.tacticalWidget.playClick(1150, 0.03);
+  }
+
+  snapToGrid(gridSize = 36) {
+    const selected = this.selectedNodes.size > 0 ? this.getSelectedNodeObjects() : this.nodes;
+    selected.forEach(n => {
+      n.pos_x = Math.round(n.pos_x / gridSize) * gridSize;
+      n.pos_y = Math.round(n.pos_y / gridSize) * gridSize;
+    });
+    this.persistNodePositions();
+    if (window.tacticalWidget) window.tacticalWidget.playClamp();
+  }
+
+  alignCircularRing() {
+    const selected = this.getSelectedNodeObjects();
+    if (selected.length < 3) return;
+    const cx = selected.reduce((sum, n) => sum + n.pos_x, 0) / selected.length;
+    const cy = selected.reduce((sum, n) => sum + n.pos_y, 0) / selected.length;
+    const R = Math.max(120, selected.length * 34);
+    const step = (Math.PI * 2) / selected.length;
+    selected.forEach((n, idx) => {
+      const angle = idx * step - Math.PI / 2;
+      n.pos_x = Math.round(cx + R * Math.cos(angle));
+      n.pos_y = Math.round(cy + R * Math.sin(angle));
+    });
+    this.persistNodePositions();
+    if (window.tacticalWidget) window.tacticalWidget.playChime();
   }
 
   updateBoxSelection() {
@@ -443,6 +797,7 @@ class TopologyCanvas {
         this.selectedNodes.add(node.id);
       }
     });
+    this.syncAlignmentToolbar();
   }
 
   executeRadialAction(actionId, node) {

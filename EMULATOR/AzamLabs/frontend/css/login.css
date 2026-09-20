@@ -3,25 +3,26 @@
    Aesthetic: OLED Pure Dark (#070a13), Aurora Neon Accents, Holographic Avatar
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Orbitron:wght@600;700;800;900&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 :root {
   --bg-space: #070a13;
   --bg-surface: rgba(13, 20, 36, 0.75);
-  --bg-surface-elevated: rgba(18, 28, 52, 0.85);
+  --bg-surface-elevated: rgba(16, 25, 48, 0.88);
   --border-subtle: rgba(255, 255, 255, 0.08);
-  --border-glow: rgba(0, 242, 254, 0.3);
+  --border-glow: rgba(0, 242, 254, 0.35);
 
   --neon-cyan: #00f2fe;
   --neon-blue: #4facfe;
   --neon-green: #00ff87;
+  --neon-amber: #ffd200;
   --neon-crimson: #ff3366;
 
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
 
-  --font-brand: 'Outfit', sans-serif;
+  --font-brand: 'Orbitron', 'Outfit', sans-serif;
   --font-ui: 'Plus Jakarta Sans', 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
@@ -46,9 +47,17 @@ body {
   align-items: center;
   justify-content: center;
   position: relative;
+  perspective: 1200px;
 }
 
-/* Cyber Matrix Background */
+/* Background Cyber Canvas & Ambient Grid */
+#cyberCanvas {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
 .cyber-bg {
   position: absolute;
   inset: 0;
@@ -61,41 +70,42 @@ body {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(0, 242, 254, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 242, 254, 0.04) 1px, transparent 1px);
-  background-size: 50px 50px;
+    linear-gradient(rgba(0, 242, 254, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 242, 254, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 .cyber-scanlines {
   position: absolute;
   inset: 0;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%);
   background-size: 100% 4px;
   pointer-events: none;
+  opacity: 0.6;
 }
 
 .glow-orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(120px);
-  opacity: 0.25;
+  filter: blur(130px);
+  opacity: 0.28;
   animation: orb-float 10s ease-in-out infinite alternate;
 }
 
 .orb-1 {
-  width: 450px;
-  height: 450px;
+  width: 480px;
+  height: 480px;
   background: var(--neon-cyan);
-  top: -100px;
-  left: -100px;
+  top: -120px;
+  left: -120px;
 }
 
 .orb-2 {
-  width: 400px;
-  height: 400px;
-  background: var(--neon-green);
-  bottom: -80px;
-  right: -80px;
+  width: 450px;
+  height: 450px;
+  background: var(--neon-blue);
+  bottom: -100px;
+  right: -100px;
   animation-delay: -5s;
 }
 
@@ -104,7 +114,103 @@ body {
   100% { transform: translateY(40px) scale(1.1); }
 }
 
-/* Login Wrapper */
+/* Diagnostic Boot Sequence Overlay (400ms High-Tech Init) */
+#bootOverlay {
+  position: fixed;
+  inset: 0;
+  background: #05070e;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  transition: opacity 0.35s ease, visibility 0.35s ease;
+  cursor: pointer;
+}
+
+#bootOverlay.boot-done {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.boot-matrix {
+  width: 480px;
+  max-width: 90vw;
+  background: rgba(10, 16, 30, 0.85);
+  border: 1px solid var(--neon-cyan);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 0 40px rgba(0, 242, 254, 0.25);
+}
+
+.boot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(0, 242, 254, 0.3);
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  font-size: 0.85rem;
+  color: var(--neon-cyan);
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.boot-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.boot-line {
+  animation: lineFadeIn 0.15s ease-out;
+  color: var(--neon-green);
+}
+
+@keyframes lineFadeIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Top Telemetry Ticker */
+.telemetry-ticker {
+  position: absolute;
+  top: 14px;
+  left: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  letter-spacing: 0.6px;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.ticker-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--neon-cyan);
+  font-weight: 600;
+}
+
+.ticker-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--neon-green);
+  box-shadow: 0 0 8px var(--neon-green);
+  animation: beaconPulse 1.5s infinite;
+}
+
+/* Login Wrapper Container */
 .login-container {
   width: 440px;
   max-width: 92vw;
@@ -113,22 +219,21 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  animation: fadeIn 0.4s ease-out;
 }
 
 /* Holographic Floating Avatar Hero Unit */
 .avatar-hero-unit {
   position: relative;
-  width: 120px;
-  height: 120px;
-  margin-bottom: 24px;
+  width: 110px;
+  height: 110px;
+  margin-bottom: 20px;
 }
 
 .avatar-aura-glow {
   position: absolute;
   inset: -15px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 242, 254, 0.4) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(0, 242, 254, 0.45) 0%, transparent 70%);
   filter: blur(15px);
   animation: aura-pulse 3s infinite alternate;
 }
@@ -140,9 +245,10 @@ body {
   border-radius: 50%;
   padding: 4px;
   background: linear-gradient(135deg, var(--neon-cyan), var(--neon-blue), var(--neon-green));
-  box-shadow: 0 0 25px rgba(0, 242, 254, 0.4);
+  box-shadow: 0 0 30px rgba(0, 242, 254, 0.45);
   display: grid;
   place-items: center;
+  overflow: hidden;
 }
 
 .avatar-img {
@@ -154,12 +260,29 @@ body {
   display: block;
 }
 
+/* Biometric Laser Scanner Sweep */
+.biometric-laser {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #00f2fe, #00ff87, transparent);
+  box-shadow: 0 0 12px #00f2fe;
+  z-index: 5;
+  animation: laserScan 2.4s ease-in-out infinite;
+}
+
+@keyframes laserScan {
+  0%, 100% { top: 5%; opacity: 0.2; }
+  50% { top: 92%; opacity: 1; }
+}
+
 .laser-sweep-ring {
   position: absolute;
   inset: -6px;
   border-radius: 50%;
   border: 2px dashed rgba(0, 242, 254, 0.6);
-  animation: laser-spin 12s linear infinite;
+  animation: laser-spin 14s linear infinite;
 }
 
 @keyframes laser-spin {
@@ -172,37 +295,57 @@ body {
   100% { transform: scale(1.15); opacity: 1; }
 }
 
-/* Login Card */
+/* Login Card with 3D Parallax & Tactical Corner Brackets */
 .login-card {
   width: 100%;
   background: var(--bg-surface-elevated);
-  backdrop-filter: blur(25px);
-  -webkit-backdrop-filter: blur(25px);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
   border: 1px solid var(--border-glow);
   border-radius: 20px;
-  padding: 36px 32px;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), var(--glow-cyan);
+  padding: 34px 30px;
+  box-shadow: 0 25px 65px rgba(0, 0, 0, 0.85), var(--glow-cyan);
+  position: relative;
+  transition: transform 0.15s ease-out;
+  transform-style: preserve-3d;
+  will-change: transform;
 }
+
+/* Cybernetic Corner Brackets (┌ ┐ └ ┘) */
+.bracket {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: var(--neon-cyan);
+  pointer-events: none;
+}
+
+.bracket-tl { top: 8px; left: 8px; border-top: 2px solid; border-left: 2px solid; }
+.bracket-tr { top: 8px; right: 8px; border-top: 2px solid; border-right: 2px solid; }
+.bracket-bl { bottom: 8px; left: 8px; border-bottom: 2px solid; border-left: 2px solid; }
+.bracket-br { bottom: 8px; right: 8px; border-bottom: 2px solid; border-right: 2px solid; }
 
 .card-header {
   text-align: center;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 
 .brand-title {
   font-family: var(--font-brand);
-  font-size: 1.8rem;
+  font-size: 1.9rem;
   font-weight: 800;
-  letter-spacing: -0.5px;
+  letter-spacing: 2px;
   background: linear-gradient(135deg, #00f2fe 0%, #4facfe 50%, #00ff87 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
+  text-transform: uppercase;
 }
 
 .brand-subtitle {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   color: var(--text-secondary);
+  letter-spacing: 0.5px;
 }
 
 /* Error Banner */
@@ -217,7 +360,7 @@ body {
   color: var(--neon-crimson);
   font-size: 0.82rem;
   font-weight: 500;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .error-banner.show {
@@ -236,16 +379,18 @@ body {
 .form-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: 6px;
+  margin-bottom: 18px;
 }
 
 .input-label {
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   font-weight: 600;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.8px;
+  display: flex;
+  justify-content: space-between;
 }
 
 .input-wrapper {
@@ -268,7 +413,7 @@ body {
   width: 100%;
   height: 48px;
   padding: 0 44px 0 44px;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(7, 10, 19, 0.65);
   border: 1px solid var(--border-subtle);
   border-radius: 10px;
   color: var(--text-primary);
@@ -280,7 +425,7 @@ body {
 
 .cyber-input:focus {
   border-color: var(--neon-cyan);
-  box-shadow: 0 0 15px rgba(0, 242, 254, 0.25);
+  box-shadow: 0 0 18px rgba(0, 242, 254, 0.3);
   background: rgba(0, 242, 254, 0.03);
 }
 
@@ -311,8 +456,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
-  font-size: 0.85rem;
+  margin-bottom: 22px;
+  font-size: 0.82rem;
   color: var(--text-secondary);
 }
 
@@ -353,7 +498,7 @@ body {
   font-weight: 800;
 }
 
-/* Submit Button */
+/* High-Energy Sweeping Light Submit Button */
 .btn-login {
   width: 100%;
   height: 48px;
@@ -363,20 +508,38 @@ body {
   color: #070a13;
   font-family: var(--font-ui);
   font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  box-shadow: 0 0 20px rgba(0, 242, 254, 0.35);
-  transition: all 0.2s ease;
+  box-shadow: 0 0 25px rgba(0, 242, 254, 0.4);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-login::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(60deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transform: rotate(30deg) translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.btn-login:hover::after {
+  transform: rotate(30deg) translateX(100%);
 }
 
 .btn-login:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 30px rgba(0, 242, 254, 0.6);
+  box-shadow: 0 0 35px rgba(0, 242, 254, 0.7);
   background: linear-gradient(135deg, #4facfe 0%, #00ff87 100%);
 }
 
@@ -384,9 +547,32 @@ body {
   transform: translateY(0);
 }
 
+/* Quick Fill Credential Chip & Footer */
+.quick-cred-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  background: rgba(0, 242, 254, 0.08);
+  border: 1px solid rgba(0, 242, 254, 0.25);
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--neon-cyan);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  transition: all 0.15s ease;
+}
+
+.quick-cred-chip:hover {
+  background: rgba(0, 242, 254, 0.2);
+  border-color: var(--neon-cyan);
+}
+
 .footer-info {
-  margin-top: 24px;
-  text-align: center;
+  margin-top: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 0.75rem;
   color: var(--text-muted);
   font-family: var(--font-mono);

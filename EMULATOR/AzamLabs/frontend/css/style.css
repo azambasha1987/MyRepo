@@ -1,9 +1,9 @@
 /* ==========================================================================
-   AzamLabs Cyber-Tactical OLED Pure Dark Design System
-   Aesthetic: Deep Space OLED (#070a13), Aurora Neon Accents, Glassmorphism
+   AzamLabs Cyber-Tactical OLED Pure Dark Design System v2
+   Aesthetic: Deep Space OLED (#070a13), Aurora Neon Accents, Glassmorphism, Orbitron HUD
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Orbitron:wght@600;700;800;900&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 :root {
   /* Surface Colors */
@@ -30,7 +30,7 @@
   --text-cyan: #00f2fe;
 
   /* Typography */
-  --font-brand: 'Outfit', -apple-system, sans-serif;
+  --font-brand: 'Orbitron', 'Outfit', -apple-system, sans-serif;
   --font-ui: 'Inter', -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
@@ -73,7 +73,7 @@ html, body {
   flex-direction: column;
 }
 
-/* Top Floating HUD Island */
+/* Top Floating HUD Island (Polygonal Glassmorphic Bridge) */
 .hud-header {
   position: absolute;
   top: 16px;
@@ -85,13 +85,15 @@ html, body {
   justify-content: space-between;
   padding: 0 20px;
   background: var(--bg-surface-glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border-glow);
   border-radius: 16px;
-  box-shadow: var(--shadow-hud), var(--glow-cyan);
+  box-shadow: var(--shadow-hud), 0 0 24px rgba(0, 242, 254, 0.18), inset 0 0 30px rgba(0, 242, 254, 0.04);
   z-index: 100;
   pointer-events: auto;
+  /* Subtle neon light pipe along the top edge */
+  outline: 1px solid rgba(0, 242, 254, 0.08);
 }
 
 .hud-left {
@@ -105,9 +107,10 @@ html, body {
   align-items: center;
   gap: 10px;
   font-family: var(--font-brand);
-  font-size: 1.25rem;
+  font-size: 1.05rem;
   font-weight: 800;
-  letter-spacing: -0.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
   background: linear-gradient(135deg, #00f2fe 0%, #4facfe 50%, #00ff87 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -276,4 +279,63 @@ html, body {
   background: rgba(0, 242, 254, 0.15);
   color: var(--neon-cyan);
   border-color: var(--neon-cyan);
+}
+
+/* Animation Utility */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* CRT Phosphor Terminal Mode (toggled by .crt-mode class on terminal-container) */
+.crt-mode {
+  background: #020705 !important;
+  color: #00ff87 !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.crt-mode::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.35),
+    rgba(0, 0, 0, 0.35) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events: none;
+  z-index: 5;
+  animation: crtScanScroll 8s linear infinite;
+}
+
+.crt-mode::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(0, 255, 135, 0.08) 0%, rgba(0, 0, 0, 0.5) 100%);
+  pointer-events: none;
+  z-index: 4;
+}
+
+.crt-mode .terminal-screen {
+  color: #00ff87;
+  text-shadow: 0 0 5px rgba(0, 255, 135, 0.6);
+}
+
+.crt-mode.crt-amber .terminal-screen {
+  color: #ffd200;
+  text-shadow: 0 0 5px rgba(255, 210, 0, 0.6);
+}
+
+.crt-mode.crt-cyan .terminal-screen {
+  color: #00f2fe;
+  text-shadow: 0 0 5px rgba(0, 242, 254, 0.6);
+}
+
+@keyframes crtScanScroll {
+  from { background-position-y: 0; }
+  to { background-position-y: 100%; }
 }

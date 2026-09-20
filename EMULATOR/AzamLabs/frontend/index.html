@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/canvas.css">
   <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/widget.css">
 
   <!-- Client-Side Authentication Gatekeeper -->
   <script src="/js/auth.js"></script>
@@ -84,6 +85,10 @@
         <button id="btnImport" class="btn btn-ghost" title="Universal Multi-Platform Lab Importer">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Import
+        </button>
+        <button id="btnBlueprint" class="btn btn-ghost" title="Export 4K Holo-Blueprint Tactical Schematic">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Blueprint
         </button>
         <button id="btnToggleTerminal" class="btn btn-ghost" title="Toggle Web Terminal Drawer">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
@@ -357,5 +362,20 @@
   <script src="/js/importer.js"></script>
   <script src="/js/explorer.js"></script>
   <script src="/js/app.js"></script>
+  <script src="/js/widget.js"></script>
+  <script>
+    // Wire up Blueprint export & CRT toggle after studio init
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('btnBlueprint')?.addEventListener('click', () => {
+        if (window.studio && window.studio.canvas) {
+          window.studio.canvas.exportHoloBlueprint();
+        }
+      });
+
+      document.getElementById('btnToggleTerminal')?.addEventListener('click', () => {
+        if (window.tacticalWidget) window.tacticalWidget.playClick(950, 0.03);
+      });
+    });
+  </script>
 </body>
 </html>

@@ -301,6 +301,7 @@ class AzamLabsStudio {
       const data = await resp.json();
       this.currentTopology.nodes.forEach(n => n.status = 'running');
       this.canvas.setTopology(this.currentTopology);
+      if (window.tacticalWidget) { window.tacticalWidget.playChime(); window.tacticalWidget.speak('All nodes online'); }
       this.showNotification('All nodes started with 100:1 KSM consolidation!', 'success');
     } catch (e) {
       this.showNotification(`Start error: ${e}`, 'error');
@@ -336,9 +337,12 @@ class AzamLabsStudio {
       const node = this.currentTopology.nodes.find(n => n.id === nodeId);
       if (node) {
         node.status = 'running';
+        // EMP Shockwave via canvas
+        if (this.canvas) this.canvas.triggerShockwave(node.pos_x, node.pos_y, '#00ff87');
         this.canvas.setTopology(this.currentTopology);
         this.showNodeInspector(node);
       }
+      if (window.tacticalWidget) { window.tacticalWidget.playChime(); window.tacticalWidget.speak('Node online'); }
       this.showNotification(`Node started.`, 'success');
     } catch (e) {
       this.showNotification(`Error starting node: ${e}`, 'error');
@@ -351,9 +355,11 @@ class AzamLabsStudio {
       const node = this.currentTopology.nodes.find(n => n.id === nodeId);
       if (node) {
         node.status = 'stopped';
+        if (this.canvas) this.canvas.triggerShockwave(node.pos_x, node.pos_y, '#ff3366');
         this.canvas.setTopology(this.currentTopology);
         this.showNodeInspector(node);
       }
+      if (window.tacticalWidget) window.tacticalWidget.playEmp();
       this.showNotification(`Node stopped.`, 'info');
     } catch (e) {
       this.showNotification(`Error stopping node: ${e}`, 'error');
@@ -387,6 +393,7 @@ class AzamLabsStudio {
 
     this.currentTopology.links.push(newLink);
     this.canvas.setTopology(this.currentTopology);
+    if (window.tacticalWidget) window.tacticalWidget.playClamp();
     this.showNotification(`Connected wire ${nodeA.name}:${ifaceA} ⇄ ${nodeB.name}:${ifaceB}`, 'success');
   }
 

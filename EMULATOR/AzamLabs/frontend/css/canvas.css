@@ -11,10 +11,9 @@
   overflow: hidden;
   background-color: var(--bg-space);
   background-image:
-    radial-gradient(circle at 50% 50%, rgba(0, 242, 254, 0.03) 0%, transparent 60%),
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 100% 100%, 40px 40px, 40px 40px;
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 36px 36px, 36px 36px;
   cursor: grab;
 }
 
@@ -153,20 +152,7 @@
    ========================================================================== */
 
 .canvas-holo-avatar {
-  position: absolute;
-  left: 80px;
-  bottom: 80px;
-  width: 80px;
-  height: 80px;
-  z-index: 40;
-  animation: holo-float 6s ease-in-out infinite alternate;
-  pointer-events: none;
-  opacity: 0.82;
-}
-
-@keyframes holo-float {
-  0%   { transform: translateY(0px); }
-  100% { transform: translateY(-8px); }
+  display: none !important;
 }
 
 /* Outer aura glow */

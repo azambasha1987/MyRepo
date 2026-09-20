@@ -6,24 +6,28 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Orbitron:wght@600;700;800;900&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Surface Colors */
-  --bg-space: #040711;
-  --bg-surface: rgba(10, 15, 29, 0.75);
-  --bg-surface-elevated: rgba(11, 19, 38, 0.85);
-  --bg-surface-glass: rgba(10, 15, 29, 0.65);
-  --border-subtle: rgba(255, 255, 255, 0.09);
-  --border-glow: rgba(0, 242, 254, 0.24);
+  /* Azam-Pnet Inspired Pure Dark Mode System */
+  --bg-deep: #020408;
+  --bg-space: #020408;
+  --bg-surface: rgba(6, 11, 24, 0.90);
+  --bg-surface-elevated: rgba(10, 16, 32, 0.95);
+  --bg-surface-glass: rgba(6, 11, 22, 0.90);
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-glow: rgba(0, 242, 254, 0.18);
+  --card-bg: rgba(10, 16, 32, 0.85);
+  --card-border: rgba(0, 242, 254, 0.20);
+  --card-border-hover: rgba(0, 242, 254, 0.50);
 
-  /* Aurora Neon Accents */
+  /* Neon Accents (Azam-Pnet) */
   --neon-cyan: #00f2fe;
   --neon-blue: #38bdf8;
   --neon-green: #10b981;
-  --neon-amber: #ffd200;
-  --neon-crimson: #ff3366;
+  --neon-amber: #f59e0b;
+  --neon-crimson: #ef4444;
   --neon-purple: #8b5cf6;
   --neon-pink: #d946ef;
 
-  /* Text Colors */
+  /* High-Contrast Pure Dark Text */
   --text-primary: #f8fafc;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
@@ -35,10 +39,10 @@
   --font-mono: 'JetBrains Mono', monospace;
 
   /* Shadows & Glows */
-  --glow-cyan: 0 0 20px rgba(0, 242, 254, 0.3);
-  --glow-green: 0 0 20px rgba(16, 185, 129, 0.3);
-  --glow-crimson: 0 0 20px rgba(255, 51, 102, 0.35);
-  --shadow-hud: 0 16px 40px rgba(0, 0, 0, 0.72), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --glow-cyan: 0 0 16px rgba(0, 242, 254, 0.25);
+  --glow-green: 0 0 16px rgba(16, 185, 129, 0.25);
+  --glow-crimson: 0 0 16px rgba(239, 68, 68, 0.3);
+  --shadow-hud: 0 12px 36px rgba(0, 0, 0, 0.85), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 
   /* Transitions */
   --trans-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);

@@ -236,10 +236,7 @@ class TopologyCanvas {
       const screenY = e.clientY - rect.top;
       this.mouseScreenPos = { x: screenX, y: screenY };
 
-      // Check if clicking inside Holo-Radar Minimap
-      if (this.handleMinimapClick(screenX, screenY)) {
-        return;
-      }
+
 
       // Check if Radial Menu is open
       if (this.radialMenuNode) {
@@ -466,37 +463,6 @@ class TopologyCanvas {
   }
 
   handleMinimapClick(screenX, screenY) {
-    const mapSize = 130;
-    const mapX = this.width - mapSize - 20;
-    const mapY = this.height - mapSize - 20;
-
-    const dx = screenX - (mapX + mapSize / 2);
-    const dy = screenY - (mapY + mapSize / 2);
-    if (dx * dx + dy * dy <= (mapSize / 2) * (mapSize / 2)) {
-      // Find bounding box of all nodes
-      if (this.nodes.length === 0) return true;
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      this.nodes.forEach(n => {
-        minX = Math.min(minX, n.pos_x); maxX = Math.max(maxX, n.pos_x);
-        minY = Math.min(minY, n.pos_y); maxY = Math.max(maxY, n.pos_y);
-      });
-      const pad = 120;
-      minX -= pad; maxX += pad; minY -= pad; maxY += pad;
-      const bW = maxX - minX || 500;
-      const bH = maxY - minY || 500;
-
-      // Map click relative to center
-      const normX = dx / (mapSize / 2);
-      const normY = dy / (mapSize / 2);
-
-      const targetWorldX = (minX + maxX) / 2 + normX * (bW / 2);
-      const targetWorldY = (minY + maxY) / 2 + normY * (bH / 2);
-
-      this.panX = this.width / 2 - targetWorldX * this.scale;
-      this.panY = this.height / 2 - targetWorldY * this.scale;
-      if (window.tacticalWidget) window.tacticalWidget.playClick(1000, 0.03);
-      return true;
-    }
     return false;
   }
 
@@ -579,9 +545,7 @@ class TopologyCanvas {
 
     this.ctx.restore();
 
-    // 1. Screen Space Overlays (Minimap & Radial Menu)
-    this.drawHoloRadarMinimap(currentTime);
-
+    // 1. Screen Space Overlays (Radial Menu)
     if (this.radialMenuNode) {
       this.drawRadialActionWheel();
     }
@@ -599,20 +563,7 @@ class TopologyCanvas {
   }
 
   drawLivingGrid(currentTime) {
-    // Subtle background radar sweep beam rotating across the world grid
-    this.radarAngle += 0.008;
-    const sweepRadius = 1200;
-    const grad = this.ctx.createRadialGradient(400, 300, 10, 400, 300, sweepRadius);
-    grad.addColorStop(0, 'rgba(0, 242, 254, 0.03)');
-    grad.addColorStop(1, 'transparent');
-
-    this.ctx.save();
-    this.ctx.fillStyle = grad;
-    this.ctx.beginPath();
-    this.ctx.arc(400, 300, sweepRadius, this.radarAngle, this.radarAngle + 0.35);
-    this.ctx.lineTo(400, 300);
-    this.ctx.fill();
-    this.ctx.restore();
+    // Pure dark canvas: background sweep beam removed for distraction-free view
   }
 
   drawAnnotations() {
@@ -861,10 +812,10 @@ class TopologyCanvas {
       // 1. Status Glow Halo
       if (isRunning) {
         const pulse = 0.5 + 0.5 * Math.sin(currentTime * 0.005);
-        const radius = 34 + pulse * 4;
+        const radius = 33 + pulse * 3;
         this.ctx.beginPath();
         this.ctx.arc(node.pos_x, node.pos_y, radius, 0, Math.PI * 2);
-        this.ctx.fillStyle = 'rgba(0, 255, 135, 0.1)';
+        this.ctx.fillStyle = 'rgba(16, 185, 129, 0.08)';
         this.ctx.fill();
       }
 
@@ -873,14 +824,14 @@ class TopologyCanvas {
       this.ctx.arc(node.pos_x, node.pos_y, 28, 0, Math.PI * 2);
 
       if (isRunning) {
-        this.ctx.fillStyle = '#0a1628';
-        this.ctx.strokeStyle = isSelected ? '#00f2fe' : '#00ff87';
+        this.ctx.fillStyle = '#060b17';
+        this.ctx.strokeStyle = isSelected ? '#00f2fe' : '#10b981';
         this.ctx.lineWidth = isSelected ? 3 : 2;
-        this.ctx.shadowColor = isSelected ? '#00f2fe' : '#00ff87';
-        this.ctx.shadowBlur = 14;
+        this.ctx.shadowColor = isSelected ? '#00f2fe' : '#10b981';
+        this.ctx.shadowBlur = 10;
       } else {
-        this.ctx.fillStyle = '#090e1a';
-        this.ctx.strokeStyle = isSelected ? '#00f2fe' : 'rgba(255, 255, 255, 0.18)';
+        this.ctx.fillStyle = '#030712';
+        this.ctx.strokeStyle = isSelected ? '#00f2fe' : 'rgba(255, 255, 255, 0.12)';
         this.ctx.lineWidth = isSelected ? 2.5 : 1.5;
         this.ctx.shadowBlur = 0;
       }
@@ -1133,80 +1084,7 @@ class TopologyCanvas {
   }
 
   drawHoloRadarMinimap(currentTime) {
-    const mapSize = 130;
-    const mapX = this.width - mapSize - 20;
-    const mapY = this.height - mapSize - 20;
-    const centerX = mapX + mapSize / 2;
-    const centerY = mapY + mapSize / 2;
-    const radius = mapSize / 2;
-
-    this.ctx.save();
-
-    // Radar Base Background
-    this.ctx.beginPath();
-    this.ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    this.ctx.fillStyle = 'rgba(7, 10, 19, 0.88)';
-    this.ctx.fill();
-    this.ctx.strokeStyle = '#00f2fe';
-    this.ctx.lineWidth = 1.5;
-    this.ctx.shadowColor = 'rgba(0, 242, 254, 0.4)';
-    this.ctx.shadowBlur = 10;
-    this.ctx.stroke();
-    this.ctx.shadowBlur = 0;
-
-    // Crosshair Lines
-    this.ctx.strokeStyle = 'rgba(0, 242, 254, 0.2)';
-    this.ctx.lineWidth = 1;
-    this.ctx.beginPath();
-    this.ctx.moveTo(centerX - radius + 4, centerY); this.ctx.lineTo(centerX + radius - 4, centerY);
-    this.ctx.moveTo(centerX, centerY - radius + 4); this.ctx.lineTo(centerX, centerY + radius - 4);
-    this.ctx.stroke();
-
-    // Concentric Range Rings
-    this.ctx.beginPath();
-    this.ctx.arc(centerX, centerY, radius * 0.5, 0, Math.PI * 2);
-    this.ctx.stroke();
-
-    // Rotating Sweep Beam
-    const sweep = currentTime * 0.003;
-    this.ctx.beginPath();
-    this.ctx.moveTo(centerX, centerY);
-    this.ctx.arc(centerX, centerY, radius - 2, sweep, sweep + 0.4);
-    this.ctx.closePath();
-    this.ctx.fillStyle = 'rgba(0, 255, 135, 0.18)';
-    this.ctx.fill();
-
-    // Find topology bounding box
-    if (this.nodes.length > 0) {
-      let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-      this.nodes.forEach(n => {
-        minX = Math.min(minX, n.pos_x); maxX = Math.max(maxX, n.pos_x);
-        minY = Math.min(minY, n.pos_y); maxY = Math.max(maxY, n.pos_y);
-      });
-      const pad = 120;
-      minX -= pad; maxX += pad; minY -= pad; maxY += pad;
-      const bW = maxX - minX || 500;
-      const bH = maxY - minY || 500;
-
-      // Draw Node Blips
-      this.nodes.forEach(n => {
-        const nx = centerX + ((n.pos_x - (minX + maxX) / 2) / (bW / 2)) * (radius - 12);
-        const ny = centerY + ((n.pos_y - (minY + maxY) / 2) / (bH / 2)) * (radius - 12);
-
-        this.ctx.beginPath();
-        this.ctx.arc(nx, ny, 2.5, 0, Math.PI * 2);
-        this.ctx.fillStyle = n.status === 'running' ? '#00ff87' : '#64748b';
-        this.ctx.fill();
-      });
-    }
-
-    // Top Label
-    this.ctx.font = '700 8px JetBrains Mono, monospace';
-    this.ctx.fillStyle = '#00f2fe';
-    this.ctx.textAlign = 'center';
-    this.ctx.fillText('HOLO-RADAR', centerX, mapY - 6);
-
-    this.ctx.restore();
+    // Holo-Radar minimap removed for clean tactical dark mode
   }
 
   // One-Click 4K Holo-Blueprint Schematic Export

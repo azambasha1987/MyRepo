@@ -499,7 +499,17 @@ async def mcp_json_rpc_endpoint(payload: Dict[str, Any]) -> Dict[str, Any]:
 # ==========================================
 # Frontend Static Files Mount
 # ==========================================
-frontend_dir = Path(__file__).resolve().parent.parent.parent / "frontend"
+frontend_dir = settings.STATIC_DIR
+if not frontend_dir.exists():
+    for candidate in [
+        Path("/opt/azamlabs/frontend"),
+        Path.cwd() / "frontend",
+        Path(__file__).resolve().parent.parent.parent / "frontend",
+    ]:
+        if candidate.exists():
+            frontend_dir = candidate
+            break
+
 if frontend_dir.exists():
     app.mount("/", StaticFiles(directory=str(frontend_dir), html=True), name="frontend")
 

@@ -86,7 +86,11 @@ EOF
 sysctl --system -q || true
 
 echo -e "${CYAN}[*] Step 5: Preparing Directories & Compiling Idle CPU Governor Shim...${NC}"
-mkdir -p "${INSTALL_DIR}/lib" "${INSTALL_DIR}/bin" "${DATA_DIR}" "${LOG_DIR}"
+mkdir -p "${INSTALL_DIR}/lib" "${INSTALL_DIR}/bin" "${DATA_DIR}/labs" "${LOG_DIR}" \
+  "${INSTALL_DIR}/images/iol/bin" \
+  "${INSTALL_DIR}/images/qemu" \
+  "${INSTALL_DIR}/images/docker" \
+  "${INSTALL_DIR}/images/vpcs"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [ -d "${SCRIPT_DIR}/shim" ]; then
@@ -113,6 +117,11 @@ if [ -d "${SCRIPT_DIR}/frontend" ]; then
   cp -r "${SCRIPT_DIR}/frontend/"* "${INSTALL_DIR}/frontend/"
 fi
 
+# Copy existing images if present in repo
+if [ -d "${SCRIPT_DIR}/images" ]; then
+  cp -rn "${SCRIPT_DIR}/images/"* "${INSTALL_DIR}/images/" 2>/dev/null || true
+fi
+
 echo -e "${CYAN}[*] Step 7: Configuring and Starting systemd Background Service...${NC}"
 cat << EOF > /etc/systemd/system/azamlabs.service
 [Unit]
@@ -128,6 +137,9 @@ Environment="AZAM_APP_NAME=AzamLabs"
 Environment="AZAM_ENVIRONMENT=production"
 Environment="AZAM_DATABASE_PATH=${DATA_DIR}/azamlabs.db"
 Environment="AZAM_DATA_DIR=${DATA_DIR}"
+Environment="AZAM_LABS_DIR=${DATA_DIR}/labs"
+Environment="AZAM_IMAGES_DIR=${INSTALL_DIR}/images"
+Environment="AZAM_STATIC_DIR=${INSTALL_DIR}/frontend"
 Environment="AZAM_IOL_SHIM_PATH=${INSTALL_DIR}/lib/azam-iol-shim.so"
 ExecStart=${INSTALL_DIR}/venv/bin/uvicorn azamlabs.main:app --host 0.0.0.0 --port 8000 --workers 2
 Restart=always

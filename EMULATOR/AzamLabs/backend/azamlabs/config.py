@@ -24,6 +24,7 @@ class Settings(BaseModel):
     DATA_DIR: Path = Path(os.getenv("AZAM_DATA_DIR", str(BASE_DIR / "data")))
     LABS_DIR: Path = Path(os.getenv("AZAM_LABS_DIR", str(BASE_DIR / "labs")))
     IMAGES_DIR: Path = Path(os.getenv("AZAM_IMAGES_DIR", str(BASE_DIR / "images")))
+    STATIC_DIR: Path = Path(os.getenv("AZAM_STATIC_DIR", str(BASE_DIR / "frontend")))
     DATABASE_PATH: Path = DATA_DIR / "azamlabs.db"
 
     # Sub-Image Paths

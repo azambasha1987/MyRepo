@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    1-Click Azam Basha v8 Golden Master OVA Appliance Exporter
+    1-Click AzamLabs v8 Golden Master OVA Appliance Exporter
 .DESCRIPTION
     Cleans temporary caches on the running VM and exports the VMware VM
     to a compressed, portable Open Virtual Appliance (.ova) file.
@@ -8,11 +8,11 @@
 
 param (
     [string]$VmxPath = "",
-    [string]$OutputOva = "$([Environment]::GetFolderPath('Desktop'))\AzamBasha-v8-Baseline-Master.ova"
+    [string]$OutputOva = "$([Environment]::GetFolderPath('Desktop'))\AzamLabs-v8-Baseline-Master.ova"
 )
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "   Azam Basha v8 Master OVA Appliance Exporter (VMware)     " -ForegroundColor Cyan
+Write-Host "   AzamLabs v8 Master OVA Appliance Exporter (VMware)     " -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
 # 1. Check if ovftool is available

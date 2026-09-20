@@ -1,9 +1,9 @@
 @echo off
 setlocal enabledelayedexpansion
-title Azam Basha - Deploy Local Folder to VM
+title AzamLabs - Deploy Local Folder to VM
 
 echo ================================================================
-echo           AZAM BASHA - DEPLOY CURRENT FOLDER TO VM
+echo           AZAMLABS - DEPLOY CURRENT FOLDER TO VM
 echo ================================================================
 echo.
 echo This tool will copy the entire contents of this local directory:
@@ -41,7 +41,7 @@ if %ERRORLEVEL% neq 0 (
 
 echo.
 echo [+] Files transferred successfully!
-echo [*] Executing Azam Basha Installer on VM...
+echo [*] Executing AzamLabs Installer on VM...
 echo ================================================================
 ssh -t -o StrictHostKeyChecking=accept-new %SSH_USER%@%VM_IP% "sed -i 's/\r$//' /opt/azambasha/*.sh /opt/azambasha/scripts/*.sh 2>/dev/null || true; cd /opt/azambasha && sudo bash install.sh"
 

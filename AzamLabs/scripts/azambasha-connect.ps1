@@ -1,8 +1,8 @@
 <#
 .SYNOPSIS
-    PNETLab Windows Host Connector, Web UI Launcher & Node Port Scanner
+    AzamLabs Windows Host Connector, Web UI Launcher & Node Port Scanner
 .DESCRIPTION
-    Auto-discovers PNETLab VM IP address, tests reachability, opens the Web UI in the default
+    Auto-discovers AzamLabs VM IP address, tests reachability, opens the Web UI in the default
     browser, scans active node telnet/SSH console ports (30001-30128), and launches SSH sessions.
 #>
 
@@ -14,7 +14,7 @@ param (
 )
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "    PNETLab Windows Host Connector & Node Port Scanner      " -ForegroundColor Cyan
+Write-Host "    AzamLabs Windows Host Connector & Node Port Scanner      " -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
 # 1. Discover or Prompt for VM IP
@@ -30,11 +30,11 @@ if (-not $VmIp) {
         $suggestedIp = "192.168.1.100"
     }
 
-    $inputIp = Read-Host "Enter PNETLab VM IP Address [Default: $suggestedIp]"
+    $inputIp = Read-Host "Enter AzamLabs VM IP Address [Default: $suggestedIp]"
     $VmIp = if ($inputIp) { $inputIp } else { $suggestedIp }
 }
 
-Write-Host "`n[*] Target PNETLab VM: $VmIp" -ForegroundColor Yellow
+Write-Host "`n[*] Target AzamLabs VM: $VmIp" -ForegroundColor Yellow
 
 # 2. Test Reachability
 Write-Host "[*] Testing network connectivity..." -ForegroundColor DarkGray

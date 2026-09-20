@@ -35,8 +35,8 @@ if [ -n "$INSTALL_ROOT" ] && [ -d "${INSTALL_ROOT}/html" ]; then
     AZAM_DIR="$INSTALL_ROOT"
 elif [ -d "/opt/azambasha/html" ]; then
     AZAM_DIR="/opt/azambasha"
-elif [ -d "/opt/azam-pnet/EMULATOR/Azam-Pnet/html" ]; then
-    AZAM_DIR="/opt/azam-pnet/EMULATOR/Azam-Pnet"
+elif [ -d "/opt/azam-pnet/AzamLabs/html" ]; then
+    AZAM_DIR="/opt/azam-pnet/AzamLabs"
 else
     AZAM_DIR="/opt/unetlab"
 fi

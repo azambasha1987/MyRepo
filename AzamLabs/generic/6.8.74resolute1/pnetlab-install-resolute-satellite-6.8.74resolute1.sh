@@ -29,7 +29,7 @@ POOL_SEARCH_DIRS=(
     "$SCRIPT_DIR/pnetlab-debs"
     "$SCRIPT_DIR/../../debian/pool/resolute/main"
     "$SCRIPT_DIR/../../../debian/pool/resolute/main"
-    "/opt/azam-pnet/EMULATOR/Azam-Pnet/debian/pool/resolute/main"
+    "/opt/azam-pnet/AzamLabs/debian/pool/resolute/main"
     "/opt/pnetlab/debian/pool/resolute/main"
     "/opt/azambasha/debian/pool/resolute/main"
 )

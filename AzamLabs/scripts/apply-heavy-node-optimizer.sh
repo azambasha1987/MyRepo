@@ -601,7 +601,7 @@ try:
         for row in cur.fetchall():
             ip = row[0]
             print(f"  [*] Optimizing Satellite: {ip}...")
-            subprocess.run(["ssh", "-o", "StrictHostKeyChecking=no", f"root@{ip}", "curl -fsSL https://raw.githubusercontent.com/azambasha1987/MyRepo/main/EMULATOR/Azam-Pnet/scripts/apply-heavy-node-optimizer.sh | bash"], timeout=30)
+            subprocess.run(["ssh", "-o", "StrictHostKeyChecking=no", f"root@{ip}", "curl -fsSL https://raw.githubusercontent.com/azambasha1987/MyRepo/main/AzamLabs/scripts/apply-heavy-node-optimizer.sh | bash"], timeout=30)
 except Exception as e:
     print(f"  [*] Satellite sync note: {e}")
 PYEOF

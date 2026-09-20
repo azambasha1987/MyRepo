@@ -37,7 +37,11 @@ if [ -z "$_RAW_DIR" ] || [ "$_RAW_DIR" = "/dev" ] || [ ! -f "${_RAW_DIR}/install
         git clone --depth 1 https://github.com/azambasha1987/MyRepo.git "$MYREPO_DIR" 2>/dev/null \
             || { echo "[ERROR] Failed to self-clone repo. Check internet/GitHub access."; exit 1; }
     fi
-    SCRIPT_DIR="${MYREPO_DIR}/EMULATOR/Azam-Pnet"
+    if [ -d "${MYREPO_DIR}/AzamLabs" ]; then
+        SCRIPT_DIR="${MYREPO_DIR}/AzamLabs"
+    else
+        SCRIPT_DIR="${MYREPO_DIR}"
+    fi
 else
     SCRIPT_DIR="$_RAW_DIR"
 fi
@@ -500,11 +504,18 @@ else
         git clone --depth 1 https://github.com/azambasha1987/MyRepo.git "$MYREPO_FALLBACK" 2>/dev/null \
             || echo "      [WARNING] Could not clone MyRepo — skipping package installation."
     fi
-    FALLBACK_POOL="${MYREPO_FALLBACK}/EMULATOR/Azam-Pnet/debian/pool/resolute/main"
+    FALLBACK_POOL="${MYREPO_FALLBACK}/AzamLabs/debian/pool/resolute/main"
+    if [ ! -d "$FALLBACK_POOL" ]; then
+        FALLBACK_POOL="${MYREPO_FALLBACK}/debian/pool/resolute/main"
+    fi
     if [ -d "$FALLBACK_POOL" ] && compgen -G "${FALLBACK_POOL}/*.deb" > /dev/null 2>&1; then
         DEB_POOL_DIR="$FALLBACK_POOL"
         # Also update SCRIPT_DIR so post-install scripts are found
-        SCRIPT_DIR="${MYREPO_FALLBACK}/EMULATOR/Azam-Pnet"
+        if [ -d "${MYREPO_FALLBACK}/AzamLabs" ]; then
+            SCRIPT_DIR="${MYREPO_FALLBACK}/AzamLabs"
+        else
+            SCRIPT_DIR="${MYREPO_FALLBACK}"
+        fi
     fi
 fi
 

@@ -57,7 +57,11 @@ if [ -z "$_RAW_DIR" ] || [ "$_RAW_DIR" = "/dev" ] || [ ! -f "${_RAW_DIR}/install
         git clone --depth 1 https://github.com/azambasha1987/MyRepo.git "$MYREPO_DIR" 2>/dev/null \
             || { echo "[ERROR] Failed to self-clone repo. Check internet/GitHub access."; exit 1; }
     fi
-    SCRIPT_DIR="${MYREPO_DIR}/EMULATOR/Azam-Pnet"
+    if [ -d "${MYREPO_DIR}/AzamLabs" ]; then
+        SCRIPT_DIR="${MYREPO_DIR}/AzamLabs"
+    else
+        SCRIPT_DIR="${MYREPO_DIR}"
+    fi
     exec bash "${SCRIPT_DIR}/install-satellite.sh" "$@"
 else
     SCRIPT_DIR="$_RAW_DIR"
@@ -607,7 +611,7 @@ POOL_SEARCH_DIRS=(
     "${SCRIPT_DIR}/generic/6.8.74resolute1/pnetlab-debs"
     "/opt/azambasha/debian/pool/resolute/main"
     "/opt/pnetlab/debian/pool/resolute/main"
-    "/opt/azam-pnet/EMULATOR/Azam-Pnet/debian/pool/resolute/main"
+    "/opt/azam-pnet/AzamLabs/debian/pool/resolute/main"
     "/opt/unetlab/cluster-bundle/current/pnetlab-debs"
     "/tmp/pnet-satellite-bundle/pnetlab-debs"
     "/opt/azambasha/generic/6.8.74resolute1/pnetlab-debs"

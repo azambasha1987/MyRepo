@@ -2,7 +2,7 @@
 setlocal
 cd /d "%~dp0"
 echo ========================================================
-echo Launching Azam Basha Windows Host Connector...
+echo Launching AzamLabs Windows Host Connector...
 echo ========================================================
 where pwsh >nul 2>nul
 if %ERRORLEVEL% equ 0 (

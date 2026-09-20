@@ -97,7 +97,7 @@ def deploy_locally():
 
     # Update branding config.json to cache bust
     now_ts = int(time.time())
-    cfg_json = f'{{\n    "name": "Azam Basha",\n    "login_header": "Azam Basha Network Emulation Platform",\n    "hide_default_creds": false,\n    "logo_source": "azam_home_avatar.png",\n    "updated_at": {now_ts}\n}}\n'
+    cfg_json = f'{{\n    "name": "AzamLabs",\n    "login_header": "AzamLabs Network Emulation Platform",\n    "hide_default_creds": false,\n    "logo_source": "azam_home_avatar.png",\n    "updated_at": {now_ts}\n}}\n'
     cfg_path = "/opt/unetlab/data/branding/config.json"
     os.makedirs("/opt/unetlab/data/branding", exist_ok=True)
     with open(cfg_path, 'w', encoding='utf-8') as f:

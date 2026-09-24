@@ -181,9 +181,10 @@ def deploy_host(host, user, password, port, args):
         sftp.close()
         log_ok("All repository assets synchronized!")
         
-        # Make scripts executable
+        # Make scripts executable and register CLI commands
         if not args.dry_run:
             execute_remote_cmd(client, f"chmod +x {remote_base}/*.sh {remote_base}/scripts/*.sh {remote_base}/scripts/*.py 2>/dev/null || true", stream=False)
+            execute_remote_cmd(client, f"ln -sf {remote_base}/scripts/azambasha-update.sh /usr/local/bin/azam-update && ln -sf {remote_base}/scripts/azambasha-quarterly-audit.sh /usr/local/bin/azam-audit 2>/dev/null || true", stream=False)
             
         # Post-sync Action Triggers
         if args.install:

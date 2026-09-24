@@ -24,7 +24,9 @@ The Master Controller node runs the PNetLab Web-GUI, Apache FastCGI, MySQL datab
 # Option 1: Using the turnkey AzamLabs update utility (Recommended)
 sudo azam-update --master
 
-# Option 2: Direct execution via bash script
+# (If running directly from repository path: sudo bash /opt/azambasha/scripts/azambasha-update.sh --master)
+
+# Option 2: Direct execution via Master Fix Suite
 sudo bash /opt/azambasha/scripts/azambasha-apply-all-fixes.sh 19
 ```
 
@@ -62,7 +64,9 @@ Satellite Worker nodes provide headless compute density, KVM virtualization, Sof
 # Option 1: Using the turnkey AzamLabs update utility (Recommended)
 sudo azam-update --satellite
 
-# Option 2: Direct execution via bash script
+# (If running directly from repository path: sudo bash /opt/azambasha/scripts/azambasha-update.sh --satellite)
+
+# Option 2: Direct execution via Satellite Optimization Suite
 sudo bash /opt/azambasha/scripts/azambasha-apply-all-fixes.sh 25
 ```
 

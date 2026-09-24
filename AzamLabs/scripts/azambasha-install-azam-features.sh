@@ -109,7 +109,10 @@ ln -sf "${SCRIPTS}/azambasha-eve-lab-importer.py"   /usr/local/bin/azam-lab-impo
 chmod +x "${SCRIPTS}/azambasha-eve-lab-importer.py" 2>/dev/null || true
 ln -sf "${SCRIPTS}/azambasha-update.sh"            /usr/local/bin/azam-update
 ln -sf "${SCRIPTS}/azambasha-quarterly-audit.sh"   /usr/local/bin/azam-audit
-chmod +x "${SCRIPTS}/azambasha-update.sh" "${SCRIPTS}/azambasha-quarterly-audit.sh" 2>/dev/null || true
+ln -sf "${SCRIPTS}/azambasha-apply-all-fixes.sh"    /usr/local/bin/azam-menu
+ln -sf "${SCRIPTS}/azambasha-apply-all-fixes.sh"    /usr/local/bin/azam-fix
+chmod +x "${SCRIPTS}/azambasha-update.sh" "${SCRIPTS}/azambasha-quarterly-audit.sh" "${SCRIPTS}/azambasha-apply-all-fixes.sh" 2>/dev/null || true
+
 
 # Install scheduler timer and 24/7 autonomous watchdog daemon
 python3 "${SCRIPTS}/azambasha-scheduler.py" --install 2>/dev/null || true

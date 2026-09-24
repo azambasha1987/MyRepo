@@ -1155,6 +1155,12 @@ ln -sfn /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/azam-docto
 ln -sfn /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-images 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-backup-restore.sh /usr/local/bin/azam-backup 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-dark-theme.sh /usr/local/bin/azam-dark 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-update.sh /usr/local/bin/azam-update 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-quarterly-audit.sh /usr/local/bin/azam-audit 2>/dev/null || true
+if [ -d "/opt/azambasha/scripts" ]; then
+    ln -sfn /opt/azambasha/scripts/azambasha-update.sh /usr/local/bin/azam-update 2>/dev/null || true
+    ln -sfn /opt/azambasha/scripts/azambasha-quarterly-audit.sh /usr/local/bin/azam-audit 2>/dev/null || true
+fi
 
 ln -sfn /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/pnet-menu 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/pnet-fix 2>/dev/null || true
@@ -1229,6 +1235,22 @@ mysql --defaults-file=/etc/mysql/debian.cnf -e "$ADMIN_SQL_BODY" 2>/dev/null \
     || true
 echo "      [✔] Admin credentials enforced: admin / azam (Role 0, Active, Offline)"
 # ────────────────────────────────────────────────────────────────────────────
+
+# Ensure systemd rate-limit immunity for PHP-FPM and Apache2 (prevents start-limit-hit)
+for svc_name in php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2; do
+    mkdir -p "/etc/systemd/system/${svc_name}.service.d" 2>/dev/null || true
+    cat << 'EOF_OVERRIDE' > "/etc/systemd/system/${svc_name}.service.d/override.conf"
+[Unit]
+StartLimitIntervalSec=0
+StartLimitBurst=0
+
+[Service]
+Restart=on-failure
+RestartSec=1s
+EOF_OVERRIDE
+done
+systemctl daemon-reload 2>/dev/null || true
+systemctl reset-failed "php${PHP_VER}-fpm.service" apache2.service 2>/dev/null || true
 
 systemctl restart "php${PHP_VER}-fpm" apache2 2>/dev/null || true
 

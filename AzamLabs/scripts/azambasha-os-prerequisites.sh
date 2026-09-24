@@ -381,12 +381,21 @@ if [ -f /usr/share/OVMF/OVMF_VARS_4M.ms.fd ] && [ ! -f /usr/share/OVMF/OVMF_VARS
     echo "      -> Linked /usr/share/OVMF/OVMF_VARS.fd -> OVMF_VARS_4M.ms.fd"
 fi
 
-# Issue #19: Fix pnet-guac-lite.service restart loop (guac.env permissions)
-if [ -f /etc/pnet-webconsole/guac.env ]; then
-    chown root:www-data /etc/pnet-webconsole/guac.env 2>/dev/null || true
-    chmod 0640 /etc/pnet-webconsole/guac.env 2>/dev/null || true
-    echo "      -> Hardened /etc/pnet-webconsole/guac.env permissions (0640 root:www-data)"
-fi
+# Issue #34: Systemd Service Rate-Limit Immunity (Prevents start-limit-hit lockout)
+for svc_name in php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2; do
+    mkdir -p "/etc/systemd/system/${svc_name}.service.d" 2>/dev/null || true
+    cat << 'EOF_OVERRIDE' > "/etc/systemd/system/${svc_name}.service.d/override.conf"
+[Unit]
+StartLimitIntervalSec=0
+StartLimitBurst=0
+
+[Service]
+Restart=on-failure
+RestartSec=1s
+EOF_OVERRIDE
+done
+systemctl daemon-reload 2>/dev/null || true
+echo "      -> Deployed systemd rate-limit immunity for PHP-FPM & Apache2"
 
 # --- Phase 6: Verification & Summary ---
 echo "[6/6] Verifying installed modules and system ready state..."

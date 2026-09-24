@@ -52,6 +52,7 @@ python scripts/deploy-to-vm.py -H <MASTER_IP> -p azam --apply-all
 14. **Canvas Tools & Diagnostics**: Synchronizes Network Watcher (packet sniffing), Network Painter (topology styling), and Network Analyzer (in-browser capture container).
 15. **GUI Version Synchronization**: Synchronizes `/main/#/version` and DB to latest release (`v6.8.83`).
 16. **Web Credentials Reset**: Re-asserts canonical admin credentials (`admin` / `azam`).
+17. **Authentication Self-Healing & Systemd Rate-Limit Immunity**: Deploys `StartLimitIntervalSec=0` drop-ins to prevent `start-limit-hit` lockouts, executes live verification probe (HTTP 200), and clears shared memory lockouts.
 
 ---
 
@@ -75,7 +76,7 @@ sudo bash /opt/azambasha/scripts/azambasha-apply-all-fixes.sh 25
 python scripts/deploy-to-vm.py -H <SATELLITE_IP> -p azam --satellite-fixes
 ```
 
-### What Happens in the Satellite Worker Pipeline (13 Steps):
+### What Happens in the Satellite Worker Pipeline (14 Steps):
 1. **OS Prerequisites**: Installs `swtpm`, `ovmf`, `rdma-core`, `libelf`, and `nodejs`.
 2. **Bridge LACP BPDU Forwarding**: Sets `group_fwd_mask = 0xffff` to allow LACP/LLDP transit.
 3. **Silicon Dataplane Accelerator**: Sets MTU 9000 jumbo frames for inter-node links.
@@ -89,6 +90,7 @@ python scripts/deploy-to-vm.py -H <SATELLITE_IP> -p azam --satellite-fixes
 11. **File Permissions**: Normalizes permissions on `/opt/unetlab/addons/` and clears stale locks.
 12. **Authoritative Credentials**: Enforces canonical `root:azam` password and MOTD banner.
 13. **Satellite Root & Cluster DB**: Restores `0600` permissions on `/etc/pnetlab/cluster-db.conf`.
+14. **Worker Daemon Self-Healing & Rate-Limit Immunity**: Deploys `StartLimitIntervalSec=0` drop-ins for `pnetlab-satd`, `pnetlab-brokerd`, and `docker`, resets failed states, and verifies root credentials (`root:azam`).
 
 ---
 

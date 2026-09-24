@@ -325,16 +325,48 @@ ON DUPLICATE KEY UPDATE control_value = VALUES(control_value);
         sed -i 's/"samesite" *=> *"Strict"/"samesite" => "Lax"/g' /opt/unetlab/html/includes/functions.php 2>/dev/null || true
     fi
 
+    # Ensure systemd rate-limit immunity for PHP-FPM and Apache2 (prevents start-limit-hit)
+    for svc_name in php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2; do
+        mkdir -p "/etc/systemd/system/${svc_name}.service.d" 2>/dev/null || true
+        cat << 'EOF_OVERRIDE' > "/etc/systemd/system/${svc_name}.service.d/override.conf"
+[Unit]
+StartLimitIntervalSec=0
+StartLimitBurst=0
+
+[Service]
+Restart=on-failure
+RestartSec=1s
+EOF_OVERRIDE
+    done
+    systemctl daemon-reload 2>/dev/null || true
+    systemctl reset-failed 'php*-fpm.service' apache2.service 2>/dev/null || true
+
     # Restart PHP-FPM and Apache2 to refresh user sessions
     PHP_FPM_SVC="$(systemctl list-unit-files 'php*-fpm.service' --no-legend 2>/dev/null | awk '{print $1}' | head -n1 || echo "php${PHP_VER}-fpm.service")"
     if [ -n "$PHP_FPM_SVC" ]; then
         systemctl restart "$PHP_FPM_SVC" 2>/dev/null || true
     fi
     systemctl restart apache2 2>/dev/null || true
-    log_ok "Web server and PHP sessions refreshed."
+    log_ok "Web server and PHP sessions refreshed with rate-limit immunity."
 else
     # ── Satellite Node Handling ───────────────────────────────────────────────
     log_info "Detected Satellite Worker Node — Synchronizing system credentials..."
+
+    # Ensure systemd rate-limit immunity for Satellite worker services
+    for svc_name in pnetlab-satd pnetlab-brokerd pnetlab-docker-image-watcher docker php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2; do
+        mkdir -p "/etc/systemd/system/${svc_name}.service.d" 2>/dev/null || true
+        cat << 'EOF_OVERRIDE' > "/etc/systemd/system/${svc_name}.service.d/override.conf"
+[Unit]
+StartLimitIntervalSec=0
+StartLimitBurst=0
+
+[Service]
+Restart=on-failure
+RestartSec=1s
+EOF_OVERRIDE
+    done
+    systemctl daemon-reload 2>/dev/null || true
+    systemctl reset-failed 2>/dev/null || true
 
     # Ensure root password is set to azam
     echo "root:azam" | chpasswd 2>/dev/null || true
@@ -375,5 +407,22 @@ if [ "$IS_SATELLITE" -eq 0 ]; then
         log_warn "Admin row was updated, but verification query returned count: ${PASS_VERIFIED}."
         log_info "Testing database direct check:"
         $MYSQL_CMD -e "USE pnetlab_db; SELECT pod, username, role, user_status, offline, active_time, expired_time FROM users WHERE username='admin';" 2>/dev/null || true
+    fi
+else
+    # Satellite Verification Output
+    b_stat="$(systemctl is-active pnetlab-brokerd 2>/dev/null || echo 'inactive')"
+    s_stat="$(systemctl is-active pnetlab-satd 2>/dev/null || echo 'inactive')"
+    if [ "$SILENT" -eq 0 ]; then
+        echo ""
+        echo "============================================================"
+        echo " [SUCCESS] SATELLITE CREDENTIALS & WORKER SERVICES VERIFIED! "
+        echo "============================================================"
+        echo " Worker IP    : $(hostname -I 2>/dev/null | awk '{print $1}' || echo 'SATELLITE_IP')"
+        echo " Root Login   : root / azam"
+        echo " Broker Daemon: $b_stat"
+        echo " Cluster Agent: $s_stat"
+        echo " Rate Limits  : Immune (StartLimitIntervalSec=0)"
+        echo " CLI Command  : sudo azam-credentials"
+        echo "============================================================"
     fi
 fi

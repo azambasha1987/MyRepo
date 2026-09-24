@@ -770,8 +770,23 @@ fi
 sed -i 's/.*PermitRootLogin .*/PermitRootLogin yes/' /etc/ssh/sshd_config 2>/dev/null || true
 systemctl restart ssh 2>/dev/null || true
 
+# Ensure systemd rate-limit immunity for all core daemon and worker services
+for svc_name in pnetlab-satd pnetlab-brokerd pnetlab-docker-image-watcher docker php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2; do
+    mkdir -p "/etc/systemd/system/${svc_name}.service.d" 2>/dev/null || true
+    cat << 'EOF_OVERRIDE' > "/etc/systemd/system/${svc_name}.service.d/override.conf"
+[Unit]
+StartLimitIntervalSec=0
+StartLimitBurst=0
+
+[Service]
+Restart=on-failure
+RestartSec=1s
+EOF_OVERRIDE
+done
+
 # Reload systemd and start daemons
 systemctl daemon-reload 2>/dev/null || true
+systemctl reset-failed 2>/dev/null || true
 systemctl enable --now pnetlab-brokerd.service 2>/dev/null || true
 systemctl enable --now pnetlab-docker-image-watcher.service 2>/dev/null || true
 systemctl enable --now pnetlab-ksm.service 2>/dev/null || true
@@ -958,6 +973,17 @@ elif [ -f "/opt/unetlab/scripts/azambasha-install-azam-features.sh" ]; then
     echo "       -> Deploying Azam-Features Satellite toolchain & watchdog..."
     bash "/opt/unetlab/scripts/azambasha-install-azam-features.sh" --satellite || true
 fi
+
+# Register global administrative CLI commands on Satellite
+for s_dir in "${SCRIPT_DIR}/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scripts"; do
+    if [ -d "$s_dir" ]; then
+        ln -sfn "${s_dir}/azambasha-update.sh" /usr/local/bin/azam-update 2>/dev/null || true
+        ln -sfn "${s_dir}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
+        ln -sfn "${s_dir}/azambasha-apply-all-fixes.sh" /usr/local/bin/azam-menu 2>/dev/null || true
+        ln -sfn "${s_dir}/azambasha-apply-all-fixes.sh" /usr/local/bin/azam-fix 2>/dev/null || true
+        break
+    fi
+done
 
 # ── Step 10: Automated or Interactive Join to Master Server ───────────────────
 echo "[10/10] Verifying satellite readiness and cluster configuration..."

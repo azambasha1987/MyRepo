@@ -7,7 +7,17 @@
 # ==============================================================================
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve physical script location across symlinks (e.g. /usr/local/bin/azam-menu, /usr/local/bin/azam-fix)
+REAL_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" 2>/dev/null && pwd || echo "")"
+if [ ! -f "${SCRIPT_DIR}/azambasha-speed-optimizer.sh" ]; then
+    if [ -f "/opt/azambasha/scripts/azambasha-speed-optimizer.sh" ]; then
+        SCRIPT_DIR="/opt/azambasha/scripts"
+    elif [ -f "/opt/unetlab/scripts/azambasha-speed-optimizer.sh" ]; then
+        SCRIPT_DIR="/opt/unetlab/scripts"
+    fi
+fi
+
 
 # Support non-root check/help modes
 if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
@@ -251,6 +261,8 @@ case "$CHOICE" in
             if [ -f "${SCRIPT_DIR}/azambasha-update-banner.sh" ]; then
                 bash "${SCRIPT_DIR}/azambasha-update-banner.sh" || true
             fi
+            ln -sf "${SCRIPT_DIR}/azambasha-update.sh" /usr/local/bin/azam-update 2>/dev/null || true
+            ln -sf "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
             echo ""
             echo "============================================================"
             echo " [SUCCESS] SATELLITE WORKER NODE ENHANCEMENTS APPLIED!      "
@@ -350,6 +362,8 @@ case "$CHOICE" in
         if [ -f "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" ]; then
             bash "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" auto || true
         fi
+        ln -sf "${SCRIPT_DIR}/azambasha-update.sh" /usr/local/bin/azam-update 2>/dev/null || true
+        ln -sf "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
         echo ""
         echo "============================================================"
         echo "  [SUCCESS] ALL ESSENTIAL ENHANCEMENTS APPLIED SUCCESSFULLY! "

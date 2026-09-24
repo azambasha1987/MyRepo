@@ -10,10 +10,28 @@
 # ==============================================================================
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve physical script location across symlinks (e.g. /usr/local/bin/azam-audit)
+REAL_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" 2>/dev/null && pwd || echo "")"
+if [ ! -d "${SCRIPT_DIR}" ] || [ "${SCRIPT_DIR}" = "/usr/local/bin" ] || [ ! -f "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" ]; then
+    if [ -f "/opt/azambasha/scripts/azambasha-quarterly-audit.sh" ]; then
+        SCRIPT_DIR="/opt/azambasha/scripts"
+    elif [ -f "/opt/unetlab/scripts/azambasha-quarterly-audit.sh" ]; then
+        SCRIPT_DIR="/opt/unetlab/scripts"
+    fi
+fi
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
+if [ ! -d "${BASE_DIR}/docs/reports" ]; then
+    if [ -d "/opt/azambasha/docs/reports" ]; then
+        BASE_DIR="/opt/azambasha"
+    elif [ -d "/opt/unetlab/data" ]; then
+        BASE_DIR="/opt/unetlab"
+    fi
+fi
 REPORTS_DIR="${BASE_DIR}/docs/reports"
+mkdir -p "$REPORTS_DIR" 2>/dev/null || REPORTS_DIR="/tmp"
 SNAPSHOT_DIR="/opt/unetlab/data/Backup/snapshots"
+
 EMAIL_TARGET="azambasha1987@gmail.com"
 
 # Color tokens

@@ -7,7 +7,17 @@
 # ==============================================================================
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve physical script location across symlinks
+REAL_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" 2>/dev/null && pwd || echo "")"
+if [ ! -f "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" ]; then
+    if [ -f "/opt/azambasha/scripts/azambasha-quarterly-audit.sh" ]; then
+        SCRIPT_DIR="/opt/azambasha/scripts"
+    elif [ -f "/opt/unetlab/scripts/azambasha-quarterly-audit.sh" ]; then
+        SCRIPT_DIR="/opt/unetlab/scripts"
+    fi
+fi
+
 EMAIL="${1:-azambasha1987@gmail.com}"
 PHONE="${2:-}"
 APIKEY="${3:-}"
@@ -53,11 +63,16 @@ rm -f /etc/cron.d/azambasha-quarterly-scanner /etc/cron.weekly/azambasha-scanner
 
 systemctl daemon-reload 2>/dev/null || true
 
-# 2. Symlink azam-audit command
+# 2. Symlink azam-audit & azam-update commands
 if [ -f "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" ]; then
     ln -sf "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit
     chmod +x "${SCRIPT_DIR}/azambasha-quarterly-audit.sh"
     echo "[✔] Installed /usr/local/bin/azam-audit"
+fi
+if [ -f "${SCRIPT_DIR}/azambasha-update.sh" ]; then
+    ln -sf "${SCRIPT_DIR}/azambasha-update.sh" /usr/local/bin/azam-update
+    chmod +x "${SCRIPT_DIR}/azambasha-update.sh"
+    echo "[✔] Installed /usr/local/bin/azam-update"
 fi
 
 echo "================================================================================"

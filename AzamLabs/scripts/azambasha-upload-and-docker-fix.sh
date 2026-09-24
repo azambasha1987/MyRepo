@@ -286,11 +286,11 @@ EOF
     fi
 done
 
-# Restart web services if present
-echo "[*] Restarting web server and PHP daemons..."
-systemctl restart apache2 2>/dev/null || service apache2 restart 2>/dev/null || true
+# Reload web services if present (Graceful reload preserves session & prevents start-limit-hit)
+echo "[*] Reloading web server and PHP daemons..."
+systemctl reload apache2 2>/dev/null || systemctl restart apache2 2>/dev/null || true
 for PHP_FPM in $(systemctl list-units --type=service --state=running 2>/dev/null | grep -o 'php[0-9.]*-fpm' || true); do
-    systemctl restart "$PHP_FPM" 2>/dev/null || true
+    systemctl reload "$PHP_FPM" 2>/dev/null || systemctl restart "$PHP_FPM" 2>/dev/null || true
 done
 
 echo ""

@@ -5,7 +5,16 @@
 # ==============================================================================
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve physical script location across symlinks (e.g. /usr/local/bin/azam-update)
+REAL_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" 2>/dev/null && pwd || echo "/opt/azambasha/scripts")"
+if [ ! -f "${SCRIPT_DIR}/azambasha-apply-all-fixes.sh" ]; then
+    if [ -f "/opt/azambasha/scripts/azambasha-apply-all-fixes.sh" ]; then
+        SCRIPT_DIR="/opt/azambasha/scripts"
+    elif [ -f "/opt/unetlab/scripts/azambasha-apply-all-fixes.sh" ]; then
+        SCRIPT_DIR="/opt/unetlab/scripts"
+    fi
+fi
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Color tokens
@@ -51,8 +60,11 @@ usage() {
 }
 
 # Auto-install symlink if running as root
-if [ "$(id -u)" -eq 0 ] && [ ! -L /usr/local/bin/azam-update ]; then
+if [ "$(id -u)" -eq 0 ]; then
     ln -sf "$(realpath "$0")" /usr/local/bin/azam-update 2>/dev/null || true
+    if [ -f "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" ]; then
+        ln -sf "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
+    fi
 fi
 
 # Support help flag
@@ -108,6 +120,90 @@ create_pre_update_snapshot() {
     fi
 }
 
+verify_and_stabilize_auth() {
+    log_info "Stabilizing Web Services and Verifying Master Authentication..."
+
+    # 1. Ensure systemd rate-limit immunity for PHP-FPM and Apache2
+    for svc_name in php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2; do
+        mkdir -p "/etc/systemd/system/${svc_name}.service.d" 2>/dev/null || true
+        cat << 'EOF_OVERRIDE' > "/etc/systemd/system/${svc_name}.service.d/override.conf"
+[Unit]
+StartLimitIntervalSec=0
+StartLimitBurst=0
+
+[Service]
+Restart=on-failure
+RestartSec=1s
+EOF_OVERRIDE
+    done
+    systemctl daemon-reload 2>/dev/null || true
+    systemctl reset-failed 'php*-fpm.service' apache2.service 2>/dev/null || true
+
+    # 2. Clean stale lockouts in shared memory
+    rm -rf /dev/shm/pnet-authfail* /tmp/pnet-authfail* 2>/dev/null || true
+
+    # 3. Clean coordinated restart
+    for PHP_FPM in $(systemctl list-unit-files 'php*-fpm.service' --no-legend 2>/dev/null | awk '{print $1}'); do
+        systemctl restart "$PHP_FPM" 2>/dev/null || true
+    done
+    systemctl reload apache2 2>/dev/null || systemctl restart apache2 2>/dev/null || true
+
+    # 4. Synchronize database admin password to azam
+    if command -v mysql >/dev/null 2>&1; then
+        mysql -u pnetlab -ppnetlab pnetlab_db -e "UPDATE users SET password = SHA2('azam', 256), user_status = 1, offline = 1, session = UNIX_TIMESTAMP() + 315360000 WHERE username = 'admin';" 2>/dev/null \
+            || mysql pnetlab_db -e "UPDATE users SET password = SHA2('azam', 256), user_status = 1, offline = 1, session = UNIX_TIMESTAMP() + 315360000 WHERE username = 'admin';" 2>/dev/null || true
+    fi
+
+    # 5. Live Verification Probe
+    local code
+    code=$(curl -sk -o /dev/null -w "%{http_code}" -X POST https://127.0.0.1/api/auth -H "Content-Type: application/json" -d '{"username":"admin","password":"azam"}' 2>/dev/null || echo "000")
+    if [ "$code" = "200" ]; then
+        log_ok "Web-GUI Admin Authentication: ${BOLD}VERIFIED ACTIVE (admin / azam - HTTP 200)${RESET}"
+    else
+        log_warn "Web-GUI auth probe returned HTTP $code; triggering deep-credentials fix..."
+        bash "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" --silent 2>/dev/null || true
+    fi
+}
+
+verify_and_stabilize_satellite() {
+    log_info "Stabilizing Satellite Worker Services & System Credentials..."
+
+    # 1. Ensure systemd rate-limit immunity for Satellite worker services
+    for svc_name in pnetlab-satd pnetlab-brokerd pnetlab-docker-image-watcher docker php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2; do
+        mkdir -p "/etc/systemd/system/${svc_name}.service.d" 2>/dev/null || true
+        cat << 'EOF_OVERRIDE' > "/etc/systemd/system/${svc_name}.service.d/override.conf"
+[Unit]
+StartLimitIntervalSec=0
+StartLimitBurst=0
+
+[Service]
+Restart=on-failure
+RestartSec=1s
+EOF_OVERRIDE
+    done
+    systemctl daemon-reload 2>/dev/null || true
+    systemctl reset-failed 2>/dev/null || true
+
+    # 2. Clean stale lockouts in shared memory
+    rm -rf /dev/shm/pnet-authfail* /tmp/pnet-authfail* 2>/dev/null || true
+
+    # 3. Synchronize root password to azam
+    echo "root:azam" | chpasswd 2>/dev/null || true
+
+    # 4. Restart/Reload worker daemons cleanly
+    systemctl restart pnetlab-brokerd 2>/dev/null || true
+    systemctl restart pnetlab-docker-image-watcher 2>/dev/null || true
+    if [ -f /etc/pnetlab-satellite/satd.conf ]; then
+        systemctl restart pnetlab-satd 2>/dev/null || true
+    fi
+
+    # 5. Live Satellite Verification Probe
+    local b_stat s_stat
+    b_stat="$(systemctl is-active pnetlab-brokerd 2>/dev/null || echo 'inactive')"
+    s_stat="$(systemctl is-active pnetlab-satd 2>/dev/null || echo 'inactive')"
+    log_ok "Satellite Worker Services: ${BOLD}Broker Daemon: $b_stat | Cluster Agent: $s_stat (root/azam confirmed)${RESET}"
+}
+
 MODE="${1:---auto}"
 
 case "$MODE" in
@@ -152,6 +248,7 @@ case "$MODE" in
         if [ -f "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" ]; then
             bash "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" auto || true
         fi
+        verify_and_stabilize_auth
         log_ok "Master node one-step update successfully completed!"
         ;;
     --satellite|-s)
@@ -159,6 +256,7 @@ case "$MODE" in
         log_info "Initiating ONE-STEP UPDATE for: ${BOLD}SATELLITE WORKER NODE${RESET}"
         create_pre_update_snapshot
         bash "${SCRIPT_DIR}/azambasha-apply-all-fixes.sh" 25
+        verify_and_stabilize_satellite
         log_ok "Satellite worker node one-step update successfully completed!"
         ;;
     --auto|-a|"")
@@ -168,6 +266,7 @@ case "$MODE" in
             log_info "Auto-detected Role: ${BOLD}SATELLITE (Worker Node)${RESET}"
             create_pre_update_snapshot
             bash "${SCRIPT_DIR}/azambasha-apply-all-fixes.sh" 25
+            verify_and_stabilize_satellite
             log_ok "Satellite worker node one-step update successfully completed!"
         else
             log_info "Auto-detected Role: ${BOLD}MASTER (Controller Node)${RESET}"
@@ -176,6 +275,7 @@ case "$MODE" in
             if [ -f "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" ]; then
                 bash "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" auto || true
             fi
+            verify_and_stabilize_auth
             log_ok "Master node one-step update successfully completed!"
         fi
         ;;

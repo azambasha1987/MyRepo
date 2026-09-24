@@ -184,7 +184,9 @@ def deploy_host(host, user, password, port, args):
         # Make scripts executable and register CLI commands
         if not args.dry_run:
             execute_remote_cmd(client, f"chmod +x {remote_base}/*.sh {remote_base}/scripts/*.sh {remote_base}/scripts/*.py 2>/dev/null || true", stream=False)
-            execute_remote_cmd(client, f"ln -sf {remote_base}/scripts/azambasha-update.sh /usr/local/bin/azam-update && ln -sf {remote_base}/scripts/azambasha-quarterly-audit.sh /usr/local/bin/azam-audit 2>/dev/null || true", stream=False)
+            execute_remote_cmd(client, f"ln -sf {remote_base}/scripts/azambasha-update.sh /usr/local/bin/azam-update && ln -sf {remote_base}/scripts/azambasha-quarterly-audit.sh /usr/local/bin/azam-audit && ln -sf {remote_base}/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/azam-menu && ln -sf {remote_base}/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/azam-fix 2>/dev/null || true", stream=False)
+            execute_remote_cmd(client, "for s in php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2 pnetlab-satd pnetlab-brokerd pnetlab-docker-image-watcher docker; do mkdir -p /etc/systemd/system/${s}.service.d && printf '[Unit]\\nStartLimitIntervalSec=0\\nStartLimitBurst=0\\n[Service]\\nRestart=on-failure\\nRestartSec=1s\\n' > /etc/systemd/system/${s}.service.d/override.conf; done && systemctl daemon-reload 2>/dev/null && systemctl reset-failed 2>/dev/null || true", stream=False)
+
             
         # Post-sync Action Triggers
         if args.install:

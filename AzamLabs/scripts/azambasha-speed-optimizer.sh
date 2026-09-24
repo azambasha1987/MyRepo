@@ -288,12 +288,13 @@ EOF
 sysctl -p /etc/sysctl.d/99-azambasha-performance.conf 2>/dev/null || sysctl --system 2>/dev/null || true
 echo "  [✔] 1024-Node file descriptor limits and kernel socket buffers applied"
 
-# 5. Restart Web & PHP Services
-echo "[*] Restarting web server and PHP-FPM daemons..."
-systemctl restart apache2 || service apache2 restart || true
+# 5. Reload Web & PHP Services (Graceful reload preserves session & prevents start-limit-hit)
+echo "[*] Reloading web server and PHP-FPM daemons..."
+systemctl reload apache2 2>/dev/null || systemctl restart apache2 2>/dev/null || true
 for PHP_FPM in $(systemctl list-units --type=service --state=running 2>/dev/null | grep -o 'php[0-9.]*-fpm' || true); do
-    systemctl restart "$PHP_FPM" || true
+    systemctl reload "$PHP_FPM" 2>/dev/null || systemctl restart "$PHP_FPM" 2>/dev/null || true
 done
+
 
 echo ""
 echo "============================================================"

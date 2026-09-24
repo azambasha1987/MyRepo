@@ -8,7 +8,7 @@
 #   sudo bash scripts/azambasha-sync-gui-version.sh [VERSION] [PACKAGE_VERSION]
 #
 # Examples:
-#   sudo bash scripts/azambasha-sync-gui-version.sh 6.8.79 6.8.79resolute1
+#   sudo bash scripts/azambasha-sync-gui-version.sh 6.8.83 6.8.83resolute1
 #   sudo bash scripts/azambasha-sync-gui-version.sh auto
 # ==============================================================================
 set -euo pipefail
@@ -33,7 +33,10 @@ TARGET_PKG="${2:-}"
 # Auto-detect latest release from repo or installed packages
 if [ "$TARGET_INPUT" = "auto" ] || [ -z "$TARGET_INPUT" ]; then
     BASE_DETECT=""
-    if [ -f "${REPO_ROOT}/docs/WEEKLY_IMPLEMENTATION_PLAN.md" ]; then
+    if [ -f "${REPO_ROOT}/docs/3_MONTHS_UPDATE_CHECK_PLAN.md" ]; then
+        BASE_DETECT="$(grep -oP '(?<=Implemented Package Version\*\*: `)[^`]+' "${REPO_ROOT}/docs/3_MONTHS_UPDATE_CHECK_PLAN.md" 2>/dev/null | head -n1 || true)"
+    fi
+    if [ -z "$BASE_DETECT" ] && [ -f "${REPO_ROOT}/docs/WEEKLY_IMPLEMENTATION_PLAN.md" ]; then
         BASE_DETECT="$(grep -oP '(?<=Implemented Package Version\*\*: `)[^`]+' "${REPO_ROOT}/docs/WEEKLY_IMPLEMENTATION_PLAN.md" 2>/dev/null | head -n1 || true)"
     fi
     if [ -z "$BASE_DETECT" ]; then
@@ -41,7 +44,7 @@ if [ "$TARGET_INPUT" = "auto" ] || [ -z "$TARGET_INPUT" ]; then
         if [ -n "$LATEST_DIR" ]; then
             BASE_DETECT="$(basename "$LATEST_DIR")"
         else
-            BASE_DETECT="6.8.79resolute1"
+            BASE_DETECT="6.8.83resolute1"
         fi
     fi
     TARGET_INPUT="$BASE_DETECT"

@@ -105,15 +105,15 @@ elif [ -f /opt/unetlab/html/login/index.html ]; then
     echo "  [✔] Login page default credentials set to admin / azam (footnote removed)"
 fi
 
-# 3. Update Database Admin Password to 'azam' and Version to Latest Release (6.8.79)
+# 3. Update Database Admin Password to 'azam' and Version to Latest Release (6.8.83)
 AZAM_HASH="aec7a491c6e8d1433b213e694f086222fe6fde75a17c379b7fc22472539ff8e1"
-SQL_UPDATE="UPDATE users SET password = '${AZAM_HASH}' WHERE username = 'admin'; INSERT INTO control (control_name, control_value) VALUES ('ctrl_version','6.8.79') ON DUPLICATE KEY UPDATE control_value = '6.8.79';"
+SQL_UPDATE="UPDATE users SET password = '${AZAM_HASH}' WHERE username = 'admin'; INSERT INTO control (control_name, control_value) VALUES ('ctrl_version','6.8.83') ON DUPLICATE KEY UPDATE control_value = '6.8.83';"
 mysql -u pnetlab -ppnetlab pnetlab_db -e "$SQL_UPDATE" 2>/dev/null || mysql pnetlab_db -e "$SQL_UPDATE" 2>/dev/null || true
 if [ -f "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" ]; then
-    bash "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" 6.8.79 6.8.79resolute1 2>/dev/null || true
+    bash "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" 6.8.83 6.8.83resolute1 2>/dev/null || true
 fi
 echo "  [✔] Database Web Admin password updated to 'azam' (SHA-256)"
-echo "  [✔] Database control version updated to '6.8.79'"
+echo "  [✔] Database control version updated to '6.8.83'"
 
 # 4. Update Linux System Passwords (root & pnet to 'azam')
 echo "root:azam" | chpasswd 2>/dev/null || true

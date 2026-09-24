@@ -395,6 +395,118 @@ def get_best_qemu_image(vendor="cisco", preferred=""):
     return preferred or DEFAULT_QEMU_CSR
 
 
+# ==============================================================================
+# Workstream 2: Intelligent Vendor Fallback Alias Table & Translation Engine
+# ==============================================================================
+VENDOR_FALLBACK_ALIASES = {
+    # Cisco Routing & Switching
+    "vios-l2": {"family": "cisco", "template": "viosl2", "fallback_type": "iol", "is_l2": True, "icon": "Switch.png"},
+    "viosl2": {"family": "cisco", "template": "viosl2", "fallback_type": "iol", "is_l2": True, "icon": "Switch.png"},
+    "iosvl2": {"family": "cisco", "template": "viosl2", "fallback_type": "iol", "is_l2": True, "icon": "Switch.png"},
+    "vios": {"family": "cisco", "template": "vios", "fallback_type": "iol", "is_l2": False, "icon": "Router.png"},
+    "iosv": {"family": "cisco", "template": "vios", "fallback_type": "iol", "is_l2": False, "icon": "Router.png"},
+    "csr1000v": {"family": "cisco", "template": "csr1000v", "fallback_type": "qemu", "is_l2": False, "icon": "Router.png"},
+    "c8000v": {"family": "cisco", "template": "c8000v", "fallback_type": "qemu", "is_l2": False, "icon": "Router.png"},
+    "cat9kv": {"family": "cisco", "template": "cat9kv", "fallback_type": "qemu", "is_l2": True, "icon": "Switch.png"},
+    "xrd": {"family": "cisco", "template": "xrd", "fallback_type": "qemu", "is_l2": False, "icon": "Router.png"},
+    "asav": {"family": "cisco", "template": "asav", "fallback_type": "qemu", "is_l2": False, "icon": "Firewall.png"},
+    "iol": {"family": "cisco", "template": "iol", "fallback_type": "iol", "is_l2": False, "icon": "Router.png"},
+    "dynamips": {"family": "cisco", "template": "dynamips", "fallback_type": "iol", "is_l2": False, "icon": "Router.png"},
+
+    # Arista Networks
+    "veos": {"family": "arista", "template": "veos", "fallback_type": "qemu", "is_l2": True, "icon": "Switch.png"},
+    "arista": {"family": "arista", "template": "veos", "fallback_type": "qemu", "is_l2": True, "icon": "Switch.png"},
+
+    # Juniper Networks
+    "vmx": {"family": "juniper", "template": "vmx", "fallback_type": "qemu", "is_l2": False, "icon": "Router.png"},
+    "vsrx": {"family": "juniper", "template": "vsrx", "fallback_type": "qemu", "is_l2": False, "icon": "Firewall.png"},
+    "vqfx": {"family": "juniper", "template": "vqfx", "fallback_type": "qemu", "is_l2": True, "icon": "Switch.png"},
+    "juniper": {"family": "juniper", "template": "vsrx", "fallback_type": "qemu", "is_l2": False, "icon": "Router.png"},
+
+    # Fortinet FortiGate
+    "fortinet": {"family": "fortinet", "template": "fortinet", "fallback_type": "qemu", "is_l2": False, "icon": "Firewall.png"},
+    "fortigate": {"family": "fortinet", "template": "fortinet", "fallback_type": "qemu", "is_l2": False, "icon": "Firewall.png"},
+
+    # Palo Alto Networks
+    "paloalto": {"family": "paloalto", "template": "paloalto", "fallback_type": "qemu", "is_l2": False, "icon": "Firewall.png"},
+    "panos": {"family": "paloalto", "template": "paloalto", "fallback_type": "qemu", "is_l2": False, "icon": "Firewall.png"},
+
+    # Compute / Linux / Windows
+    "linux": {"family": "linux", "template": "linux", "fallback_type": "qemu", "is_l2": False, "icon": "Server.png"},
+    "ubuntu": {"family": "linux", "template": "linux", "fallback_type": "qemu", "is_l2": False, "icon": "Server.png"},
+    "alpine": {"family": "linux", "template": "linux", "fallback_type": "qemu", "is_l2": False, "icon": "Server.png"},
+    "server": {"family": "linux", "template": "linux", "fallback_type": "qemu", "is_l2": False, "icon": "Server.png"},
+    "desktop": {"family": "linux", "template": "linux", "fallback_type": "qemu", "is_l2": False, "icon": "Desktop.png"},
+    "windows": {"family": "windows", "template": "win", "fallback_type": "qemu", "is_l2": False, "icon": "Desktop.png"},
+    "win": {"family": "windows", "template": "win", "fallback_type": "qemu", "is_l2": False, "icon": "Desktop.png"}
+}
+
+def _detect_template_from_name(name):
+    lower = name.lower()
+    for k in ("csr1000v", "c8000v", "cat9kv", "xrd", "viosl2", "vios", "veos", "vsrx", "vmx", "vqfx", "fortinet", "paloalto", "linux", "win"):
+        if k in lower:
+            return k
+    return "qemu"
+
+def translate_vendor_image(raw_name, default_type="qemu", is_l2=False):
+    """
+    Intelligent Vendor Image Translation (Workstream 2)
+    Translates arbitrary community image names (e.g. 'vios-adventerprisek9-m.vmdk.SPA.156-2.T')
+    into valid, installed hypervisor images.
+    Returns: (node_type, template, image_name, icon)
+    """
+    clean_name = str(raw_name or "").strip()
+    lower_name = clean_name.lower()
+
+    # 1. Exact match in installed QEMU images
+    if clean_name in LOCAL_IMAGES["qemu"]:
+        return "qemu", _detect_template_from_name(clean_name), clean_name, ("Switch.png" if is_l2 else "Router.png")
+
+    # 2. Exact match in installed IOL images
+    if clean_name in LOCAL_IMAGES["iol_l3"]:
+        return "iol", "iol", clean_name, "Router.png"
+    if clean_name in LOCAL_IMAGES["iol_l2"]:
+        return "iol", "iol", clean_name, "Switch.png"
+
+    # 3. Match against Vendor Alias Table
+    matched_alias = None
+    for alias_key, alias_info in VENDOR_FALLBACK_ALIASES.items():
+        if alias_key in lower_name:
+            matched_alias = alias_info
+            break
+
+    if matched_alias:
+        family = matched_alias["family"]
+        template = matched_alias["template"]
+        icon = matched_alias.get("icon", "Router.png")
+        fb_type = matched_alias.get("fallback_type", "qemu")
+        node_is_l2 = is_l2 or matched_alias.get("is_l2", False)
+
+        # Check if hypervisor has an installed QEMU matching this family or template
+        matching_qemu = [q for q in LOCAL_IMAGES["qemu"] if family in q.lower() or template in q.lower()]
+        if matching_qemu:
+            return "qemu", template, matching_qemu[0], icon
+
+        # If Cisco family and no matching QEMU image installed, seamlessly fall back to IOL
+        if family == "cisco":
+            best_iol = get_best_iol_image(node_is_l2)
+            return "iol", "iol", best_iol, ("Switch.png" if node_is_l2 else "Router.png")
+
+        # For Linux/compute
+        if family == "linux":
+            best_img = LOCAL_IMAGES["qemu"][0] if LOCAL_IMAGES["qemu"] else DEFAULT_LINUX_IMAGE
+            return "qemu", "linux", best_img, "Server.png"
+
+        # Default fallback for other vendors
+        fallback_img = LOCAL_IMAGES["qemu"][0] if LOCAL_IMAGES["qemu"] else clean_name
+        return "qemu", template, fallback_img, icon
+
+    # 4. Generic fallback based on L2/L3 role
+    if is_l2 or "switch" in lower_name or "l2" in lower_name:
+        return "iol", "iol", get_best_iol_image(True), "Switch.png"
+    return "iol", "iol", get_best_iol_image(False), "Router.png"
+
+
 # ── Simple Fallback YAML Parser (handles CML2 YAML without PyYAML dependency) ──
 def simple_yaml_parse(text):
     try:
@@ -878,27 +990,17 @@ def convert_cml2_yaml_to_pnetlab(yaml_content_or_dict, source_url, lab_name_over
         is_l2 = any(k in node_def for k in ("l2", "switch", "unmanaged"))
         is_server = any(k in node_def for k in ("server", "alpine", "desktop", "linux", "host", "ubuntu"))
 
+        n_type, n_tpl, n_img, icon = translate_vendor_image(node_def, default_type=("linux" if is_server else "iol"), is_l2=is_l2)
+
         if is_server:
-            n_type = "qemu"
-            n_tpl = "linux"
-            n_img = get_best_qemu_image("linux", DEFAULT_LINUX_IMAGE)
-            icon = "Server.png"
             ram = 512
             eth_count = 2
             ser_count = 0
         elif is_l2:
-            n_type = "iol"
-            n_tpl = "iol"
-            n_img = get_best_iol_image(True)
-            icon = "Switch.png"
             ram = 256
             eth_count = 8
             ser_count = 0
         else:
-            n_type = "iol"
-            n_tpl = "iol"
-            n_img = get_best_iol_image(False)
-            icon = "Router.png"
             ram = 256
             eth_count = 4
             ser_count = 2
@@ -1541,8 +1643,27 @@ def fix_existing_unl_file(file_path):
         # 2. Fix illegal node types (iol-l2 -> iol)
         content = content.replace('type="iol-l2"', 'type="iol"')
 
-        # 3. Verify XML syntax
-        ET.fromstring(content)
+        # 3. Workstream 2: Intelligent Vendor Image Translation
+        try:
+            root = ET.fromstring(content)
+            for node in root.findall(".//node"):
+                raw_img = node.get("image", "")
+                node_type = node.get("type", "qemu")
+                template = node.get("template", "")
+                is_l2 = "l2" in template.lower() or "switch" in template.lower()
+
+                res_type, res_tpl, res_img, res_icon = translate_vendor_image(raw_img or template, node_type, is_l2)
+                if res_img and res_img != raw_img:
+                    node.set("image", res_img)
+                if res_tpl and (not template or template == "qemu"):
+                    node.set("template", res_tpl)
+                if res_type and node_type != res_type and (node_type == "qemu" and res_type == "iol"):
+                    node.set("type", res_type)
+
+            content = ET.tostring(root, encoding="utf-8").decode("utf-8")
+        except Exception:
+            # Fallback verification if XML has customized namespaces
+            ET.fromstring(content)
 
         with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)

@@ -16,7 +16,7 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
     echo "Options:"
     echo "  1    Permanent Session Fix (Never-Logout, 10-Year Session)"
     echo "  2    Lab Export & APT Sources Fix (zip/unzip, nested labs)"
-    echo "  3    512MB Upload Limits & Docker Routing Fix"
+    echo "  3    512MB Upload Limits, Docker CE Engine & Packet Capture Subsystem"
     echo "  4    SSL IP-SAN Certificate, HTML5 Console & Cloud Bridge Fix"
     echo "  5    Database SQL Mode, 1M Limits, Logrotate & THP Deep-Fix"
     echo "  6    High-Performance Speed Optimizer Suite (KSM, OPcache, Gzip, Sysctl)"
@@ -69,7 +69,7 @@ echo "    Azam Basha Master Administration & Deployment Tool      "
 echo "============================================================"
 echo "1) Permanent Session Fix (Never-Logout, 10-Year Session)"
 echo "2) Lab Export & APT Sources Fix (zip/unzip, nested labs)"
-echo "3) 512MB Upload Limits & Docker IP Routing Fix"
+echo "3) 512MB Upload Limits, Docker CE Engine & Packet Capture Subsystem"
 echo "4) SSL IP-SAN Certificate, HTML5 Console & Cloud Bridge Fix"
 echo "5) Database SQL Mode, 1M Limits, Logrotate & THP Deep-Fix"
 echo "6) High-Performance Speed Optimizer (KSM, OPcache, Gzip, Sysctl)"
@@ -93,7 +93,7 @@ echo "23) Soft-RoCE (RXE) & RDMA Dataplane Controller"
 echo "24) [Retired] Upstream Codeberg Intelligence Scanner"
 echo "25) Apply Full SATELLITE Worker Node Optimization Suite"
 echo "26) Reset Web-GUI & Cluster Database Credentials (admin / azam)"
-echo "27) Synchronize Web-GUI Version to Latest Release (v6.8.79)"
+echo "27) Synchronize Web-GUI Version to Latest Release (v6.8.83)"
 echo "28) Exit"
 echo "============================================================"
 
@@ -226,22 +226,27 @@ case "$CHOICE" in
                 bash "${SCRIPT_DIR}/azambasha-roce-engine.sh" || true
             fi
             echo ""
-            echo "--> [8/11] Applying High-Density Heavy Node Optimizer (Worker Mode)..."
+            echo "--> [8/12] Applying High-Density Heavy Node Optimizer (Worker Mode)..."
             if [ -f "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" ]; then
                 bash "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" --satellite || true
             fi
             echo ""
-            echo "--> [9/11] Auditing Virtual Disks with Image Doctor..."
+            echo "--> [9/12] Ensuring Docker Subsystem, IP Forwarding & Image Watcher..."
+            if [ -f "${SCRIPT_DIR}/azambasha-upload-and-docker-fix.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-upload-and-docker-fix.sh" || true
+            fi
+            echo ""
+            echo "--> [10/12] Auditing Virtual Disks with Image Doctor..."
             if [ -f "${SCRIPT_DIR}/azambasha-image-doctor.sh" ]; then
                 bash "${SCRIPT_DIR}/azambasha-image-doctor.sh" --fix || true
             fi
             echo ""
-            echo "--> [10/11] Fixing File Permissions, TPM Sockets & Node Locks..."
+            echo "--> [11/12] Fixing File Permissions, TPM Sockets & Node Locks..."
             if [ -f "${SCRIPT_DIR}/azambasha-fix-permissions.sh" ]; then
                 bash "${SCRIPT_DIR}/azambasha-fix-permissions.sh" || true
             fi
             echo ""
-            echo "--> [11/11] Confirming Authoritative Credentials (azam) & Banner..."
+            echo "--> [12/12] Confirming Authoritative Credentials (azam) & Banner..."
             echo "root:azam" | chpasswd 2>/dev/null || true
             if [ -f "${SCRIPT_DIR}/azambasha-update-banner.sh" ]; then
                 bash "${SCRIPT_DIR}/azambasha-update-banner.sh" || true
@@ -421,22 +426,27 @@ case "$CHOICE" in
             bash "${SCRIPT_DIR}/azambasha-roce-engine.sh" || true
         fi
         echo ""
-        echo "--> [8/11] Applying High-Density Heavy Node Optimizer (Worker Mode)..."
+        echo "--> [8/13] Applying High-Density Heavy Node Optimizer (Worker Mode)..."
         if [ -f "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" ]; then
             bash "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" --satellite || true
         fi
         echo ""
-        echo "--> [9/11] Auditing Virtual Disks with Image Doctor..."
+        echo "--> [9/13] Ensuring Docker Subsystem, IP Forwarding & Image Watcher..."
+        if [ -f "${SCRIPT_DIR}/azambasha-upload-and-docker-fix.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-upload-and-docker-fix.sh" || true
+        fi
+        echo ""
+        echo "--> [10/13] Auditing Virtual Disks with Image Doctor..."
         if [ -f "${SCRIPT_DIR}/azambasha-image-doctor.sh" ]; then
             bash "${SCRIPT_DIR}/azambasha-image-doctor.sh" --fix || true
         fi
         echo ""
-        echo "--> [10/11] Fixing File Permissions, TPM Sockets & Node Locks..."
+        echo "--> [11/13] Fixing File Permissions, TPM Sockets & Node Locks..."
         if [ -f "${SCRIPT_DIR}/azambasha-fix-permissions.sh" ]; then
             bash "${SCRIPT_DIR}/azambasha-fix-permissions.sh" || true
         fi
         echo ""
-        echo "--> [11/12] Confirming Authoritative Credentials (azam) & Banner..."
+        echo "--> [12/13] Confirming Authoritative Credentials (azam) & Banner..."
         echo "root:azam" | chpasswd 2>/dev/null || true
         if [ -f "${SCRIPT_DIR}/azambasha-update-banner.sh" ]; then
             bash "${SCRIPT_DIR}/azambasha-update-banner.sh" || true

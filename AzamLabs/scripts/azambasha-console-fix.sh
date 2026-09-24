@@ -73,6 +73,10 @@ else
             if grep -q "ProxyPass /guacamole" "$PNETLAB_CONF"; then
                 sed -i '/ProxyPass \/guacamole/a\        ProxyPassReverse /guacamole http://127.0.0.1:8080/guacamole\n        ProxyPreserveHost On\n        RequestHeader set Upgrade $http_upgrade\n        RequestHeader set Connection "upgrade"' "$PNETLAB_CONF"
             fi
+            # Upstream 6.8.83 Guac-Lite Port 8081 WebSocket Proxy
+            if ! grep -q "ProxyPass /guac/" "$PNETLAB_CONF"; then
+                sed -i '/<\/VirtualHost>/i\        # Upstream 6.8.83 Guac-Lite WebSocket Proxy\n        ProxyPass /guac/ ws://127.0.0.1:8081/ upgrade=websocket\n        ProxyPassReverse /guac/ ws://127.0.0.1:8081/\n' "$PNETLAB_CONF"
+            fi
             echo -e "  ${GREEN}[✔ DONE]${RESET} WebSocket upgrade headers injected into ${PNETLAB_CONF}."
             FIXES_APPLIED=$((FIXES_APPLIED+1))
         fi
@@ -92,8 +96,8 @@ else
     fi
 fi
 
-# === 4. guacd Daemon Health Check ===
-echo -e "\n[4/6] ${BOLD}Guacamole Daemon (guacd) Health${RESET}"
+# === 4. Guacamole Daemons (guacd & pnet-guac-lite / GUAC_CRYPT_KEY) ===
+echo -e "\n[4/6] ${BOLD}Guacamole Daemons & 6.8.83 Crypto Key Pipeline${RESET}"
 if systemctl is-active guacd &>/dev/null; then
     GUACD_PORT=$(ss -tlnp 2>/dev/null | grep guacd | awk '{print $4}' | cut -d':' -f2 | head -n1 || echo "4822")
     echo -e "  ${GREEN}[✔ OK]${RESET} guacd is active and listening on port ${GUACD_PORT:-4822}."
@@ -103,6 +107,38 @@ else
         systemctl enable --now guacd 2>/dev/null || true
         echo -e "  ${GREEN}[✔ DONE]${RESET} guacd started and enabled."
         FIXES_APPLIED=$((FIXES_APPLIED+1))
+    fi
+fi
+
+# Guac-Lite 6.8.83 GUAC_CRYPT_KEY pre-seeding (fixes Issue #35 / #19)
+GUAC_ENV_DIR="/etc/pnet-webconsole"
+GUAC_ENV_FILE="${GUAC_ENV_DIR}/guac.env"
+if [ -d "$GUAC_ENV_DIR" ] || [ -f "/lib/systemd/system/pnet-guac-lite.service" ]; then
+    mkdir -p "$GUAC_ENV_DIR"
+    if [ ! -f "$GUAC_ENV_FILE" ] || [ ! -s "$GUAC_ENV_FILE" ]; then
+        echo -e "  ${YELLOW}[⚠ FIXING]${RESET} Missing GUAC_CRYPT_KEY environment file (Issue #35/#19 fix)..."
+        if [ "$MODE" = "--fix" ]; then
+            KEY=$(openssl rand -base64 32 2>/dev/null || head -c 32 /dev/urandom | base64)
+            printf 'GUAC_CRYPT_KEY=%s\n' "$KEY" > "$GUAC_ENV_FILE"
+            chmod 0600 "$GUAC_ENV_FILE"
+            chown root:root "$GUAC_ENV_FILE" 2>/dev/null || true
+            echo -e "  ${GREEN}[✔ DONE]${RESET} Generated secure 32-byte GUAC_CRYPT_KEY in ${GUAC_ENV_FILE}."
+            FIXES_APPLIED=$((FIXES_APPLIED+1))
+        fi
+    else
+        chmod 0600 "$GUAC_ENV_FILE" 2>/dev/null || true
+        echo -e "  ${GREEN}[✔ OK]${RESET} GUAC_CRYPT_KEY environment file secured (0600)."
+    fi
+
+    if systemctl is-active pnet-guac-lite &>/dev/null; then
+        echo -e "  ${GREEN}[✔ OK]${RESET} pnet-guac-lite service is active (port 8081)."
+    elif [ -f "/lib/systemd/system/pnet-guac-lite.service" ]; then
+        echo -e "  ${YELLOW}[⚠ FIXING]${RESET} pnet-guac-lite service installed but inactive."
+        if [ "$MODE" = "--fix" ]; then
+            systemctl enable --now pnet-guac-lite 2>/dev/null || true
+            echo -e "  ${GREEN}[✔ DONE]${RESET} pnet-guac-lite started and enabled."
+            FIXES_APPLIED=$((FIXES_APPLIED+1))
+        fi
     fi
 fi
 

@@ -84,6 +84,20 @@ def probe_plan_and_ledger():
     else:
         return False, [f"Target email {TARGET_EMAIL} missing from plan"]
 
+    # Check 5-Step Governance SOP
+    if "The 5-Step Update Check & Governance Workflow" in content and "Step 1: Incremental Issue Tracking" in content and "Step 2: Tri-Virtualization Feature Scan" in content and "Step 3: Pre-Change Research Digest" in content and "Step 4: Human-in-the-Loop Confirmation" in content and "Step 5: One-Step Turnkey Update Command" in content:
+        details.append("5-Step Update Check & Governance SOP (Tracker -> IOL/QEMU/Docker -> Email -> Confirmation -> One-Step Update) verified.")
+    else:
+        return False, ["5-Step Governance Workflow missing or incomplete in plan"]
+
+    # Check ONE_STEP_UPDATE_COMMANDS.md and azambasha-update.sh exist
+    one_step_doc = os.path.join(BASE_DIR, "docs", "ONE_STEP_UPDATE_COMMANDS.md")
+    update_script = os.path.join(SCRIPT_DIR, "azambasha-update.sh")
+    if os.path.isfile(one_step_doc) and os.path.isfile(update_script):
+        details.append("ONE_STEP_UPDATE_COMMANDS.md and azambasha-update.sh verified for Master & Satellite.")
+    else:
+        return False, ["ONE_STEP_UPDATE_COMMANDS.md or azambasha-update.sh missing"]
+
     return True, details
 
 def probe_notification_engine():
@@ -209,6 +223,35 @@ def probe_ops_dashboard():
 
     return True, details
 
+def probe_docker_subsystem():
+    plan_path = os.path.join(BASE_DIR, "docs", "3_MONTHS_UPDATE_CHECK_PLAN.md")
+    audit_path = os.path.join(SCRIPT_DIR, "azambasha-quarterly-audit.sh")
+    docker_fix = os.path.join(SCRIPT_DIR, "azambasha-upload-and-docker-fix.sh")
+
+    details = []
+    with open(plan_path, "r", encoding="utf-8") as f:
+        plan_content = f.read()
+
+    if "Workstream 7: Docker Appliance & Container Subsystem Audit" in plan_content:
+        details.append("Workstream 7: Docker Appliance & Container Subsystem documented in plan.")
+    else:
+        return False, ["Workstream 7 missing in 3_MONTHS_UPDATE_CHECK_PLAN.md"]
+
+    with open(audit_path, "r", encoding="utf-8") as f:
+        audit_content = f.read()
+
+    if "audit_docker_subsystem" in audit_content:
+        details.append("audit_docker_subsystem() engine active in quarterly audit script.")
+    else:
+        return False, ["audit_docker_subsystem missing in azambasha-quarterly-audit.sh"]
+
+    if os.path.isfile(docker_fix):
+        details.append("azambasha-upload-and-docker-fix.sh present with IP forwarding & bridge policies.")
+    else:
+        return False, ["azambasha-upload-and-docker-fix.sh missing"]
+
+    return True, details
+
 def main():
     print("================================================================================")
     print("      AzamLabs 3-Months Update Check Plan — Automated Dry-Run Test Suite        ")
@@ -222,6 +265,7 @@ def main():
         (4, "Turnkey Audit Runner (azam-audit) & Rollback", probe_audit_runner),
         (5, "Issue #34 Canvas Viewport & Zoom Retention Hook", probe_canvas_viewport_retention),
         (6, "AzamLabs Operations Center Audit Card", probe_ops_dashboard),
+        (7, "Docker Container Subsystem & Official Images", probe_docker_subsystem),
     ]
 
     passed = 0

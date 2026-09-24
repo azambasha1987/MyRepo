@@ -2113,6 +2113,44 @@
     }
   })();
 
+  /* ── Issue #43 Hardening: Synchronized Link & Endpoint Node Glow ── */
+  (function initLinkNodeGlowHook() {
+    var style = document.createElement('style');
+    style.id = 'azam-node-glow-style';
+    style.textContent = '.azam-node-glow-active { filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.95)) drop-shadow(0 0 4px #0284c7) !important; transition: filter 0.15s ease-in-out !important; }';
+    if (!document.getElementById('azam-node-glow-style') && document.head) {
+      document.head.appendChild(style);
+    }
+
+    document.addEventListener('mouseover', function (ev) {
+      var target = ev.target && ev.target.closest ? ev.target.closest('path.link, .link-line, g.link, [data-link-id], line') : null;
+      if (!target) return;
+      var srcId = target.getAttribute('data-source') || target.getAttribute('data-source-id');
+      var dstId = target.getAttribute('data-target') || target.getAttribute('data-target-id');
+      if (!srcId && !dstId && target.id) {
+        var parts = target.id.split('_');
+        if (parts.length >= 3) { srcId = parts[1]; dstId = parts[2]; }
+      }
+      if (srcId) {
+        var srcNode = document.querySelector('#node' + srcId + ', [data-node-id="' + srcId + '"], #node_' + srcId);
+        if (srcNode) srcNode.classList.add('azam-node-glow-active');
+      }
+      if (dstId) {
+        var dstNode = document.querySelector('#node' + dstId + ', [data-node-id="' + dstId + '"], #node_' + dstId);
+        if (dstNode) dstNode.classList.add('azam-node-glow-active');
+      }
+    }, true);
+
+    document.addEventListener('mouseout', function (ev) {
+      var target = ev.target && ev.target.closest ? ev.target.closest('path.link, .link-line, g.link, [data-link-id], line') : null;
+      if (!target) return;
+      var glowing = document.querySelectorAll('.azam-node-glow-active');
+      for (var i = 0; i < glowing.length; i++) {
+        glowing[i].classList.remove('azam-node-glow-active');
+      }
+    }, true);
+  })();
+
   /* ── Register with App Router ───────────────────────────── */
   App.register('azam-features', {
     title: 'AzamLabs',

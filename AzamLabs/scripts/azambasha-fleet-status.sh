@@ -53,10 +53,10 @@ MTU9000_COUNT=$(ip link show 2>/dev/null | grep -c "mtu 9000" || true)
 BPDU_MASK=$(cat /sys/class/net/pnet0/bridge/group_fwd_mask 2>/dev/null || echo "N/A")
 
 # Version
-VERSION_STR="v6.8.79 (6.8.79resolute1)"
+VERSION_STR="v6.8.83 (6.8.83resolute1)"
 if [ -f "/opt/unetlab/html/includes/version.php" ]; then
-    VERSION_VAL=$(grep -oP "(?<=define\('PNET_RELEASE', ')[^']+" /opt/unetlab/html/includes/version.php 2>/dev/null || echo "v6.8.79")
-    PKG_VAL=$(grep -oP "(?<=define\('PNET_PACKAGE_VERSION', ')[^']+" /opt/unetlab/html/includes/version.php 2>/dev/null || echo "6.8.79resolute1")
+    VERSION_VAL=$(grep -oP "(?<=define\('PNET_RELEASE', ')[^']+" /opt/unetlab/html/includes/version.php 2>/dev/null || echo "v6.8.83")
+    PKG_VAL=$(grep -oP "(?<=define\('PNET_PACKAGE_VERSION', ')[^']+" /opt/unetlab/html/includes/version.php 2>/dev/null || echo "6.8.83resolute1")
     if [ -n "$VERSION_VAL" ]; then
         VERSION_STR="${VERSION_VAL} (${PKG_VAL})"
     fi

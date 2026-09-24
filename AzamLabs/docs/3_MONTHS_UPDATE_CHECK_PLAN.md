@@ -19,6 +19,8 @@
 >    - **Authoritative Identity**: Root password **`azam`** and custom AzamLabs branding remain canonical.
 > 5. **Pre-Flight Syntax & Sanity Probes**:
 >    - Every shell script is verified with `bash -n`, Python scripts compiled with `py_compile`, and JavaScript validated with `node -c` before execution.
+> 6. **Dual-Node Parity Guarantee (Master & Satellite Synchronization)**:
+>    - All future updates, upstream issue fixes, kernel optimizations, appliance templates, and security hardening MUST be applied symmetrically to both Master Controller and Satellite Worker nodes. Worker nodes must never drift in kernel parameters, MTU, or template definitions.
 
 ---
 
@@ -38,6 +40,132 @@
 
 ---
 
+## 📋 Standard Operating Procedure: The 5-Step Update Check & Governance Workflow
+
+All future quarterly update checks, automated scans, and upstream evaluations must strictly adhere to this mandatory 5-step governance pipeline. **Zero code modifications are permitted until Step 4 (explicit confirmation) is satisfied, followed by Step 5 for turnkey deployment.**
+
+```mermaid
+graph TD
+    A["Start 3-Month Update Check"] --> B["Step 1: Check Incremental Issues Tracker"]
+    B --> C{"New Issues Found?"}
+    C -->|No| D["Log: Zero New Issues"]
+    C -->|Yes| E["Pull Fixes & Cross-Audit with AzamLabs Code"]
+    E --> F["Filter: Add ONLY If Needed & Hardened"]
+    D --> G["Step 2: Tri-Virtualization & Container Scan (IOL, QEMU, Docker & New Containers)"]
+    F --> G
+    G --> H["Scan Latest PNetLab for IOL, QEMU, Docker Features & New Containers"]
+    H --> I["Optimize Code Specifically for AzamLabs Architecture"]
+    I --> J["Step 3: Pre-Change Research Digest to Email"]
+    J --> K["Dispatch Detailed Research Email to azambasha1987@gmail.com"]
+    K --> L["Step 4: Await Explicit Human Confirmation"]
+    L --> M{"Approved by azambasha1987@gmail.com?"}
+    M -->|Pending / Revision Requested| L
+    M -->|Confirmed| N["Step 5: One-Step Update Execution"]
+    N --> O["Master Node: sudo azam-update --master"]
+    N --> P["Satellite Node: sudo azam-update --satellite"]
+    O --> Q["Run 7/7 Probes in Dry-Test Suite"]
+    P --> Q
+```
+
+### Step 1: Incremental Issue Tracking & Selective Fix Ingestion
+- **Persistent Issue Tracker**: Maintain a continuous historical tracker of all issues audited from previous 3-month update check plan runs. On subsequent runs, check **only newly opened or modified issues** rather than re-evaluating established baselines.
+  - *Current Baseline*: Issues #1 through #34 cataloged and resolved in the Upstream Issues Ledger.
+  - *Next Scope*: Evaluate only newly reported issues (Issue 35 and above, or updated states on previous open items).
+- **Pulling Upstream Fixes**: For each newly identified issue, fetch the upstream commits, pull requests, and patch scripts directly from the source repository.
+- **Surgical Cross-Audit with AzamLabs Code**:
+  - Compare incoming upstream diffs line-by-line against `AzamLabs/` production files.
+  - Assess whether AzamLabs is already immune or if AzamLabs provides a superior custom implementation.
+- **Selective Ingestion Filter (Add ONLY if Needed)**:
+  - **REJECT**: Any upstream fix that introduces unvetted regressions, breaks running nodes, forces `root:pnet`, resets MTU from 9000 to 1500, or degrades Ultra-KSM RAM deduplication.
+  - **ADAPT**: If upstream addresses a genuine bug (e.g., canvas zoom reset, veth drop) but does so with fragile code, rewrite and optimize the fix to adhere strictly to the AzamLabs Zero-Glitch Protocol.
+  - **ADOPT**: If upstream provides a clean, harmless, non-breaking fix, queue it for addition.
+
+### Step 2: Tri-Virtualization Feature Scan & Tailored Optimization (IOL, QEMU, Docker & New Containers)
+Systematically audit the latest version of PNetLab for new features, hardware abstractions, software appliances, and newly introduced containers across the core virtualization layers:
+1. **Cisco IOL (IOS on Linux) Subsystem**:
+   - Check for new IOL 32-bit/64-bit wrapper scripts, dynamic linker updates, memory allocation tuning (e.g. 256MB–1024MB), NVRAM/startup-config persistence fixes, and iourc license handling.
+2. **QEMU Subsystem**:
+   - Scan upstream template libraries (`html/templates/intel/*.yml`, `html/templates/amd/*.yml`) for newly supported vendor appliances (e.g., Cisco 8000, Cat9000, Arista EOS, Juniper cPTX, Fortinet, Checkpoint, Windows Server, Linux).
+   - Inspect hypervisor execution flags: multi-disk storage bus options (`virtioc`, `virtio-blk-pci`), UEFI SMM (`smm=on`), CPU model flags (`host-passthrough`), and TPM 2.0 socket parameters.
+3. **Docker Subsystem & New Container Ingestion**:
+   - **Discover & Catalog New Containers**: Scan upstream releases, Docker Hub repositories (`rspnet/*`, `pnetlab/*`), and community catalogs for newly released official container images:
+     - In-browser live packet capture container (`rspnet/pnet-capture-web:latest` $\rightarrow$ tagged as `pnet-capture-web:1.0`).
+     - Microservices and routing engines (e.g., `pnetlab/frr`, BGP/OSPF testing containers).
+     - Network troubleshooting and diagnostic containers (e.g., `pnetlab/network-multitool`, curl/scapy/nmap test pods).
+     - Lightweight endpoint and server appliances (e.g., Alpine Linux, Ubuntu desktop, Kali, Debian minimal).
+   - **Automated Container Preloading & Registry Sync**:
+     - Pre-pull and warm container images so they are immediately available on link actions without user wait times.
+     - Ensure `/opt/unetlab/addons/docker/` and `pnetlab-docker-image-watcher.service` (inotify-based) dynamically detect, load, and catalog `.tar` / `.tar.gz` image drops directly into the Web-GUI.
+   - **Template & Console Generation**:
+     - Ensure corresponding Docker node template definitions (`intel/docker.yml`, `amd/docker.yml`, or custom container profiles) are generated with optimal CPU, memory (default 256MB), network interfaces, and console access modes (`http`, `telnet`, or `ssh`).
+   - **Kernel Forwarding & Traffic Animation Rules**:
+     - Verify kernel packet forwarding (`net.ipv4.ip_forward = 1`, `net.ipv6.conf.all.forwarding = 1`, `net.ipv4.conf.all.proxy_arp = 1`), bridge promiscuous mode, and `iptables -P FORWARD ACCEPT` to eliminate container packet drops.
+     - Ensure dynamic link traffic glow animations and frame counters hook seamlessly across `veth*` container interfaces.
+- **AzamLabs Optimization Rule**:
+  - Never blindly copy-paste upstream implementations.
+  - Optimize all candidate code and container configurations specifically for AzamLabs: integrate with **Ultra-KSM 4KB RAM deduplication** (65–80% savings), **Silicon Dataplane MTU 9000 jumbo frames**, **CPU Governor** (`halt_poll_ns=0`), **Pure Black Dark Mode** aesthetics, and **Authoritative `root:azam` credentials**.
+  - Enforce symmetrical availability across **both Master Controller and Satellite Worker nodes**.
+
+### Step 3: Pre-Change Research Digest & Direct Email Dispatch
+- **Mandatory Pre-Mutation Email Gate**: Before making ANY changes, modifying code, or applying fixes to AzamLabs, compile and send a comprehensive research briefing email directly to:
+  **`azambasha1987@gmail.com`**
+- **Required Email Content Structure**:
+  1. **Executive Research Summary**: Current upstream release, git commit hash, and overall health status.
+  2. **Step 1 Delta Analysis (What is New in Issues)**: Summary of newly detected issues (Issue 35+), upstream proposed fixes, and AzamLabs disposition (Adopt, Adapt, or Reject).
+  3. **Step 2 Tri-Virtualization & Container Discoveries (What is New in IOL, QEMU, Docker & Containers)**: Inventory of newly discovered IOL features, QEMU appliance templates, and Docker container images/services.
+  4. **Proposed Additions & AzamLabs Optimizations**: Exact files to be created or modified, complete with architectural enhancements tailored for AzamLabs.
+  5. **Technical Justification ("Why")**: In-depth explanation of why each addition is needed, what problem it solves, how it benefits the cluster, and why any rejected upstream items were excluded.
+  6. **Safeguard Verification**: Snapshot checkpoint details and 1-command rollback instructions.
+
+### Step 4: Human-in-the-Loop Confirmation Gate
+- **Enforced Execution Pause**: The assistant or automated audit engine must **NEVER** apply changes autonomously. Execution halts until **explicit written confirmation and approval** is received from **azambasha1987@gmail.com** (via email reply or interactive chat prompt).
+- **Post-Confirmation Transition**: Once approval is verified, proceed immediately to **Step 5** for single-command execution.
+
+### Step 5: One-Step Turnkey Update Command Execution (Master & Satellite)
+Deploy approved updates and architecture optimizations across cluster nodes using canonical 1-step commands. *(Full reference guide: [ONE_STEP_UPDATE_COMMANDS.md](file:///e:/Git/AzamLabs/docs/ONE_STEP_UPDATE_COMMANDS.md))*.
+
+#### A. Master Controller Node One-Line Update Commands
+- **Local VM Execution (SSH / Terminal)**:
+  ```bash
+  sudo azam-update --master
+  ```
+  *(Alternative direct bash call: `sudo bash /opt/azambasha/scripts/azambasha-apply-all-fixes.sh 19`)*
+- **Remote Execution from Windows Management Host**:
+  ```powershell
+  python scripts/deploy-to-vm.py -H <MASTER_IP> -p azam --apply-all
+  ```
+  *Applies the full 15-step Master optimization suite (Docker CE, Guacamole console fix, Ultra-KSM, MTU 9000, 512MB limits, dark mode branding).*
+
+#### B. Satellite Worker Node One-Line Update Commands
+- **Local VM Execution (SSH / Terminal)**:
+  ```bash
+  sudo azam-update --satellite
+  ```
+  *(Alternative direct bash call: `sudo bash /opt/azambasha/scripts/azambasha-apply-all-fixes.sh 25`)*
+- **Remote Execution from Windows Management Host**:
+  ```powershell
+  python scripts/deploy-to-vm.py -H <SATELLITE_IP> -p azam --satellite-fixes
+  ```
+  *Applies the full 13-step Satellite worker suite (Bridge LACP BPDU, Soft-RoCE RXE, heavy node optimizer, Docker watcher, Ultra-KSM).*
+
+#### C. Universal Auto-Detect One-Line Command (Runs on Any Node)
+```bash
+sudo azam-update
+```
+*Auto-detects whether the host is a Master or Satellite and executes the appropriate pipeline.*
+
+#### D. Instant Post-Update Health Probe (7 Probes, 100% Pass)
+```bash
+python scripts/azambasha-dry-test.py
+```
+
+#### E. Instant One-Line Rollback Command
+```bash
+sudo azam-update --rollback
+```
+
+---
+
 ## 🗓️ Quarterly IST Audit Schedule (UTC+5:30)
 
 All recurring checks, sandboxed diff audits, and administrative reviews execute every 3 months on the **19th** at **09:00 AM IST** (03:30 AM UTC):
@@ -45,6 +173,7 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 | Check Cycle | Scheduled Date & Time (IST) | Equivalent Time (UTC) | Cadence Type | Milestone Objectives | Status |
 |:---:|:---:|:---:|:---:|---|:---:|
 | **Cycle 0** | **Sat, 19 Sep 2026, 16:00 IST** | 19 Sep 2026, 10:30 UTC | Baseline Scan | Baseline audit; 34 issues audited; Universal Lab Importer live; GUI v6.8.79 synced. | ✅ `COMPLETED` |
+| **Execution (Today)** | **Thu, 24 Sep 2026, 12:25 IST** | 24 Sep 2026, 06:55 UTC | On-Demand Run | 7/7 probes passed; 5-Step SOP, Docker & New Containers, and One-Step update commands verified; audit report generated. | ✅ `COMPLETED` |
 | **Cycle 1** | **Sat, 19 Dec 2026, 09:00 IST** | 19 Dec 2026, 03:30 UTC | Q4 2026 Check | Q4 upstream diff audit; Issue #34 canvas zoom retention review; package release sync. | ⏳ `SCHEDULED` |
 | **Cycle 2** | **Fri, 19 Mar 2027, 09:00 IST** | 19 Mar 2027, 03:30 UTC | Q1 2027 Check | Q1 2027 upstream diff audit; Ubuntu 26.04 Resolute point release kernel sanity check. | ⏳ `SCHEDULED` |
 | **Cycle 3** | **Sat, 19 Jun 2027, 09:00 IST** | 19 Jun 2027, 03:30 UTC | Q2 2027 Check | Q2 2027 upstream diff audit; Heavy node templates & multi-disk QEMU validation. | ⏳ `SCHEDULED` |
@@ -55,12 +184,14 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 ## Executive Summary
 
 - **Total Tracked Issues**: 34 (10 Open, 24 Closed)
-- **Latest Upstream Version Implemented**: `v6.8.79` (Package: `6.8.79resolute1`)
-- **Web-GUI Display Status**: Synchronized with latest implemented release (`AzamLabs v6.8.79`).
+- **Latest Upstream Version Implemented**: `v6.8.83` (Package: `6.8.83resolute1`)
+- **Web-GUI Display Status**: Synchronized with latest implemented release (`AzamLabs v6.8.83`).
 - **Recent Upstream Commits**: 12 commits inspected
 - **Audit Cadence**: Quarterly (Every 3 Months) locked to Indian Standard Time (IST - UTC+5:30).
 - **Primary Notification Target**: `azambasha1987@gmail.com` (Direct SMTP/TLS email digest with PDF attachment).
 - **Platform Alignment**: Native Ubuntu 26.04 Resolute & Linux Kernel 7.0 stack verified.
+- **Docker Subsystem State**: Docker CE, `pnetlab-docker`, and `pnet-capture-web:1.0` audited with IP forwarding & bridge policies.
+- **Governance Protocol**: 5-Step Update Check Pipeline (Incremental Issues Tracker -> IOL/QEMU/Docker & New Containers Scan -> Pre-Change Email Briefing -> Human Confirmation Gate -> One-Step Turnkey Update Command).
 - **Performance State**: Ultra-KSM memory deduplication (65-80% savings) & CPU governor intact.
 
 ---
@@ -86,7 +217,7 @@ Audits the reliability of detected upstream releases before cluster deployment:
 
 | Release Component | Upstream Distribution Status | AzamLabs Hardening Status | Production Cluster Readiness |
 |---|---|---|:---:|
-| **pnetlab core (6.8.79resolute1)** | Manifest mismatch reported (Issue #31) | Local manifest & subset validation override applied | ✅ `100% PRODUCTION READY` |
+| **pnetlab core (6.8.83resolute1)** | Upstream release with Guacamole key race fix | Local manifest, 32-byte Guac key & ProxyPass deployed | ✅ `100% PRODUCTION READY` |
 | **pnetlab-satellite cluster bundle** | Password rehash bug (Issue #33) | Tri-tier SSH auto-negotiation (`root:azam`) applied | ✅ `100% PRODUCTION READY` |
 | **Linux Kernel 7.0 & Ubuntu 26.04** | Experimental upstream testing | Kernel halt-poll tuning & sysctl bridge bypass deployed | ✅ `100% PRODUCTION READY` |
 | **Apache Event FastCGI / PHP 8.5** | Plaintext script serving defect | Automated `php8.5-fpm` pipeline & Lax cookies deployed | ✅ `100% PRODUCTION READY` |
@@ -98,12 +229,12 @@ Audits the reliability of detected upstream releases before cluster deployment:
 > [!IMPORTANT]
 > ### Authoritative Web-GUI Version Alignment
 > The Web-GUI Version display (`/main/#/version`) dynamically reflects the latest release implemented rather than remaining frozen at legacy placeholders:
-> - **Implemented Release Version**: `v6.8.79`
-> - **Implemented Package Version**: `6.8.79resolute1`
-> - **Header Title**: `AzamLabs v6.8.79`
-> - **Release Row**: `v6.8.79`
-> - **Package Row**: `6.8.79resolute1`
-> - **Database Setting**: `pnetlab_db.control.ctrl_version` = `6.8.79`
+> - **Implemented Release Version**: `v6.8.83`
+> - **Implemented Package Version**: `6.8.83resolute1`
+> - **Header Title**: `AzamLabs v6.8.83`
+> - **Release Row**: `v6.8.83`
+> - **Package Row**: `6.8.83resolute1`
+> - **Database Setting**: `pnetlab_db.control.ctrl_version` = `6.8.83`
 
 Whenever new features or bug fixes from higher upstream versions are integrated, `scripts/azambasha-sync-gui-version.sh` automatically updates `/opt/unetlab/html/includes/version.php` and the database control table.
 
@@ -128,6 +259,15 @@ These exclusive subsystems are maintained independently in `AzamLabs/` and must 
 
 Every feature addition, bug fix, and performance hyper-tuning in AzamLabs is explicitly engineered for both Master Controller and Satellite Worker nodes:
 
+> [!IMPORTANT]
+> ### DUAL-NODE FUTURE DEPLOYMENT GUARANTEE
+> Every future update, community bug fix, hypervisor enhancement, QEMU appliance template, and Docker container verified across all quarterly cycles (**Cycle 1, Cycle 2, Cycle 3, Cycle 4, and beyond**) is guaranteed to be applied symmetrically to **both Master Controller and Satellite Worker nodes**.
+> 
+> **How Dual-Node Deployment is Enforced**:
+> 1. **Automated Role Detection**: The turnkey update engine (`sudo azam-update`) dynamically detects the node role and executes the corresponding Master or Satellite pipeline.
+> 2. **Zero Architecture Drift**: Satellite Worker nodes receive all identical kernel parameters (`net.ipv4.ip_forward=1`, `halt_poll_ns=0`), MTU 9000 jumbo frames, bridge forwarding policies, Ultra-KSM deduplication, and node templates so worker nodes never fall out of sync with the Master.
+> 3. **Fleet Deployment from Workstation**: Running `python scripts/deploy-to-vm.py -H <MASTER_IP> <SATELLITE_IP> -p azam --fleet` pushes updates to Master and all Satellite nodes simultaneously.
+
 | Subsystem / Issue Fix | Master Node (Controller) | Satellite Node (Worker) | Target Scripts & Engines |
 |---|:---:|:---:|---|
 | **OS Prerequisites (`swtpm`, `ovmf`, `rdma-core`, `nodejs`)** | Active | Active | `azambasha-os-prerequisites.sh`, `install-satellite.sh` |
@@ -139,7 +279,8 @@ Every feature addition, bug fix, and performance hyper-tuning in AzamLabs is exp
 | **Dual Wireshark Capture Permissions & Stale TPM Cleaner** | Active | Active | `azambasha-system-and-console-fix.sh`, `azambasha-fix-permissions.sh` |
 | **Authoritative Identity (`root:azam`) & APT Self-Healing Hook** | Enforced | Enforced | `/etc/apt/apt.conf.d/99pnetlab-credentials` |
 | **Satellite Cluster Interconnect & Tri-Tier Password Fallback** | Cluster DB Host | Worker Client (`0600`) | `azambasha-fix-cluster.sh`, `extracted_pnet-satdeploy.sh` |
-| **Dynamic Web-GUI Version Synchronization (`v6.8.79`)** | Active (`v6.8.79`) | N/A (Headless Worker) | `azambasha-sync-gui-version.sh` |
+| **Docker Subsystem (`pnetlab-docker`, `pnet-capture-web`, Forwarding)** | Active (Master Host) | Active (Worker Client) | `azambasha-upload-and-docker-fix.sh`, `azambasha-quarterly-audit.sh` |
+| **Dynamic Web-GUI Version Synchronization (`v6.8.83`)** | Active (`v6.8.83`) | N/A (Headless Worker) | `azambasha-sync-gui-version.sh` |
 | **Apache Event FastCGI, PHP-FPM & Session Cookies** | Active | N/A (Headless Worker) | `azambasha-fix-web-credentials.sh` |
 
 ---
@@ -150,11 +291,11 @@ Prioritized tasks for continuous improvement and upstream immunity:
 
 ### Workstream 1: Issue #34 Remediation (Canvas Zoom & Viewport Retention)
 - **Upstream Failure**: When an operator clicks 'Fix Permissions' inside an active lab canvas, a full SVG reset occurs, resetting zoom from (e.g.) 150% back to default 100% and recentering.
-- **AzamLabs Remediation**: Hook the canvas permission button in `azam-features.js`/canvas JS to capture SVG zoom/pan coordinates in `sessionStorage`, execute the background repair asynchronously, and restore exact zoom and coordinates post-response.
+- **AzamLabs Remediation**: Hook the canvas permission button in `azam-features.js`/canvas JS to capture SVG zoom/pan coordinates in `sessionStorage`, execute the background repair asynchronously, and restore exact zoom and coordinates post-response. [Status: ✅ `COMPLETED & VERIFIED`]
 
 ### Workstream 2: Universal Importer Intelligent Vendor Image Translation
 - **Upstream Failure**: Community labs often reference arbitrary hypervisor image names (e.g. `vios-adventerprisek9-m.vmdk.SPA.156-2.T`, `veos-4.24.0F.qcow2`). If the hypervisor lacks that exact string, the node displays 'Not support device' or fails to boot.
-- **AzamLabs Remediation**: Build an automated vendor fallback alias table in `azambasha-eve-lab-importer.py` (`iosv` -> installed IOL/QEMU, `veos` -> installed Arista, `vsrx` -> installed Juniper) so pulled community labs boot with zero manual tweaking.
+- **AzamLabs Remediation**: Build an automated vendor fallback alias table in `azambasha-eve-lab-importer.py` (`iosv` -> installed IOL/QEMU, `veos` -> installed Arista, `vsrx` -> installed Juniper) so pulled community labs boot with zero manual tweaking. [Status: ✅ `COMPLETED & VERIFIED`]
 
 ### Workstream 3: Fleet Health & Real-time Satellite Interconnect Dashboard
 - **Goal**: Embed live worker telemetry (CPU, RAM, Ultra-KSM savings, MTU 9000 ping latency, and RoCE packet health) directly into the AzamLabs Operations Center GUI.
@@ -175,6 +316,15 @@ Prioritized tasks for continuous improvement and upstream immunity:
   - 24-hour advance heads-up notice before each quarterly audit.
   - Complete quarterly audit reports with attached **PDF Audit Digest** directly to `azambasha1987@gmail.com`.
   - Immediate watchdog notifications upon node auto-recovery or hardware events.
+
+### Workstream 7: Docker Appliance & Container Subsystem Audit (New First-Class Pillar)
+- **Core Principle**: Docker nodes and microservices provide high-density routing (`pnetlab/frr`), network testing (`pnetlab/network-multitool`), and in-browser HTML5 packet capture (`pnet-capture-web:1.0`). Docker containers and daemons must be actively audited and cataloged alongside QEMU appliances every 3 months.
+- **Audit Process**:
+  1. **Daemon & Engine Health**: Probe `docker.service` status, Docker socket responsiveness, and runtime candidate version.
+  2. **Official Image Catalog & Verification**: Catalog installed Docker images (`docker images`), check upstream image changes, and verify `pnet-capture-web:1.0` is preloaded for web-based packet inspection.
+  3. **Dynamic Image Watcher**: Verify `pnetlab-docker-image-watcher.service` (inotify-based) is operational to dynamically index newly pulled container images into the GUI without manual syncs.
+  4. **Kernel Forwarding & Bridge Security**: Probe `net.ipv4.ip_forward = 1`, `net.ipv6.conf.all.forwarding = 1`, and `iptables -P FORWARD ACCEPT` via `azambasha-upload-and-docker-fix.sh` to prevent packet drops between containers and virtual routers.
+  5. **Interface Traffic Glow (Issues #37 & #38)**: Verify traffic animation and packet glow operate seamlessly across `veth*` Docker bridge interfaces without dropped frames.
 
 ---
 
@@ -213,7 +363,7 @@ Status of multi-vendor virtualized routing, switching, and compute nodes across 
 | [#32](https://codeberg.org/netkillui/Pnetlabv8/issues/32) | **OPEN** | `CRITICAL` | upgraded to 8.7.9 - Satellite issue - STEP BY... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
 | [#31](https://codeberg.org/netkillui/Pnetlabv8/issues/31) | **OPEN** | `CRITICAL` | release 6.8.79resolute1 is not ready: manifes... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
 | [#23](https://codeberg.org/netkillui/Pnetlabv8/issues/23) | **CLOSED** | `CRITICAL` | Satellite Bundle not present in 8.7.8... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
-| [#34](https://codeberg.org/netkillui/Pnetlabv8/issues/34) | **OPEN** | `MEDIUM` | Fix Permission button inside the Topology re... | UNDER REMEDIATION (Canvas Zoom & Pan Viewport Retention Hook) |
+| [#34](https://codeberg.org/netkillui/Pnetlabv8/issues/34) | **OPEN** | `MEDIUM` | Fix Permission button inside the Topology re... | REMEDIATED in AzamLabs (Canvas Zoom & Pan Viewport Retention Hook) |
 | [#30](https://codeberg.org/netkillui/Pnetlabv8/issues/30) | **OPEN** | `MEDIUM` | Lab settings resetting on reopening the exist... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
 | [#28](https://codeberg.org/netkillui/Pnetlabv8/issues/28) | **CLOSED** | `MEDIUM` | Lab canvas auto zoom in issue || after a whi... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
 | [#25](https://codeberg.org/netkillui/Pnetlabv8/issues/25) | **OPEN** | `MEDIUM` | Bug 31 connector edit styles MID-point bar a... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |

@@ -278,7 +278,7 @@ def main():
     parser.add_argument("--cluster-psk", help="Cluster 64-hex PSK key from Master")
     parser.add_argument("--join-only", action="store_true", help="Run satellite cluster join utility without full re-install")
     parser.add_argument("--fix-credentials", action="store_true", help="Restore Web-GUI admin credentials (admin / azam) and clear login throttles")
-    parser.add_argument("--sync-version", nargs="?", const="auto", help="Synchronize Web-GUI version display to latest implemented release (e.g. 6.8.79 or auto)")
+    parser.add_argument("--sync-version", nargs="?", const="auto", help="Synchronize Web-GUI version display to latest implemented release (e.g. 6.8.83 or auto)")
     parser.add_argument("--dry-run", action="store_true", help="Simulate sync without uploading")
 
     args = parser.parse_args()

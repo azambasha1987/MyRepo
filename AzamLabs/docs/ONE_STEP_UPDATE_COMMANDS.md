@@ -47,8 +47,9 @@ python scripts/deploy-to-vm.py -H <MASTER_IP> -p azam --apply-all
 11. **AzamLabs Branding**: Deploys pure black dark mode and custom platform branding.
 12. **Universal Platform Logo**: Deploys home screen avatar icon across all web views.
 13. **Node Startup & Cisco IOSv**: Fixes SMM UEFI for Windows 11 and Cisco IOSv boot delays.
-14. **GUI Version Synchronization**: Synchronizes `/main/#/version` and DB to latest release (`v6.8.79`).
-15. **Web Credentials Reset**: Re-asserts canonical admin credentials (`admin` / `azam`).
+14. **Canvas Tools & Diagnostics**: Synchronizes Network Watcher (packet sniffing), Network Painter (topology styling), and Network Analyzer (in-browser capture container).
+15. **GUI Version Synchronization**: Synchronizes `/main/#/version` and DB to latest release (`v6.8.83`).
+16. **Web Credentials Reset**: Re-asserts canonical admin credentials (`admin` / `azam`).
 
 ---
 

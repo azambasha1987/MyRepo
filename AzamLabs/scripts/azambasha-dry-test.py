@@ -98,6 +98,12 @@ def probe_plan_and_ledger():
     else:
         return False, ["ONE_STEP_UPDATE_COMMANDS.md or azambasha-update.sh missing"]
 
+    # Check Network Watcher, Painter, Analyzer
+    if "Network Watcher" in content and "Network Painter" in content and "Network Analyzer" in content:
+        details.append("Interactive Canvas Tools verified in plan: Network Watcher, Network Painter, Network Analyzer.")
+    else:
+        return False, ["Network Watcher, Painter, or Analyzer missing from plan"]
+
     return True, details
 
 def probe_notification_engine():

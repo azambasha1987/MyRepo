@@ -51,9 +51,9 @@ graph TD
     C -->|No| D["Log: Zero New Issues"]
     C -->|Yes| E["Pull Fixes & Cross-Audit with AzamLabs Code"]
     E --> F["Filter: Add ONLY If Needed & Hardened"]
-    D --> G["Step 2: Tri-Virtualization & Container Scan (IOL, QEMU, Docker & New Containers)"]
+    D --> G["Step 2: Scan for All New Features & Enhancements to Existing Features"]
     F --> G
-    G --> H["Scan Latest PNetLab for IOL, QEMU, Docker Features & New Containers"]
+    G --> H["Audit All New Features, Existing Tools (e.g. Watcher, Painter, Analyzer), Virtualization & Containers"]
     H --> I["Optimize Code Specifically for AzamLabs Architecture"]
     I --> J["Step 3: Pre-Change Research Digest to Email"]
     J --> K["Dispatch Detailed Research Email to azambasha1987@gmail.com"]
@@ -80,14 +80,29 @@ graph TD
   - **ADAPT**: If upstream addresses a genuine bug (e.g., canvas zoom reset, veth drop) but does so with fragile code, rewrite and optimize the fix to adhere strictly to the AzamLabs Zero-Glitch Protocol.
   - **ADOPT**: If upstream provides a clean, harmless, non-breaking fix, queue it for addition.
 
-### Step 2: Tri-Virtualization Feature Scan & Tailored Optimization (IOL, QEMU, Docker & New Containers)
-Systematically audit the latest version of PNetLab for new features, hardware abstractions, software appliances, and newly introduced containers across the core virtualization layers:
-1. **Cisco IOL (IOS on Linux) Subsystem**:
+### Step 2: Tri-Virtualization Feature Scan, All New Features & Enhancements to Existing Features (IOL, QEMU, Docker, Containers, and Tools like Network Watcher, Painter & Analyzer)
+Systematically audit the latest version of PNetLab for **all newly introduced features** as well as **enhancements and updates to all existing features** across the entire platform:
+
+1. **Audit of All New Features & Capabilities (Comprehensive Radar)**:
+   - Actively scan upstream releases, commits, and community pull requests for **any brand-new features**, tools, CLI utilities, API endpoints, modal drawers, or automation capabilities added to PNetLab.
+   - If any new features are introduced that add real-world value for network engineering, topology design, or cluster operations, evaluate their dependencies and optimize their code specifically for the AzamLabs architecture.
+
+2. **Audit of Enhancements & Updates to All Existing Features**:
+   - Systematically inspect all existing platform tools and user-facing features for upstream improvements, bug fixes, performance optimizations, or UI refactoring.
+   - **Examples of existing features to audit and update include (but are not limited to)**:
+     - **Network Watcher**: Live interface packet capture sniffer, traffic animation engine, WebSocket stream stability, IPv4/IPv6 packet filtering rules (preventing Issue #6 regressions), interface throughput counters, and integration with physical bridges (`pnet0`–`pnet9`) and container `veth*` interfaces.
+     - **Network Painter**: Canvas drawing capabilities, custom topology styling, shape rendering (rectangles, rounded zones, clouds, text annotations, colored boundaries), link styling options (solid/dashed/curved, stroke widths, interface port labeling, custom palettes), and dark mode contrast preservation without SVG coordinate drift or z-index collisions (integrating with Issue #34).
+     - **Network Analyzer**: Real-time packet stream inspection, protocol decoding, zero-install integration with `pnet-capture-web:1.0` HTML5 packet capture container, latency/packet loss/jitter measurement probes, and `.pcapng` stream exports without client-side dependencies.
+     - **Other Existing Subsystems & Tools**: Lab export/import engine, multi-user pod isolation, user management, device console proxies (Guacamole/HTML5, Telnet, SSH), image doctor virtual disk repair, and node lifecycle controls.
+
+3. **Cisco IOL (IOS on Linux) Subsystem**:
    - Check for new IOL 32-bit/64-bit wrapper scripts, dynamic linker updates, memory allocation tuning (e.g. 256MB–1024MB), NVRAM/startup-config persistence fixes, and iourc license handling.
-2. **QEMU Subsystem**:
+
+4. **QEMU Subsystem & Appliance Templates**:
    - Scan upstream template libraries (`html/templates/intel/*.yml`, `html/templates/amd/*.yml`) for newly supported vendor appliances (e.g., Cisco 8000, Cat9000, Arista EOS, Juniper cPTX, Fortinet, Checkpoint, Windows Server, Linux).
    - Inspect hypervisor execution flags: multi-disk storage bus options (`virtioc`, `virtio-blk-pci`), UEFI SMM (`smm=on`), CPU model flags (`host-passthrough`), and TPM 2.0 socket parameters.
-3. **Docker Subsystem & New Container Ingestion**:
+
+5. **Docker Subsystem & New Container Ingestion**:
    - **Discover & Catalog New Containers**: Scan upstream releases, Docker Hub repositories (`rspnet/*`, `pnetlab/*`), and community catalogs for newly released official container images:
      - In-browser live packet capture container (`rspnet/pnet-capture-web:latest` $\rightarrow$ tagged as `pnet-capture-web:1.0`).
      - Microservices and routing engines (e.g., `pnetlab/frr`, BGP/OSPF testing containers).
@@ -101,10 +116,11 @@ Systematically audit the latest version of PNetLab for new features, hardware ab
    - **Kernel Forwarding & Traffic Animation Rules**:
      - Verify kernel packet forwarding (`net.ipv4.ip_forward = 1`, `net.ipv6.conf.all.forwarding = 1`, `net.ipv4.conf.all.proxy_arp = 1`), bridge promiscuous mode, and `iptables -P FORWARD ACCEPT` to eliminate container packet drops.
      - Ensure dynamic link traffic glow animations and frame counters hook seamlessly across `veth*` container interfaces.
-- **AzamLabs Optimization Rule**:
-  - Never blindly copy-paste upstream implementations.
-  - Optimize all candidate code and container configurations specifically for AzamLabs: integrate with **Ultra-KSM 4KB RAM deduplication** (65–80% savings), **Silicon Dataplane MTU 9000 jumbo frames**, **CPU Governor** (`halt_poll_ns=0`), **Pure Black Dark Mode** aesthetics, and **Authoritative `root:azam` credentials**.
-  - Enforce symmetrical availability across **both Master Controller and Satellite Worker nodes**.
+
+6. **AzamLabs Optimization Rule**:
+   - Never blindly copy-paste upstream implementations.
+   - Optimize all candidate code, new feature additions, tool enhancements, and container configurations specifically for AzamLabs: integrate with **Ultra-KSM 4KB RAM deduplication** (65–80% savings), **Silicon Dataplane MTU 9000 jumbo frames**, **CPU Governor** (`halt_poll_ns=0`), **Pure Black Dark Mode** aesthetics, and **Authoritative `root:azam` credentials**.
+   - Enforce symmetrical availability across **both Master Controller and Satellite Worker nodes**.
 
 ### Step 3: Pre-Change Research Digest & Direct Email Dispatch
 - **Mandatory Pre-Mutation Email Gate**: Before making ANY changes, modifying code, or applying fixes to AzamLabs, compile and send a comprehensive research briefing email directly to:
@@ -112,8 +128,8 @@ Systematically audit the latest version of PNetLab for new features, hardware ab
 - **Required Email Content Structure**:
   1. **Executive Research Summary**: Current upstream release, git commit hash, and overall health status.
   2. **Step 1 Delta Analysis (What is New in Issues)**: Summary of newly detected issues (Issue 35+), upstream proposed fixes, and AzamLabs disposition (Adopt, Adapt, or Reject).
-  3. **Step 2 Tri-Virtualization & Container Discoveries (What is New in IOL, QEMU, Docker & Containers)**: Inventory of newly discovered IOL features, QEMU appliance templates, and Docker container images/services.
-  4. **Proposed Additions & AzamLabs Optimizations**: Exact files to be created or modified, complete with architectural enhancements tailored for AzamLabs.
+  3. **Step 2 Discoveries (All New Features, Enhancements to Existing Features & Virtualization/Containers)**: Detailed inventory of any brand-new features discovered, enhancements or bug fixes to existing tools (including examples like Network Watcher, Network Painter, Network Analyzer, and other platform features), new QEMU appliance templates, and new Docker container images/services.
+  4. **Proposed Additions & AzamLabs Optimizations**: Exact files to be created or modified, complete with architectural enhancements tailored for AzamLabs (covering new features, existing tool updates, and container workflows).
   5. **Technical Justification ("Why")**: In-depth explanation of why each addition is needed, what problem it solves, how it benefits the cluster, and why any rejected upstream items were excluded.
   6. **Safeguard Verification**: Snapshot checkpoint details and 1-command rollback instructions.
 
@@ -191,7 +207,8 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 - **Primary Notification Target**: `azambasha1987@gmail.com` (Direct SMTP/TLS email digest with PDF attachment).
 - **Platform Alignment**: Native Ubuntu 26.04 Resolute & Linux Kernel 7.0 stack verified.
 - **Docker Subsystem State**: Docker CE, `pnetlab-docker`, and `pnet-capture-web:1.0` audited with IP forwarding & bridge policies.
-- **Governance Protocol**: 5-Step Update Check Pipeline (Incremental Issues Tracker -> IOL/QEMU/Docker & New Containers Scan -> Pre-Change Email Briefing -> Human Confirmation Gate -> One-Step Turnkey Update Command).
+- **Feature & Enhancement Scope**: Comprehensive radar tracking all brand-new features as well as updates/enhancements to all existing platform tools (including Network Watcher, Network Painter, Network Analyzer, and other canvas/subsystem features).
+- **Governance Protocol**: 5-Step Update Check Pipeline (Incremental Issues Tracker -> All New Features & Existing Tools Scan -> Pre-Change Email Briefing -> Human Confirmation Gate -> One-Step Turnkey Update Command).
 - **Performance State**: Ultra-KSM memory deduplication (65-80% savings) & CPU governor intact.
 
 ---
@@ -280,6 +297,7 @@ Every feature addition, bug fix, and performance hyper-tuning in AzamLabs is exp
 | **Authoritative Identity (`root:azam`) & APT Self-Healing Hook** | Enforced | Enforced | `/etc/apt/apt.conf.d/99pnetlab-credentials` |
 | **Satellite Cluster Interconnect & Tri-Tier Password Fallback** | Cluster DB Host | Worker Client (`0600`) | `azambasha-fix-cluster.sh`, `extracted_pnet-satdeploy.sh` |
 | **Docker Subsystem (`pnetlab-docker`, `pnet-capture-web`, Forwarding)** | Active (Master Host) | Active (Worker Client) | `azambasha-upload-and-docker-fix.sh`, `azambasha-quarterly-audit.sh` |
+| **Interactive Canvas Tools (Network Watcher, Painter, Analyzer)** | Active (Full Web-GUI & Live Stream) | Active (Worker Packet Mirroring & Veth Hooks) | `azam-features.js`, `pnet-capture-web` |
 | **Dynamic Web-GUI Version Synchronization (`v6.8.83`)** | Active (`v6.8.83`) | N/A (Headless Worker) | `azambasha-sync-gui-version.sh` |
 | **Apache Event FastCGI, PHP-FPM & Session Cookies** | Active | N/A (Headless Worker) | `azambasha-fix-web-credentials.sh` |
 
@@ -325,6 +343,23 @@ Prioritized tasks for continuous improvement and upstream immunity:
   3. **Dynamic Image Watcher**: Verify `pnetlab-docker-image-watcher.service` (inotify-based) is operational to dynamically index newly pulled container images into the GUI without manual syncs.
   4. **Kernel Forwarding & Bridge Security**: Probe `net.ipv4.ip_forward = 1`, `net.ipv6.conf.all.forwarding = 1`, and `iptables -P FORWARD ACCEPT` via `azambasha-upload-and-docker-fix.sh` to prevent packet drops between containers and virtual routers.
   5. **Interface Traffic Glow (Issues #37 & #38)**: Verify traffic animation and packet glow operate seamlessly across `veth*` Docker bridge interfaces without dropped frames.
+
+### Workstream 8: Interactive Canvas Tools & Diagnostic Suite Audit (Network Watcher, Painter & Analyzer)
+- **Core Principle**: The interactive canvas tools—**Network Watcher** (live traffic sniffing & filters), **Network Painter** (topology drawing & styling), and **Network Analyzer** (flow inspection & in-browser Wireshark capture)—are the primary day-to-day UI surfaces for network labbing. Any upstream enhancements, bug fixes, or performance updates to these tools must be audited every 3 months and adapted cleanly into AzamLabs.
+- **Audit & Enhancement Scope**:
+  1. **Network Watcher**:
+     - Probe live interface packet capture sniffer and WebSocket stream stability.
+     - Validate IPv4/IPv6 packet filtering rules (preventing Issue #6 regressions).
+     - Ensure interface link traffic animations and packet glow render smoothly across high-density topologies without degrading browser canvas framerates.
+  2. **Network Painter**:
+     - Audit custom shape drawing tools (rectangles, rounded zones, clouds, text annotations).
+     - Verify link styling options (solid/dashed/curved, custom stroke widths, interface port labeling, custom color palettes).
+     - Protect AzamLabs canvas styling and dark mode contrast so painter layers render crisp and sharp without SVG coordinate drift or z-index collisions (Issue #34 integration).
+  3. **Network Analyzer**:
+     - Verify real-time packet stream inspection and protocol decoding.
+     - Verify seamless zero-install integration with `pnet-capture-web:1.0` HTML5 packet capture container.
+     - Ensure latency, packet loss, and jitter probes accurately measure inter-node link metrics.
+     - Apply upstream enhancements to packet payload dissection and `.pcapng` stream exports without client-side dependencies.
 
 ---
 

@@ -149,6 +149,9 @@ case "$MODE" in
         log_info "Initiating ONE-STEP UPDATE for: ${BOLD}MASTER CONTROLLER NODE${RESET}"
         create_pre_update_snapshot
         bash "${SCRIPT_DIR}/azambasha-apply-all-fixes.sh" 19
+        if [ -f "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" auto || true
+        fi
         log_ok "Master node one-step update successfully completed!"
         ;;
     --satellite|-s)
@@ -170,6 +173,9 @@ case "$MODE" in
             log_info "Auto-detected Role: ${BOLD}MASTER (Controller Node)${RESET}"
             create_pre_update_snapshot
             bash "${SCRIPT_DIR}/azambasha-apply-all-fixes.sh" 19
+            if [ -f "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" auto || true
+            fi
             log_ok "Master node one-step update successfully completed!"
         fi
         ;;

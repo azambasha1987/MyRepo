@@ -52,11 +52,19 @@ TOTAL_NODES=$((QEMU_COUNT + IOL_COUNT + DOCKER_COUNT))
 MTU9000_COUNT=$(ip link show 2>/dev/null | grep -c "mtu 9000" || true)
 BPDU_MASK=$(cat /sys/class/net/pnet0/bridge/group_fwd_mask 2>/dev/null || echo "N/A")
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "")"
+REPO_ROOT="$(dirname "$SCRIPT_DIR")"
+
 # Version
 VERSION_STR="v6.8.83 (6.8.83resolute1)"
+if [ -f "${REPO_ROOT}/VERSION" ]; then
+    V_VAL=$(grep -E '^VERSION=' "${REPO_ROOT}/VERSION" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)
+    P_VAL=$(grep -E '^PACKAGE_VERSION=' "${REPO_ROOT}/VERSION" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)
+    [ -n "$V_VAL" ] && VERSION_STR="v${V_VAL#v} (${P_VAL})"
+fi
 if [ -f "/opt/unetlab/html/includes/version.php" ]; then
-    VERSION_VAL=$(grep -oP "(?<=define\('PNET_RELEASE', ')[^']+" /opt/unetlab/html/includes/version.php 2>/dev/null || echo "v6.8.83")
-    PKG_VAL=$(grep -oP "(?<=define\('PNET_PACKAGE_VERSION', ')[^']+" /opt/unetlab/html/includes/version.php 2>/dev/null || echo "6.8.83resolute1")
+    VERSION_VAL=$(grep -oP "(?<=define\('PNET_RELEASE', ')[^']+" /opt/unetlab/html/includes/version.php 2>/dev/null || true)
+    PKG_VAL=$(grep -oP "(?<=define\('PNET_PACKAGE_VERSION', ')[^']+" /opt/unetlab/html/includes/version.php 2>/dev/null || true)
     if [ -n "$VERSION_VAL" ]; then
         VERSION_STR="${VERSION_VAL} (${PKG_VAL})"
     fi

@@ -33,7 +33,10 @@ TARGET_PKG="${2:-}"
 # Auto-detect latest release from repo or installed packages
 if [ "$TARGET_INPUT" = "auto" ] || [ -z "$TARGET_INPUT" ]; then
     BASE_DETECT=""
-    if [ -f "${REPO_ROOT}/docs/3_MONTHS_UPDATE_CHECK_PLAN.md" ]; then
+    if [ -f "${REPO_ROOT}/VERSION" ]; then
+        BASE_DETECT="$(grep -E '^PACKAGE_VERSION=' "${REPO_ROOT}/VERSION" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)"
+    fi
+    if [ -z "$BASE_DETECT" ] && [ -f "${REPO_ROOT}/docs/3_MONTHS_UPDATE_CHECK_PLAN.md" ]; then
         BASE_DETECT="$(grep -oP '(?<=Implemented Package Version\*\*: `)[^`]+' "${REPO_ROOT}/docs/3_MONTHS_UPDATE_CHECK_PLAN.md" 2>/dev/null | head -n1 || true)"
     fi
     if [ -z "$BASE_DETECT" ] && [ -f "${REPO_ROOT}/docs/WEEKLY_IMPLEMENTATION_PLAN.md" ]; then

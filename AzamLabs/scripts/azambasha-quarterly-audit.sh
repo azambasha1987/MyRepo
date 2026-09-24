@@ -165,10 +165,19 @@ run_audit() {
     fi
 
     local web_ver="v6.8.83"
-    if [ -f "/opt/unetlab/html/includes/version.php" ]; then
-        web_ver="$(grep -o "v[0-9]\+\.[0-9]\+\.[0-9]\+" /opt/unetlab/html/includes/version.php 2>/dev/null | head -n1 || echo 'v6.8.83')"
+    local pkg_ver="6.8.83resolute1"
+    if [ -f "${REPO_ROOT}/VERSION" ]; then
+        local v_raw
+        v_raw="$(grep -E '^VERSION=' "${REPO_ROOT}/VERSION" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)"
+        [ -n "$v_raw" ] && web_ver="v${v_raw#v}"
+        local p_raw
+        p_raw="$(grep -E '^PACKAGE_VERSION=' "${REPO_ROOT}/VERSION" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)"
+        [ -n "$p_raw" ] && pkg_ver="$p_raw"
     fi
-    log_ok "Web-GUI Synchronized Version: ${BOLD}${web_ver}${RESET}"
+    if [ -f "/opt/unetlab/html/includes/version.php" ]; then
+        web_ver="$(grep -o "v[0-9]\+\.[0-9]\+\.[0-9]\+" /opt/unetlab/html/includes/version.php 2>/dev/null | head -n1 || echo "$web_ver")"
+    fi
+    log_ok "Web-GUI Synchronized Version: ${BOLD}${web_ver} (${pkg_ver})${RESET}"
 
     # 3. Audit QEMU Templates & Docker Subsystem
     local tpl_count
@@ -196,7 +205,7 @@ run_audit() {
 
 - **Scan Timestamp**: ${ist_time} (${utc_time})
 - **Platform**: Ubuntu 26.04 Resolute LTS / Linux Kernel 7.0
-- **Authoritative Version**: ${web_ver} (Package: 6.8.83resolute1)
+- **Authoritative Version**: ${web_ver} (Package: ${pkg_ver})
 - **Primary Recipient**: ${EMAIL_TARGET}
 - **Safeguard State**: Zero-Glitch Protocol 100% IMMUNE
 - **Execution Mode**: $([ "$dry_run" = "true" ] && echo "DRY-RUN SIMULATION" || echo "PRODUCTION RUN")
@@ -228,7 +237,7 @@ EOF
         "$py_bin" "$notify_script" \
             --quarterly-digest \
             --version-tag "${web_ver#v}" \
-            --pkg-tag "6.8.83resolute1" \
+            --pkg-tag "${pkg_ver}" \
             --open-issues "10" \
             --commits-count "12" \
             --to "${EMAIL_TARGET}" \

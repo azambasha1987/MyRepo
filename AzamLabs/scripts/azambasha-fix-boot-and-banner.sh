@@ -72,6 +72,9 @@ if [ -f /etc/default/grub ]; then
     if ! grep -q 'loglevel=3' /etc/default/grub 2>/dev/null; then
         sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 /' /etc/default/grub 2>/dev/null || true
     fi
+    if ! grep -q 'nordseed' /etc/default/grub 2>/dev/null; then
+        sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="nordseed /' /etc/default/grub 2>/dev/null || true
+    fi
     command -v update-grub >/dev/null 2>&1 && update-grub 2>/dev/null || true
 fi
 

@@ -60,6 +60,18 @@ if [[ "${1:-}" =~ ^(--check|--status)$ ]]; then
         echo "NOT INSTALLED"
     fi
 
+    echo -n "[*] Docker Config (daemon.json): "
+    if [ -f /etc/docker/daemon.json ]; then
+        if grep -q '"hosts"' /etc/docker/daemon.json 2>/dev/null; then
+            echo "CONFLICT DETECTED (hosts directive present; causes systemd dockerd crash)"
+        else
+            echo "VALID (Clean, no CLI directive conflicts)"
+        fi
+    else
+        echo "NOT CONFIGURED (Using defaults)"
+    fi
+
+
     echo -n "[*] HTML5 Packet Capture Image: "
     if command -v docker >/dev/null 2>&1; then
         if docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | grep -Eq 'pnet-capture-web:1.0|rspnet/pnet-capture-web'; then
@@ -178,9 +190,46 @@ if command -v apt-get >/dev/null 2>&1; then
     fi
 fi
 
-# Ensure docker service is enabled & running
+# 5b. Authoritative /etc/docker/daemon.json Convergence (Eliminate "hosts" conflict with systemd)
+mkdir -p /etc/docker
+if [ -f /etc/docker/daemon.json ]; then
+    if grep -q '"hosts"' /etc/docker/daemon.json 2>/dev/null; then
+        echo "  -> Sanitizing /etc/docker/daemon.json to eliminate hosts directive conflict with systemd..."
+        if command -v jq >/dev/null 2>&1; then
+            jq 'del(.hosts)' /etc/docker/daemon.json > /etc/docker/daemon.json.tmp && mv /etc/docker/daemon.json.tmp /etc/docker/daemon.json
+        elif command -v python3 >/dev/null 2>&1; then
+            python3 -c "import json; f='/etc/docker/daemon.json'; d=json.load(open(f)); d.pop('hosts', None); json.dump(d, open(f, 'w'), indent=2)" 2>/dev/null || true
+        else
+            sed -i '/"hosts"/,/],*/d' /etc/docker/daemon.json 2>/dev/null || true
+        fi
+    fi
+else
+    cat << 'EOF_DOCK' > /etc/docker/daemon.json
+{
+  "live-restore": true,
+  "storage-driver": "overlay2",
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "2"
+  },
+  "default-address-pools": [
+    {
+      "base": "10.177.0.0/16",
+      "size": 24
+    }
+  ]
+}
+EOF_DOCK
+fi
+
+# Ensure docker service is enabled, failure state reset, & running
 if command -v systemctl >/dev/null 2>&1 && [ -f /lib/systemd/system/docker.service -o -f /etc/systemd/system/docker.service ]; then
+    rm -f /var/run/docker.sock /var/run/docker.pid
+    systemctl reset-failed docker.service 2>/dev/null || true
+    systemctl daemon-reload 2>/dev/null || true
     systemctl enable --now docker 2>/dev/null || true
+    systemctl restart docker 2>/dev/null || true
 fi
 
 # 6. Preload Official HTML5 Web Packet Capture Container (pnet-capture-web:1.0)

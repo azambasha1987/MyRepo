@@ -197,12 +197,16 @@ MODEOF
     # Blacklist i2c_piix4 virtual controller to silence unhandled SMBus warning
     echo "blacklist i2c_piix4" > /etc/modprobe.d/blacklist-piix4.conf
 
-    # Sanitize GRUB kernel commandline to eliminate obsolete copymods and set loglevel=3
+    # Sanitize GRUB kernel commandline to eliminate obsolete copymods and set loglevel=3 & nordseed
     if [ -f /etc/default/grub ]; then
         sed -i -E 's/\b(copymods|rd\.driver\.export(=[a-zA-Z0-9_-]+)?)\b//g' /etc/default/grub /etc/default/grub.d/*.cfg 2>/dev/null || true
         if ! grep -q 'loglevel=3' /etc/default/grub 2>/dev/null; then
             sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 /' /etc/default/grub 2>/dev/null || true
         fi
+        if ! grep -q 'nordseed' /etc/default/grub 2>/dev/null; then
+            sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="nordseed /' /etc/default/grub 2>/dev/null || true
+        fi
+        command -v update-grub >/dev/null 2>&1 && update-grub 2>/dev/null || true
     fi
 
     # Purge obsolete cloud-initramfs packages and permanently omit copymods from dracut

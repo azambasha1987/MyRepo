@@ -418,13 +418,18 @@ EOF_MODS
 # Blacklist i2c_piix4 virtual controller to silence unhandled SMBus warning
 echo "blacklist i2c_piix4" > /etc/modprobe.d/blacklist-piix4.conf
 
-# Sanitize GRUB kernel commandline to remove obsolete copymods and set loglevel=3
+# Sanitize GRUB kernel commandline to remove obsolete copymods and set loglevel=3 & nordseed
 if [ -f /etc/default/grub ]; then
     sed -i -E 's/\b(copymods|rd\.driver\.export(=[a-zA-Z0-9_-]+)?)\b//g' /etc/default/grub /etc/default/grub.d/*.cfg 2>/dev/null || true
     if ! grep -q 'loglevel=3' /etc/default/grub 2>/dev/null; then
         sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 /' /etc/default/grub 2>/dev/null || true
     fi
+    if ! grep -q 'nordseed' /etc/default/grub 2>/dev/null; then
+        sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="/GRUB_CMDLINE_LINUX_DEFAULT="nordseed /' /etc/default/grub 2>/dev/null || true
+    fi
+    command -v update-grub >/dev/null 2>&1 && update-grub 2>/dev/null || true
 fi
+
 
 # Purge obsolete cloud-initramfs packages and permanently omit copymods from dracut
 DEBIAN_FRONTEND=noninteractive apt-get purge -y cloud-initramfs-copymods cloud-initramfs-dyn-netconf 2>/dev/null || true
@@ -586,12 +591,17 @@ EOF_DUMMY
     rm -rf "$DUMMY_DIR" /tmp/docker-ce-dummy.deb
 fi
 
-# Authoritative Docker Daemon JSON configuration
+# Authoritative Docker Daemon JSON configuration (hosts omitted to prevent systemd CLI conflict)
 mkdir -p /etc/docker
 cat << 'EOF_DOCK' > /etc/docker/daemon.json
 {
-  "hosts": ["unix:///var/run/docker.sock"],
   "live-restore": true,
+  "storage-driver": "overlay2",
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "10m",
+    "max-file": "2"
+  },
   "default-address-pools": [
     {
       "base": "10.177.0.0/16",
@@ -600,8 +610,12 @@ cat << 'EOF_DOCK' > /etc/docker/daemon.json
   ]
 }
 EOF_DOCK
+rm -f /var/run/docker.sock /var/run/docker.pid
+systemctl reset-failed docker.service 2>/dev/null || true
+systemctl daemon-reload 2>/dev/null || true
 systemctl enable --now docker 2>/dev/null || true
 systemctl restart docker 2>/dev/null || true
+
 
 # ── Step 7: Resolve and Install Satellite Debian Packages ──────────────────────
 echo "[7/10] Resolving and installing Satellite Debian packages..."

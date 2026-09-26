@@ -112,8 +112,7 @@
       { id: 'diff',      name: 'Config Diff & Rollback',  icon: 'fa-history' },
       { id: 'mesh',      name: 'Ping Mesh & Traffic Gen', icon: 'fa-exchange' },
       { id: 'scheduler', name: 'Idle Saver & Quotas',     icon: 'fa-clock-o' },
-      { id: 'cloud',     name: 'Cloud & NAS Backup',      icon: 'fa-cloud-upload' },
-      { id: 'canvas',    name: 'Canvas Accelerators',     icon: 'fa-paint-brush' }
+      { id: 'cloud',     name: 'Cloud & NAS Backup',      icon: 'fa-cloud-upload' }
     ];
 
 
@@ -480,19 +479,6 @@
 
 
 
-    // ── Pane 13: Canvas Accelerators ──
-    var pCanvas = document.createElement('div');
-    pCanvas.id = 'pane-canvas';
-    pCanvas.style.display = 'none';
-    pCanvas.innerHTML = 
-      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">' +
-        createFeatureCard('Node Spotlight Search', 'Instant canvas navigation across large topologies with keyboard shortcut.', 'Ctrl + K / ⌘ + K', 'fa-search', '#38bdf8', 'Jump directly to any router, switch, or VM. Auto-focuses and pans viewport.') +
-        createFeatureCard('Smart Alignment & Distribution', 'One-click horizontal, vertical, and grid distribution toolbar.', 'Toolbar in Lab', 'fa-align-left', '#818cf8', 'Aligns selected nodes with clean mathematical spacing.') +
-        createFeatureCard('Interactive Radar Minimap', 'Floating high-density canvas radar showing the entire topology overview.', 'Minimap Button', 'fa-map-o', '#34d399', 'Interactive viewport box can be dragged to pan across large networks instantly.') +
-        createFeatureCard('QuadTree Viewport Culling', 'High-performance spatial indexing engine for 100+ node topologies.', 'Automatic 60 FPS', 'fa-bolt', '#f472b6', 'Culls off-screen node SVG renders, cutting GPU and browser memory by up to 70%.') +
-        createFeatureCard('Live Telemetry Heatmap', 'Real-time interface packet load heatmap and animated link flow inspector.', 'Link Stats Layer', 'fa-rss', '#fbbf24', 'Color-codes links by traffic density and visualizes simulated packet flow paths.') +
-      '</div>';
-    panesContainer.appendChild(pCanvas);
 
     container.appendChild(panesContainer);
     view.appendChild(container);
@@ -516,7 +502,7 @@
       b.style.borderBottomColor = isActive ? '#38bdf8' : 'transparent';
     });
 
-    ['health', 'templates', 'bridge', 'doc', 'ai', 'diff', 'mesh', 'scheduler', 'cloud', 'canvas'].forEach(function (id) {
+    ['health', 'templates', 'bridge', 'doc', 'ai', 'diff', 'mesh', 'scheduler', 'cloud'].forEach(function (id) {
       var p = document.getElementById('pane-' + id);
       if (p) p.style.display = id === tabId ? 'block' : 'none';
     });

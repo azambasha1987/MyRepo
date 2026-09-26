@@ -518,7 +518,6 @@
       ['💾','#ef4444','Create Backup Snapshot','azam-backup --backup','Snapshot all .unl files, startup configs, and MySQL DB to timestamped archive.','backup','az-term-backup'],
       ['🖥️','#06b6d4','HTML5 Console Auto-Fix','azam-console-fix --fix','Repairs WebSocket tunnel, guacd, stale pipes, generates Windows .reg handlers.','console-fix','az-term-console'],
       ['📸','#8b5cf6','Topology Git Snapshot','azam-topology-git --snapshot','Commit all changed .unl topology files to the local Git version history.','topology-snapshot','az-term-topo'],
-      ['📱','#22c55e','Send WhatsApp Test Alert','azam-notify --test','Verify the WhatsApp (CallMeBot) + webhook notification pipeline is working.','notify-test','az-term-notify'],
     ];
 
     var allToolCards = TOOL_DEFS.map(function (t) {
@@ -596,7 +595,7 @@
       '<div style="display:flex;gap:2px;padding:0 20px;background:rgba(8,12,24,0.7);border-bottom:1px solid rgba(56,189,248,0.15);flex-shrink:0;overflow-x:auto">' +
         [['overview','🏠 Overview'],['health','📊 Health'],['backup','💾 Backup & Restore'],
          ['network','🌐 Network'],['security','🔒 SSL & Security'],
-         ['vcs','🕰️ Topology VCS'],['alerts','🔔 Alerts']
+         ['vcs','🕰️ Topology VCS']
         ].map(function (t) {
           return '<button data-az-tab="' + t[0] + '" style="' +
             'display:flex;align-items:center;gap:6px;padding:12px 16px;border:none;background:none;' +
@@ -718,14 +717,6 @@
             '<button id="az-vcs-log-btn" style="'+BTN_PRI+'">▶ Show History</button>' +
             '<div id="az-term-vcs-log" style="'+TERM_STYLE+'"></div>' +
           '</div>' +
-        '</div>' +
-      '</div>' +
-
-      /* ─ ALERTS ─ */
-      '<div data-az-section="alerts" style="display:none">' +
-        '<div style="font-size:16px;font-weight:700;margin-bottom:16px">🔔 Alerts & Notification Pipeline</div>' +
-        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">' +
-          toolCard('📱','#22c55e','Send WhatsApp Test Alert','azam-notify --test','Verify the CallMeBot WhatsApp + webhook pipeline.','<button style="'+BTN_PRI+'" data-az-tool="notify-test" data-az-term="az-term-ntfy">📱 Send Test</button><div id="az-term-ntfy" style="'+TERM_STYLE+'"></div>') +
         '</div>' +
       '</div>' +
 

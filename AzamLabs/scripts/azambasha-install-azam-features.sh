@@ -80,8 +80,7 @@ ln -sf "${SCRIPTS}/azambasha-config-diff.py"      /usr/local/bin/azam-config-dif
 ln -sf "${SCRIPTS}/azambasha-ping-mesh.py"        /usr/local/bin/azam-ping-mesh
 ln -sf "${SCRIPTS}/azambasha-scheduler.py"        /usr/local/bin/azam-scheduler
 ln -sf "${SCRIPTS}/azambasha-cloud-backup.py"     /usr/local/bin/azam-cloud-backup
-ln -sf "${SCRIPTS}/azambasha-lab-grader.py"       /usr/local/bin/azam-grader
-ln -sf "${SCRIPTS}/azambasha-sniffer.py"          /usr/local/bin/azam-sniffer
+rm -f /usr/local/bin/azam-grader /usr/local/bin/azam-sniffer /usr/local/bin/azam-notify 2>/dev/null || true
 ln -sf "${SCRIPTS}/azambasha-cloud-bridge.py"     /usr/local/bin/azam-cloud-bridge
 rm -f /usr/local/bin/azam-image-shrink 2>/dev/null || true
 ln -sf "${SCRIPTS}/azambasha-topology-doc.py"     /usr/local/bin/azam-topology-doc
@@ -96,7 +95,6 @@ ln -sf "${SCRIPTS}/azambasha-watchdog.py"         /usr/local/bin/azam-watchdog
 ln -sf "${SCRIPTS}/azambasha-fleet-status.sh"     /usr/local/bin/azam-fleet
 ln -sf "${SCRIPTS}/azambasha-cluster-capacity.py" /usr/local/bin/azam-capacity
 ln -sf "${SCRIPTS}/azambasha-image-doctor.sh"     /usr/local/bin/azam-doctor
-ln -sf "${SCRIPTS}/azambasha-notify.py"           /usr/local/bin/azam-notify
 ln -sf "${SCRIPTS}/azambasha-bench.sh"            /usr/local/bin/azam-bench
 ln -sf "${SCRIPTS}/azambasha-ssl.sh"              /usr/local/bin/azam-ssl
 ln -sf "${SCRIPTS}/azambasha-fix-web-credentials.sh" /usr/local/bin/azam-credentials

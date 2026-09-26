@@ -318,7 +318,6 @@ main{padding:28px;max-width:1400px;margin:0 auto;width:100%}
   <button class="tab"        data-tab="network"      onclick="switchTab('network',this)">    <span class="tab-icon">🌐</span> Network & Console</button>
   <button class="tab"        data-tab="security"     onclick="switchTab('security',this)">   <span class="tab-icon">🔒</span> Security & SSL</button>
   <button class="tab"        data-tab="vcs"          onclick="switchTab('vcs',this)">        <span class="tab-icon">🕰️</span> Topology VCS</button>
-  <button class="tab"        data-tab="alerts"       onclick="switchTab('alerts',this)">     <span class="tab-icon">🔔</span> Alerts & Notifications</button>
 </nav>
 
 <!-- ── Main ────────────────────────────────────────────────── -->
@@ -757,28 +756,6 @@ main{padding:28px;max-width:1400px;margin:0 auto;width:100%}
   </div>
 </div>
 
-<!-- ── ALERTS ─────────────────────────────────────────────────── -->
-<div class="section" id="tab-alerts">
-  <div class="section-title"><span>🔔</span> Alerts & Notifications</div>
-  <div class="tool-grid">
-
-    <div class="tool-card">
-      <div class="tool-card-head">
-        <div class="tool-icon green">📱</div>
-        <div class="tool-meta">
-          <div class="tool-name">Send Test Alert</div>
-          <div class="tool-cli">azam-notify --test</div>
-          <div class="tool-desc">Sends a test notification to your configured WhatsApp number (CallMeBot API) and webhook to verify the pipeline.</div>
-        </div>
-      </div>
-      <div class="tool-body">
-        <div class="tool-actions"><button class="btn btn-primary" onclick="runTool('notify-test',{},this)">📱 Send Test Alert</button></div>
-        <div class="terminal" id="term-notify"></div>
-      </div>
-    </div>
-
-  </div>
-</div>
 
 </main><!-- /main -->
 </div><!-- /app -->

@@ -106,8 +106,6 @@
     var tabs = [
       { id: 'health',    name: 'Cluster Health',          icon: 'fa-heartbeat' },
       { id: 'templates', name: 'Templates Marketplace',   icon: 'fa-th-large' },
-      { id: 'grader',    name: 'Exam & Quiz Grader',      icon: 'fa-graduation-cap' },
-      { id: 'sniffer',   name: 'Web Wireshark Sniffer',   icon: 'fa-rss' },
       { id: 'bridge',    name: 'Cloud & LAN Transit',     icon: 'fa-globe' },
       { id: 'doc',       name: 'Diagram & Doc Exporter',  icon: 'fa-file-code-o' },
       { id: 'ai',        name: 'AI Lab Copilot',          icon: 'fa-magic' },
@@ -115,9 +113,9 @@
       { id: 'mesh',      name: 'Ping Mesh & Traffic Gen', icon: 'fa-exchange' },
       { id: 'scheduler', name: 'Idle Saver & Quotas',     icon: 'fa-clock-o' },
       { id: 'cloud',     name: 'Cloud & NAS Backup',      icon: 'fa-cloud-upload' },
-      { id: 'security',  name: 'Security & WhatsApp',     icon: 'fa-whatsapp' },
       { id: 'canvas',    name: 'Canvas Accelerators',     icon: 'fa-paint-brush' }
     ];
+
 
     tabs.forEach(function (t, idx) {
       var tabBtn = document.createElement('button');
@@ -263,74 +261,6 @@
       '</div>';
     panesContainer.appendChild(pTemplates);
 
-    // ── Pane 2: Exam & Quiz Grader ──
-    var pGrader = document.createElement('div');
-    pGrader.id = 'pane-grader';
-    pGrader.style.display = 'none';
-    pGrader.innerHTML = 
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
-        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px;">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">' +
-            '<div style="display:flex;align-items:center;gap:10px;">' +
-              '<div style="width:36px;height:36px;border-radius:8px;background:rgba(16,185,129,0.15);color:#10b981;display:flex;align-items:center;justify-content:center;font-size:18px;"><i class="fa fa-graduation-cap"></i></div>' +
-              '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">Automated Lab Exam Grader</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Test checkpoints and generate instant pass/fail scorecards</div></div>' +
-            '</div>' +
-            '<div id="grader-lab-badge" style="display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:20px;background:rgba(16,185,129,0.1);color:#10b981;font-size:11px;font-weight:700;border:1px solid rgba(16,185,129,0.25);">' +
-              '<i class="fa fa-folder-open"></i> <span id="grader-total-count">Loading labs...</span>' +
-            '</div>' +
-          '</div>' +
-          '<div style="position:relative;">' +
-            '<input type="text" id="grader-lab-search" placeholder="🔍 Search all labs by name, topic (OSPF, BGP, CCNA)..." style="width:100%;padding:8px 12px;padding-right:32px;background:rgba(0,0,0,0.3);border:1px solid var(--pnq-border,rgba(255,255,255,0.12));border-radius:6px;color:#fff;font-size:12.5px;">' +
-            '<button type="button" id="btn-grader-refresh-labs" title="Refresh Labs List" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#94a3b8;cursor:pointer;font-size:13px;"><i class="fa fa-refresh"></i></button>' +
-          '</div>' +
-          '<div style="font-size:11px;font-weight:700;color:#94a3b8;letter-spacing:0.5px;text-transform:uppercase;margin-top:2px;">SELECT TARGET LAB (FROM LABS SECTION):</div>' +
-          '<div id="grader-lab-tree" style="max-height:220px;overflow-y:auto;background:rgba(5,8,17,0.6);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px;">' +
-            '<div style="text-align:center;color:#64748b;padding:16px;font-size:12px;"><i class="fa fa-spinner fa-spin"></i> Loading labs from /opt/unetlab/labs...</div>' +
-          '</div>' +
-          '<div id="grader-selected-preview" style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.25);border-radius:8px;padding:10px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;">' +
-            '<div style="display:flex;align-items:center;gap:10px;overflow:hidden;">' +
-              '<div style="width:28px;height:28px;border-radius:6px;background:rgba(16,185,129,0.2);color:#10b981;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;"><i class="fa fa-check"></i></div>' +
-              '<div style="overflow:hidden;">' +
-                '<div id="grader-selected-title" style="font-weight:600;font-size:13px;color:#f1f5f9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">No lab selected</div>' +
-                '<div id="grader-selected-path" style="font-size:11px;color:#94a3b8;font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Please choose a lab from the list above</div>' +
-              '</div>' +
-            '</div>' +
-            '<div id="grader-selected-nodes" style="padding:2px 8px;border-radius:4px;background:rgba(56,189,248,0.15);color:#38bdf8;font-size:11px;font-weight:700;white-space:nowrap;">- Nodes</div>' +
-          '</div>' +
-          '<input type="hidden" id="grader-selected-lab-path" value="">' +
-          '<button type="button" id="btn-run-grade" class="btn btn-primary" style="background:#10b981;border-color:#10b981;color:#fff;padding:10px 16px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;"><i class="fa fa-check-circle"></i> Grade Selected Lab</button>' +
-        '</div>' +
-        '<div id="term-grader" style="display:block;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:16px;font-family:monospace;font-size:12.5px;min-height:380px;max-height:520px;overflow-y:auto;color:#38bdf8;">' +
-          '<div style="color:#64748b;">// Ready to evaluate lab. Select any lab from the library and click "Grade Selected Lab".</div>' +
-        '</div>' +
-      '</div>';
-    panesContainer.appendChild(pGrader);
-
-    // ── Pane 3: Web Wireshark Sniffer ──
-    var pSniffer = document.createElement('div');
-    pSniffer.id = 'pane-sniffer';
-    pSniffer.style.display = 'none';
-    pSniffer.innerHTML = 
-      '<div style="display:flex;flex-direction:column;gap:16px;">' +
-        '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">' +
-            '<div style="display:flex;align-items:center;gap:12px;">' +
-              '<div style="width:38px;height:38px;border-radius:8px;background:rgba(56,189,248,0.15);color:#38bdf8;display:flex;align-items:center;justify-content:center;font-size:17px;"><i class="fa fa-rss"></i></div>' +
-              '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">In-Browser Web Wireshark & Protocol Dissector</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Capture and dissect live packets on physical or virtual bridge interfaces</div></div>' +
-            '</div>' +
-            '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">' +
-              '<select id="sniff-iface" style="padding:7px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:12.5px;">' +
-                '<option value="eth0">eth0 (Management)</option>' +
-                '<option value="pnet0">pnet0 (Bridge)</option>' +
-              '</select>' +
-              '<button type="button" id="btn-start-sniff" class="btn btn-primary" style="background:#0284c7;border-color:#0284c7;color:#fff;font-weight:600;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-play"></i> Start Live Capture</button>' +
-              '<button type="button" id="btn-stop-sniff" class="btn btn-danger" style="background:#ef4444;border-color:#ef4444;color:#fff;font-weight:600;display:inline-flex;align-items:center;gap:6px;opacity:0.4;cursor:not-allowed;" disabled><i class="fa fa-stop"></i> Stop Capture</button>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<div id="term-sniffer" style="display:none;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:16px;font-family:monospace;font-size:12px;max-height:360px;overflow-y:auto;color:#e2e8f0;"></div>' +
-      '</div>';
-    panesContainer.appendChild(pSniffer);
 
     // ── Pane 4: Cloud & LAN Transit ──
     var pBridge = document.createElement('div');
@@ -548,36 +478,7 @@
       '</div>';
     panesContainer.appendChild(pCloud);
 
-    // ── Pane 12: Security & WhatsApp ──
-    var pSecurity = document.createElement('div');
-    pSecurity.id = 'pane-security';
-    pSecurity.style.display = 'none';
-    pSecurity.innerHTML = 
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
-        '<div style="display:flex;flex-direction:column;gap:16px;">' +
-          createToolCard('ssl-status', 'azam-ssl', 'SSL / TLS Certificate Engine', 'Inspect active HTTPS certificate expiration, renew SAN multi-domain certificates, or generate new root CA.', 'fa-lock', '#059669', 'term-ssl', [{ label: 'Regenerate Cert', tool: 'ssl-generate' }]) +
-          createToolCard('scanner', 'azambasha-scanner', 'Weekly Codeberg Intelligence', 'Scans upstream Codeberg & PNetLab repositories for updates, bugfixes, and security advisories.', 'fa-search', '#6366f1', 'term-scanner') +
-        '</div>' +
-        '<div style="display:flex;flex-direction:column;gap:16px;">' +
-          '<div class="card" style="background:var(--pnq-surface,#1e293b);border:1px solid var(--pnq-border,rgba(255,255,255,0.08));border-radius:10px;padding:18px;">' +
-            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">' +
-              '<div style="width:36px;height:36px;border-radius:8px;background:rgba(37,211,102,0.15);display:flex;align-items:center;justify-content:center;color:#25d366;font-size:18px;"><i class="fa fa-whatsapp"></i></div>' +
-              '<div><div style="font-weight:600;font-size:15px;color:#f1f5f9;">WhatsApp & Webhook Alert Engine</div><div style="font-size:12px;color:var(--pnq-text-muted,#94a3b8);">Dispatches critical cluster alerts & scan reports straight to your phone</div></div>' +
-            '</div>' +
-            '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">' +
-              '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">WhatsApp Phone (with country code):</label><input type="text" id="wa-phone" placeholder="e.g. 919876543210" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;"></div>' +
-              '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">CallMeBot API Key (Free):</label><input type="password" id="wa-key" placeholder="Enter API key" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;"></div>' +
-              '<div><label style="font-size:12px;font-weight:600;color:var(--pnq-text-muted,#94a3b8);display:block;margin-bottom:4px;">Custom Alert Message:</label><input type="text" id="wa-msg" value="⚡ Hello Azam! Test alert from PNetLab Master Cluster (192.168.1.23)" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.25);border:1px solid var(--pnq-border,rgba(255,255,255,0.1));border-radius:6px;color:#fff;font-size:13px;"></div>' +
-            '</div>' +
-            '<div style="display:flex;gap:10px;align-items:center;">' +
-              '<button type="button" id="btn-wa-save" class="btn btn-primary" style="background:#25d366;border-color:#25d366;color:#052e16;font-weight:700;"><i class="fa fa-paper-plane"></i> Save & Send Test Alert</button>' +
-              '<button type="button" id="btn-wa-quick" class="btn btn-ghost"><i class="fa fa-bell"></i> Quick Test (--test)</button>' +
-            '</div>' +
-            '<div id="term-notify" style="display:none;margin-top:14px;background:#050811;border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px;font-family:monospace;font-size:12px;max-height:180px;overflow-y:auto;"></div>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
-    panesContainer.appendChild(pSecurity);
+
 
     // ── Pane 13: Canvas Accelerators ──
     var pCanvas = document.createElement('div');
@@ -603,7 +504,6 @@
     loadMesh();
     loadTemplates();
     loadPerf();
-    loadGraderLabs();
   }
 
   /* ── Tab Switching Helper ───────────────────────────────── */
@@ -616,14 +516,11 @@
       b.style.borderBottomColor = isActive ? '#38bdf8' : 'transparent';
     });
 
-    ['health', 'templates', 'grader', 'sniffer', 'bridge', 'doc', 'ai', 'diff', 'mesh', 'scheduler', 'cloud', 'security', 'canvas'].forEach(function (id) {
+    ['health', 'templates', 'bridge', 'doc', 'ai', 'diff', 'mesh', 'scheduler', 'cloud', 'canvas'].forEach(function (id) {
       var p = document.getElementById('pane-' + id);
       if (p) p.style.display = id === tabId ? 'block' : 'none';
     });
 
-    if (tabId === 'grader') {
-      loadGraderLabs();
-    }
   }
 
   /* ── Wire Dynamic Buttons ───────────────────────────────── */
@@ -644,229 +541,7 @@
       };
     });
 
-    // Exam Grader Run
-    var btnGrade = container.querySelector('#btn-run-grade');
-    if (btnGrade) {
-      btnGrade.onclick = function () {
-        var lab = (document.getElementById('grader-selected-lab-path') ? document.getElementById('grader-selected-lab-path').value.trim() : '');
-        if (!lab) {
-          App.toast('Please select a target lab to grade from the list above', 'warn');
-          return;
-        }
-        runTool('grader-run', { lab: lab }, btnGrade, 'term-grader');
-      };
-    }
 
-    // Grader Search & Refresh
-    var labSearch = container.querySelector('#grader-lab-search');
-    if (labSearch) {
-      labSearch.oninput = function () {
-        if (_graderLabsCache) renderGraderLabs(_graderLabsCache);
-      };
-    }
-    var btnGraderRefresh = container.querySelector('#btn-grader-refresh-labs');
-    if (btnGraderRefresh) {
-      btnGraderRefresh.onclick = function () {
-        loadGraderLabs(true);
-      };
-    }
-
-    // ── Sniffer Controller (Continuous Live Capture with Start & Stop) ──
-    var btnStartSniff = container.querySelector('#btn-start-sniff');
-    var btnStopSniff = container.querySelector('#btn-stop-sniff');
-    var ifaceSelect = container.querySelector('#sniff-iface');
-    var activeSniffAbort = null;
-    var isSniffing = false;
-
-    // Dynamically load available interfaces if possible
-    fetch(API_BASE + '/sniffer/interfaces')
-      .then(function (r) { return r.json(); })
-      .then(function (data) {
-        if (data && data.interfaces && data.interfaces.length > 0 && ifaceSelect) {
-          var currentVal = ifaceSelect.value;
-          ifaceSelect.innerHTML = '';
-          data.interfaces.forEach(function (item) {
-            var opt = document.createElement('option');
-            opt.value = item.interface;
-            opt.textContent = item.interface + (item.status ? ' (' + item.status + ')' : '');
-            ifaceSelect.appendChild(opt);
-          });
-          if (currentVal) ifaceSelect.value = currentVal;
-        }
-      })
-      .catch(function () {});
-
-    function setSnifferState(capturing) {
-      isSniffing = capturing;
-      if (capturing) {
-        if (btnStartSniff) {
-          btnStartSniff.disabled = true;
-          btnStartSniff.style.opacity = '0.65';
-          btnStartSniff.innerHTML = '<i class="fa fa-circle" style="color:#22c55e;"></i> Capturing...';
-        }
-        if (btnStopSniff) {
-          btnStopSniff.disabled = false;
-          btnStopSniff.style.opacity = '1';
-          btnStopSniff.style.cursor = 'pointer';
-          btnStopSniff.innerHTML = '<i class="fa fa-stop"></i> Stop Capture';
-        }
-        if (ifaceSelect) ifaceSelect.disabled = true;
-      } else {
-        if (btnStartSniff) {
-          btnStartSniff.disabled = false;
-          btnStartSniff.style.opacity = '1';
-          btnStartSniff.innerHTML = '<i class="fa fa-play"></i> Start Live Capture';
-        }
-        if (btnStopSniff) {
-          btnStopSniff.disabled = true;
-          btnStopSniff.style.opacity = '0.4';
-          btnStopSniff.style.cursor = 'not-allowed';
-          btnStopSniff.innerHTML = '<i class="fa fa-stop"></i> Stop Capture';
-        }
-        if (ifaceSelect) ifaceSelect.disabled = false;
-      }
-    }
-
-    if (btnStartSniff) {
-      btnStartSniff.onclick = function () {
-        if (isSniffing) return;
-        var iface = ifaceSelect ? ifaceSelect.value : 'eth0';
-        var term = document.getElementById('term-sniffer');
-        if (!term) return;
-
-        setSnifferState(true);
-        term.style.display = 'block';
-        term.innerHTML = 
-          '<div style="display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08);flex-wrap:wrap;gap:8px;">' +
-            '<div style="display:flex;align-items:center;gap:8px;">' +
-              '<div style="display:flex;gap:6px;">' +
-                '<span style="width:10px;height:10px;border-radius:50%;background:#ef4444;display:inline-block;"></span>' +
-                '<span style="width:10px;height:10px;border-radius:50%;background:#eab308;display:inline-block;"></span>' +
-                '<span style="width:10px;height:10px;border-radius:50%;background:#22c55e;display:inline-block;"></span>' +
-              '</div>' +
-              '<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);padding:2px 8px;border-radius:12px;font-size:11px;color:#4ade80;font-weight:600;"><i class="fa fa-circle" style="font-size:8px;"></i> LIVE CAPTURE</span>' +
-              '<span style="font-size:11px;color:#94a3b8;font-family:monospace;">iface: <b>' + iface + '</b></span>' +
-            '</div>' +
-            '<div style="display:flex;align-items:center;gap:12px;">' +
-              '<span id="sniff-pkt-badge" style="font-size:11.5px;color:#38bdf8;font-family:monospace;font-weight:600;">0 packets captured</span>' +
-              '<span id="sniff-pcap-link"></span>' +
-            '</div>' +
-          '</div>' +
-          '<div id="term-sniffer-lines" style="display:flex;flex-direction:column;gap:2px;"></div>';
-
-        var linesContainer = document.getElementById('term-sniffer-lines');
-        var pktBadge = document.getElementById('sniff-pkt-badge');
-        var pcapSlot = document.getElementById('sniff-pcap-link');
-        var packetCount = 0;
-        var savedPcapFile = null;
-
-        activeSniffAbort = new AbortController();
-
-        fetch(API_BASE + '/run', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            tool: 'sniffer-capture',
-            params: { interface: iface, continuous: true }
-          }),
-          signal: activeSniffAbort.signal
-        }).then(function (res) {
-          if (!res.body) throw new Error('No response body stream');
-          var reader = res.body.getReader();
-          var decoder = new TextDecoder();
-          var buf = '';
-
-          function pump() {
-            reader.read().then(function (r) {
-              if (r.done) {
-                setSnifferState(false);
-                return;
-              }
-              buf += decoder.decode(r.value, { stream: true });
-              var lines = buf.split('\n');
-              buf = lines.pop();
-
-              lines.forEach(function (line) {
-                if (!line.startsWith('data:')) return;
-                try {
-                  var obj = JSON.parse(line.slice(5).trim());
-                  if (obj.type === 'line') {
-                    var txt = stripAnsi(obj.data);
-                    if (!txt.trim()) return;
-
-                    if (txt.includes(' -> ') && (txt.includes('TCP') || txt.includes('UDP') || txt.includes('OSPF') || txt.includes('BGP') || txt.includes('ICMP') || txt.includes('ARP') || txt.includes('ETH'))) {
-                      packetCount++;
-                      if (pktBadge) pktBadge.textContent = packetCount + ' packets captured';
-                    }
-
-                    if (txt.includes('File saved:')) {
-                      var m = txt.match(/File saved:\s*(\S+\.pcap)/i);
-                      if (m && m[1]) {
-                        savedPcapFile = m[1].split('/').pop();
-                        if (pcapSlot) {
-                          pcapSlot.innerHTML = '<a href="' + API_BASE + '/sniffer/download?file=' + encodeURIComponent(savedPcapFile) + '" target="_blank" download class="btn btn-xs btn-success" style="background:#10b981;border:none;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;text-decoration:none;display:inline-flex;align-items:center;gap:4px;"><i class="fa fa-download"></i> Download PCAP</a>';
-                        }
-                      }
-                    }
-
-                    if (linesContainer) {
-                      var row = document.createElement('div');
-                      row.style.cssText = 'white-space:pre-wrap;word-break:break-all;line-height:1.45;color:' + getLineColor(txt) + ';';
-                      row.textContent = txt;
-                      linesContainer.appendChild(row);
-                      term.scrollTop = term.scrollHeight;
-                    }
-                  } else if (obj.type === 'done') {
-                    var doneRow = document.createElement('div');
-                    doneRow.style.cssText = 'border-top:1px solid rgba(255,255,255,0.08);margin-top:8px;padding-top:6px;font-size:11px;color:#64748b;';
-                    doneRow.textContent = '── Capture stopped (status ' + obj.code + ') ──';
-                    if (linesContainer) linesContainer.appendChild(doneRow);
-                    term.scrollTop = term.scrollHeight;
-                    setSnifferState(false);
-                    App.toast('✔ Packet capture stopped successfully', 'ok');
-                  }
-                } catch (e) {}
-              });
-              pump();
-            }).catch(function (err) {
-              setSnifferState(false);
-            });
-          }
-          pump();
-        }).catch(function (err) {
-          setSnifferState(false);
-          if (linesContainer) {
-            var errDiv = document.createElement('div');
-            errDiv.style.color = '#f87171';
-            errDiv.textContent = 'Capture error: ' + err.message;
-            linesContainer.appendChild(errDiv);
-          }
-        });
-      };
-    }
-
-    if (btnStopSniff) {
-      btnStopSniff.onclick = function () {
-        if (!isSniffing) return;
-        btnStopSniff.disabled = true;
-        btnStopSniff.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Stopping...';
-
-        fetch(API_BASE + '/sniffer/stop', { method: 'POST' })
-          .then(function (r) { return r.json(); })
-          .then(function () {
-            setTimeout(function () {
-              if (isSniffing) {
-                setSnifferState(false);
-                if (activeSniffAbort) activeSniffAbort.abort();
-              }
-            }, 2500);
-          })
-          .catch(function () {
-            setSnifferState(false);
-            if (activeSniffAbort) activeSniffAbort.abort();
-          });
-      };
-    }
 
     // Diagram Export
     var btnDoc = container.querySelector('#btn-export-doc');
@@ -921,25 +596,7 @@
       };
     }
 
-    // WhatsApp Alert Save
-    var btnWaSave = container.querySelector('#btn-wa-save');
-    if (btnWaSave) {
-      btnWaSave.onclick = function () {
-        var phone = document.getElementById('wa-phone').value.trim();
-        var key = document.getElementById('wa-key').value.trim();
-        var msg = document.getElementById('wa-msg').value.trim();
-        if (!phone) { App.toast('Enter your WhatsApp phone number', 'warn'); return; }
-        runTool('notify-send', { phone: phone, apikey: key, message: msg, save: true }, btnWaSave, 'term-notify');
-      };
-    }
 
-    // WhatsApp Quick Test
-    var btnWaQuick = container.querySelector('#btn-wa-quick');
-    if (btnWaQuick) {
-      btnWaQuick.onclick = function () {
-        runTool('notify-test', {}, btnWaQuick, 'term-notify');
-      };
-    }
 
     // Hot-Node Profiler refresh & kill
     var btnPerfRef = container.querySelector('#btn-perf-refresh');
@@ -1862,164 +1519,6 @@
       .replace(/'/g, '&#039;');
   }
 
-  /* ── Exam & Quiz Grader Labs Management ─────────────────── */
-  var _graderLabsCache = null;
-
-  function loadGraderLabs(force) {
-    if (_graderLabsCache && !force) {
-      renderGraderLabs(_graderLabsCache);
-      return;
-    }
-
-    var treeEl = document.getElementById('grader-lab-tree');
-    if (treeEl && !treeEl.querySelector('.az-folder-group')) {
-      treeEl.innerHTML = '<div style="text-align:center;color:#64748b;padding:16px;font-size:12px;"><i class="fa fa-spinner fa-spin"></i> Loading labs from /opt/unetlab/labs...</div>';
-    }
-
-    fetch('/azam-ops/api/labs')
-      .then(function (res) { return res.json(); })
-      .then(function (data) {
-        _graderLabsCache = data;
-        renderGraderLabs(data);
-      })
-      .catch(function (err) {
-        if (treeEl) {
-          treeEl.innerHTML = '<div style="color:#ef4444;padding:12px;font-size:12px;"><i class="fa fa-exclamation-triangle"></i> Failed to load labs: ' + (err.message || 'API error') + '</div>';
-        }
-      });
-  }
-
-  function renderGraderLabs(data) {
-    var treeEl = document.getElementById('grader-lab-tree');
-    var badgeCount = document.getElementById('grader-total-count');
-    if (!treeEl) return;
-
-    var total = (data && data.total_labs) || 0;
-    if (badgeCount) badgeCount.textContent = total + ' Labs in Library';
-
-    if (!data || !data.folders || !data.folders.length) {
-      treeEl.innerHTML = '<div style="color:#64748b;padding:14px;text-align:center;font-size:12px;">No labs found under /opt/unetlab/labs</div>';
-      return;
-    }
-
-    var searchVal = (document.getElementById('grader-lab-search') ? document.getElementById('grader-lab-search').value.toLowerCase().trim() : '');
-    var currentSelected = (document.getElementById('grader-selected-lab-path') ? document.getElementById('grader-selected-lab-path').value : '');
-
-    var html = '';
-    var matchCount = 0;
-    var autoPickFirst = null;
-
-    data.folders.forEach(function (f, fIdx) {
-      var filteredLabs = f.labs.filter(function (l) {
-        if (!searchVal) return true;
-        return l.name.toLowerCase().indexOf(searchVal) !== -1 ||
-               l.folder.toLowerCase().indexOf(searchVal) !== -1 ||
-               (l.description && l.description.toLowerCase().indexOf(searchVal) !== -1);
-      });
-
-      if (!filteredLabs.length) return;
-      matchCount += filteredLabs.length;
-      if (!autoPickFirst && filteredLabs.length) autoPickFirst = filteredLabs[0];
-
-      var isSearchActive = !!searchVal;
-      var showGroup = (isSearchActive || fIdx === 0 || fIdx === 1);
-      html += 
-        '<div class="az-folder-group" style="margin-bottom:4px;">' +
-          '<div class="az-folder-hdr" data-fidx="' + fIdx + '" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:6px 10px;background:rgba(255,255,255,0.04);border-radius:6px;font-size:12px;font-weight:600;color:#cbd5e1;user-select:none;transition:background 0.15s ease;" onmouseenter="this.style.background=\'rgba(255,255,255,0.07)\'" onmouseleave="this.style.background=\'rgba(255,255,255,0.04)\'">' +
-            '<div style="display:flex;align-items:center;gap:7px;overflow:hidden;">' +
-              '<i class="fa ' + (showGroup ? 'fa-folder-open' : 'fa-folder') + '" style="color:#f59e0b;font-size:13px;"></i>' +
-              '<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(f.name) + '</span>' +
-            '</div>' +
-            '<span style="font-size:10px;color:#94a3b8;background:rgba(255,255,255,0.06);padding:2px 7px;border-radius:10px;font-weight:700;">' + filteredLabs.length + '</span>' +
-          '</div>' +
-          '<div class="az-folder-labs" id="az-flabs-' + fIdx + '" style="display:' + (showGroup ? 'flex' : 'none') + ';flex-direction:column;gap:3px;margin-top:3px;padding-left:14px;">';
-
-      filteredLabs.forEach(function (lab) {
-        var isSel = (currentSelected && currentSelected === lab.path);
-        var borderStyle = isSel ? 'border:1px solid #10b981;background:rgba(16,185,129,0.15);' : 'border:1px solid rgba(255,255,255,0.05);background:rgba(0,0,0,0.2);';
-        html += 
-          '<div class="az-grader-lab-item" data-path="' + escapeHtml(lab.path) + '" data-name="' + escapeHtml(lab.name) + '" data-nodes="' + lab.nodes + '" data-folder="' + escapeHtml(lab.folder) + '" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:6px;' + borderStyle + 'font-size:12px;transition:all 0.15s ease;">' +
-            '<div style="display:flex;align-items:center;gap:8px;overflow:hidden;">' +
-              '<i class="fa fa-cube" style="color:' + (isSel ? '#10b981' : '#38bdf8') + ';font-size:11px;"></i>' +
-              '<span style="color:' + (isSel ? '#34d399' : '#f1f5f9') + ';font-weight:' + (isSel ? '700' : '500') + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(lab.name) + '</span>' +
-            '</div>' +
-            '<span style="padding:1px 6px;border-radius:4px;background:rgba(56,189,248,0.12);color:#38bdf8;font-size:10.5px;font-weight:700;white-space:nowrap;">' + lab.nodes + ' Nodes</span>' +
-          '</div>';
-      });
-
-      html += '</div></div>';
-    });
-
-    if (matchCount === 0) {
-      treeEl.innerHTML = '<div style="color:#64748b;padding:14px;text-align:center;font-size:12px;">No labs match "<b>' + escapeHtml(searchVal) + '</b>"</div>';
-      return;
-    }
-
-    treeEl.innerHTML = html;
-
-    // Attach folder collapse/expand toggles
-    treeEl.querySelectorAll('.az-folder-hdr').forEach(function (hdr) {
-      hdr.onclick = function () {
-        var fIdx = hdr.dataset.fidx;
-        var labsList = document.getElementById('az-flabs-' + fIdx);
-        var icon = hdr.querySelector('.fa');
-        if (labsList) {
-          var isHidden = labsList.style.display === 'none';
-          labsList.style.display = isHidden ? 'flex' : 'none';
-          if (icon) {
-            icon.className = isHidden ? 'fa fa-folder-open' : 'fa fa-folder';
-          }
-        }
-      };
-    });
-
-    // Attach click handlers to lab items
-    treeEl.querySelectorAll('.az-grader-lab-item').forEach(function (item) {
-      item.onclick = function () {
-        selectGraderLab({
-          path: item.dataset.path,
-          name: item.dataset.name,
-          nodes: item.dataset.nodes,
-          folder: item.dataset.folder
-        });
-      };
-    });
-
-    // If nothing currently selected and we have an autoPick, select it
-    if (!currentSelected && autoPickFirst) {
-      selectGraderLab(autoPickFirst);
-    }
-  }
-
-  function selectGraderLab(lab) {
-    if (!lab) return;
-    var pathInput = document.getElementById('grader-selected-lab-path');
-    var titleEl = document.getElementById('grader-selected-title');
-    var pathEl = document.getElementById('grader-selected-path');
-    var nodesEl = document.getElementById('grader-selected-nodes');
-
-    if (pathInput) pathInput.value = lab.path;
-    if (titleEl) titleEl.textContent = lab.name;
-    if (pathEl) pathEl.textContent = lab.path;
-    if (nodesEl) nodesEl.textContent = (lab.nodes || '-') + ' Nodes';
-
-    // Highlight selected item in tree
-    var treeEl = document.getElementById('grader-lab-tree');
-    if (treeEl) {
-      treeEl.querySelectorAll('.az-grader-lab-item').forEach(function (item) {
-        var isMatch = item.dataset.path === lab.path;
-        item.style.borderColor = isMatch ? '#10b981' : 'rgba(255,255,255,0.05)';
-        item.style.background = isMatch ? 'rgba(16,185,129,0.15)' : 'rgba(0,0,0,0.2)';
-        var icon = item.querySelector('.fa-cube');
-        if (icon) icon.style.color = isMatch ? '#10b981' : '#38bdf8';
-        var nameSpan = item.querySelector('span');
-        if (nameSpan) {
-          nameSpan.style.color = isMatch ? '#34d399' : '#f1f5f9';
-          nameSpan.style.fontWeight = isMatch ? '700' : '500';
-        }
-      });
-    }
-  }
 
   /* ── Issue #34 Hardening: Canvas Viewport & Zoom Retention ── */
   (function initCanvasRetentionHook() {

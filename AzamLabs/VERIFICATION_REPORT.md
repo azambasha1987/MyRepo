@@ -56,6 +56,7 @@ Last updated: 2026-09-05 01:52:16 UTC
 | Debian (pnetlab-vpcs v6.8.71resolute1) | `debian/pool/resolute/main/pnetlab-vpcs_6.8.71resolute1_amd64.deb` | 85,794 | ✅ VERIFIED | `c3ce5f85c6379ce41548fed15df8e14957a55f46392c54185daff9ae9eef9ac7` |
 | Debian (pnetlab-vpcs v6.8.72resolute1) | `debian/pool/resolute/main/pnetlab-vpcs_6.8.72resolute1_amd64.deb` | 86,254 | ✅ VERIFIED | `c3af1643d8cc0d54feaf496a55fcf5789ed830758b5291d6ddb8b9c7b342cad7` |
 | Debian (pnetlab-vpcs v6.8.74resolute1) | `debian/pool/resolute/main/pnetlab-vpcs_6.8.74resolute1_amd64.deb` | 86,668 | ✅ VERIFIED | `8da8340e48dfc91464e002e61b2a658cc2bec7bbb72529eee81b6d7d8221b1df` |
+| Debian (pnetlab-vpcs v6.8.83resolute1) | `debian/pool/resolute/main/pnetlab-vpcs_6.8.83resolute1_amd64.deb` | 117,936 | ✅ VERIFIED | `399afdc233a1991b6edd874dbc68eb679df170019e1b2fbd9e5fb779691e2414` |
 | Debian (pnetlab v6.8.62resolute1) | `debian/pool/resolute/main/pnetlab_6.8.62resolute1_amd64.deb` | 87,828,628 | ✅ VERIFIED | `49e0f58542f77aeb81ed624e49025d82673d836c12db3a9a5b1c17e068e15377` |
 | Debian (pnetlab v6.8.63resolute1) | `debian/pool/resolute/main/pnetlab_6.8.63resolute1_amd64.deb` | 87,827,466 | ✅ VERIFIED | `fa43986ef4224f3f0fcc99eaddc404a0ea04ba43d21a98922915013cec63c4a8` |
 | Debian (pnetlab v6.8.64resolute1) | `debian/pool/resolute/main/pnetlab_6.8.64resolute1_amd64.deb` | 87,835,374 | ✅ VERIFIED | `d72e2e09b5e4e71f49d4e95d513f5bc9e1ab075e5f863cf5f0d8b01c0f6b5a7c` |

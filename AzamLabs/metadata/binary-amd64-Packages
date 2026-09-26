@@ -1380,3 +1380,26 @@ MD5sum: 5b9e818a34dca54b787964bf7ce18473
 SHA1: 8ba58d36129fa97870bdaa4109455314cd649a9e
 SHA256: 8da8340e48dfc91464e002e61b2a658cc2bec7bbb72529eee81b6d7d8221b1df
 SHA512: a0896bf0859b4aae80ed4593c6e06685af57e1c867f34ee1829095d2cac90fbdfba4d5061f6e961bfeda83fbd1d4b6e36c3db005e77f9f92f74dc87123e6f1cb
+
+Package: pnetlab-vpcs
+Version: 6.8.83resolute1
+Architecture: amd64
+Maintainer: PNetLab Noble Port <noble@pnetlab.local>
+Installed-Size: 244
+Conflicts: unetlab-vpcs
+Replaces: unetlab-vpcs
+Section: devel
+Priority: optional
+Homepage: http://www.pnetlab.com/
+Description: VPCS-compatible virtual PC for PNetLab
+ netprobe is a statically linked virtual PC implementing raw Ethernet,
+ IPv4/IPv6, ARP/neighbor discovery, ICMP, DHCP, DNS, UDP and minimal TCP
+ for PNetLab labs. It replaces the
+ legacy opaque VPCS rider while retaining the pnetlab-vpcs package and
+ /opt/vpcsu/bin/vpcs runtime contracts.
+Filename: pool/resolute/main/pnetlab-vpcs_6.8.83resolute1_amd64.deb
+Size: 117936
+MD5sum: 443644e3fa20174857238626da8be864
+SHA1: 0934a19f77d6d8d35e18f9a7bf22aebf7d720b69
+SHA256: 399afdc233a1991b6edd874dbc68eb679df170019e1b2fbd9e5fb779691e2414
+SHA512: 2c150d516fdf46d137a1cdefa6dc3fc2264d3081009c1ef3202accd77947ceaea948b6aabf0deb9cdd4a6bd587c4e1c3266cc36e4825a19edd87e86f62e8d105

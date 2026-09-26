@@ -297,6 +297,7 @@ Every feature addition, bug fix, and performance hyper-tuning in AzamLabs is exp
 | **Authoritative Identity (`root:azam`) & APT Self-Healing Hook** | Enforced | Enforced | `/etc/apt/apt.conf.d/99pnetlab-credentials` |
 | **Satellite Cluster Interconnect & Tri-Tier Password Fallback** | Cluster DB Host | Worker Client (`0600`) | `azambasha-fix-cluster.sh`, `extracted_pnet-satdeploy.sh` |
 | **Docker Subsystem (`pnetlab-docker`, `pnet-capture-web`, Forwarding)** | Active (Master Host) | Active (Worker Client) | `azambasha-upload-and-docker-fix.sh`, `azambasha-quarterly-audit.sh` |
+| **VPCS Dual-Stack IPv6 Engine (`pnetlab-vpcs v6.8.83resolute1`)** | Active (`v6.8.83`) | Active (`v6.8.83`) | `pnetlab-vpcs_6.8.83resolute1_amd64.deb` |
 | **Interactive Canvas Tools (Network Watcher, Painter, Analyzer)** | Active (Full Web-GUI & Live Stream) | Active (Worker Packet Mirroring & Veth Hooks) | `azam-features.js`, `pnet-capture-web` |
 | **Dynamic Web-GUI Version Synchronization (`v6.8.83`)** | Active (`v6.8.83`) | N/A (Headless Worker) | `azambasha-sync-gui-version.sh` |
 | **Apache Event FastCGI, PHP-FPM & Session Cookies** | Active | N/A (Headless Worker) | `azambasha-fix-web-credentials.sh` |

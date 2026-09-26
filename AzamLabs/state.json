@@ -322,6 +322,10 @@
       "sha256": "8da8340e48dfc91464e002e61b2a658cc2bec7bbb72529eee81b6d7d8221b1df",
       "size": 86668
     },
+    "debian/pool/resolute/main/pnetlab-vpcs_6.8.83resolute1_amd64.deb": {
+      "sha256": "399afdc233a1991b6edd874dbc68eb679df170019e1b2fbd9e5fb779691e2414",
+      "size": 117936
+    },
     "debian/pool/resolute/main/pnetlab-bridge-dkms_6.8.74resolute1_all.deb": {
       "sha256": "f936b6898d1de6ac13db0e40017d38a55a9007654ca3d4f205d836e7a4b9a696",
       "size": 142376

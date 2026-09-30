@@ -29,6 +29,7 @@ if [ ! -d "${BASE_DIR}/docs/reports" ]; then
     fi
 fi
 REPORTS_DIR="${BASE_DIR}/docs/reports"
+REPO_ROOT="${REPO_ROOT:-$BASE_DIR}"
 mkdir -p "$REPORTS_DIR" 2>/dev/null || REPORTS_DIR="/tmp"
 SNAPSHOT_DIR="/opt/unetlab/data/Backup/snapshots"
 

@@ -189,7 +189,8 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 | Check Cycle | Scheduled Date & Time (IST) | Equivalent Time (UTC) | Cadence Type | Milestone Objectives | Status |
 |:---:|:---:|:---:|:---:|---|:---:|
 | **Cycle 0** | **Sat, 19 Sep 2026, 16:00 IST** | 19 Sep 2026, 10:30 UTC | Baseline Scan | Baseline audit; 34 issues audited; Universal Lab Importer live; GUI v6.8.79 synced. | ✅ `COMPLETED` |
-| **Execution (Today)** | **Thu, 24 Sep 2026, 12:25 IST** | 24 Sep 2026, 06:55 UTC | On-Demand Run | 7/7 probes passed; 5-Step SOP, Docker & New Containers, and One-Step update commands verified; audit report generated. | ✅ `COMPLETED` |
+| **Execution (Previous)** | **Thu, 24 Sep 2026, 12:25 IST** | 24 Sep 2026, 06:55 UTC | On-Demand Run | 7/7 probes passed; 5-Step SOP, Docker & New Containers, and One-Step update commands verified; audit report generated. | ✅ `COMPLETED` |
+| **Execution (Today)** | **Wed, 30 Sep 2026, 09:30 IST** | 30 Sep 2026, 04:00 UTC | Q3/Q4 2026 Check | 7/7 probes passed; Steps 1–3 completed; 15 new issues (#35–#49) audited; v6.8.84 & OpenBMP template discovered; Step 4 confirmation gate engaged. | ✅ `COMPLETED` |
 | **Cycle 1** | **Sat, 19 Dec 2026, 09:00 IST** | 19 Dec 2026, 03:30 UTC | Q4 2026 Check | Q4 upstream diff audit; Issue #34 canvas zoom retention review; package release sync. | ⏳ `SCHEDULED` |
 | **Cycle 2** | **Fri, 19 Mar 2027, 09:00 IST** | 19 Mar 2027, 03:30 UTC | Q1 2027 Check | Q1 2027 upstream diff audit; Ubuntu 26.04 Resolute point release kernel sanity check. | ⏳ `SCHEDULED` |
 | **Cycle 3** | **Sat, 19 Jun 2027, 09:00 IST** | 19 Jun 2027, 03:30 UTC | Q2 2027 Check | Q2 2027 upstream diff audit; Heavy node templates & multi-disk QEMU validation. | ⏳ `SCHEDULED` |
@@ -199,15 +200,16 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 
 ## Executive Summary
 
-- **Total Tracked Issues**: 34 (10 Open, 24 Closed)
+- **Total Tracked Issues**: 49 (16 Open, 33 Closed)
+- **Latest Upstream Version Audited**: `v6.8.84` (Package: `6.8.84resolute1`)
 - **Latest Upstream Version Implemented**: `v6.8.83` (Package: `6.8.83resolute1`)
 - **Web-GUI Display Status**: Synchronized with latest implemented release (`AzamLabs v6.8.83`).
-- **Recent Upstream Commits**: 12 commits inspected
+- **Recent Upstream Commits**: 18 commits inspected (including commit `af324237` OpenBMP qcow2 addition).
 - **Audit Cadence**: Quarterly (Every 3 Months) locked to Indian Standard Time (IST - UTC+5:30).
 - **Primary Notification Target**: `azambasha1987@gmail.com` (Direct SMTP/TLS email digest with PDF attachment).
 - **Platform Alignment**: Native Ubuntu 26.04 Resolute & Linux Kernel 7.0 stack verified.
 - **Docker Subsystem State**: Docker CE, `pnetlab-docker`, and `pnet-capture-web:1.0` audited with IP forwarding & bridge policies.
-- **Feature & Enhancement Scope**: Comprehensive radar tracking all brand-new features as well as updates/enhancements to all existing platform tools (including Network Watcher, Network Painter, Network Analyzer, and other canvas/subsystem features).
+- **Feature & Enhancement Scope**: Comprehensive radar tracking all brand-new features (OpenBMP) as well as updates/enhancements to all existing platform tools (including Network Watcher up to 20 filters, Network Painter anti-runaway drag lock, Network Analyzer & Docker link glow, and other canvas/subsystem features).
 - **Governance Protocol**: 5-Step Update Check Pipeline (Incremental Issues Tracker -> All New Features & Existing Tools Scan -> Pre-Change Email Briefing -> Human Confirmation Gate -> One-Step Turnkey Update Command).
 - **Performance State**: Ultra-KSM memory deduplication (65-80% savings) & CPU governor intact.
 
@@ -395,6 +397,21 @@ Status of multi-vendor virtualized routing, switching, and compute nodes across 
 
 | Issue # | State | Severity | Title | AzamLabs Resolution Status |
 |---|:---:|:---:|---|---|
+| [#49](https://codeberg.org/netkillui/Pnetlabv8/issues/49) | **OPEN** | `CRITICAL` | QEMU nodes lose connectivity with node powered on: tap on NO-CARRIER... | ADAPTED in AzamLabs (Tap Carrier Keepalive Watchdog Probe in azambasha-watchdog.py) |
+| [#48](https://codeberg.org/netkillui/Pnetlabv8/issues/48) | **CLOSED** | `HIGH` | OVA boots from hard drive but keeps triggering reinstallation loop | IMMUNE in AzamLabs (Hard disk GRUB priority verified) |
+| [#47](https://codeberg.org/netkillui/Pnetlabv8/issues/47) | **CLOSED** | `HIGH` | It has to be reinstalled after every reboot？ | IMMUNE in AzamLabs (Hard disk GRUB priority verified) |
+| [#46](https://codeberg.org/netkillui/Pnetlabv8/issues/46) | **OPEN** | `LOW` | Satellite upgrade Proccess | REMEDIATED in AzamLabs (Canonical sudo azam-update --satellite / ONE_STEP_UPDATE_COMMANDS.md) |
+| [#45](https://codeberg.org/netkillui/Pnetlabv8/issues/45) | **OPEN** | `LOW` | User Online & Offline status missing | ADAPTED in AzamLabs (Queued for Ops Center User Telemetry Dashboard) |
+| [#44](https://codeberg.org/netkillui/Pnetlabv8/issues/44) | **OPEN** | `MEDIUM` | Network Watcher: Traffic name/type with src & dst info no longer appears | ADAPTED in AzamLabs (Link Hover Packet Tooltip Metadata Restored in azam-features.js) |
+| [#43](https://codeberg.org/netkillui/Pnetlabv8/issues/43) | **OPEN** | `LOW` | Node and Link Glow with connected link not working | ADAPTED in AzamLabs (Bidirectional Node+Link Glow Implemented in azam-features.js) |
+| [#42](https://codeberg.org/netkillui/Pnetlabv8/issues/42) | **CLOSED** | `MEDIUM` | Network watcher filter limitations | ADAPTED in AzamLabs (Expanded from 6 to 20 Packet Filters & Flow Alignment in azam-features.js) |
+| [#41](https://codeberg.org/netkillui/Pnetlabv8/issues/41) | **OPEN** | `MEDIUM` | Canvas auto-scroll Nodes drag and place issue in corner and sides | ADAPTED in AzamLabs (Canvas Edge Margin Dampening Anti-Runaway Lock in azam-features.js) |
+| [#40](https://codeberg.org/netkillui/Pnetlabv8/issues/40) | **CLOSED** | `CRITICAL` | core-assets archive did not contain complete satellite asset set | IMMUNE in AzamLabs (Tri-Tier Fallback & Standalone Satellite Deploy Scripts) |
+| [#39](https://codeberg.org/netkillui/Pnetlabv8/issues/39) | **CLOSED** | `HIGH` | Network Watcher & Topology overlay stop working | ADAPTED in AzamLabs (Clean SVG Filter & WebSocket Teardown on Overlay Toggle) |
+| [#38](https://codeberg.org/netkillui/Pnetlabv8/issues/38) | **CLOSED** | `MEDIUM` | Traffic Glow not working on Docker Interfaces | ADAPTED in AzamLabs (Docker Interface Traffic Glow Adapter via Promiscuous Veth Hooks) |
+| [#37](https://codeberg.org/netkillui/Pnetlabv8/issues/37) | **CLOSED** | `MEDIUM` | Traffic Glow not working on Docker Interfaces | ADAPTED in AzamLabs (Docker Interface Traffic Glow Adapter via Promiscuous Veth Hooks) |
+| [#36](https://codeberg.org/netkillui/Pnetlabv8/issues/36) | **CLOSED** | `LOW` | Connections between Cisco routers and other devices | IMMUNE in AzamLabs (Bridge LACP/BPDU Filter Bypass group_fwd_mask=0xffff) |
+| [#35](https://codeberg.org/netkillui/Pnetlabv8/issues/35) | **CLOSED** | `HIGH` | Community network-install bootstrap hardening (issue #19 / guac-lite)... | IMMUNE in AzamLabs (32-Byte Guac Key Pre-Config & Systemd Overrides in azambasha-fix-web-credentials.sh) |
 | [#33](https://codeberg.org/netkillui/Pnetlabv8/issues/33) | **OPEN** | `CRITICAL` | Satellite Mid Way install Failure Bug... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
 | [#32](https://codeberg.org/netkillui/Pnetlabv8/issues/32) | **OPEN** | `CRITICAL` | upgraded to 8.7.9 - Satellite issue - STEP BY... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
 | [#31](https://codeberg.org/netkillui/Pnetlabv8/issues/31) | **OPEN** | `CRITICAL` | release 6.8.79resolute1 is not ready: manifes... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |

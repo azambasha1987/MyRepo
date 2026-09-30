@@ -61,13 +61,13 @@ def probe_plan_and_ledger():
 
     details = []
 
-    # Check 34 issue rows
+    # Check issue rows in ledger
     issue_matches = re.findall(r'\[#(\d+)\]\(https://codeberg\.org/netkillui/Pnetlabv8/issues/\d+\)', content)
     unique_issues = len(set(issue_matches))
-    if unique_issues == 34:
-        details.append(f"All 34 community issues tracked in the ledger ({unique_issues} found).")
+    if unique_issues >= 34:
+        details.append(f"All {unique_issues} community issues tracked in the ledger ({unique_issues} found, baseline >= 34).")
     else:
-        return False, [f"Expected 34 issues in ledger, found {unique_issues}"]
+        return False, [f"Expected at least 34 issues in ledger, found {unique_issues}"]
 
     # Check zero legacy naming
     legacy_matches = re.findall(r'\b(azam[-_ ](?:basha|pnet)|pnet[-_ ]?azam)\b', content, re.IGNORECASE)

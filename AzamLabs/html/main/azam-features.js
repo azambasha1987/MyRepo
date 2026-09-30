@@ -1636,6 +1636,167 @@
     }, true);
   })();
 
+  /* ── Issue #42 Hardening: Network Watcher Expanded 20-Filter Capacity & Dash Flow ── */
+  (function initWatcherFilterCapacityHook() {
+    function expandWatcherLimits() {
+      try {
+        if (window.networkWatcher && typeof window.networkWatcher.maxFilters === 'number') {
+          window.networkWatcher.maxFilters = 20;
+        }
+        if (window.PNetLabWatcher && typeof window.PNetLabWatcher.maxFilters === 'number') {
+          window.PNetLabWatcher.maxFilters = 20;
+        }
+        var filterInputs = document.querySelectorAll('input[name*="filter"], input.watcher-filter-input, #watcher_filter_input');
+        for (var i = 0; i < filterInputs.length; i++) {
+          filterInputs[i].removeAttribute('maxlength');
+          filterInputs[i].setAttribute('data-max-filters', '20');
+        }
+      } catch (e) {
+        // Non-fatal
+      }
+    }
+
+    var dashStyle = document.createElement('style');
+    dashStyle.id = 'azam-watcher-dash-flow-style';
+    dashStyle.textContent = [
+      '.watcher-flow-right { stroke-dashoffset: 0 !important; animation: azamFlowRight 1.2s linear infinite !important; }',
+      '@keyframes azamFlowRight { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }',
+      '#azam-watcher-tooltip { position: fixed; z-index: 99999; pointer-events: none; background: rgba(15, 23, 42, 0.95);',
+      '  border: 1px solid #38bdf8; border-radius: 8px; padding: 8px 12px; font-family: monospace; font-size: 11px; color: #f8fafc;',
+      '  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.6), 0 0 10px rgba(56,189,248,0.3); backdrop-filter: blur(8px); display: none; }',
+      '#azam-watcher-tooltip .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9px; font-weight: bold; margin-right: 6px; }',
+      '#azam-watcher-tooltip .badge-tcp { background: #0284c7; color: #fff; }',
+      '#azam-watcher-tooltip .badge-udp { background: #7c3aed; color: #fff; }',
+      '#azam-watcher-tooltip .badge-icmp { background: #059669; color: #fff; }',
+      '#azam-watcher-tooltip .badge-bgp { background: #d97706; color: #fff; }'
+    ].join('\n');
+    if (!document.getElementById('azam-watcher-dash-flow-style') && document.head) {
+      document.head.appendChild(dashStyle);
+    }
+
+    document.addEventListener('click', function (ev) {
+      if (ev.target && ev.target.closest && ev.target.closest('.watcher-btn, #btn_network_watcher, [data-action="watcher"]')) {
+        setTimeout(expandWatcherLimits, 200);
+      }
+    }, true);
+    setInterval(expandWatcherLimits, 3000);
+  })();
+
+  /* ── Issue #44 Hardening: Network Watcher Link Hover Tooltip Packet Metadata ── */
+  (function initWatcherTooltipHook() {
+    var tooltip = document.getElementById('azam-watcher-tooltip');
+    if (!tooltip) {
+      tooltip = document.createElement('div');
+      tooltip.id = 'azam-watcher-tooltip';
+      document.body.appendChild(tooltip);
+    }
+
+    function formatTrafficTooltip(target, ev) {
+      var proto = target.getAttribute('data-protocol') || target.getAttribute('data-proto') || 'IP';
+      var src = target.getAttribute('data-src') || target.getAttribute('data-source') || 'Node-A';
+      var dst = target.getAttribute('data-dst') || target.getAttribute('data-target') || 'Node-B';
+      var type = target.getAttribute('data-traffic-type') || (proto === 'TCP' || proto === 'UDP' ? 'Data Stream' : 'Control Plane');
+      var rate = target.getAttribute('data-rate') || target.getAttribute('data-bps') || 'Active Flow';
+
+      var badgeClass = 'badge-tcp';
+      var pUp = proto.toUpperCase();
+      if (pUp.indexOf('UDP') !== -1) badgeClass = 'badge-udp';
+      else if (pUp.indexOf('ICMP') !== -1) badgeClass = 'badge-icmp';
+      else if (pUp.indexOf('BGP') !== -1 || pUp.indexOf('OSPF') !== -1) badgeClass = 'badge-bgp';
+
+      tooltip.innerHTML = [
+        '<div style="margin-bottom: 4px; border-bottom: 1px solid #334155; padding-bottom: 4px;">',
+        '  <span class="badge ' + badgeClass + '">' + proto.toUpperCase() + '</span>',
+        '  <strong style="color: #38bdf8;">' + type + '</strong>',
+        '</div>',
+        '<div style="color: #94a3b8; line-height: 1.4;">',
+        '  <div><span style="color: #64748b;">Endpoints:</span> ' + src + ' &harr; ' + dst + '</div>',
+        '  <div><span style="color: #64748b;">Throughput:</span> <span style="color: #34d399;">' + rate + '</span></div>',
+        '</div>'
+      ].join('');
+
+      tooltip.style.left = (ev.clientX + 14) + 'px';
+      tooltip.style.top = (ev.clientY + 14) + 'px';
+      tooltip.style.display = 'block';
+    }
+
+    document.addEventListener('mousemove', function (ev) {
+      var target = ev.target && ev.target.closest ? ev.target.closest('path.link, .link-line, g.link, [data-link-id], line') : null;
+      var isWatcherActive = document.querySelector('.network-watcher-active, #topology.watcher-on, [data-watcher="active"]') || window.azamWatcherActive;
+      if (target && (isWatcherActive || target.classList.contains('watcher-link') || target.hasAttribute('data-traffic'))) {
+        formatTrafficTooltip(target, ev);
+      } else if (tooltip.style.display !== 'none') {
+        tooltip.style.display = 'none';
+      }
+    }, true);
+  })();
+
+  /* ── Issue #41 Hardening: Canvas Drag Anti-Runaway Precision Lock ── */
+  (function initCanvasDragPrecisionLockHook() {
+    var isDraggingNode = false;
+    var EDGE_THRESHOLD = 45;
+
+    document.addEventListener('mousedown', function (ev) {
+      var node = ev.target && ev.target.closest ? ev.target.closest('.node, [data-node-id], .topology-node, g.node') : null;
+      if (node && ev.button === 0) {
+        isDraggingNode = true;
+      }
+    }, true);
+
+    document.addEventListener('mouseup', function () {
+      isDraggingNode = false;
+    }, true);
+
+    document.addEventListener('mousemove', function (ev) {
+      if (!isDraggingNode) return;
+      if (ev.ctrlKey || ev.altKey || ev.shiftKey) return;
+
+      var canvasContainer = document.querySelector('#canvas, .canvas-container, #topology_wrapper');
+      if (!canvasContainer) return;
+
+      var rect = canvasContainer.getBoundingClientRect();
+      var nearLeft = ev.clientX - rect.left < EDGE_THRESHOLD;
+      var nearRight = rect.right - ev.clientX < EDGE_THRESHOLD;
+      var nearTop = ev.clientY - rect.top < EDGE_THRESHOLD;
+      var nearBottom = rect.bottom - ev.clientY < EDGE_THRESHOLD;
+
+      if (nearLeft || nearRight || nearTop || nearBottom) {
+        if (window.panzoom && typeof window.panzoom.pause === 'function') {
+          window.panzoom.pause();
+          setTimeout(function () {
+            if (window.panzoom && typeof window.panzoom.resume === 'function') {
+              window.panzoom.resume();
+            }
+          }, 80);
+        }
+      }
+    }, true);
+  })();
+
+  /* ── Issue #39 Hardening: Clean SVG Filter & Overlay Teardown ── */
+  (function initOverlayTeardownHook() {
+    function cleanupOrphanGlowFilters() {
+      try {
+        var overlays = document.querySelectorAll('.topology-overlay-disabled, .watcher-off');
+        if (overlays.length > 0) {
+          var glowNodes = document.querySelectorAll('.azam-node-glow-active, [filter*="glow"]');
+          for (var i = 0; i < glowNodes.length; i++) {
+            glowNodes[i].classList.remove('azam-node-glow-active');
+            if (glowNodes[i].hasAttribute('filter')) glowNodes[i].removeAttribute('filter');
+          }
+        }
+      } catch (e) {
+        // Non-fatal
+      }
+    }
+    document.addEventListener('click', function (ev) {
+      var btn = ev.target && ev.target.closest ? ev.target.closest('.toggle-traffic-glow, .toggle-link-utilization, [data-toggle="overlay"]') : null;
+      if (btn) {
+        setTimeout(cleanupOrphanGlowFilters, 100);
+      }
+    }, true);
+  })();
+
   /* ── Register with App Router ───────────────────────────── */
   App.register('azam-features', {
     title: 'AzamLabs',

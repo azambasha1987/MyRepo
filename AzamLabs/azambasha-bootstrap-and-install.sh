@@ -100,6 +100,15 @@ if [ -f "${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh" ]; then
 elif [ -f "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" ]; then
     bash "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" --master 2>/dev/null || true
 fi
+if [ -d "${SCRIPT_DIR}/html/templates" ]; then
+    mkdir -p /opt/unetlab/html/templates/intel /opt/unetlab/html/templates/amd 2>/dev/null || true
+    cp -rf "${SCRIPT_DIR}"/html/templates/* /opt/unetlab/html/templates/ 2>/dev/null || true
+    cp -f "${SCRIPT_DIR}"/html/templates/intel/*.yml /opt/unetlab/html/templates/ 2>/dev/null || true
+fi
+if [ -d "${SCRIPT_DIR}/html/azam-ops" ]; then
+    mkdir -p /opt/unetlab/html 2>/dev/null || true
+    cp -rf "${SCRIPT_DIR}"/html/azam-ops /opt/unetlab/html/ 2>/dev/null || true
+fi
 for s_dir in "${SCRIPT_DIR}/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scripts"; do
     if [ -d "$s_dir" ]; then
         ln -sf "${s_dir}/azambasha-update.sh" /usr/local/bin/azam-update 2>/dev/null || true
@@ -111,6 +120,8 @@ for s_dir in "${SCRIPT_DIR}/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scri
         ln -sf "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-optimizer 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
         ln -sf "${s_dir}/apply-heavy-node-optimizer.sh" /usr/local/bin/apply-heavy-node-optimizer 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-dry-test.py" /usr/local/bin/azam-dry-test 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-health-check.sh" /usr/local/bin/azam-health 2>/dev/null || true
         break
     fi
 done

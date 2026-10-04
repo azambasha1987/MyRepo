@@ -474,6 +474,7 @@ SATELLITE_DEPS=(
     dkms
     build-essential
     qemu-utils
+    dynamips
     python3
     python3-pip
     python3-yaml
@@ -1070,8 +1071,31 @@ if [ -f /etc/pnetlab-satellite/satd.conf ] || [ -f /opt/unetlab/scripts/pnetlab-
     systemctl restart pnetlab-satd 2>/dev/null || true
 fi
 
+# Synchronize QEMU templates and AzamLabs optimization suite
+if [ -d "${SCRIPT_DIR}/html/templates" ]; then
+    mkdir -p /opt/unetlab/html/templates/intel /opt/unetlab/html/templates/amd 2>/dev/null || true
+    cp -rf "${SCRIPT_DIR}"/html/templates/* /opt/unetlab/html/templates/ 2>/dev/null || true
+    cp -f "${SCRIPT_DIR}"/html/templates/intel/*.yml /opt/unetlab/html/templates/ 2>/dev/null || true
+fi
+if [ -d "${SCRIPT_DIR}/html/azam-ops" ]; then
+    mkdir -p /opt/unetlab/html 2>/dev/null || true
+    cp -rf "${SCRIPT_DIR}"/html/azam-ops /opt/unetlab/html/ 2>/dev/null || true
+fi
+mkdir -p /opt/unetlab/scripts 2>/dev/null || true
+cp -rf "${SCRIPT_DIR}"/scripts/. /opt/unetlab/scripts/ 2>/dev/null || true
+chmod +x /opt/unetlab/scripts/*.sh /opt/unetlab/scripts/*.py 2>/dev/null || true
+
+# Apply High-Density Heavy Node Memory & CPU Optimization
+if [ -f /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh ]; then
+    bash /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh --satellite 2>/dev/null || true
+    [ -f /opt/unetlab/scripts/azambasha-fix-node-startup.sh ] && bash /opt/unetlab/scripts/azambasha-fix-node-startup.sh 2>/dev/null || true
+elif [ -f "${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh" --satellite 2>/dev/null || true
+    [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-node-startup.sh" ] && bash "${SCRIPT_DIR}/scripts/azambasha-fix-node-startup.sh" 2>/dev/null || true
+fi
+
 # Register global administrative CLI commands on Satellite
-for s_dir in "${SCRIPT_DIR}/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scripts"; do
+for s_dir in "/opt/unetlab/scripts" "${SCRIPT_DIR}/scripts" "/opt/azambasha/scripts"; do
     if [ -d "$s_dir" ]; then
         ln -sfn "${s_dir}/azambasha-update.sh" /usr/local/bin/azam-update 2>/dev/null || true
         ln -sfn "${s_dir}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
@@ -1082,6 +1106,10 @@ for s_dir in "${SCRIPT_DIR}/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scri
         ln -sfn "${s_dir}/azambasha-cluster-capacity.py" /usr/local/bin/azam-capacity 2>/dev/null || true
         ln -sfn "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/azam-satellite-join 2>/dev/null || true
         ln -sfn "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/pnet-satellite-join 2>/dev/null || true
+        ln -sfn "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-optimizer 2>/dev/null || true
+        ln -sfn "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
+        ln -sfn "${s_dir}/azambasha-dry-test.py" /usr/local/bin/azam-dry-test 2>/dev/null || true
+        ln -sfn "${s_dir}/azambasha-health-check.sh" /usr/local/bin/azam-health 2>/dev/null || true
         break
     fi
 done

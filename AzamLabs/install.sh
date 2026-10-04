@@ -1340,6 +1340,15 @@ fi
 mkdir -p /opt/unetlab/scripts 2>/dev/null || true
 cp -rf "${SCRIPT_DIR}"/scripts/. /opt/unetlab/scripts/ 2>/dev/null || true
 cp -f "${SCRIPT_DIR}"/scripts/apply-heavy-node-optimizer.sh /usr/local/bin/ 2>/dev/null || true
+if [ -d "${SCRIPT_DIR}/html/templates" ]; then
+    mkdir -p /opt/unetlab/html/templates/intel /opt/unetlab/html/templates/amd 2>/dev/null || true
+    cp -rf "${SCRIPT_DIR}"/html/templates/* /opt/unetlab/html/templates/ 2>/dev/null || true
+    cp -f "${SCRIPT_DIR}"/html/templates/intel/*.yml /opt/unetlab/html/templates/ 2>/dev/null || true
+fi
+if [ -d "${SCRIPT_DIR}/html/azam-ops" ]; then
+    mkdir -p /opt/unetlab/html 2>/dev/null || true
+    cp -rf "${SCRIPT_DIR}"/html/azam-ops /opt/unetlab/html/ 2>/dev/null || true
+fi
 if [ -f "${SCRIPT_DIR}/VERSION" ]; then
     cp -f "${SCRIPT_DIR}/VERSION" /opt/unetlab/VERSION 2>/dev/null || true
     cp -f "${SCRIPT_DIR}/VERSION" /etc/pnetlab-version 2>/dev/null || true
@@ -1347,6 +1356,8 @@ fi
 chmod +x /opt/unetlab/scripts/*.sh /opt/unetlab/scripts/*.py /usr/local/bin/apply-heavy-node-optimizer.sh 2>/dev/null || true
 ln -sf /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-optimizer 2>/dev/null || true
 ln -sf /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
+ln -sf /opt/unetlab/scripts/azambasha-dry-test.py /usr/local/bin/azam-dry-test 2>/dev/null || true
+ln -sf /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/azam-health 2>/dev/null || true
 
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh" ]; then
     echo "  [*] Applying Universal High-Density Node Optimizer (All QEMU & IOL Images)..."

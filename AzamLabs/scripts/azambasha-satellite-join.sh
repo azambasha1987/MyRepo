@@ -476,6 +476,8 @@ for s_dir in "/opt/unetlab/scripts" "/opt/azambasha/scripts" "$SCRIPT_LOC"; do
         ln -sf "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-optimizer 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
         ln -sf "${s_dir}/apply-heavy-node-optimizer.sh" /usr/local/bin/apply-heavy-node-optimizer 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-dry-test.py" /usr/local/bin/azam-dry-test 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-health-check.sh" /usr/local/bin/azam-health 2>/dev/null || true
         break
     fi
 done

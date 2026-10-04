@@ -364,6 +364,10 @@ case "$CHOICE" in
         fi
         ln -sf "${SCRIPT_DIR}/azambasha-update.sh" /usr/local/bin/azam-update 2>/dev/null || true
         ln -sf "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
+        ln -sf "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-optimizer 2>/dev/null || true
+        ln -sf "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
+        ln -sf "${SCRIPT_DIR}/azambasha-dry-test.py" /usr/local/bin/azam-dry-test 2>/dev/null || true
+        ln -sf "${SCRIPT_DIR}/azambasha-health-check.sh" /usr/local/bin/azam-health 2>/dev/null || true
         echo ""
         echo "============================================================"
         echo "  [SUCCESS] ALL ESSENTIAL ENHANCEMENTS APPLIED SUCCESSFULLY! "
@@ -475,6 +479,12 @@ case "$CHOICE" in
             bash "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" || true
         fi
         echo ""
+        ln -sf "${SCRIPT_DIR}/azambasha-update.sh" /usr/local/bin/azam-update 2>/dev/null || true
+        ln -sf "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
+        ln -sf "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-optimizer 2>/dev/null || true
+        ln -sf "${SCRIPT_DIR}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
+        ln -sf "${SCRIPT_DIR}/azambasha-dry-test.py" /usr/local/bin/azam-dry-test 2>/dev/null || true
+        ln -sf "${SCRIPT_DIR}/azambasha-health-check.sh" /usr/local/bin/azam-health 2>/dev/null || true
         echo "============================================================"
         echo " [SUCCESS] SATELLITE WORKER NODE ENHANCEMENTS APPLIED!      "
         echo "============================================================"

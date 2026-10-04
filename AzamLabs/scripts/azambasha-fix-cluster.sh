@@ -771,11 +771,14 @@ if [ "${SAT_COUNT:-0}" -gt 0 ]; then
         fi
         log_info "Satellite #$s_id: $s_name ($s_ip) | Ping: $PING_OK | Status: $s_status | Version: $s_ver"
         if [ "$PING_OK" = "REACHABLE" ] && [ -f "$CLUSTER_KEY" ]; then
-            log_info "Synchronizing azam-update engine to Satellite #$s_id ($s_ip)..."
-            ssh -i "$CLUSTER_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "root@$s_ip" "mkdir -p /opt/unetlab/scripts" &>/dev/null || true
+            log_info "Synchronizing templates & azam-update engine to Satellite #$s_id ($s_ip)..."
+            ssh -i "$CLUSTER_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "root@$s_ip" "mkdir -p /opt/unetlab/scripts /opt/unetlab/html/templates/intel /opt/unetlab/html/templates/amd" &>/dev/null || true
+            if [ -d "/opt/unetlab/html/templates" ]; then
+                scp -i "$CLUSTER_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 -r /opt/unetlab/html/templates/* "root@$s_ip:/opt/unetlab/html/templates/" &>/dev/null || true
+            fi
             scp -i "$CLUSTER_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "${SCRIPT_DIR}/azambasha-update.sh" "root@$s_ip:/opt/unetlab/scripts/azambasha-update.sh" &>/dev/null || true
             ssh -i "$CLUSTER_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "root@$s_ip" "chmod +x /opt/unetlab/scripts/azambasha-update.sh && ln -sf /opt/unetlab/scripts/azambasha-update.sh /usr/local/bin/azam-update && /usr/local/bin/azam-update --satellite >/dev/null 2>&1 &" &>/dev/null || true
-            log_ok "Synchronized and triggered azam-update on Satellite #$s_id ($s_ip)."
+            log_ok "Synchronized templates and triggered azam-update on Satellite #$s_id ($s_ip)."
         fi
     done
 fi

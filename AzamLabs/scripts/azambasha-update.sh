@@ -186,6 +186,23 @@ sync_from_github() {
         chmod +x /opt/unetlab/scripts/*.sh /opt/unetlab/scripts/*.py 2>/dev/null || true
     fi
 
+    # Synchronize QEMU appliance templates and Web-GUI operations engine
+    if [ -d "${src_repo}/html/templates" ]; then
+        mkdir -p /opt/unetlab/html/templates/intel /opt/unetlab/html/templates/amd 2>/dev/null || true
+        cp -rf "${src_repo}"/html/templates/* /opt/unetlab/html/templates/ 2>/dev/null || true
+        cp -f "${src_repo}"/html/templates/intel/*.yml /opt/unetlab/html/templates/ 2>/dev/null || true
+    fi
+    if [ -d "${src_repo}/html/azam-ops" ]; then
+        mkdir -p /opt/unetlab/html 2>/dev/null || true
+        cp -rf "${src_repo}"/html/azam-ops /opt/unetlab/html/ 2>/dev/null || true
+    fi
+
+    # Ensure Cisco IOS subsystem dynamips binary is present
+    if ! dpkg -s dynamips >/dev/null 2>&1; then
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get install -y --no-install-recommends dynamips 2>/dev/null || true
+    fi
+
     if [ -f "${src_repo}/VERSION" ]; then
         for v_dest in "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/etc/pnetlab-version"; do
             mkdir -p "$(dirname "$v_dest")" 2>/dev/null || true
@@ -204,6 +221,10 @@ sync_from_github() {
     ln -sf /opt/unetlab/scripts/azambasha-cluster-capacity.py /usr/local/bin/azam-capacity 2>/dev/null || true
     ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join 2>/dev/null || true
     ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/pnet-satellite-join 2>/dev/null || true
+    ln -sf /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-optimizer 2>/dev/null || true
+    ln -sf /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
+    ln -sf /opt/unetlab/scripts/azambasha-dry-test.py /usr/local/bin/azam-dry-test 2>/dev/null || true
+    ln -sf /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/azam-health 2>/dev/null || true
 
     SCRIPT_DIR="/opt/unetlab/scripts"
 

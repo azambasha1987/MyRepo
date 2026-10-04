@@ -423,6 +423,7 @@ CORE_DEPS=(
     dkms
     libguestfs-tools
     qemu-utils
+    dynamips
     python3
     python3-pip
     python3-yaml

@@ -480,12 +480,22 @@ elif [ -f /opt/azambasha/scripts/azambasha-install-azam-features.sh ]; then
     bash /opt/azambasha/scripts/azambasha-install-azam-features.sh --satellite >> "$LOG" 2>&1 || true
 fi
 
+# Apply High-Density Heavy Node Memory & CPU Optimization (Worker Mode)
+if [ -f /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh ]; then
+    bash /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh --satellite >> "$LOG" 2>&1 || true
+    [ -f /opt/unetlab/scripts/azambasha-fix-node-startup.sh ] && bash /opt/unetlab/scripts/azambasha-fix-node-startup.sh >> "$LOG" 2>&1 || true
+fi
+
 for s_dir in /opt/unetlab/scripts /opt/azambasha/scripts; do
     if [ -f "${s_dir}/azambasha-update.sh" ]; then
         ln -sf "${s_dir}/azambasha-update.sh" /usr/local/bin/azam-update 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/pnet-satellite-join 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/azam-satellite-join 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-optimizer 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-dry-test.py" /usr/local/bin/azam-dry-test 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-health-check.sh" /usr/local/bin/azam-health 2>/dev/null || true
         break
     fi
 done

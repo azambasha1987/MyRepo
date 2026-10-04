@@ -327,6 +327,9 @@ case "$MODE" in
         sync_from_github
         create_pre_update_snapshot
         bash "${SCRIPT_DIR}/azambasha-apply-all-fixes.sh" 19
+        if [ -f "${SCRIPT_DIR}/azambasha-fix-cluster.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-fix-cluster.sh" || true
+        fi
         if [ -f "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" ]; then
             bash "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" auto || true
         fi
@@ -357,6 +360,9 @@ case "$MODE" in
             sync_from_github
             create_pre_update_snapshot
             bash "${SCRIPT_DIR}/azambasha-apply-all-fixes.sh" 19
+            if [ -f "${SCRIPT_DIR}/azambasha-fix-cluster.sh" ]; then
+                bash "${SCRIPT_DIR}/azambasha-fix-cluster.sh" || true
+            fi
             if [ -f "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" ]; then
                 bash "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" auto || true
             fi

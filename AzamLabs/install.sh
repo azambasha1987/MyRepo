@@ -1136,6 +1136,13 @@ elif [ -f "/opt/unetlab/scripts/azambasha-install-azam-features.sh" ]; then
     bash "/opt/unetlab/scripts/azambasha-install-azam-features.sh" || true
 fi
 
+# Ensure Master Cluster Staging, Remote MySQL 0.0.0.0:3306 & Real-Time Dynamic Satellite Probe
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-cluster.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-fix-cluster.sh" || true
+elif [ -f "/opt/unetlab/scripts/azambasha-fix-cluster.sh" ]; then
+    bash "/opt/unetlab/scripts/azambasha-fix-cluster.sh" || true
+fi
+
 # Register global administrative CLI commands in /usr/local/bin
 ln -sfn /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/azambasha-menu 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/azambasha-fix 2>/dev/null || true

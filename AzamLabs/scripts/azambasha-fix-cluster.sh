@@ -116,14 +116,16 @@ chown -R root:root "$BUNDLE_ROOT"
 chmod 0755 "$BUNDLE_ROOT" "${BUNDLE_ROOT}/releases" "$RELEASE_DIR"
 
 # Copy installer script and name it authoritatively install-resolute-satellite.sh
-cp -f "$SRC_INSTALLER" "${RELEASE_DIR}/install-resolute-satellite.sh"
-chmod 0755 "${RELEASE_DIR}/install-resolute-satellite.sh"
+if [ "$SRC_INSTALLER" != "${RELEASE_DIR}/install-resolute-satellite.sh" ]; then
+    cp -f "$SRC_INSTALLER" "${RELEASE_DIR}/install-resolute-satellite.sh" 2>/dev/null || true
+fi
+chmod 0755 "${RELEASE_DIR}/install-resolute-satellite.sh" 2>/dev/null || true
 
 # Copy metadata inventories
 for meta in inventory.tsv asset-inventory.tsv COMPLETE provenance; do
-    if [ -f "${SRC_DIR}/${meta}" ]; then
-        cp -f "${SRC_DIR}/${meta}" "${RELEASE_DIR}/${meta}"
-        chmod 0644 "${RELEASE_DIR}/${meta}"
+    if [ -f "${SRC_DIR}/${meta}" ] && [ "${SRC_DIR}/${meta}" != "${RELEASE_DIR}/${meta}" ]; then
+        cp -f "${SRC_DIR}/${meta}" "${RELEASE_DIR}/${meta}" 2>/dev/null || true
+        chmod 0644 "${RELEASE_DIR}/${meta}" 2>/dev/null || true
     fi
 done
 
@@ -588,10 +590,94 @@ else
     log_ok "Cluster PSK already active at $CLUSTER_PSK."
 fi
 
+# Step 6b: Patch Cluster Status API for Real-Time Dynamic Satellite Probing
+log_info "[6b/7] Ensuring Cluster API dynamically probes satellite nodes on status queries..."
+CLUSTER_API_PATH="/opt/unetlab/html/cluster/api.php"
+if [ -f "$CLUSTER_API_PATH" ]; then
+    python3 - << 'PYAPI'
+import re
+
+path = "/opt/unetlab/html/cluster/api.php"
+try:
+    with open(path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    target = """if ($action === 'status') {
+    $resp = broker_call('cluster_info');
+    $info = $resp['ok'] ? json_decode($resp['out'][count($resp['out']) - 1], true) : [];
+    $rows = [];
+    try {
+        $db = checkDatabase();
+        $rows = $db->query('SELECT * FROM cluster_hosts ORDER BY host_id')
+                   ->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Exception $e) {
+        // pre-migration DB: show an empty cluster rather than a 500
+    }"""
+
+    replacement = """if ($action === 'status') {
+    $resp = broker_call('cluster_info');
+    $info = $resp['ok'] ? json_decode($resp['out'][count($resp['out']) - 1], true) : [];
+    $rows = [];
+    try {
+        $db = checkDatabase();
+        $rows = $db->query('SELECT * FROM cluster_hosts ORDER BY host_id')
+                   ->fetchAll(PDO::FETCH_ASSOC);
+        require_once '/opt/unetlab/html/includes/cluster.php';
+        foreach ($rows as &$row) {
+            $hid = (int) $row['host_id'];
+            $so = null; $src = null;
+            $out = cluster_exec($hid, 'sysinfo', [], $so, $src, 3);
+            if ($src === 0 && $out !== '') {
+                $satInfo = json_decode($out, true);
+                $row['host_status'] = 1;
+                $row['host_last_seen'] = time();
+                if (is_array($satInfo) && isset($satInfo['version']) && !empty($satInfo['version'])) {
+                    $row['host_version'] = $satInfo['version'];
+                }
+                try {
+                    $u = $db->prepare('UPDATE cluster_hosts SET host_status = 1, host_last_seen = ?, host_version = ? WHERE host_id = ?');
+                    $u->execute([$row['host_last_seen'], $row['host_version'], $hid]);
+                } catch (Exception $e) {}
+            } else {
+                $row['host_status'] = 0;
+                try {
+                    $u = $db->prepare('UPDATE cluster_hosts SET host_status = 0 WHERE host_id = ?');
+                    $u->execute([$hid]);
+                } catch (Exception $e) {}
+            }
+        }
+        unset($row);
+    } catch (Exception $e) {
+        // pre-migration DB: show an empty cluster rather than a 500
+    }"""
+
+    if target in content:
+        new_content = content.replace(target, replacement, 1)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(new_content)
+        print("Patched cluster/api.php with dynamic satellite probe.")
+    else:
+        print("cluster/api.php already patched or signature altered.")
+except Exception as e:
+    print(f"Cluster API patch note: {e}")
+PYAPI
+    log_ok "Cluster Status API real-time probe configured."
+fi
+
 # Step 7: Verify Registered Cluster Satellites
 log_info "[7/7] Inspecting registered cluster satellites..."
 SAT_COUNT="$(mysql -u pnetlab -ppnetlab pnetlab_db -N -e "SELECT COUNT(*) FROM cluster_hosts;" 2>/dev/null || echo "0")"
 log_ok "Registered cluster satellites in database: $SAT_COUNT"
+
+if [ "${SAT_COUNT:-0}" -gt 0 ]; then
+    mysql -u pnetlab -ppnetlab pnetlab_db -N -e "SELECT host_id, host_name, host_ip, host_status, host_version FROM cluster_hosts ORDER BY host_id;" 2>/dev/null | while read -r s_id s_name s_ip s_status s_ver; do
+        PING_OK="UNREACHABLE"
+        if ping -c 1 -W 1 "$s_ip" &>/dev/null; then
+            PING_OK="REACHABLE"
+        fi
+        log_info "Satellite #$s_id: $s_name ($s_ip) | Ping: $PING_OK | Status: $s_status | Version: $s_ver"
+    done
+fi
 
 LIVE_PSK="$(tr -d ' \r\n' < "$CLUSTER_PSK" 2>/dev/null || echo "N/A")"
 MASTER_IP="$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7}' | head -n1)"

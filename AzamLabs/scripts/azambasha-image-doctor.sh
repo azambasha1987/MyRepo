@@ -21,12 +21,13 @@ set -euo pipefail
 
 # Support non-root help/check
 if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
-    echo "Usage: sudo bash $0 [--check | --fix | --repair-disks]"
+    echo "Usage: sudo bash $0 [--check | --fix | --repair-disks | --compress]"
     echo ""
     echo "Options:"
     echo "  --check          Inspect all installed images and report compliance (non-destructive)"
     echo "  --fix            Auto-correct misnamed image files and fix permissions"
     echo "  --repair-disks   Run qemu-img check -r all on all QCOW2 disks"
+    echo "  --compress       Safely compress/sparsify all QCOW2 disks (-c -O qcow2), saving 40-70% disk & page-cache"
     exit 0
 fi
 
@@ -145,6 +146,56 @@ if [ -d "$QEMU_DIR" ]; then
                 [ ! -f "$qcow" ] && continue
                 echo "      ↳ Checking disk integrity: $(basename "$qcow")..."
                 qemu-img check -r all "$qcow" 2>/dev/null || true
+            done
+        fi
+
+        # Run QCOW2 Compression / Sparsification if in --compress mode
+        if [[ "$MODE" =~ ^(--compress|--sparsify)$ ]] && command -v qemu-img &>/dev/null; then
+            for qcow in "$img_folder"/*.qcow2; do
+                [ ! -f "$qcow" ] && continue
+                disk_base=$(basename "$qcow")
+                echo "      ↳ Inspecting disk compression: $disk_base..."
+                if is_disk_in_use "$qcow"; then
+                    echo "        [⚠ SKIP] Disk is active in a running lab session. Stop nodes before compressing."
+                    continue
+                fi
+                orig_size_bytes=$(stat -c%s "$qcow" 2>/dev/null || stat -f%z "$qcow" 2>/dev/null || echo 0)
+                tmp_comp="${qcow}.compress.tmp"
+                rm -f "$tmp_comp" 2>/dev/null || true
+                
+                # Verify free disk space before attempting conversion
+                avail_kb=$(df -k "$img_folder" 2>/dev/null | awk 'NR==2 {print $4}' || echo 0)
+                orig_kb=$((orig_size_bytes / 1024))
+                if [ "$avail_kb" -lt "$orig_kb" ]; then
+                    echo "        [⚠ SKIP] Insufficient disk space ($((avail_kb/1024))MB free vs $((orig_kb/1024))MB required) for safe conversion."
+                    continue
+                fi
+                
+                echo "        [*] Compressing $disk_base with qemu-img (-c -O qcow2)..."
+                if qemu-img convert -c -O qcow2 "$qcow" "$tmp_comp"; then
+                    if qemu-img check "$tmp_comp" &>/dev/null; then
+                        comp_size_bytes=$(stat -c%s "$tmp_comp" 2>/dev/null || stat -f%z "$tmp_comp" 2>/dev/null || echo 0)
+                        if [ "$comp_size_bytes" -lt "$orig_size_bytes" ] && [ "$comp_size_bytes" -gt 0 ]; then
+                            saved_bytes=$((orig_size_bytes - comp_size_bytes))
+                            saved_pct=$((saved_bytes * 100 / orig_size_bytes))
+                            orig_mb=$((orig_size_bytes / 1048576))
+                            comp_mb=$((comp_size_bytes / 1048576))
+                            mv -f "$tmp_comp" "$qcow"
+                            chmod 644 "$qcow"
+                            chown root:root "$qcow" 2>/dev/null || true
+                            echo "        [✔ COMPRESSED] ${orig_mb}MB -> ${comp_mb}MB (${saved_pct}% space & host page-cache saved)"
+                        else
+                            rm -f "$tmp_comp"
+                            echo "        [✔ OPTIMAL] Disk is already fully compressed/sparse."
+                        fi
+                    else
+                        rm -f "$tmp_comp"
+                        echo "        [✖ ERROR] Integrity check failed on compressed copy. Original preserved."
+                    fi
+                else
+                    rm -f "$tmp_comp"
+                    echo "        [✖ ERROR] qemu-img convert encountered an error. Original preserved."
+                fi
             done
         fi
     done

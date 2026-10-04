@@ -29,6 +29,7 @@ Options:
   (no args)          Apply high-density optimization to this node (Master or Satellite)
   --dry-run          Simulate optimization and report actions without making changes
   --check, --status  Perform non-destructive diagnostic check & report RAM/CPU savings
+  --compress-images  Safely compress & sparsify installed QEMU appliance disks (-c -O qcow2)
   --master           Explicitly apply Master node profile (includes cluster broadcast)
   --satellite        Explicitly apply Satellite worker node profile
   --cluster          Deploy and trigger optimization across all registered satellites
@@ -200,6 +201,7 @@ audit_mode() {
 ROLE="auto"
 CLUSTER_SYNC=0
 DRY_RUN=0
+COMPRESS_IMAGES=0
 
 for arg in "$@"; do
     case "$arg" in
@@ -211,6 +213,9 @@ for arg in "$@"; do
             ;;
         --dry-run)
             DRY_RUN=1
+            ;;
+        --compress-images)
+            COMPRESS_IMAGES=1
             ;;
         --master)
             ROLE="master"
@@ -228,6 +233,20 @@ for arg in "$@"; do
             ;;
     esac
 done
+
+if [ "$COMPRESS_IMAGES" -eq 1 ]; then
+    echo "============================================================"
+    echo "  AzamLabs High-Efficiency QEMU Disk Compression Engine     "
+    echo "============================================================"
+    for doc_cand in "/opt/unetlab/scripts/azambasha-image-doctor.sh" "$SCRIPT_DIR/azambasha-image-doctor.sh"; do
+        if [ -f "$doc_cand" ]; then
+            bash "$doc_cand" --compress
+            exit 0
+        fi
+    done
+    echo "[✖] azambasha-image-doctor.sh not found."
+    exit 1
+fi
 
 if [ "$DRY_RUN" -eq 1 ]; then
     echo "============================================================"
@@ -452,11 +471,11 @@ target_templates = {
     },
     "vios": {
         "name": "Cisco IOSv Router", "cpus": 1, "ram": 512, "ethernets": 4, "qemu_nic": "virtio-net-pci",
-        "qemu_options": "-machine pc,mem-merge=on -cpu host -enable-kvm -serial mon:stdio -nographic -device virtio-balloon-pci"
+        "qemu_options": "-machine pc,mem-merge=on -cpu host,migratable=no,+invtsc -enable-kvm -serial mon:stdio -nographic -vga none -rtc base=utc,clock=host,driftfix=none -device virtio-balloon-pci"
     },
     "viosl2": {
         "name": "Cisco IOSv-L2 Switch", "cpus": 1, "ram": 512, "ethernets": 16, "qemu_nic": "virtio-net-pci",
-        "qemu_options": "-machine pc,mem-merge=on -cpu host -enable-kvm -serial mon:stdio -nographic -device virtio-balloon-pci"
+        "qemu_options": "-machine pc,mem-merge=on -cpu host,migratable=no,+invtsc -enable-kvm -serial mon:stdio -nographic -vga none -rtc base=utc,clock=host,driftfix=none -device virtio-balloon-pci"
     }
 }
 
@@ -496,16 +515,22 @@ icon: {icon_name}
                     mod_yaml = cur_yaml
                     if "qemu_nic: e1000" in mod_yaml:
                         mod_yaml = mod_yaml.replace("qemu_nic: e1000", "qemu_nic: virtio-net-pci")
-                    mod_yaml = re.sub(r'ram:\s*(1024|2048)', 'ram: 512', mod_yaml)
+                    mod_yaml = re.sub(r'ram:\s*(384|1024|2048)', 'ram: 512', mod_yaml)
+                    if "-vga none" not in mod_yaml and "qemu_options:" in mod_yaml:
+                        mod_yaml = re.sub(r'(qemu_options:\s*[^\n]+)', r'\1 -vga none', mod_yaml)
+                    if "+invtsc" not in mod_yaml and "qemu_options:" in mod_yaml:
+                        mod_yaml = re.sub(r'-cpu\s+([^\s\n]+)', r'-cpu \1,migratable=no,+invtsc', mod_yaml)
+                    if "driftfix=none" not in mod_yaml and "qemu_options:" in mod_yaml:
+                        mod_yaml = re.sub(r'(qemu_options:\s*[^\n]+)', r'\1 -rtc base=utc,clock=host,driftfix=none', mod_yaml)
                     if "virtio-balloon" not in mod_yaml and "qemu_options:" in mod_yaml:
                         mod_yaml = re.sub(r'(qemu_options:\s*[^\n]+)', r'\1 -device virtio-balloon-pci', mod_yaml)
                     if mod_yaml != cur_yaml:
                         if not dry_run:
                             with open(tpath, 'w', encoding='utf-8') as yf:
                                 yf.write(mod_yaml)
-                            print(f"  [✔] Optimized existing template {tpath} (virtio-net-pci, 512MB RAM)")
+                            print(f"  [✔] Optimized existing template {tpath} (virtio-net-pci, -vga none, +invtsc, 512MB RAM)")
                         else:
-                            print(f"  [DRY-RUN] Would optimize template {tpath} (virtio-net-pci, 512MB RAM)")
+                            print(f"  [DRY-RUN] Would optimize template {tpath} (virtio-net-pci, -vga none, +invtsc, 512MB RAM)")
                 except Exception:
                     pass
 
@@ -757,7 +782,9 @@ sync_files = [
     "/opt/unetlab/scripts/ksm_merge_exec.c",
     "/opt/unetlab/scripts/azambasha-ksm-merge-exec.c",
     "/opt/unetlab/scripts/azambasha-cpu-governor.py",
-    "/opt/unetlab/scripts/azambasha-fix-node-startup.sh"
+    "/opt/unetlab/scripts/azambasha-fix-node-startup.sh",
+    "/opt/unetlab/scripts/cisco-heavy-node-tuning.cfg",
+    "/opt/unetlab/scripts/azambasha-image-doctor.sh"
 ]
 
 satellites = []

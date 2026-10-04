@@ -19,9 +19,11 @@ PID_FILE = "/var/run/azam-ops-api.pid"
 # ──────────────────────────────────────────────────────────────────────────────
 COMMANDS = {
     # Optimization Engine
-    "optimizer-check":   ["bash", "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh", "--check"],
-    "optimizer-run":     ["bash", "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh", "--apply"],
-    "optimizer-dry-run": ["bash", "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh", "--dry-run"],
+    "optimizer-check":    ["bash", "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh", "--check"],
+    "optimizer-run":      ["bash", "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh", "--apply"],
+    "optimizer-dry-run":  ["bash", "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh", "--dry-run"],
+    "optimizer-compress": ["bash", "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh", "--compress-images"],
+    "doctor-compress":    ["bash", "/usr/local/bin/azam-doctor", "--compress"],
 
     # Health, Monitoring & Auditing
     "audit":             ["bash", "/opt/unetlab/scripts/azambasha-quarterly-audit.sh"],

@@ -9,6 +9,6 @@ eth_format: Gi{0}/{1}
 console: telnet
 qemu_arch: x86_64
 qemu_nic: virtio-net-pci
-qemu_options: -machine pc,mem-merge=on -cpu host -enable-kvm -serial mon:stdio -nographic -device virtio-balloon-pci
+qemu_options: -machine pc,mem-merge=on -cpu host,migratable=no,+invtsc -enable-kvm -serial mon:stdio -nographic -vga none -rtc base=utc,clock=host,driftfix=none -device virtio-balloon-pci
 icon: Switch.png
 ...

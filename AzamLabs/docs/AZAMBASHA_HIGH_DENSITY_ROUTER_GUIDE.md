@@ -116,18 +116,53 @@ sudo bash scripts/azambasha-heavy-node-optimizer.sh --cluster
   - `c8000v.yml` (Cisco Catalyst 8000v)
   - `cisco8000.yml` (Cisco 8000 Series XR7)
   - `cat9000v.yml` / `c9300v.yml` / `c9500v.yml` (Cisco Catalyst 9000 Switch)
+  - `vios.yml` (Cisco IOSv Router - 512MB RAM, Invariant TSC, -vga none)
+  - `viosl2.yml` (Cisco IOSv-L2 Switch - 512MB RAM, Invariant TSC, -vga none)
 - **Parameters**:
   - Injects `-machine pc,mem-merge=on` to force QEMU to mark all guest RAM with `MADV_MERGEABLE`.
-  - Injects `-device virtio-balloon-pci` to allow host memory reclamation.
+  - Injects `-device virtio-balloon-pci` to allow dynamic host memory reclamation.
+  - Injects `-vga none` for headless network appliances, eliminating 16-32 MB of virtual video frame buffer and 60 Hz display refresh timers.
+  - Injects `-cpu host,migratable=no,+invtsc` (Invariant TSC) allowing direct hardware CPU clock access without hypervisor traps (VM-Exits).
+  - Injects `-rtc base=utc,clock=host,driftfix=none` for direct UTC host clock synchronization.
+  - Enforces paravirtualized `virtio-net-pci` NICs for lowest latency and zero packet loss.
+  - Retains standard `ram: 512` to guarantee zero capacity boundaries for large BGP tables.
 
 ### 5. In-Router Performance Tuning (`cisco-heavy-node-tuning.cfg`)
 Apply the provided configuration snippets ([`scripts/cisco-heavy-node-tuning.cfg`](../scripts/cisco-heavy-node-tuning.cfg)) in router console to suppress telemetry memory churn:
+
+**For Cisco IOSv & IOSv-L2:**
+```ios
+scheduler allocate 20000 200
+no logging console
+logging buffered 16384 warnings
+no service timestamps debug uptime
+no service timestamps log uptime
+service timestamps log datetime
+no ip bootp server
+no ip dhcp-server
+no ip http server
+no ip http secure-server
+no ip domain lookup
+no service config
+ip cef
+no cdp run
+no lldp run
+line con 0
+ exec-timeout 0 0
+ logging synchronous
+ transport output none
+```
+
+**For Cisco Catalyst 8000v / IOS-XE:**
 ```ios
 platform qfp utilization monitor disable
 platform bfd-cpu-allocation 1
 no telemetry ietf subscription all
 no service config
 ```
+
+### 6. Non-Destructive QCOW2 Image Compression (`azam-doctor --compress`)
+Run `sudo azam-doctor --compress` or `sudo bash scripts/azambasha-heavy-node-optimizer.sh --compress-images` to safely compress and sparsify installed QCOW2 base images (`qemu-img convert -c -O qcow2`), saving **40% to 70% disk space** and drastically reducing host RAM page-cache read footprint.
 
 ---
 

@@ -499,7 +499,7 @@ ram: {tdata['ram']}
 ethernets: {tdata['ethernets']}
 qemu_arch: x86_64
 qemu_nic: {tdata['qemu_nic']}
-qemu_options: {tdata['qemu_options']}
+qemu_options: "{tdata['qemu_options']}"
 icon: {icon_name}
 """
                     with open(tpath, 'w', encoding='utf-8') as f:
@@ -516,14 +516,25 @@ icon: {icon_name}
                     if "qemu_nic: e1000" in mod_yaml:
                         mod_yaml = mod_yaml.replace("qemu_nic: e1000", "qemu_nic: virtio-net-pci")
                     mod_yaml = re.sub(r'ram:\s*(384|1024|2048)', 'ram: 512', mod_yaml)
-                    if "-vga none" not in mod_yaml and "qemu_options:" in mod_yaml:
-                        mod_yaml = re.sub(r'(qemu_options:\s*[^\n]+)', r'\1 -vga none', mod_yaml)
-                    if "+invtsc" not in mod_yaml and "qemu_options:" in mod_yaml:
-                        mod_yaml = re.sub(r'-cpu\s+([^\s\n]+)', r'-cpu \1,migratable=no,+invtsc', mod_yaml)
-                    if "driftfix=none" not in mod_yaml and "qemu_options:" in mod_yaml:
-                        mod_yaml = re.sub(r'(qemu_options:\s*[^\n]+)', r'\1 -rtc base=utc,clock=host,driftfix=none', mod_yaml)
-                    if "virtio-balloon" not in mod_yaml and "qemu_options:" in mod_yaml:
-                        mod_yaml = re.sub(r'(qemu_options:\s*[^\n]+)', r'\1 -device virtio-balloon-pci', mod_yaml)
+                    # Quote eth_format if unquoted
+                    mod_yaml = re.sub(r'eth_format:\s*([^\s"\']+)', r'eth_format: "\1"', mod_yaml)
+                    # Safely extract and sanitize qemu_options
+                    m_opt = re.search(r'^(qemu_options:\s*)(.+)$', mod_yaml, re.MULTILINE)
+                    if m_opt:
+                        opt_prefix = m_opt.group(1)
+                        opt_val = m_opt.group(2).replace('"', '').replace("'", "").strip()
+                        if "-vga none" not in opt_val:
+                            opt_val += " -vga none"
+                        if "+invtsc" not in opt_val:
+                            if "-cpu " in opt_val:
+                                opt_val = re.sub(r'-cpu\s+([^\s]+)', r'-cpu \1,migratable=no,+invtsc', opt_val)
+                            else:
+                                opt_val += " -cpu host,migratable=no,+invtsc"
+                        if "driftfix=none" not in opt_val:
+                            opt_val += " -rtc base=utc,clock=host,driftfix=none"
+                        if "virtio-balloon" not in opt_val:
+                            opt_val += " -device virtio-balloon-pci"
+                        mod_yaml = mod_yaml[:m_opt.start()] + f'{opt_prefix}"{opt_val}"' + mod_yaml[m_opt.end():]
                     if mod_yaml != cur_yaml:
                         if not dry_run:
                             with open(tpath, 'w', encoding='utf-8') as yf:

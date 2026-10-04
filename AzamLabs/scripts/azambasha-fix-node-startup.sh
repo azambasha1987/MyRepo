@@ -478,7 +478,7 @@ console: vnc
 qemu_arch: x86_64
 qemu_version: 5.2.0
 qemu_nic: virtio-net-pci
-qemu_options: -machine type=q35,accel=kvm,smm=on,mem-merge=on -cpu max,migratable=off -vga std -device qemu-xhci -device usb-tablet -boot order=c
+qemu_options: "-machine type=q35,accel=kvm,smm=on,mem-merge=on -cpu max,migratable=off -vga std -device qemu-xhci -device usb-tablet -boot order=c"
 uefi: 1
 tpm: tpm-crb
 icon: win.png
@@ -508,12 +508,12 @@ cpus: 2
 cpu: host
 ram: 4096
 ethernets: 2
-eth_format: eth{0}
+eth_format: "eth{0}"
 console: telnet
 qemu_arch: x86_64
 qemu_version: 5.2.0
 qemu_nic: virtio-net-pci
-qemu_options: -machine type=q35,accel=kvm,mem-merge=on -vga std -device usb-tablet -boot order=c
+qemu_options: "-machine type=q35,accel=kvm,mem-merge=on -vga std -device usb-tablet -boot order=c"
 icon: server.png
 ...
 EOF_OPENBMP
@@ -526,11 +526,11 @@ name: VIOS
 cpus: 1
 ram: 512
 ethernets: 4
-eth_format: Gi0/{0}
+eth_format: "Gi0/{0}"
 console: telnet
 qemu_arch: x86_64
 qemu_nic: virtio-net-pci
-qemu_options: -machine pc,mem-merge=on -cpu host,migratable=no,+invtsc -enable-kvm -serial mon:stdio -nographic -vga none -rtc base=utc,clock=host,driftfix=none -device virtio-balloon-pci
+qemu_options: "-machine pc,mem-merge=on -cpu host,migratable=no,+invtsc -enable-kvm -serial mon:stdio -nographic -vga none -rtc base=utc,clock=host,driftfix=none -device virtio-balloon-pci"
 icon: Router.png
 ...
 EOF_VIOS
@@ -543,11 +543,11 @@ name: VIOSL2
 cpus: 1
 ram: 512
 ethernets: 16
-eth_format: Gi{0}/{1}
+eth_format: "Gi{0}/{1}"
 console: telnet
 qemu_arch: x86_64
 qemu_nic: virtio-net-pci
-qemu_options: -machine pc,mem-merge=on -cpu host,migratable=no,+invtsc -enable-kvm -serial mon:stdio -nographic -vga none -rtc base=utc,clock=host,driftfix=none -device virtio-balloon-pci
+qemu_options: "-machine pc,mem-merge=on -cpu host,migratable=no,+invtsc -enable-kvm -serial mon:stdio -nographic -vga none -rtc base=utc,clock=host,driftfix=none -device virtio-balloon-pci"
 icon: Switch.png
 ...
 EOF_VIOSL2

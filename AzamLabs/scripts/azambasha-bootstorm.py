@@ -53,41 +53,61 @@ def get_node_weight(node_type: str) -> str:
 
 
 def create_session(host, username, password):
-    """Login to PNetLab API and return an authenticated session cookie jar."""
+    """Login to PNetLab API and return an authenticated session cookie jar, context, proto, and opener."""
+    import ssl
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
     cj = http.cookiejar.CookieJar()
-    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
-    
-    login_data = json.dumps({"username": username, "password": password}).encode("utf-8")
-    req = urllib.request.Request(
-        f"https://{host}/api/auth/login",
-        data=login_data,
-        headers={"Content-Type": "application/json", "User-Agent": "Azam-Bootstorm/1.0"}
+    opener = urllib.request.build_opener(
+        urllib.request.HTTPCookieProcessor(cj),
+        urllib.request.HTTPSHandler(context=ctx),
+        urllib.request.HTTPHandler()
     )
+
+    login_data = json.dumps({"username": username, "password": password, "html5": 0}).encode("utf-8")
     
-    try:
-        ctx = __import__("ssl").create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = __import__("ssl").CERT_NONE
-        opener.addhandler = None  # use urllib ssl context
-        
-        import ssl
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
-        
-        with urllib.request.urlopen(req, context=ctx, timeout=15) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-            if body.get("status") == "success":
-                return cj, ctx
-            else:
-                print(f"[!] Login failed: {body.get('message', 'Unknown error')}")
-                return None, None
-    except Exception as e:
-        print(f"[!] Auth error: {e}")
-        return None, None
+    # Try endpoints: standard PNetLab is /api/auth, followed by fallbacks
+    endpoints = ["/api/auth", "/api/auth/login"]
+    protocols = ["https", "http"] if host in ("127.0.0.1", "localhost") else ["https", "http"]
+
+    last_err = None
+    for proto in protocols:
+        for ep in endpoints:
+            url = f"{proto}://{host}{ep}"
+            req = urllib.request.Request(
+                url,
+                data=login_data,
+                headers={"Content-Type": "application/json", "User-Agent": "Azam-Bootstorm/1.0"}
+            )
+            try:
+                with opener.open(req, timeout=15) as resp:
+                    resp_body = resp.read().decode("utf-8")
+                    try:
+                        body = json.loads(resp_body)
+                    except Exception:
+                        body = {}
+                    if body.get("status") == "success" or resp.status == 200:
+                        return cj, ctx, proto, opener
+                    else:
+                        last_err = body.get("message", "Authentication rejected")
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    continue  # Try next endpoint
+                try:
+                    err_body = json.loads(e.read().decode("utf-8"))
+                    last_err = err_body.get("message", f"HTTP Error {e.code}: {e.reason}")
+                except Exception:
+                    last_err = f"HTTP Error {e.code}: {e.reason}"
+            except Exception as e:
+                last_err = str(e)
+
+    print(f"[!] Auth error: {last_err or 'Endpoint resolution failed'}")
+    return None, None, None, None
 
 
-def api_call(host, path, method="GET", data=None, cj=None, ctx=None):
+def api_call(host, path, method="GET", data=None, cj=None, ctx=None, proto="https", opener=None):
     """Make an authenticated API call to PNetLab."""
     import ssl
     if ctx is None:
@@ -95,7 +115,14 @@ def api_call(host, path, method="GET", data=None, cj=None, ctx=None):
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
     
-    url = f"https://{host}{path}"
+    if opener is None:
+        opener = urllib.request.build_opener(
+            urllib.request.HTTPCookieProcessor(cj) if cj else urllib.request.BaseHandler(),
+            urllib.request.HTTPSHandler(context=ctx),
+            urllib.request.HTTPHandler()
+        )
+    
+    url = f"{proto}://{host}{path}"
     req = urllib.request.Request(
         url,
         data=json.dumps(data).encode("utf-8") if data else None,
@@ -103,36 +130,101 @@ def api_call(host, path, method="GET", data=None, cj=None, ctx=None):
         headers={"Content-Type": "application/json", "User-Agent": "Azam-Bootstorm/1.0"}
     )
 
-    if cj:
-        opener = urllib.request.build_opener(
-            urllib.request.HTTPCookieProcessor(cj),
-            urllib.request.HTTPSHandler(context=ctx)
-        )
-        try:
-            with opener.open(req, timeout=30) as resp:
-                return json.loads(resp.read().decode("utf-8"))
-        except Exception as e:
-            return {"status": "fail", "message": str(e)}
+    try:
+        with opener.open(req, timeout=30) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except Exception as e:
+        return {"status": "fail", "message": str(e)}
+
+
+def get_lab_nodes(host, lab_path, tenant, cj, ctx, proto="https", opener=None):
+    """Retrieve all nodes from a running lab session or lab file path."""
+    clean_path = lab_path.strip("/")
+    candidates = [
+        f"/api/labs/{clean_path}/nodes",
+        f"/api/labs/{clean_path}.unl/nodes",
+        "/api/labs/session/nodes"
+    ]
+    if clean_path.endswith(".unl"):
+        candidates.insert(0, f"/api/labs/{clean_path[:-4]}/nodes")
+
+    for path in candidates:
+        result = api_call(host, path, cj=cj, ctx=ctx, proto=proto, opener=opener)
+        if result.get("status") == "success" and result.get("data"):
+            data = result.get("data")
+            if isinstance(data, dict):
+                return data
+            elif isinstance(data, list):
+                return {str(item.get("id", idx)): item for idx, item in enumerate(data)}
+
+    # Direct local file discovery fallback if running locally
+    labs_base = "/opt/unetlab/labs"
+    if os.path.isdir(labs_base):
+        local_candidates = [
+            os.path.join(labs_base, clean_path),
+            os.path.join(labs_base, f"{clean_path}.unl"),
+            os.path.join(labs_base, f"{clean_path}.unl".replace("//", "/"))
+        ]
+        # Also recursive search for filename
+        base_name = os.path.basename(clean_path)
+        if not base_name.endswith(".unl"):
+            base_name += ".unl"
+        for root, dirs, files in os.walk(labs_base):
+            if base_name in files:
+                local_candidates.append(os.path.join(root, base_name))
+
+        for cand in local_candidates:
+            if os.path.isfile(cand):
+                try:
+                    import xml.etree.ElementTree as ET
+                    tree = ET.parse(cand)
+                    root = tree.getroot()
+                    nodes_dict = {}
+                    for n in root.findall(".//node"):
+                        nid = n.get("id")
+                        nodes_dict[nid] = {
+                            "id": nid,
+                            "name": n.get("name", f"node-{nid}"),
+                            "type": n.get("template", n.get("type", "iol")),
+                            "status": 0
+                        }
+                    if nodes_dict:
+                        print(f"  [i] Discovered {len(nodes_dict)} nodes directly from topology file: {cand}")
+                        return nodes_dict
+                except Exception:
+                    pass
+
     return {}
 
 
-def get_lab_nodes(host, lab_path, tenant, cj, ctx):
-    """Retrieve all nodes from a running lab session."""
-    result = api_call(host, f"/api/labs/{lab_path}/nodes", cj=cj, ctx=ctx)
-    if result.get("status") == "success":
-        return result.get("data", {})
-    return {}
-
-
-def start_node(host, lab_session, node_id, tenant, cj, ctx):
-    """Start a single node via the lab session API."""
-    result = api_call(
-        host,
+def start_node(host, lab_path, node_id, tenant, cj, ctx, proto="https", opener=None):
+    """Start a single node via session API, path API, or local unl_wrapper."""
+    clean_path = lab_path.strip("/")
+    start_candidates = [
         f"/api/labs/session/nodes/{node_id}/start",
-        method="GET",
-        cj=cj, ctx=ctx
-    )
-    return result.get("status") == "success"
+        f"/api/labs/{clean_path}/nodes/{node_id}/start",
+        f"/api/labs/{clean_path}.unl/nodes/{node_id}/start"
+    ]
+    if clean_path.endswith(".unl"):
+        start_candidates.append(f"/api/labs/{clean_path[:-4]}/nodes/{node_id}/start")
+
+    for path in start_candidates:
+        result = api_call(host, path, method="GET", cj=cj, ctx=ctx, proto=proto, opener=opener)
+        if result.get("status") == "success":
+            return True
+
+    # Fallback to local wrapper execution if running on localhost / master
+    unl_wrap = "/opt/unetlab/wrappers/unl_wrapper"
+    if os.path.isfile(unl_wrap) and os.access(unl_wrap, os.X_OK):
+        import subprocess
+        try:
+            res = subprocess.run([unl_wrap, "-a", "start", "-T", "0", "-D", str(node_id)], capture_output=True, timeout=10)
+            if res.returncode == 0:
+                return True
+        except Exception:
+            pass
+
+    return False
 
 
 def run_bootstorm(host, lab_path, username, password,
@@ -148,7 +240,12 @@ def run_bootstorm(host, lab_path, username, password,
     print("================================================================================")
     print("        Azam-Pnet Anti-Bootstorm Staggered Node Startup Engine                  ")
     print("================================================================================")
-    print(f"  Target:       https://{host}")
+    cj, ctx, proto, opener = create_session(host, username, password)
+    if not cj:
+        print("[!] Cannot connect to PNetLab API. Check host/credentials.")
+        sys.exit(1)
+
+    print(f"  Target:       {proto}://{host}")
     print(f"  Lab:          {lab_path}")
     print(f"  Heavy nodes:  batch={heavy_batch}, delay={heavy_delay}s between batches")
     print(f"  Medium nodes: batch={medium_batch}, delay={medium_delay}s between batches")
@@ -157,14 +254,9 @@ def run_bootstorm(host, lab_path, username, password,
         print("  *** DRY-RUN MODE - No nodes will actually be started ***")
     print("--------------------------------------------------------------------------------")
 
-    cj, ctx = create_session(host, username, password)
-    if not cj:
-        print("[!] Cannot connect to PNetLab API. Check host/credentials.")
-        sys.exit(1)
-
-    nodes_data = get_lab_nodes(host, lab_path, None, cj, ctx)
+    nodes_data = get_lab_nodes(host, lab_path, None, cj, ctx, proto=proto, opener=opener)
     if not nodes_data:
-        print("[!] Could not retrieve nodes from lab. Ensure lab is open.")
+        print("[!] Could not retrieve nodes from lab. Ensure lab is open or valid .unl path.")
         sys.exit(1)
 
     # Classify nodes
@@ -211,7 +303,7 @@ def run_bootstorm(host, lab_path, username, password,
                 started_ok += 1
             else:
                 print(f"  [↑ START] {nname} ({ntype}) [{label}]...", end=" ", flush=True)
-                ok = start_node(host, lab_path, nid, None, cj, ctx)
+                ok = start_node(host, lab_path, nid, None, cj, ctx, proto=proto, opener=opener)
                 if ok:
                     print("✔")
                     started_ok += 1

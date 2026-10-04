@@ -154,16 +154,24 @@ def attempt_node_recovery(node_info: dict, master_ip: str, password: str) -> boo
         )
 
         # Login
-        login_data = json.dumps({"username": "admin", "password": password}).encode("utf-8")
-        req = urllib.request.Request(
-            f"https://{master_ip}/api/auth/login",
-            data=login_data,
-            headers={"Content-Type": "application/json"}
-        )
-        with opener.open(req, timeout=10) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-            if body.get("status") != "success":
-                return False
+        login_data = json.dumps({"username": "admin", "password": password, "html5": 0}).encode("utf-8")
+        login_ok = False
+        for ep in ("/api/auth", "/api/auth/login"):
+            try:
+                req = urllib.request.Request(
+                    f"https://{master_ip}{ep}",
+                    data=login_data,
+                    headers={"Content-Type": "application/json"}
+                )
+                with opener.open(req, timeout=10) as resp:
+                    body = json.loads(resp.read().decode("utf-8"))
+                    if body.get("status") == "success" or resp.status == 200:
+                        login_ok = True
+                        break
+            except Exception:
+                continue
+        if not login_ok:
+            return False
 
         # Attempt node start via session API
         start_req = urllib.request.Request(

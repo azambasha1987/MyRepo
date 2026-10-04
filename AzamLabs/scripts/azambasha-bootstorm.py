@@ -205,80 +205,64 @@ def api_call(host, path, method="GET", data=None, cj=None, ctx=None, proto="http
 
 
 def resolve_lab_disk_path(lab_path: str) -> str:
-    """Resolve the authoritative absolute path to the .unl file on disk."""
+    """
+    Resolve the authoritative absolute path to the .unl file on disk.
+    Searches case-insensitively, follows symlinks, and searches across all known
+    PNetLab lab locations (/opt/unetlab/labs, /root/labs, /opt/azambasha/labs, /opt/unetlab/tmp).
+    """
     clean = lab_path.strip("/")
+    if clean.startswith("opt/unetlab/labs/"):
+        clean = clean[len("opt/unetlab/labs/"):]
     if not clean.endswith(".unl"):
         clean += ".unl"
 
-    labs_base = "/opt/unetlab/labs"
+    # Direct check if absolute path provided
+    if os.path.isfile(lab_path):
+        return os.path.realpath(lab_path).replace("\\", "/")
+    if not lab_path.endswith(".unl") and os.path.isfile(f"{lab_path}.unl"):
+        return os.path.realpath(f"{lab_path}.unl").replace("\\", "/")
 
-    # 1. If absolute path under labs_base provided directly
-    if lab_path.startswith(labs_base):
-        return lab_path if lab_path.endswith(".unl") else f"{lab_path}.unl"
+    target_lower = os.path.basename(clean).lower()
+    rel_lower = clean.lower()
 
-    # 2. Direct path under labs_base
-    direct = f"{labs_base}/{clean}"
-    if os.path.isfile(direct):
-        return direct
+    search_bases = ["/opt/unetlab/labs", "/root/labs", "/opt/azambasha/labs", "/opt/unetlab/tmp"]
+    for base in search_bases:
+        if not os.path.isdir(base):
+            continue
 
-    # 3. Search recursively under labs_base for the filename
-    if os.path.isdir(labs_base):
-        target_name = os.path.basename(clean)
-        for root, _, files in os.walk(labs_base):
-            if target_name in files:
-                return os.path.join(root, target_name).replace("\\", "/")
+        # Direct path under base
+        direct = os.path.join(base, clean).replace("\\", "/")
+        if os.path.isfile(direct):
+            return os.path.realpath(direct).replace("\\", "/")
 
-    # 4. Fallback to standard path (normalized with forward slashes for Linux)
-    return f"{labs_base}/{clean}"
+        # Case-insensitive recursive walk (following symlinks)
+        for root, dirs, files in os.walk(base, followlinks=True):
+            for f in files:
+                if f.lower() == target_lower:
+                    full = os.path.join(root, f).replace("\\", "/")
+                    rel = os.path.relpath(full, base).replace("\\", "/").lower()
+                    if rel == rel_lower:
+                        return os.path.realpath(full).replace("\\", "/")
+                    return os.path.realpath(full).replace("\\", "/")
+
+    return f"/opt/unetlab/labs/{clean}"
 
 
-def open_lab_session(host, lab_path, cj, ctx, proto="https", opener=None):
-    """
-    Ensure the lab is actively loaded into the PNetLab session state ($_SESSION['lab']).
-    Without an active session, /api/labs/session/nodes/{id}/start will fail with code 412.
-    """
+def get_lab_nodes(host, lab_path, tenant, cj, ctx, proto="https", opener=None, lab_disk_path=None):
+    """Retrieve all nodes from a running lab session, lab file path, or local XML."""
     clean = lab_path.strip("/")
-    clean_no_ext = clean[:-4] if clean.endswith(".unl") else clean
-    clean_with_ext = clean if clean.endswith(".unl") else f"{clean}.unl"
-
-    # 1. Check if lab is already loaded in current session
-    sess_check = api_call(host, "/api/labs/session", method="GET", cj=cj, ctx=ctx, proto=proto, opener=opener)
-    if sess_check.get("status") == "success" and sess_check.get("data"):
-        data = sess_check.get("data")
-        sess_name = data.get("name", "") or data.get("file", "")
-        return True, f"Session already active ({sess_name})"
-
-    # 2. Attempt to open/load lab into session via candidate routes
-    open_candidates = [
-        (f"/api/labs/{clean_with_ext}", "GET", None),
-        (f"/api/labs/{clean_no_ext}", "GET", None),
-        (f"/api/labs/{lab_path}", "GET", None),
-        ("/api/labs/session", "POST", {"path": f"/{clean_with_ext}"}),
-        ("/api/labs/session", "POST", {"path": clean_with_ext}),
-        ("/api/labs/session", "POST", {"path": f"/{clean_no_ext}"}),
-        ("/api/labs/session", "POST", {"lab": clean_with_ext}),
-        ("/api/labs/session", "POST", {"lab": clean_no_ext}),
-    ]
-
-    for path, method, data in open_candidates:
-        res = api_call(host, path, method=method, data=data, cj=cj, ctx=ctx, proto=proto, opener=opener)
-        if res.get("status") == "success" or res.get("code") == 200:
-            return True, f"Active via {path}"
-
-    return False, "Could not initialize session state via REST"
-
-
-def get_lab_nodes(host, lab_path, tenant, cj, ctx, proto="https", opener=None):
-    """Retrieve all nodes from a running lab session or lab file path."""
-    clean = lab_path.strip("/")
+    if clean.startswith("opt/unetlab/labs/"):
+        clean = clean[len("opt/unetlab/labs/"):]
     clean_no_ext = clean[:-4] if clean.endswith(".unl") else clean
     clean_with_ext = clean if clean.endswith(".unl") else f"{clean}.unl"
 
     candidates = [
         f"/api/labs/{clean_no_ext}/nodes",
         f"/api/labs/{clean_with_ext}/nodes",
-        "/api/labs/session/nodes",
-        f"/api/labs/{clean}/nodes"
+        f"/api/labs/{clean}/nodes",
+        f"/api/labs/{clean_no_ext.lower()}/nodes",
+        f"/api/labs/{clean_with_ext.lower()}/nodes",
+        "/api/labs/session/nodes"
     ]
 
     for path in candidates:
@@ -291,11 +275,13 @@ def get_lab_nodes(host, lab_path, tenant, cj, ctx, proto="https", opener=None):
                 return {str(item.get("id", idx)): item for idx, item in enumerate(data)}
 
     # Direct local file discovery fallback if running locally
-    lab_file = resolve_lab_disk_path(lab_path)
-    if os.path.isfile(lab_file):
+    if not lab_disk_path:
+        lab_disk_path = resolve_lab_disk_path(lab_path)
+
+    if os.path.isfile(lab_disk_path):
         try:
             import xml.etree.ElementTree as ET
-            tree = ET.parse(lab_file)
+            tree = ET.parse(lab_disk_path)
             root = tree.getroot()
             nodes_dict = {}
             for n in root.findall(".//node"):
@@ -309,10 +295,10 @@ def get_lab_nodes(host, lab_path, tenant, cj, ctx, proto="https", opener=None):
                     "status": 0
                 }
             if nodes_dict:
-                print(f"  [i] Discovered {len(nodes_dict)} nodes directly from topology file: {lab_file}")
+                print(f"  [i] Discovered {len(nodes_dict)} nodes directly from topology file: {lab_disk_path}")
                 return nodes_dict
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  [!] XML parse error: {e}")
 
     return {}
 
@@ -385,23 +371,29 @@ def start_node_wrapper(node_id, lab_disk_path):
 def start_node(host, lab_path, node_id, tenant, cj, ctx, proto="https", opener=None, lab_disk_path=None):
     """
     Start a single node using a resilient 3-tier startup pipeline:
-      Tier 1: Authenticated REST API (/api/labs/session/nodes/{id}/start)
+      Tier 1: Authenticated REST API (/api/labs/{path}/nodes/{id}/start)
       Tier 2: Broker Daemon Unix Socket (/run/pnetlab/broker.sock)
       Tier 3: Native unl_wrapper CLI (-a start -T 0 -S 1 -D {id} -F {lab_file})
     """
     clean = lab_path.strip("/")
+    if clean.startswith("opt/unetlab/labs/"):
+        clean = clean[len("opt/unetlab/labs/"):]
     clean_no_ext = clean[:-4] if clean.endswith(".unl") else clean
     clean_with_ext = clean if clean.endswith(".unl") else f"{clean}.unl"
+
+    if not lab_disk_path:
+        lab_disk_path = resolve_lab_disk_path(lab_path)
 
     api_errors = []
 
     # ── Tier 1: PNetLab REST API ──────────────────────────────────────────────
     start_candidates = [
+        f"/api/labs/{clean_no_ext}/nodes/{node_id}/start",
+        f"/api/labs/{clean_no_ext}/nodes/{node_id}/start/0",
+        f"/api/labs/{clean_with_ext}/nodes/{node_id}/start",
+        f"/api/labs/{clean_with_ext}/nodes/{node_id}/start/0",
         f"/api/labs/session/nodes/{node_id}/start",
         f"/api/labs/session/nodes/{node_id}/start/0",
-        f"/api/labs/session/nodes/{node_id}/start?html5=0",
-        f"/api/labs/{clean_with_ext}/nodes/{node_id}/start",
-        f"/api/labs/{clean_no_ext}/nodes/{node_id}/start",
     ]
 
     for path in start_candidates:
@@ -417,9 +409,6 @@ def start_node(host, lab_path, node_id, tenant, cj, ctx, proto="https", opener=N
     if not is_local:
         first_err = api_errors[0] if api_errors else "API rejected start"
         return False, first_err
-
-    if not lab_disk_path:
-        lab_disk_path = resolve_lab_disk_path(lab_path)
 
     # ── Tier 2: Broker Daemon Socket (/run/pnetlab/broker.sock) ───────────────
     ok_broker, msg_broker = start_node_broker(node_id, lab_disk_path)
@@ -443,7 +432,7 @@ def run_bootstorm(host, lab_path, username, password,
     """
     Staggered boot orchestration:
       1. Authenticate to PNetLab API
-      2. Verify and activate lab in session state
+      2. Retrieve topology nodes via API or local XML
       3. Classify each node into heavy / medium / light
       4. Start in batches with configurable delays across multi-tier engine
     """
@@ -466,18 +455,13 @@ def run_bootstorm(host, lab_path, username, password,
 
     lab_disk_path = resolve_lab_disk_path(lab_path)
     if os.path.isfile(lab_disk_path):
-        print(f"  [i] Topology file verified: {lab_disk_path}")
+        print(f"  [i] Topology file verified on disk: {lab_disk_path}")
 
-    # Activate lab in session state
-    sess_ok, sess_msg = open_lab_session(host, lab_path, cj, ctx, proto=proto, opener=opener)
-    if sess_ok:
-        print(f"  [✔] Lab session initialized: {sess_msg}")
-    else:
-        print(f"  [⚠] Lab session notice: {sess_msg} (will use multi-tier fallbacks)")
-
-    nodes_data = get_lab_nodes(host, lab_path, None, cj, ctx, proto=proto, opener=opener)
+    nodes_data = get_lab_nodes(host, lab_path, None, cj, ctx, proto=proto, opener=opener, lab_disk_path=lab_disk_path)
     if not nodes_data:
-        print("[!] Could not retrieve nodes from lab. Ensure lab is open or valid .unl path.")
+        print(f"[!] Could not retrieve nodes from lab: {lab_path}")
+        print(f"    Resolved disk path: {lab_disk_path}")
+        print("    Ensure the lab is accessible via PNetLab API or exists under /opt/unetlab/labs/.")
         sys.exit(1)
 
     # Classify nodes

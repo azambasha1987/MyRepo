@@ -48,9 +48,9 @@ To prevent regressions, version drift, and operational errors caused by prematur
    - *Assumption Risk*: Assuming that reading `UPDATE_CHECK_PLAN.md` is equivalent to auditing upstream status.
    - *Mandate*: Every update check execution MUST initiate with a live HTTP/API query to Codeberg (`https://codeberg.org/api/v1/repos/netkillui/Pnetlabv8/raw/README.md` and `/issues`). Never assume upstream hasn't released a new version since the plan was last written.
 
-2. **Rule 2: Never Assume Local Workspace Files Automatically Exist on the Production VM**
-   - *Assumption Risk*: Modifying files in `e:\Git\AzamLabs\` on Windows and immediately prompting the user to run `sudo azam-update` on the VM.
-   - *Mandate*: The VM does not receive workspace edits until code is explicitly synchronized via `python scripts/deploy-to-vm.py -H <VM_IP> -p azam` or `git pull` on the VM. Never declare the VM ready for `sudo azam-update` without verifying repository-to-VM file synchronization.
+2. **Rule 2: Automated In-Band GitHub Download in One-Step Update (`sudo azam-update`)**
+   - *Architecture Principle*: All updates must be deployable using exclusively the canonical one-step command `sudo azam-update`, with zero manual file transfers or complex multi-step options.
+   - *Mandate*: The update command (`sudo azam-update`) autonomously connects to GitHub (`azambasha1987/MyRepo`), pulls the latest code directly to the VM, creates a safety snapshot, and installs all fixes in a single execution. The only operator action is committing/pushing changes to GitHub (`git push origin main`), followed by running `sudo azam-update` on the VM.
 
 3. **Rule 3: Never Assume Upstream Git Commits Mean the Signed Binary Package is Ready**
    - *Assumption Risk*: Seeing a commit or tag in Git and assuming the corresponding `.deb` package in the network-install channel is functional.
@@ -91,8 +91,7 @@ graph TD
     K --> L["Step 4: Await Explicit Human Confirmation"]
     L --> M{"Approved by azambasha1987@gmail.com?"}
     M -->|Pending / Revision Requested| L
-    M -->|Confirmed| SYNC["Sync Code from Repository to VM (deploy-to-vm.py / git pull)"]
-    SYNC --> N["Step 5: One-Step Update Execution"]
+    M -->|Confirmed & Pushed to GitHub| N["Step 5: One-Step Turnkey Update Command: sudo azam-update (Auto-Downloads from GitHub & Installs)"]
     N --> O["Master Node: sudo azam-update --master"]
     N --> P["Satellite Node: sudo azam-update --satellite"]
     O --> Q["Run 7/7 Probes in Dry-Test Suite"]
@@ -171,44 +170,33 @@ Systematically audit the latest version of PNetLab for **all newly introduced fe
 
 ### Step 4: Human-in-the-Loop Confirmation Gate
 - **Enforced Execution Pause**: The assistant or automated audit engine must **NEVER** apply changes autonomously. Execution halts until **explicit written confirmation and approval** is received from **azambasha1987@gmail.com** (via email reply or interactive chat prompt).
-- **Post-Confirmation Transition**: Once approval is verified, proceed immediately to the **Synchronization Gate** followed by **Step 5** for single-command execution.
-- **Pre-Execution Code Synchronization Gate**: Before running `sudo azam-update` on the VM, verify that repository changes are synchronized to the target node:
-  - *Remote Push from Workstation*: `python scripts/deploy-to-vm.py -H <NODE_IP> -p azam`
-  - *Or Pull on Node*: `cd /opt/azambasha && git pull origin main`
-  *(Never execute `sudo azam-update` on the VM while changes reside only in your local workstation workspace).*
+- **Post-Confirmation Transition**: Once approved, changes are committed and pushed to GitHub (`git push origin main`). Proceed directly to **Step 5** on the target node. `sudo azam-update` automatically downloads all updated files from GitHub and executes the installation in a single step.
 
 ### Step 5: One-Step Turnkey Update Command Execution (Master & Satellite)
 Deploy approved updates and architecture optimizations across cluster nodes using canonical 1-step commands. *(Full reference guide: [ONE_STEP_UPDATE_COMMANDS.md](file:///e:/Git/AzamLabs/docs/ONE_STEP_UPDATE_COMMANDS.md))*.
 
-#### A. Master Controller Node One-Line Update Commands
+> [!TIP]
+> **Automated GitHub Ingestion**: Running `sudo azam-update` automatically connects to GitHub (`azambasha1987/MyRepo`), downloads the latest repository code directly to `/opt/azambasha`, creates an atomic safety snapshot, and installs all fixes in one shot. Zero manual file transfers or extra commands required.
+
+#### A. Master Controller Node One-Line Update Command
 - **Local VM Execution (SSH / Terminal)**:
   ```bash
   sudo azam-update --master
   ```
-  *(Alternative direct bash call: `sudo bash /opt/azambasha/scripts/azambasha-apply-all-fixes.sh 19`)*
-- **Remote Execution from Windows Management Host**:
-  ```powershell
-  python scripts/deploy-to-vm.py -H <MASTER_IP> -p azam --apply-all
-  ```
-  *Applies the full 15-step Master optimization suite (Docker CE, Guacamole console fix, Ultra-KSM, MTU 9000, 512MB limits, dark mode branding).*
+  *(Automatically pulls latest code from GitHub, creates safety snapshot, applies full 15-step Master optimization suite, synchronizes Web-GUI version, and stabilizes auth).*
 
-#### B. Satellite Worker Node One-Line Update Commands
+#### B. Satellite Worker Node One-Line Update Command
 - **Local VM Execution (SSH / Terminal)**:
   ```bash
   sudo azam-update --satellite
   ```
-  *(Alternative direct bash call: `sudo bash /opt/azambasha/scripts/azambasha-apply-all-fixes.sh 25`)*
-- **Remote Execution from Windows Management Host**:
-  ```powershell
-  python scripts/deploy-to-vm.py -H <SATELLITE_IP> -p azam --satellite-fixes
-  ```
-  *Applies the full 13-step Satellite worker suite (Bridge LACP BPDU, Soft-RoCE RXE, heavy node optimizer, Docker watcher, Ultra-KSM).*
+  *(Automatically pulls latest code from GitHub, creates safety snapshot, applies full 13-step Satellite worker suite, and stabilizes cluster link).*
 
 #### C. Universal Auto-Detect One-Line Command (Runs on Any Node)
 ```bash
 sudo azam-update
 ```
-*Auto-detects whether the host is a Master or Satellite and executes the appropriate pipeline.*
+*Auto-detects whether the host is a Master or Satellite, downloads latest files from GitHub, and executes the appropriate pipeline.*
 
 #### D. Instant Post-Update Health Probe (7 Probes, 100% Pass)
 ```bash

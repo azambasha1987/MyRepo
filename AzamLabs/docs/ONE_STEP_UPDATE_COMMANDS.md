@@ -19,40 +19,35 @@
 
 The Master Controller node runs the PNetLab Web-GUI, Apache FastCGI, MySQL database, Guacamole console proxy, and cluster orchestration.
 
+> [!TIP]
+> **Automated In-Band GitHub Download**: When you run `sudo azam-update`, it automatically connects to GitHub (`azambasha1987/MyRepo`), pulls all updated files directly to `/opt/azambasha`, creates an atomic safety snapshot, and installs all fixes in a single step.
+
 ### A. Direct Execution on Master Node (SSH / Console)
 ```bash
-# Option 1: Using the turnkey AzamLabs update utility (Recommended)
+# Canonical One-Step Command (Auto-downloads from GitHub & installs)
 sudo azam-update --master
-
-# (If running directly from repository path: sudo bash /opt/azambasha/scripts/azambasha-update.sh --master)
-
-# Option 2: Direct execution via Master Fix Suite
-sudo bash /opt/azambasha/scripts/azambasha-apply-all-fixes.sh 19
 ```
 
-### B. Remote Execution from Windows Management Host
-```powershell
-python scripts/deploy-to-vm.py -H <MASTER_IP> -p azam --apply-all
-```
-
-### What Happens in the Master Node Update Pipeline (15 Steps):
-1. **Permanent Session Fix**: Configures 10-year session cookies (`Never-Logout`).
-2. **Lab Export & APT Fix**: Installs `zip`/`unzip`, handles nested folder structures.
-3. **Upload & Docker Subsystem**: 512MB PHP/Apache limits, Docker CE repository, official `pnet-capture-web:1.0` HTML5 packet capture container, and `pnetlab-docker-image-watcher.service`.
-4. **SSL IP-SAN & Console Fix**: Self-signed 5-year IP-SAN cert, Guacamole `:8081` proxy, and 32-byte crypto key.
-5. **Database Deep-Fix**: Cleans SQL modes, raises 1M query limits, configures logrotate.
-6. **File Permissions & Sockets**: Resets `/dev/kvm` and lab node permissions.
-7. **Speed Optimizer Suite**: Activates Ultra-KSM 4KB RAM deduplication (65–80% savings) and OPcache.
-8. **Silicon Dataplane Fast-Path**: Sets MTU 9000 jumbo frames and kernel bypass.
-9. **Cgroups v2 & System Limits**: Configures systemd slice resource isolation.
-10. **Version Freeze & Anti-Conflict**: Blocks unvetted upstream background overwrites.
-11. **AzamLabs Branding**: Deploys pure black dark mode and custom platform branding.
-12. **Universal Platform Logo**: Deploys home screen avatar icon across all web views.
-13. **Node Startup & Cisco IOSv**: Fixes SMM UEFI for Windows 11 and Cisco IOSv boot delays.
-14. **Canvas Tools & Diagnostics**: Synchronizes Network Watcher (packet sniffing), Network Painter (topology styling), and Network Analyzer (in-browser capture container).
-15. **GUI Version Synchronization**: Synchronizes `/main/#/version` and DB to latest release (`v6.8.83`).
-16. **Web Credentials Reset**: Re-asserts canonical admin credentials (`admin` / `azam`).
-17. **Authentication Self-Healing & Systemd Rate-Limit Immunity**: Deploys `StartLimitIntervalSec=0` drop-ins to prevent `start-limit-hit` lockouts, executes live verification probe (HTTP 200), and clears shared memory lockouts.
+### What Happens in the Master Node Update Pipeline:
+1. **GitHub In-Band Fetch**: Connects to GitHub (`azambasha1987/MyRepo`) and pulls/downloads latest repository code into `/opt/azambasha`.
+2. **Safety Snapshot**: Captures timestamped `.tar.gz` checkpoint of `/opt/unetlab/{html/includes,templates,data/branding}`.
+3. **Permanent Session Fix**: Configures 10-year session cookies (`Never-Logout`).
+4. **Lab Export & APT Fix**: Installs `zip`/`unzip`, handles nested folder structures.
+5. **Upload & Docker Subsystem**: 512MB PHP/Apache limits, Docker CE repository, official `pnet-capture-web:1.0` HTML5 packet capture container, and `pnetlab-docker-image-watcher.service`.
+6. **SSL IP-SAN & Console Fix**: Self-signed 5-year IP-SAN cert, Guacamole `:8081` proxy, and 32-byte crypto key.
+7. **Database Deep-Fix**: Cleans SQL modes, raises 1M query limits, configures logrotate.
+8. **File Permissions & Sockets**: Resets `/dev/kvm` and lab node permissions.
+9. **Speed Optimizer Suite**: Activates Ultra-KSM 4KB RAM deduplication (65–80% savings) and OPcache.
+10. **Silicon Dataplane Fast-Path**: Sets MTU 9000 jumbo frames and kernel bypass.
+11. **Cgroups v2 & System Limits**: Configures systemd slice resource isolation.
+12. **Version Freeze & Anti-Conflict**: Blocks unvetted upstream background overwrites.
+13. **AzamLabs Branding**: Deploys pure black dark mode and custom platform branding.
+14. **Universal Platform Logo**: Deploys home screen avatar icon across all web views.
+15. **Node Startup & Cisco IOSv**: Fixes SMM UEFI for Windows 11 and Cisco IOSv boot delays.
+16. **Canvas Tools & Diagnostics**: Synchronizes Network Watcher (packet sniffing), Network Painter (topology styling), and Network Analyzer (in-browser capture container).
+17. **GUI Version Synchronization**: Synchronizes `/main/#/version` and DB to latest release (`v6.8.85`).
+18. **Web Credentials Reset**: Re-asserts canonical admin credentials (`admin` / `azam`).
+19. **Authentication Self-Healing & Systemd Rate-Limit Immunity**: Deploys `StartLimitIntervalSec=0` drop-ins to prevent `start-limit-hit` lockouts, executes live verification probe (HTTP 200), and clears shared memory lockouts.
 
 ---
 
@@ -60,23 +55,18 @@ python scripts/deploy-to-vm.py -H <MASTER_IP> -p azam --apply-all
 
 Satellite Worker nodes provide headless compute density, KVM virtualization, Soft-RoCE RDMA pipelines, and Docker container execution across cluster nodes.
 
+> [!TIP]
+> **Automated In-Band GitHub Download**: When you run `sudo azam-update --satellite`, it automatically connects to GitHub (`azambasha1987/MyRepo`), pulls all updated files directly to `/opt/azambasha`, creates an atomic safety snapshot, and installs all fixes in a single step.
+
 ### A. Direct Execution on Satellite Worker Node (SSH / Console)
 ```bash
-# Option 1: Using the turnkey AzamLabs update utility (Recommended)
+# Canonical One-Step Command (Auto-downloads from GitHub & installs)
 sudo azam-update --satellite
-
-# (If running directly from repository path: sudo bash /opt/azambasha/scripts/azambasha-update.sh --satellite)
-
-# Option 2: Direct execution via Satellite Optimization Suite
-sudo bash /opt/azambasha/scripts/azambasha-apply-all-fixes.sh 25
 ```
 
-### B. Remote Execution from Windows Management Host
-```powershell
-python scripts/deploy-to-vm.py -H <SATELLITE_IP> -p azam --satellite-fixes
-```
-
-### What Happens in the Satellite Worker Pipeline (14 Steps):
+### What Happens in the Satellite Worker Pipeline:
+1. **GitHub In-Band Fetch**: Connects to GitHub (`azambasha1987/MyRepo`) and pulls/downloads latest repository code into `/opt/azambasha`.
+2. **Safety Snapshot**: Captures timestamped `.tar.gz` checkpoint of `/opt/unetlab/{html/includes,templates,data/branding}`.
 1. **OS Prerequisites**: Installs `swtpm`, `ovmf`, `rdma-core`, `libelf`, and `nodejs`.
 2. **Bridge LACP BPDU Forwarding**: Sets `group_fwd_mask = 0xffff` to allow LACP/LLDP transit.
 3. **Silicon Dataplane Accelerator**: Sets MTU 9000 jumbo frames for inter-node links.

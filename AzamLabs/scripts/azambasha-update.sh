@@ -100,6 +100,35 @@ run_diagnostics() {
     fi
 }
 
+sync_from_github() {
+    log_info "Connecting to GitHub to fetch the latest AzamLabs code..."
+    local repo_dir="${BASE_DIR}"
+    local github_url="https://github.com/azambasha1987/MyRepo.git"
+    local github_tar_url="https://github.com/azambasha1987/MyRepo/archive/refs/heads/main.tar.gz"
+
+    if [ -d "${repo_dir}/.git" ]; then
+        log_info "Synchronizing Git repository: ${repo_dir}..."
+        git -C "$repo_dir" fetch origin main --quiet 2>/dev/null || true
+        git -C "$repo_dir" reset --hard origin/main --quiet 2>/dev/null || git -C "$repo_dir" pull origin main --quiet 2>/dev/null || true
+        log_ok "Updated repository to latest commit from GitHub (origin/main)."
+    else
+        mkdir -p "$repo_dir" 2>/dev/null || true
+        if command -v git &>/dev/null && git clone --depth 1 "$github_url" "${repo_dir}_new" 2>/dev/null; then
+            cp -rf "${repo_dir}_new/." "$repo_dir/" 2>/dev/null || true
+            rm -rf "${repo_dir}_new" 2>/dev/null || true
+            log_ok "Fetched latest codebase from GitHub via Git clone."
+        elif command -v curl &>/dev/null; then
+            curl -skL "$github_tar_url" | tar -xz -C "$repo_dir" --strip-components=1 2>/dev/null || true
+            log_ok "Fetched latest codebase from GitHub via public archive tarball."
+        elif command -v wget &>/dev/null; then
+            wget -qO- "$github_tar_url" | tar -xz -C "$repo_dir" --strip-components=1 2>/dev/null || true
+            log_ok "Fetched latest codebase from GitHub via public archive tarball."
+        else
+            log_warn "Neither git, curl, nor wget available for remote download; utilizing cached files."
+        fi
+    fi
+}
+
 create_pre_update_snapshot() {
     log_info "Creating pre-update safety snapshot..."
     local snap_dir="/opt/unetlab/data/Backup/snapshots"
@@ -246,6 +275,7 @@ case "$MODE" in
     --master|-m)
         show_banner
         log_info "Initiating ONE-STEP UPDATE for: ${BOLD}MASTER CONTROLLER NODE${RESET}"
+        sync_from_github
         create_pre_update_snapshot
         bash "${SCRIPT_DIR}/azambasha-apply-all-fixes.sh" 19
         if [ -f "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" ]; then
@@ -257,6 +287,7 @@ case "$MODE" in
     --satellite|-s)
         show_banner
         log_info "Initiating ONE-STEP UPDATE for: ${BOLD}SATELLITE WORKER NODE${RESET}"
+        sync_from_github
         create_pre_update_snapshot
         bash "${SCRIPT_DIR}/azambasha-apply-all-fixes.sh" 25
         verify_and_stabilize_satellite
@@ -267,12 +298,14 @@ case "$MODE" in
         ROLE="$(detect_role)"
         if [ "$ROLE" = "satellite" ]; then
             log_info "Auto-detected Role: ${BOLD}SATELLITE (Worker Node)${RESET}"
+            sync_from_github
             create_pre_update_snapshot
             bash "${SCRIPT_DIR}/azambasha-apply-all-fixes.sh" 25
             verify_and_stabilize_satellite
             log_ok "Satellite worker node one-step update successfully completed!"
         else
             log_info "Auto-detected Role: ${BOLD}MASTER (Controller Node)${RESET}"
+            sync_from_github
             create_pre_update_snapshot
             bash "${SCRIPT_DIR}/azambasha-apply-all-fixes.sh" 19
             if [ -f "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" ]; then

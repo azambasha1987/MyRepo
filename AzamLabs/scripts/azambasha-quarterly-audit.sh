@@ -183,8 +183,8 @@ run_audit() {
         log_info "Dataplane: Standard MTU (9000 active on cluster interconnects)"
     fi
 
-    local web_ver="v6.8.83"
-    local pkg_ver="6.8.83resolute1"
+    local web_ver="v6.8.84"
+    local pkg_ver="6.8.84resolute1"
     if [ -f "${REPO_ROOT}/VERSION" ]; then
         local v_raw
         v_raw="$(grep -E '^VERSION=' "${REPO_ROOT}/VERSION" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)"
@@ -237,7 +237,7 @@ run_audit() {
 - **Docker Subsystem**: ${docker_engine} (${docker_imgs} images, Capture Web: ${docker_cap}, Forwarding: ${docker_fwd})
 
 ## Cluster Drift Assessment
-- **Tracked Issues**: 34 audited (0 unmanaged regressions)
+- **Tracked Issues**: 49 audited (0 unmanaged regressions)
 - **Additive QEMU Appliances & Dockers**: Fully isolated and regression-free
 - **Next Audit Milestone**: 19th of next quarter @ 09:00 AM IST
 

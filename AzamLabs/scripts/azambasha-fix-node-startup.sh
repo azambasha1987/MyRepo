@@ -446,6 +446,25 @@ image: xrd:latest
 icon: router.png
 ...
 EOF_XRD
+
+        cat << 'EOF_OPENBMP' > "${tdir}/openbmp.yml"
+---
+type: qemu
+description: OpenBMP BGP Monitoring Protocol Collector (Real-Time BGP Telemetry)
+name: OpenBMP
+cpus: 2
+cpu: host
+ram: 4096
+ethernets: 2
+eth_format: eth{0}
+console: telnet
+qemu_arch: x86_64
+qemu_version: 5.2.0
+qemu_nic: virtio-net-pci
+qemu_options: -machine type=q35,accel=kvm,mem-merge=on -vga std -device usb-tablet -boot order=c
+icon: server.png
+...
+EOF_OPENBMP
     fi
 done
 

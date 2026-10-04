@@ -46,7 +46,7 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
     echo "  20   Deploy Home Screen Avatar Logo Everywhere"
     echo "  21   Repair Cluster & Stage Satellite Deploy Bundle"
     echo "  23   Soft-RoCE (RXE) & RDMA Dataplane Controller"
-    echo "  24   Run Weekly Codeberg Intelligence Scan & Implementation Plan"
+    echo "  24   Run 3-Month Quarterly Intelligence Audit & Governance Check (azam-audit)"
     echo "  25   Apply Full SATELLITE Worker Node Optimization Suite"
     echo "  26   Exit"
     echo "  --satellite  Apply full optimization suite directly in satellite worker mode"
@@ -100,10 +100,10 @@ echo "20) Deploy Home Screen Avatar Logo Everywhere"
 echo "21) Repair Cluster & Stage Satellite Deploy Bundle"
 echo "22) High-Density Heavy Node Optimizer (Cat8000, Cisco 8000, Cat9000)"
 echo "23) Soft-RoCE (RXE) & RDMA Dataplane Controller"
-echo "24) [Retired] Upstream Codeberg Intelligence Scanner"
+echo "24) Run 3-Month Quarterly Intelligence Audit & Governance Check (azam-audit)"
 echo "25) Apply Full SATELLITE Worker Node Optimization Suite"
 echo "26) Reset Web-GUI & Cluster Database Credentials (admin / azam)"
-echo "27) Synchronize Web-GUI Version to Latest Release (v6.8.83)"
+echo "27) Synchronize Web-GUI Version to Latest Release (v6.8.84)"
 echo "28) Exit"
 echo "============================================================"
 
@@ -399,7 +399,11 @@ case "$CHOICE" in
         fi
         ;;
     24)
-        echo "[*] Upstream Codeberg scanner feature has been retired per user directive."
+        if [ -f "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" ]; then
+            bash "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" "${2:---check}"
+        else
+            echo "[!] azambasha-quarterly-audit.sh not found." >&2
+        fi
         ;;
     25)
         echo "============================================================"

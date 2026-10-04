@@ -103,7 +103,10 @@ run_diagnostics() {
 create_pre_update_snapshot() {
     log_info "Creating pre-update safety snapshot..."
     local snap_dir="/opt/unetlab/data/Backup/snapshots"
-    mkdir -p "$snap_dir"
+    if ! mkdir -p "$snap_dir" 2>/dev/null; then
+        snap_dir="${BASE_DIR}/snapshots"
+        mkdir -p "$snap_dir" 2>/dev/null || true
+    fi
     local ts
     ts="$(date +'%Y%m%d_%H%M%S')"
     local snap_file="${snap_dir}/azamlabs_pre_update_${ts}.tar.gz"

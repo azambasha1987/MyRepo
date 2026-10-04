@@ -1795,6 +1795,56 @@
         setTimeout(cleanupOrphanGlowFilters, 100);
       }
     }, true);
+  /* ── Issue #45 Hardening: User Online/Idle/Offline Status Indicators ── */
+  (function initUserStatusBadgeHook() {
+    var style = document.createElement('style');
+    style.id = 'azam-user-status-style';
+    style.textContent = [
+      '.azam-status-indicator { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; letter-spacing: 0.3px; }',
+      '.azam-status-online { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }',
+      '.azam-status-idle { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }',
+      '.azam-status-offline { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }',
+      '.azam-status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }',
+      '.azam-status-online .azam-status-dot { background: #22c55e; box-shadow: 0 0 8px #22c55e; animation: azamPulseGreen 2s infinite; }',
+      '.azam-status-idle .azam-status-dot { background: #38bdf8; box-shadow: 0 0 6px #38bdf8; }',
+      '.azam-status-offline .azam-status-dot { background: #ef4444; }',
+      '@keyframes azamPulseGreen { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.6; transform: scale(1.15); } }'
+    ].join('\n');
+    if (!document.getElementById('azam-user-status-style') && document.head) {
+      document.head.appendChild(style);
+    }
+
+    function decorateUserStatuses() {
+      try {
+        var userCells = document.querySelectorAll('td.user_status, td[data-col="status"], tr.user-row td:nth-child(4), #table_users td.status, .user-list-item');
+        userCells.forEach(function (cell) {
+          if (cell.getAttribute('data-azam-status-decorated')) return;
+          var text = (cell.textContent || '').trim().toLowerCase();
+          var badgeHtml = '';
+          if (text === 'active' || text === 'online' || text === '1' || cell.classList.contains('status-online')) {
+            badgeHtml = '<span class="azam-status-indicator azam-status-online" title="User is currently Online and Active"><span class="azam-status-dot"></span> Online</span>';
+          } else if (text === 'idle' || text === 'away' || cell.classList.contains('status-idle')) {
+            badgeHtml = '<span class="azam-status-indicator azam-status-idle" title="User is Idle / Inactive"><span class="azam-status-dot"></span> Idle</span>';
+          } else if (text === 'offline' || text === 'disabled' || text === '0' || cell.classList.contains('status-offline')) {
+            badgeHtml = '<span class="azam-status-indicator azam-status-offline" title="User is Offline"><span class="azam-status-dot"></span> Offline</span>';
+          }
+          if (badgeHtml) {
+            cell.innerHTML = badgeHtml;
+            cell.setAttribute('data-azam-status-decorated', 'true');
+          }
+        });
+      } catch (e) {
+        // Non-fatal
+      }
+    }
+
+    document.addEventListener('click', function (ev) {
+      if (ev.target && ev.target.closest && ev.target.closest('a[href*="users"], .nav-users, #menu_users')) {
+        setTimeout(decorateUserStatuses, 250);
+        setTimeout(decorateUserStatuses, 800);
+      }
+    }, true);
+    setInterval(decorateUserStatuses, 2500);
   })();
 
   /* ── Register with App Router ───────────────────────────── */

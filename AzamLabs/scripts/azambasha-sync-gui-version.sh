@@ -47,7 +47,7 @@ if [ "$TARGET_INPUT" = "auto" ] || [ -z "$TARGET_INPUT" ]; then
         if [ -n "$LATEST_DIR" ]; then
             BASE_DETECT="$(basename "$LATEST_DIR")"
         else
-            BASE_DETECT="6.8.83resolute1"
+            BASE_DETECT="6.8.84resolute1"
         fi
     fi
     TARGET_INPUT="$BASE_DETECT"

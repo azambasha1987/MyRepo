@@ -42,6 +42,8 @@ AzamLabs includes an extensive administrative and operational toolchain located 
 | Script | Purpose |
 | :--- | :--- |
 | [`scripts/azambasha-apply-all-fixes.sh`](scripts/azambasha-apply-all-fixes.sh) | **Master Runner**: Interactive menu to launch any utility or apply platform optimizations. |
+| [`scripts/azambasha-update.sh`](scripts/azambasha-update.sh) | **One-Step Turnkey Update**: Unified deployment command (`sudo azam-update`) for Master & Satellite nodes. |
+| [`scripts/azambasha-quarterly-audit.sh`](scripts/azambasha-quarterly-audit.sh) | **Quarterly Audit Engine**: Automated 3-month scan (`sudo azam-audit`), snapshot backup, and email digest. |
 | [`scripts/azambasha-dataplane-engine.sh`](scripts/azambasha-dataplane-engine.sh) | **Dataplane Accelerator**: Fast-path kernel bridge bypass and queue tuning. |
 | [`scripts/azambasha-link-impairment.sh`](scripts/azambasha-link-impairment.sh) | **Link Quality & Impairment**: Injects latency, jitter, loss, and bandwidth constraints on any link. |
 | [`scripts/azambasha-capture-stream.sh`](scripts/azambasha-capture-stream.sh) | **Packet Capture & Streamer**: Low-overhead packet recording and live Wireshark streaming. |
@@ -61,9 +63,12 @@ AzamLabs includes an extensive administrative and operational toolchain located 
 
 Comprehensive architecture and operations documentation is located in [`docs/`](docs/):
 
+- **3-Months Update Check Plan**: [`docs/3_MONTHS_UPDATE_CHECK_PLAN.md`](docs/3_MONTHS_UPDATE_CHECK_PLAN.md)
+- **One-Step Turnkey Update Commands Guide**: [`docs/ONE_STEP_UPDATE_COMMANDS.md`](docs/ONE_STEP_UPDATE_COMMANDS.md)
 - **High-Performance Dataplane Guide**: [`docs/AZAMBASHA_HIGH_PERFORMANCE_DATAPLANE_GUIDE.md`](docs/AZAMBASHA_HIGH_PERFORMANCE_DATAPLANE_GUIDE.md)
 - **Master Administration Toolkit Guide**: [`docs/AZAMBASHA_ADMIN_TOOLKIT_GUIDE.md`](docs/AZAMBASHA_ADMIN_TOOLKIT_GUIDE.md)
 - **Speed & Resource Optimization Guide**: [`docs/AZAMBASHA_SPEED_OPTIMIZER_GUIDE.md`](docs/AZAMBASHA_SPEED_OPTIMIZER_GUIDE.md)
 - **AI Lab Builder & Ollama Architecture**: [`docs/AI_LAB_BUILDER_OLLAMA_GUIDE.md`](docs/AI_LAB_BUILDER_OLLAMA_GUIDE.md)
 - **Permanent Session Architecture**: [`docs/AZAMBASHA_PERMANENT_SESSION_GUIDE.md`](docs/AZAMBASHA_PERMANENT_SESSION_GUIDE.md)
 - **Lab Export & APT Operations**: [`docs/AZAMBASHA_EXPORT_AND_APT_FIX_GUIDE.md`](docs/AZAMBASHA_EXPORT_AND_APT_FIX_GUIDE.md)
+

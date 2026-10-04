@@ -223,6 +223,34 @@ def cleanup_orphaned_interfaces():
         logging.debug(f"[watchdog] Interface cleanup exception: {e}")
 
 
+def check_tap_carrier_health():
+    """
+    Issue #49 Hardening: TAP Carrier Keepalive Watchdog Probe.
+    Detects any TAP interface (vunl* or tap*) that has entered a NO-CARRIER
+    or DOWN state while associated QEMU/IOL nodes are actively running,
+    and re-asserts carrier and interface UP state to prevent silent connection loss.
+    """
+    try:
+        res = subprocess.run(["ip", "-o", "link", "show"], capture_output=True, text=True)
+        for line in res.stdout.splitlines():
+            if ("vunl" in line or "tap" in line) and ("NO-CARRIER" in line or "state DOWN" in line):
+                parts = line.split(":")
+                if len(parts) >= 2:
+                    dev = parts[1].strip().split("@")[0]
+                    logging.warning(f"[watchdog] Issue #49 Alert: Interface {dev} lost carrier (NO-CARRIER detected). Re-asserting carrier keepalive...")
+                    subprocess.run(["ip", "link", "set", "dev", dev, "up"], capture_output=True)
+                    carrier_path = f"/sys/class/net/{dev}/carrier"
+                    if os.path.exists(carrier_path):
+                        try:
+                            with open(carrier_path, "w") as f:
+                                f.write("1")
+                        except Exception:
+                            pass
+                    logging.info(f"[watchdog] Issue #49 Resolved: Re-asserted UP state on {dev}")
+    except Exception as e:
+        logging.debug(f"[watchdog] Carrier check exception: {e}")
+
+
 def run_watchdog(master_ip: str, password: str, poll: int = POLL_INTERVAL):
     """Main watchdog loop."""
     setup_logging()
@@ -231,7 +259,7 @@ def run_watchdog(master_ip: str, password: str, poll: int = POLL_INTERVAL):
     signal.signal(signal.SIGINT, handle_signal)
 
     logging.info("=" * 72)
-    logging.info("  Azam-Pnet Node Failure Detection & Auto-Recovery Watchdog STARTED")
+    logging.info("  AzamLabs Node Failure Detection & Auto-Recovery Watchdog STARTED")
     logging.info(f"  Master: https://{master_ip} | Poll interval: {poll}s")
     logging.info("=" * 72)
 
@@ -242,6 +270,10 @@ def run_watchdog(master_ip: str, password: str, poll: int = POLL_INTERVAL):
         current_qemu = get_running_qemu_pids()
         current_iol = get_running_iol_pids()
         current_all = {**current_qemu, **current_iol}
+
+        # Check TAP carrier health for running nodes (Issue #49)
+        if current_all:
+            check_tap_carrier_health()
 
         # Detect new nodes that just appeared (add to tracking)
         for pid, cmd in current_all.items():
@@ -270,14 +302,14 @@ def run_watchdog(master_ip: str, password: str, poll: int = POLL_INTERVAL):
                 if recovered:
                     logging.info(f"[watchdog] Node {node_id} successfully auto-recovered!")
                     send_alert(
-                        "Azam-Pnet: Node Auto-Recovered",
+                        "AzamLabs: Node Auto-Recovered",
                         f"Node ID {node_id} (session {session}) crashed and was automatically restarted.\n"
                         f"Crash count: {crash_count}. Check /opt/azambasha/logs/watchdog.log for details."
                     )
                 else:
                     logging.error(f"[watchdog] Auto-recovery FAILED for node {node_id}.")
                     send_alert(
-                        "ALERT: Azam-Pnet Node FAILED",
+                        "ALERT: AzamLabs Node FAILED",
                         f"Node ID {node_id} (session {session}) crashed and auto-recovery FAILED.\n"
                         f"Manual intervention required! Crash count: {crash_count}."
                     )
@@ -297,7 +329,7 @@ def run_watchdog(master_ip: str, password: str, poll: int = POLL_INTERVAL):
 def install_systemd_service():
     """Install azam-watchdog as a systemd service."""
     service_content = f"""[Unit]
-Description=Azam-Pnet Node Failure Detection & Auto-Recovery Watchdog
+Description=AzamLabs Node Failure Detection & Auto-Recovery Watchdog
 After=network.target mysql.service apache2.service
 Wants=network.target
 

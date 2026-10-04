@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Azam-Pnet Master Bootstrap & Installer for Ubuntu 26.04+ (Resolute)
+# AzamLabs Master Bootstrap & Installer for Ubuntu 26.04+ (Resolute)
 # 
 # Execution Flow:
 #   1. Pre-installs and validates ALL kernel modules, system packages, PHP/Python
 #      runtimes, and 32-bit libraries required by Ubuntu 26.04+.
-#   2. Launches the Azam-Pnet core software installation and database setup.
+#   2. Launches the AzamLabs core software installation and database setup.
 #   3. Applies permanent network engine, bridge supervisor, and hardware branding.
 # ==============================================================================
 set -euo pipefail
@@ -20,7 +20,7 @@ mkdir -p /opt/pnetlab 2>/dev/null || true
 ln -sfn "$SCRIPT_DIR" /opt/pnetlab 2>/dev/null || true
 
 echo "============================================================"
-echo "    Azam-Pnet Master Bootstrap & Installer (Ubuntu 26.04+)   "
+echo "    AzamLabs Master Bootstrap & Installer (Ubuntu 26.04+)   "
 echo "============================================================"
 echo "[*] Working Directory: $SCRIPT_DIR"
 echo "[*] Start Time       : $(date)"
@@ -54,9 +54,9 @@ for ((i=0; i<${#ARGS[@]}; i++)); do
     fi
 done
 
-# --- Step 2: Launch Azam-Pnet Software Installation ---
+# --- Step 2: Launch AzamLabs Software Installation ---
 echo ""
-echo ">>> STAGE 2: Installing Azam-Pnet Core Software & Packages..."
+echo ">>> STAGE 2: Installing AzamLabs Core Software & Packages..."
 INSTALLER_SCRIPT="${SCRIPT_DIR}/install.sh"
 if [ -f "$INSTALLER_SCRIPT" ]; then
     bash "$INSTALLER_SCRIPT" "$@"
@@ -92,7 +92,7 @@ done
 
 echo ""
 echo "============================================================"
-echo " [SUCCESS] Azam-Pnet Fully Provisioned & Installed!        "
+echo " [SUCCESS] AzamLabs Fully Provisioned & Installed!          "
 echo "============================================================"
 echo "You can now access your server via Web Browser at:"
 REAL_IP="$(ip -o -4 addr show pnet0 2>/dev/null | awk '{print $4}' | cut -d/ -f1 | head -n1 || ip -o -4 addr show 2>/dev/null | grep -v '127.0.0.1' | awk '{print $4}' | cut -d/ -f1 | head -n1 || echo 'YOUR_SERVER_IP')"

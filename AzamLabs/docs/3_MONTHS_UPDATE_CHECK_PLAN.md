@@ -190,7 +190,8 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 |:---:|:---:|:---:|:---:|---|:---:|
 | **Cycle 0** | **Sat, 19 Sep 2026, 16:00 IST** | 19 Sep 2026, 10:30 UTC | Baseline Scan | Baseline audit; 34 issues audited; Universal Lab Importer live; GUI v6.8.79 synced. | ✅ `COMPLETED` |
 | **Execution (Previous)** | **Thu, 24 Sep 2026, 12:25 IST** | 24 Sep 2026, 06:55 UTC | On-Demand Run | 7/7 probes passed; 5-Step SOP, Docker & New Containers, and One-Step update commands verified; audit report generated. | ✅ `COMPLETED` |
-| **Execution (Today)** | **Wed, 30 Sep 2026, 09:30 IST** | 30 Sep 2026, 04:00 UTC | Q3/Q4 2026 Check | 7/7 probes passed; Steps 1–3 completed; 15 new issues (#35–#49) audited; v6.8.84 & OpenBMP template discovered; Step 4 confirmation gate engaged. | ✅ `COMPLETED` |
+| **Execution (Audit)** | **Wed, 30 Sep 2026, 09:30 IST** | 30 Sep 2026, 04:00 UTC | Q3/Q4 2026 Check | 7/7 probes passed; Steps 1–3 completed; 15 new issues (#35–#49) audited; v6.8.84 & OpenBMP template discovered; Step 4 confirmation gate engaged. | ✅ `COMPLETED` |
+| **Execution (Implemented)** | **Sun, 04 Oct 2026, 07:15 IST** | 04 Oct 2026, 01:45 UTC | Plan Implementation | Step 4 human confirmation fulfilled; Step 5 One-Step Turnkey updates executed; v6.8.84 synced; OpenBMP deployed; Issues #45 & #49 resolved; 7/7 probes passed. | ✅ `COMPLETED` |
 | **Cycle 1** | **Sat, 19 Dec 2026, 09:00 IST** | 19 Dec 2026, 03:30 UTC | Q4 2026 Check | Q4 upstream diff audit; Issue #34 canvas zoom retention review; package release sync. | ⏳ `SCHEDULED` |
 | **Cycle 2** | **Fri, 19 Mar 2027, 09:00 IST** | 19 Mar 2027, 03:30 UTC | Q1 2027 Check | Q1 2027 upstream diff audit; Ubuntu 26.04 Resolute point release kernel sanity check. | ⏳ `SCHEDULED` |
 | **Cycle 3** | **Sat, 19 Jun 2027, 09:00 IST** | 19 Jun 2027, 03:30 UTC | Q2 2027 Check | Q2 2027 upstream diff audit; Heavy node templates & multi-disk QEMU validation. | ⏳ `SCHEDULED` |
@@ -202,8 +203,8 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 
 - **Total Tracked Issues**: 49 (16 Open, 33 Closed)
 - **Latest Upstream Version Audited**: `v6.8.84` (Package: `6.8.84resolute1`)
-- **Latest Upstream Version Implemented**: `v6.8.83` (Package: `6.8.83resolute1`)
-- **Web-GUI Display Status**: Synchronized with latest implemented release (`AzamLabs v6.8.83`).
+- **Latest Upstream Version Implemented**: `v6.8.84` (Package: `6.8.84resolute1`)
+- **Web-GUI Display Status**: Synchronized with latest implemented release (`AzamLabs v6.8.84`).
 - **Recent Upstream Commits**: 18 commits inspected (including commit `af324237` OpenBMP qcow2 addition).
 - **Audit Cadence**: Quarterly (Every 3 Months) locked to Indian Standard Time (IST - UTC+5:30).
 - **Primary Notification Target**: `azambasha1987@gmail.com` (Direct SMTP/TLS email digest with PDF attachment).
@@ -248,12 +249,12 @@ Audits the reliability of detected upstream releases before cluster deployment:
 > [!IMPORTANT]
 > ### Authoritative Web-GUI Version Alignment
 > The Web-GUI Version display (`/main/#/version`) dynamically reflects the latest release implemented rather than remaining frozen at legacy placeholders:
-> - **Implemented Release Version**: `v6.8.83`
-> - **Implemented Package Version**: `6.8.83resolute1`
-> - **Header Title**: `AzamLabs v6.8.83`
-> - **Release Row**: `v6.8.83`
-> - **Package Row**: `6.8.83resolute1`
-> - **Database Setting**: `pnetlab_db.control.ctrl_version` = `6.8.83`
+> - **Implemented Release Version**: `v6.8.84`
+> - **Implemented Package Version**: `6.8.84resolute1`
+> - **Header Title**: `AzamLabs v6.8.84`
+> - **Release Row**: `v6.8.84`
+> - **Package Row**: `6.8.84resolute1`
+> - **Database Setting**: `pnetlab_db.control.ctrl_version` = `6.8.84`
 
 Whenever new features or bug fixes from higher upstream versions are integrated, `scripts/azambasha-sync-gui-version.sh` automatically updates `/opt/unetlab/html/includes/version.php` and the database control table.
 
@@ -397,11 +398,11 @@ Status of multi-vendor virtualized routing, switching, and compute nodes across 
 
 | Issue # | State | Severity | Title | AzamLabs Resolution Status |
 |---|:---:|:---:|---|---|
-| [#49](https://codeberg.org/netkillui/Pnetlabv8/issues/49) | **OPEN** | `CRITICAL` | QEMU nodes lose connectivity with node powered on: tap on NO-CARRIER... | ADAPTED in AzamLabs (Tap Carrier Keepalive Watchdog Probe in azambasha-watchdog.py) |
+| [#49](https://codeberg.org/netkillui/Pnetlabv8/issues/49) | **OPEN** | `CRITICAL` | QEMU nodes lose connectivity with node powered on: tap on NO-CARRIER... | ADAPTED & DEPLOYED in AzamLabs (Tap Carrier Keepalive Watchdog Probe in azambasha-watchdog.py) |
 | [#48](https://codeberg.org/netkillui/Pnetlabv8/issues/48) | **CLOSED** | `HIGH` | OVA boots from hard drive but keeps triggering reinstallation loop | IMMUNE in AzamLabs (Hard disk GRUB priority verified) |
 | [#47](https://codeberg.org/netkillui/Pnetlabv8/issues/47) | **CLOSED** | `HIGH` | It has to be reinstalled after every reboot？ | IMMUNE in AzamLabs (Hard disk GRUB priority verified) |
 | [#46](https://codeberg.org/netkillui/Pnetlabv8/issues/46) | **OPEN** | `LOW` | Satellite upgrade Proccess | REMEDIATED in AzamLabs (Canonical sudo azam-update --satellite / ONE_STEP_UPDATE_COMMANDS.md) |
-| [#45](https://codeberg.org/netkillui/Pnetlabv8/issues/45) | **OPEN** | `LOW` | User Online & Offline status missing | ADAPTED in AzamLabs (Queued for Ops Center User Telemetry Dashboard) |
+| [#45](https://codeberg.org/netkillui/Pnetlabv8/issues/45) | **OPEN** | `LOW` | User Online & Offline status missing | ADAPTED & DEPLOYED in AzamLabs (Dynamic Online/Idle/Offline Status Badges in azam-features.js) |
 | [#44](https://codeberg.org/netkillui/Pnetlabv8/issues/44) | **OPEN** | `MEDIUM` | Network Watcher: Traffic name/type with src & dst info no longer appears | ADAPTED in AzamLabs (Link Hover Packet Tooltip Metadata Restored in azam-features.js) |
 | [#43](https://codeberg.org/netkillui/Pnetlabv8/issues/43) | **OPEN** | `LOW` | Node and Link Glow with connected link not working | ADAPTED in AzamLabs (Bidirectional Node+Link Glow Implemented in azam-features.js) |
 | [#42](https://codeberg.org/netkillui/Pnetlabv8/issues/42) | **CLOSED** | `MEDIUM` | Network watcher filter limitations | ADAPTED in AzamLabs (Expanded from 6 to 20 Packet Filters & Flow Alignment in azam-features.js) |

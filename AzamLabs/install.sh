@@ -1225,7 +1225,7 @@ INSERT INTO control (control_name, control_value) VALUES
   ('ctrl_online_mode', '0'),
   ('ctrl_default_mode', 'offline'),
   ('ctrl_captcha', '0'),
-  ('ctrl_version', '8.2.0')
+  ('ctrl_version', '6.8.85')
 ON DUPLICATE KEY UPDATE control_value = VALUES(control_value);
 ADMIN_SQL
 )"
@@ -1334,6 +1334,10 @@ mkdir -p /opt/unetlab/scripts 2>/dev/null || true
 cp -f "${SCRIPT_DIR}"/scripts/azambasha-*.sh /opt/unetlab/scripts/ 2>/dev/null || true
 cp -f "${SCRIPT_DIR}"/scripts/azambasha-*.py /opt/unetlab/scripts/ 2>/dev/null || true
 cp -f "${SCRIPT_DIR}"/scripts/apply-heavy-node-optimizer.sh /usr/local/bin/ 2>/dev/null || true
+if [ -f "${SCRIPT_DIR}/VERSION" ]; then
+    cp -f "${SCRIPT_DIR}/VERSION" /opt/unetlab/VERSION 2>/dev/null || true
+    cp -f "${SCRIPT_DIR}/VERSION" /etc/pnetlab-version 2>/dev/null || true
+fi
 chmod +x /opt/unetlab/scripts/* /usr/local/bin/apply-heavy-node-optimizer.sh 2>/dev/null || true
 
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh" ]; then
@@ -1341,6 +1345,14 @@ if [ -f "${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh" --master 2>/dev/null || true
 elif [ -f "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" ]; then
     bash "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" --master 2>/dev/null || true
+fi
+
+# Synchronize Web-GUI and Database Platform Version
+echo "  [*] Synchronizing Web-GUI & Database Platform Version..."
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-sync-gui-version.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-sync-gui-version.sh" auto || true
+elif [ -f "/opt/unetlab/scripts/azambasha-sync-gui-version.sh" ]; then
+    bash "/opt/unetlab/scripts/azambasha-sync-gui-version.sh" auto || true
 fi
 
 echo ""

@@ -80,6 +80,16 @@ fi
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-web-credentials.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-fix-web-credentials.sh" || true
 fi
+if [ -f "${SCRIPT_DIR}/VERSION" ]; then
+    mkdir -p /opt/unetlab 2>/dev/null || true
+    cp -f "${SCRIPT_DIR}/VERSION" /opt/unetlab/VERSION 2>/dev/null || true
+    cp -f "${SCRIPT_DIR}/VERSION" /etc/pnetlab-version 2>/dev/null || true
+fi
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-sync-gui-version.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-sync-gui-version.sh" auto || true
+elif [ -f "/opt/unetlab/scripts/azambasha-sync-gui-version.sh" ]; then
+    bash "/opt/unetlab/scripts/azambasha-sync-gui-version.sh" auto || true
+fi
 for s_dir in "${SCRIPT_DIR}/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scripts"; do
     if [ -d "$s_dir" ]; then
         ln -sf "${s_dir}/azambasha-update.sh" /usr/local/bin/azam-update 2>/dev/null || true

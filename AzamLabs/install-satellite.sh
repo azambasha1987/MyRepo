@@ -988,6 +988,12 @@ elif [ -f "/opt/unetlab/scripts/azambasha-install-azam-features.sh" ]; then
     bash "/opt/unetlab/scripts/azambasha-install-azam-features.sh" --satellite || true
 fi
 
+if [ -f "${SCRIPT_DIR}/VERSION" ]; then
+    mkdir -p /opt/unetlab 2>/dev/null || true
+    cp -f "${SCRIPT_DIR}/VERSION" /opt/unetlab/VERSION 2>/dev/null || true
+    cp -f "${SCRIPT_DIR}/VERSION" /etc/pnetlab-version 2>/dev/null || true
+fi
+
 # Register global administrative CLI commands on Satellite
 for s_dir in "${SCRIPT_DIR}/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scripts"; do
     if [ -d "$s_dir" ]; then

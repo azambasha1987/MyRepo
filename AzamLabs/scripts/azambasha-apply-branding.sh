@@ -21,23 +21,12 @@ echo "============================================================"
 echo "    Azam Basha UI Branding, Version & Credentials Engine    "
 echo "============================================================"
 
-# 1. Update Platform Version to v1.0.0 in PHP Configuration
-mkdir -p /opt/unetlab/html/includes 2>/dev/null || true
-cat > /opt/unetlab/html/includes/version.php << 'EOF'
-<?php
-/**
- * Azam Basha Platform Version Configuration
- */
-if (!defined('PNET_RELEASE')) {
-    define('PNET_RELEASE', 'v1.0.0');
-}
-
-if (!defined('PNET_VERSION')) {
-    define('PNET_VERSION', '1.0.0');
-}
-EOF
-chmod 0644 /opt/unetlab/html/includes/version.php
-echo "  [✔] Platform version set to 1.0.0 (v1.0.0)"
+# 1. Update Platform Version via Authoritative Version Engine
+if [ -f "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" ]; then
+    bash "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" auto || true
+elif [ -f "/opt/unetlab/scripts/azambasha-sync-gui-version.sh" ]; then
+    bash "/opt/unetlab/scripts/azambasha-sync-gui-version.sh" auto || true
+fi
 
 # 2. Deploy Modernized Login Page & Default Credentials Notice (admin / azam)
 LOGIN_SRC="${PARENT_DIR}/login"

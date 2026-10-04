@@ -693,6 +693,23 @@ try:
         new_content = new_content.replace(target_mpkg, replacement_mpkg, 1)
         print("Patched cluster/api.php with authoritative master package version.")
 
+    target_pair = "return [$satellite, $bridgeByVersion[$version][0], $version];\n        }\n        return [null, null, ''];"
+    replacement_pair = """return [$satellite, $bridgeByVersion[$version][0], $version];
+        }
+        // Fallback: use latest available valid satellite package pair
+        foreach ($satellites as $satellite) {
+            if ($debField($satellite, 'Package') !== 'pnetlab-satellite') continue;
+            $version = $debField($satellite, 'Version');
+            $arch = $debField($satellite, 'Architecture');
+            if ($version === '' || $arch !== 'amd64' || empty($bridgeByVersion[$version])) continue;
+            return [$satellite, $bridgeByVersion[$version][0], $version];
+        }
+        return [null, null, ''];"""
+
+    if target_pair in new_content:
+        new_content = new_content.replace(target_pair, replacement_pair, 1)
+        print("Patched cluster/api.php selectDebPair with resilient package fallback.")
+
     if new_content != content:
         with open(path, "w", encoding="utf-8") as f:
             f.write(new_content)

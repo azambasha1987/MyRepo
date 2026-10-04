@@ -382,9 +382,9 @@ with open(db_conf_path, "w") as f:
     json.dump({"host": master, "pass": resp["db_pass"]}, f, indent=2)
 os.chmod(db_conf_path, 0o600)
 
-# Pin rsync key in authorized_keys
+# Pin cluster key in authorized_keys (unjailed to allow scp/ssh for GUI Satellite Sync)
 pubkey = resp["rsync_pubkey"].strip()
-entry = f'command="{rrsync} /opt/unetlab",restrict {pubkey}'
+entry = f'{pubkey}'
 lines = []
 if os.path.isfile(auth_keys):
     with open(auth_keys, "r") as f:

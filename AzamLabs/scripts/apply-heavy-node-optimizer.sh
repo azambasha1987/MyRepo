@@ -528,15 +528,105 @@ dev_file = "/opt/unetlab/html/devices/qemu/device_qemu.php"
 if os.path.isfile(dev_file):
     try:
         with open(dev_file, 'r', encoding='utf-8') as f: code = f.read()
-        if "mem-merge=on" not in code:
-            target_str = "$flags .= ' -enable-kvm';"
-            replacement_str = "$flags .= ' -enable-kvm -machine mem-merge=on';"
-            if target_str in code:
-                code = code.replace(target_str, replacement_str)
-                with open(dev_file, 'w', encoding='utf-8') as f: f.write(code)
-                print("  [✔] Patched device_qemu.php: mem-merge=on active for all QEMU nodes")
+        changed = False
+        if "mem-merge=" not in code:
+            if '$flags .= " -machine smm=off ";' in code:
+                code = code.replace('$flags .= " -machine smm=off ";', '$flags .= " -machine smm=off,mem-merge=on ";')
+                changed = True
+            elif "$flags .= ' -machine smm=off ';" in code:
+                code = code.replace("$flags .= ' -machine smm=off ';", "$flags .= ' -machine smm=off,mem-merge=on ';")
+                changed = True
+            elif "function customFlag($flags)" in code:
+                code = code.replace("function customFlag($flags)", "function customFlag($flags) {\n        if (strpos($flags, 'mem-merge=') === false) {\n            $flags .= ' -machine mem-merge=on ';\n        }")
+                changed = True
+
+        if "virtio-balloon" not in code:
+            target_telnet = '$flags .= " -chardev socket,id=serial0,path="'
+            if target_telnet in code:
+                code = code.replace(target_telnet, '$flags .= " -device virtio-balloon ";\n        ' + target_telnet, 1)
+                changed = True
+
+        if changed:
+            with open(dev_file, 'w', encoding='utf-8') as f: f.write(code)
+            print("  [✔] Patched device_qemu.php: mem-merge=on & virtio-balloon active for all QEMU nodes")
+    except Exception: pass
+
+# Patch device_iol.php for 100:1 CPU idle governor & KSM whole-process merge
+dev_iol = "/opt/unetlab/html/devices/iol/device_iol.php"
+if os.path.isfile(dev_iol):
+    try:
+        with open(dev_iol, 'r', encoding='utf-8') as f: code_iol = f.read()
+        changed_iol = False
+        target_iol_cmd = '$cmd = "/opt/unetlab/wrappers/iol_wrapper ";'
+        repl_iol_cmd = """$ksmWrap = '/opt/unetlab/wrappers/ksm_merge_exec';
+        $ksmLauncher = (is_executable($ksmWrap) && !file_exists('/opt/unetlab/wrappers/.ksm_merge_off')) ? $ksmWrap . ' ' : '';
+        $cmd = $ksmLauncher . '/opt/unetlab/wrappers/iol_wrapper ';"""
+        if target_iol_cmd in code_iol and 'ksm_merge_exec' not in code_iol:
+            code_iol = code_iol.replace(target_iol_cmd, repl_iol_cmd)
+            changed_iol = True
+
+        target_copy = 'copy("/opt/unetlab/addons/iol/bin/" . $this->image, $this->node->getRunningPath() . "/" . $this->image);'
+        repl_copy = """copy("/opt/unetlab/addons/iol/bin/" . $this->image, $this->node->getRunningPath() . "/" . $this->image . ".bin");
+            @chmod($this->node->getRunningPath() . "/" . $this->image . ".bin", 0755);
+            $launcher_content = "#!/bin/sh\\n" .
+                "if [ -x /opt/unetlab/wrappers/azam-iol-launcher ]; then\\n" .
+                "    exec /opt/unetlab/wrappers/azam-iol-launcher \\"$0.bin\\" \\"$@\\"\\n" .
+                "else\\n" .
+                "    exec \\"$0.bin\\" \\"$@\\"\\n" .
+                "fi\\n";
+            file_put_contents($this->node->getRunningPath() . "/" . $this->image, $launcher_content);
+            @chmod($this->node->getRunningPath() . "/" . $this->image, 0755);"""
+        if target_copy in code_iol and 'azam-iol-launcher' not in code_iol:
+            code_iol = code_iol.replace(target_copy, repl_copy)
+            changed_iol = True
+
+        if changed_iol:
+            with open(dev_iol, 'w', encoding='utf-8') as f: f.write(code_iol)
+            print("  [✔] Patched device_iol.php: KSM whole-process merge & azam-iol-launcher active")
     except Exception: pass
 PYEOF
+
+# Compile ksm_merge_exec wrapper and azam-iol-shim.c
+mkdir -p /opt/unetlab/wrappers /opt/unetlab/scripts 2>/dev/null || true
+KSM_SRC="$SCRIPT_DIR/ksm_merge_exec.c"
+[ ! -f "$KSM_SRC" ] && KSM_SRC="/opt/unetlab/scripts/ksm_merge_exec.c"
+[ ! -f "$KSM_SRC" ] && KSM_SRC="$SCRIPT_DIR/azambasha-ksm-merge-exec.c"
+[ ! -f "$KSM_SRC" ] && KSM_SRC="/opt/unetlab/scripts/azambasha-ksm-merge-exec.c"
+if [ -f "$KSM_SRC" ] && command -v gcc >/dev/null 2>&1; then
+    gcc -O2 -Wall "$KSM_SRC" -o /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
+    chmod 755 /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
+    echo "  [✔] Compiled /opt/unetlab/wrappers/ksm_merge_exec"
+fi
+
+SHIM_SRC="$SCRIPT_DIR/azam-iol-shim.c"
+[ ! -f "$SHIM_SRC" ] && SHIM_SRC="/opt/unetlab/scripts/azam-iol-shim.c"
+[ ! -f "$SHIM_SRC" ] && SHIM_SRC="$SCRIPT_DIR/azambasha-iol-shim.c"
+[ ! -f "$SHIM_SRC" ] && SHIM_SRC="/opt/unetlab/scripts/azambasha-iol-shim.c"
+if [ -f "$SHIM_SRC" ] && command -v gcc >/dev/null 2>&1; then
+    gcc -O2 -shared -fPIC -Wall -Wextra "$SHIM_SRC" -o /opt/unetlab/wrappers/azam-iol-shim64.so -ldl 2>/dev/null || true
+    cp -f /opt/unetlab/wrappers/azam-iol-shim64.so /opt/unetlab/wrappers/azam-iol-shim.so 2>/dev/null || true
+    gcc -m32 -O2 -shared -fPIC -Wall -Wextra "$SHIM_SRC" -o /opt/unetlab/wrappers/azam-iol-shim32.so -ldl 2>/dev/null || true
+    chmod 755 /opt/unetlab/wrappers/azam-iol-shim*.so 2>/dev/null || true
+fi
+
+cat << 'EOF_LAUNCHER' > /opt/unetlab/wrappers/azam-iol-launcher
+#!/bin/sh
+REAL_BIN="$1"
+shift
+[ -z "$REAL_BIN" ] || [ ! -e "$REAL_BIN" ] && exec "$@"
+SHIM="/opt/unetlab/wrappers/azam-iol-shim.so"
+ELF_CLASS=$(od -An -j4 -N1 -tu1 "$REAL_BIN" 2>/dev/null | tr -d ' ' || echo "1")
+[ "$ELF_CLASS" = "1" ] && [ -f /opt/unetlab/wrappers/azam-iol-shim32.so ] && SHIM="/opt/unetlab/wrappers/azam-iol-shim32.so"
+[ "$ELF_CLASS" = "2" ] && [ -f /opt/unetlab/wrappers/azam-iol-shim64.so ] && SHIM="/opt/unetlab/wrappers/azam-iol-shim64.so"
+[ -f "$SHIM" ] && export LD_PRELOAD="$SHIM"
+if [ -x /opt/unetlab/wrappers/ksm_merge_exec ] && [ ! -f /opt/unetlab/wrappers/.ksm_merge_off ]; then
+    exec /opt/unetlab/wrappers/ksm_merge_exec "$REAL_BIN" "$@"
+else
+    exec "$REAL_BIN" "$@"
+fi
+EOF_LAUNCHER
+chmod 755 /opt/unetlab/wrappers/azam-iol-launcher 2>/dev/null || true
+[ -f /opt/unetlab/wrappers/ksm_merge_exec ] && chmod 755 /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
 
 # -----------------------------------------------------------------------------
 # Register & Start Systemd Services

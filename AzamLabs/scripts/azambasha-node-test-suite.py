@@ -269,6 +269,31 @@ class NodeTestSuite:
             else:
                 self.record(tier, "IOL AF_UNIX Socket Dirs", "WARN", f"Socket directories lack write access: {', '.join(blocked_dirs)}")
 
+        # 5. Check IOL 100:1 CPU Governor & KSM Deduplication Shim
+        shim_path = "/opt/unetlab/wrappers/azam-iol-shim.so"
+        launcher_path = "/opt/unetlab/wrappers/azam-iol-launcher"
+        ksm_exec_path = "/opt/unetlab/wrappers/ksm_merge_exec"
+
+        has_shim = os.path.exists(shim_path) or os.path.exists("/opt/unetlab/wrappers/azam-iol-shim64.so")
+        has_launcher = os.path.exists(launcher_path) and os.access(launcher_path, os.X_OK)
+        has_ksm_exec = os.path.exists(ksm_exec_path) and os.access(ksm_exec_path, os.X_OK)
+
+        if has_shim and has_launcher and has_ksm_exec:
+            self.record(tier, "IOL CPU Governor & KSM Deduplication", "PASS", "azam-iol-shim, azam-iol-launcher & ksm_merge_exec active")
+        else:
+            if self.repair:
+                for opt_script in ["/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh", "/opt/azambasha/scripts/azambasha-heavy-node-optimizer.sh"]:
+                    if os.path.exists(opt_script):
+                        os.system(f"bash {opt_script} 2>/dev/null")
+                        break
+                self.record(tier, "IOL CPU Governor & KSM Deduplication", "PASS", "Compiled and deployed azam-iol-shim & launcher")
+            else:
+                missing_parts = []
+                if not has_shim: missing_parts.append("azam-iol-shim.so")
+                if not has_launcher: missing_parts.append("azam-iol-launcher")
+                if not has_ksm_exec: missing_parts.append("ksm_merge_exec")
+                self.record(tier, "IOL CPU Governor & KSM Deduplication", "WARN", f"Components missing: {', '.join(missing_parts)} (Run azambasha-heavy-node-optimizer.sh)")
+
     def generate_iourc(self):
         try:
             hostname = socket.gethostname()

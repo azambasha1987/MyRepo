@@ -370,8 +370,8 @@ export SSHPASS="azam"
 
 # Synchronize AzamLabs optimization suite & CLI symlinks to satellite worker
 if [ -d "/opt/unetlab/scripts" ]; then
-    sshpass -e scp "${SSH_ARGS[@]}" /opt/unetlab/scripts/azambasha-* "${SUSER}@${IP}:/opt/unetlab/scripts/" 2>/dev/null || true
-    run_root 'chmod +x /opt/unetlab/scripts/azambasha-*.sh /opt/unetlab/scripts/azambasha-*.py && ln -sf /opt/unetlab/scripts/azambasha-update.sh /usr/local/bin/azam-update && ln -sf /opt/unetlab/scripts/azambasha-quarterly-audit.sh /usr/local/bin/azam-audit && ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/pnet-satellite-join && ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join 2>/dev/null || true' </dev/null >> "$LOG" 2>&1 || true
+    sshpass -e scp "${SSH_ARGS[@]}" /opt/unetlab/scripts/azambasha-* /opt/unetlab/scripts/azam-* /opt/unetlab/scripts/ksm_merge_exec* /opt/unetlab/scripts/apply-heavy-node-optimizer.sh "${SUSER}@${IP}:/opt/unetlab/scripts/" 2>/dev/null || true
+    run_root 'chmod +x /opt/unetlab/scripts/azambasha-*.sh /opt/unetlab/scripts/azambasha-*.py /opt/unetlab/scripts/apply-heavy-node-optimizer.sh && ln -sf /opt/unetlab/scripts/azambasha-update.sh /usr/local/bin/azam-update && ln -sf /opt/unetlab/scripts/azambasha-quarterly-audit.sh /usr/local/bin/azam-audit && ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/pnet-satellite-join && ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join && bash /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh --satellite && bash /opt/unetlab/scripts/azambasha-fix-node-startup.sh 2>/dev/null || true' </dev/null >> "$LOG" 2>&1 || true
 fi
 
 run_root 'set -e; dpkg --configure -a"""

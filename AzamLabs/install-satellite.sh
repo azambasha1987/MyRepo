@@ -504,6 +504,7 @@ SATELLITE_DEPS=(
     lib32gcc-s1
     lib32z1
     libc6-i386
+    libc6-dev-i386
     libelf1t64
     libpcap0.8t64
     libsdl1.2debian

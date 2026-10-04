@@ -138,25 +138,41 @@ for g in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
 done
 echo "  [✔] CPU Scaling Governor: Set to Performance across all host cores"
 
-# Streamline QEMU peripheral dispatch (strip audio/webdav on headless telnet nodes)
+# Streamline QEMU & IOL peripheral dispatch (enforce mem-merge=on & virtio-balloon)
 python3 - << 'PYEOF'
-import os
+import os, re
 dev_file = "/opt/unetlab/html/devices/qemu/device_qemu.php"
 if os.path.exists(dev_file):
     try:
-        with open(dev_file, 'r', encoding='utf-8') as f: code = f.read()
-        target_spice = "$flags .= ' -device virtio-serial-pci,id=virtio-serial0 -device virtio-balloon -device virtserialport,bus=virtio-serial0.0,nr=1,chardev=charchannel1,id=channel1,name=org.spice-space.webdav.0 -chardev spiceport,name=org.spice-space.webdav.0,id=charchannel1 -chardev spicevmc,id=vdagent,debug=0,name=vdagent  -device virtserialport,chardev=vdagent,name=com.redhat.spice.0  -device ich9-usb-ehci1,id=usb -device ich9-usb-uhci1,masterbus=usb.0,firstport=0,multifunction=on -device ich9-usb-uhci2,masterbus=usb.0,firstport=2 -device ich9-usb-uhci3,masterbus=usb.0,firstport=4 -chardev spicevmc,name=usbredir,id=usbredirchardev1 -device usb-redir,chardev=usbredirchardev1,id=usbredirdev1 -chardev spicevmc,name=usbredir,id=usbredirchardev2 -device usb-redir,chardev=usbredirchardev2,id=usbredirdev2 -chardev spicevmc,name=usbredir,id=usbredirchardev3 -device usb-redir,chardev=usbredirchardev3,id=usbredirdev3 -device ich9-intel-hda -device hda-micro ';"
-        repl_spice = """if ($this->console !== 'telnet') {
-            $flags .= ' -device virtio-serial-pci,id=virtio-serial0 -device virtio-balloon -device virtserialport,bus=virtio-serial0.0,nr=1,chardev=charchannel1,id=channel1,name=org.spice-space.webdav.0 -chardev spiceport,name=org.spice-space.webdav.0,id=charchannel1 -chardev spicevmc,id=vdagent,debug=0,name=vdagent  -device virtserialport,chardev=vdagent,name=com.redhat.spice.0  -device ich9-usb-ehci1,id=usb -device ich9-usb-uhci1,masterbus=usb.0,firstport=0,multifunction=on -device ich9-usb-uhci2,masterbus=usb.0,firstport=2 -device ich9-usb-uhci3,masterbus=usb.0,firstport=4 -chardev spicevmc,name=usbredir,id=usbredirchardev1 -device usb-redir,chardev=usbredirchardev1,id=usbredirdev1 -chardev spicevmc,name=usbredir,id=usbredirchardev2 -device usb-redir,chardev=usbredirchardev2,id=usbredirdev2 -chardev spicevmc,name=usbredir,id=usbredirchardev3 -device usb-redir,chardev=usbredirchardev3,id=usbredirdev3 -device ich9-intel-hda -device hda-micro ';
-        } else {
-            $flags .= ' -device virtio-balloon ';
-        }"""
-        if target_spice in code:
-            code = code.replace(target_spice, repl_spice)
-            with open(dev_file, 'w', encoding='utf-8') as f: f.write(code)
-            print("  [✔] device_qemu.php streamlined: Headless nodes use lightweight virtio-balloon")
+        with open(dev_file, 'r', encoding='utf-8') as f:
+            code = f.read()
+
+        changed = False
+        # 1. Enforce mem-merge=on for kernel samepage deduplication across all QEMU VMs
+        if "mem-merge=" not in code:
+            if '$flags .= " -machine smm=off ";' in code:
+                code = code.replace('$flags .= " -machine smm=off ";', '$flags .= " -machine smm=off,mem-merge=on ";')
+                changed = True
+            elif "$flags .= ' -machine smm=off ';" in code:
+                code = code.replace("$flags .= ' -machine smm=off ';", "$flags .= ' -machine smm=off,mem-merge=on ';")
+                changed = True
+            elif "function customFlag($flags)" in code:
+                code = code.replace("function customFlag($flags)", "function customFlag($flags) {\n        if (strpos($flags, 'mem-merge=') === false) {\n            $flags .= ' -machine mem-merge=on ';\n        }")
+                changed = True
+
+        # 2. Streamline headless telnet nodes with lightweight virtio-balloon
+        if "virtio-balloon" not in code:
+            target_telnet = '$flags .= " -chardev socket,id=serial0,path="'
+            if target_telnet in code:
+                code = code.replace(target_telnet, '$flags .= " -device virtio-balloon ";\n        ' + target_telnet, 1)
+                changed = True
+
+        if changed:
+            with open(dev_file, 'w', encoding='utf-8') as f:
+                f.write(code)
+            print("  [✔] device_qemu.php optimized: Universal mem-merge=on & virtio-balloon active")
     except Exception as e:
-        print(f"  [!] device_qemu note: {e}")
+        print(f"  [!] device_qemu optimization note: {e}")
 PYEOF
 
 # 2. Configure PHP OPcache & JIT Tracing (256MB Bytecode Acceleration + JIT)

@@ -47,11 +47,11 @@ class HeavyNodeGovernor:
     def __init__(self, check_interval=2.0, hysteresis_sec=5.0):
         self.check_interval = check_interval
         self.hysteresis_sec = hysteresis_sec
-        # Map pid -> {"last_active": timestamp, "prev_packets": int, "state": "idle"|"active", "name": str}
+        # Map pid -> {"last_active": timestamp, "prev_packets": int, "state": "idle"|"active", "name": str, "session": int}
         self.node_states = {}
 
-    def find_heavy_qemu_nodes(self):
-        """Finds all running QEMU processes matching heavy router appliance signatures or PNETLab nodes."""
+    def find_active_nodes(self):
+        """Finds all running QEMU and Cisco IOL virtual appliance processes."""
         nodes = []
         try:
             for pid_dir in glob.glob('/proc/[0-9]*'):
@@ -65,62 +65,78 @@ class HeavyNodeGovernor:
                 except (IOError, PermissionError):
                     continue
 
-                if 'qemu-system' not in cmdline:
-                    continue
-
                 is_target = False
-                matched_type = "QEMU-Router"
+                matched_type = None
+                node_name = None
+                session_id = None
 
-                # Check 1: Direct match in command line
-                m = TARGET_REGEX.search(cmdline)
-                if m:
+                # --- 1. Check for QEMU Appliances ---
+                if 'qemu-system' in cmdline:
+                    matched_type = "QEMU-Router"
+                    m = TARGET_REGEX.search(cmdline)
+                    if m:
+                        is_target = True
+                        matched_type = m.group(0)
+
+                    if not is_target:
+                        try:
+                            fd_dir = f'/proc/{pid}/fd'
+                            if os.path.isdir(fd_dir):
+                                for fd in os.listdir(fd_dir):
+                                    try:
+                                        target = os.readlink(os.path.join(fd_dir, fd))
+                                        m_fd = TARGET_REGEX.search(target)
+                                        if m_fd:
+                                            is_target = True
+                                            matched_type = m_fd.group(0)
+                                            break
+                                        if '/opt/unetlab/addons/qemu/' in target:
+                                            matched_type = target.split('/opt/unetlab/addons/qemu/')[1].split('/')[0]
+                                            is_target = True
+                                            break
+                                    except (IOError, OSError):
+                                        continue
+                        except Exception:
+                            pass
+
+                    if not is_target and ('/opt/unetlab' in cmdline or '/opt/qemu' in cmdline):
+                        is_target = True
+                        matched_type = "pnet-qemu"
+
+                    if is_target:
+                        name_match = re.search(r'-name\s+["\']?([^"\'\s]+)["\']?', cmdline)
+                        node_name = name_match.group(1) if name_match else f"{matched_type}-{pid}"
+                        sess_m = re.search(r'vunl([0-9]+)_', cmdline)
+                        if sess_m:
+                            session_id = sess_m.group(1)
+
+                # --- 2. Check for Cisco IOL Processes ---
+                elif 'iol_wrapper' in cmdline or '/opt/unetlab/addons/iol' in cmdline or 'i86bi' in cmdline or ('/opt/unetlab/tmp' in cmdline and ('L3-' in cmdline or 'L2-' in cmdline or 'iourc' in cmdline)):
                     is_target = True
-                    matched_type = m.group(0)
+                    matched_type = "Cisco-IOL"
+                    name_match = re.search(r'-t\s+["\']?([^"\']+)["\']?', cmdline)
+                    node_name = name_match.group(1).strip() if name_match else f"IOL-{pid}"
+                    sess_m = re.search(r'-S\s+([0-9]+)', cmdline)
+                    if sess_m:
+                        session_id = sess_m.group(1)
 
-                # Check 2: Inspect open file descriptors for backing files in /opt/unetlab/addons/qemu/
-                if not is_target:
-                    try:
-                        fd_dir = f'/proc/{pid}/fd'
-                        if os.path.isdir(fd_dir):
-                            for fd in os.listdir(fd_dir):
-                                try:
-                                    target = os.readlink(os.path.join(fd_dir, fd))
-                                    m_fd = TARGET_REGEX.search(target)
-                                    if m_fd:
-                                        is_target = True
-                                        matched_type = m_fd.group(0)
-                                        break
-                                    if '/opt/unetlab/addons/qemu/' in target:
-                                        matched_type = target.split('/opt/unetlab/addons/qemu/')[1].split('/')[0]
-                                        is_target = True
-                                        break
-                                except (IOError, OSError):
-                                    continue
-                    except Exception:
-                        pass
-
-                # Check 3: Any QEMU node running under PNETLab (/opt/unetlab/tmp)
-                if not is_target and ('/opt/unetlab' in cmdline or '/opt/qemu' in cmdline):
-                    is_target = True
-                    matched_type = "pnet-router"
-
-                if is_target:
-                    name_match = re.search(r'-name\s+([^\s]+)', cmdline)
-                    node_name = name_match.group(1) if name_match else f"{matched_type}-{pid}"
-
+                if is_target and node_name:
                     nodes.append({
                         "pid": int(pid),
                         "name": node_name,
                         "type": matched_type,
+                        "session": session_id,
                         "cmdline": cmdline
                     })
         except Exception:
             pass
         return nodes
 
-    def get_node_tap_interfaces(self, pid):
-        """Identifies TAP interfaces (/sys/class/net/vnet*) attached to this QEMU PID."""
-        taps = []
+    def get_node_tap_interfaces(self, pid, cmdline="", session=None):
+        """Identifies TAP interfaces attached to this node PID (vunl*, ser*, tap*)."""
+        taps = set()
+
+        # 1. Direct inspection from /proc/<pid>/fd and fdinfo
         try:
             fd_dir = f'/proc/{pid}/fd'
             if os.path.isdir(fd_dir):
@@ -129,17 +145,35 @@ class HeavyNodeGovernor:
                     try:
                         target = os.readlink(fd_path)
                         if '/dev/net/tun' in target:
-                            pass
+                            fdinfo_path = f'/proc/{pid}/fdinfo/{fd}'
+                            if os.path.isfile(fdinfo_path):
+                                with open(fdinfo_path, 'r') as f_info:
+                                    for line in f_info:
+                                        if line.startswith('iff:'):
+                                            tname = line.split(':', 1)[1].strip()
+                                            if tname:
+                                                taps.add(tname)
                     except (IOError, OSError):
                         continue
         except Exception:
             pass
-        
-        # Fallback / heuristic: check all vnet* interfaces on host
-        for net_path in glob.glob('/sys/class/net/vnet*'):
-            tap_name = os.path.basename(net_path)
-            taps.append(tap_name)
-        return list(set(taps))
+
+        # 2. Extract explicitly declared TAP names from command line
+        if cmdline:
+            for ifname in re.findall(r'ifname=([a-zA-Z0-9_.-]+)', cmdline):
+                taps.add(ifname)
+
+        # 3. Associate by session identifier (vunl<session>_*, ser<session>_*)
+        if session:
+            for path in glob.glob(f'/sys/class/net/vunl{session}_*') + glob.glob(f'/sys/class/net/ser{session}_*'):
+                taps.add(os.path.basename(path))
+
+        # 4. Fallback: all vunl* and ser* interfaces if single node active
+        if not taps:
+            for net_path in glob.glob('/sys/class/net/vunl*') + glob.glob('/sys/class/net/ser*'):
+                taps.add(os.path.basename(net_path))
+
+        return list(taps)
 
     def get_total_packets(self, tap_list):
         """Sums RX + TX packets across monitored TAP interfaces."""
@@ -196,9 +230,9 @@ class HeavyNodeGovernor:
             pass
 
     def run_pass(self):
-        """Executes one scan pass over all heavy router instances."""
+        """Executes one scan pass over all active QEMU and IOL router instances."""
         now = time.time()
-        active_nodes = self.find_heavy_qemu_nodes()
+        active_nodes = self.find_active_nodes()
         current_pids = {n["pid"] for n in active_nodes}
 
         # Clean up dead PIDs
@@ -211,8 +245,10 @@ class HeavyNodeGovernor:
             pid = node["pid"]
             name = node["name"]
             node_type = node["type"]
+            cmdline = node.get("cmdline", "")
+            session = node.get("session")
 
-            taps = self.get_node_tap_interfaces(pid)
+            taps = self.get_node_tap_interfaces(pid, cmdline=cmdline, session=session)
             total_pkts = self.get_total_packets(taps)
 
             if pid not in self.node_states:
@@ -244,7 +280,7 @@ class HeavyNodeGovernor:
                 # No traffic in this interval
                 idle_duration = now - state_info["last_active"]
                 if idle_duration > self.hysteresis_sec:
-                    # Beyond hysteresis: safe to yield idle DPDK spinloop
+                    # Beyond hysteresis: safe to yield idle DPDK / IOL spinloop
                     if state_info["state"] != "idle":
                         state_info["state"] = "idle"
                         self.set_lossless_priority(pid, "idle")
@@ -258,29 +294,13 @@ class HeavyNodeGovernor:
     def status(self):
         """Prints diagnostic status of all monitored nodes."""
         print("============================================================")
-        print("  Azam Basha Heavy Router CPU Governor Diagnostic           ")
-        print("  Target Appliances: Catalyst 8000, Cisco 8000, Cat 9000    ")
+        print("  Azam Basha High-Density QEMU & IOL CPU Governor Diagnostic")
+        print("  Target Appliances: Catalyst 8000, Cat 9000, Cisco IOL, QEMU")
         print("============================================================")
         results = self.run_pass()
         if not results:
-            print("  [*] No active Catalyst 8000, Cisco 8000, or Cat 9000 instances detected.")
+            print("  [*] No active QEMU or Cisco IOL instances currently detected.")
             print("      (Governor is ready and will automatically attach when nodes boot).")
-            
-            other_qemu = []
-            for pid_dir in glob.glob('/proc/[0-9]*'):
-                cmdline_path = os.path.join(pid_dir, 'cmdline')
-                if os.path.isfile(cmdline_path):
-                    try:
-                        with open(cmdline_path, 'rb') as f:
-                            cmd = f.read().decode('utf-8', errors='ignore').replace('\x00', ' ')
-                        if 'qemu-system' in cmd:
-                            other_qemu.append((os.path.basename(pid_dir), cmd[:80]))
-                    except Exception:
-                        pass
-            if other_qemu:
-                print("\n  [i] Other active QEMU processes found on this host:")
-                for p, c in other_qemu:
-                    print(f"      PID {p:<6}: {c}...")
         else:
             print(f"  {'APPLIANCE / NAME':<25} {'PID':<8} {'TYPE':<12} {'STATE':<25}")
             print("  " + "-" * 70)

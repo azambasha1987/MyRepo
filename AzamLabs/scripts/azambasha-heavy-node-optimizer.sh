@@ -384,25 +384,140 @@ icon: Router.png
             except Exception as e:
                 pass
 
-# 2. Patch device_qemu.php to universally enforce mem-merge=on for all QEMU VMs
+# 2. Patch device_qemu.php to universally enforce mem-merge=on and virtio-balloon for all QEMU VMs
 dev_file = "/opt/unetlab/html/devices/qemu/device_qemu.php"
 if os.path.isfile(dev_file):
     try:
         with open(dev_file, 'r', encoding='utf-8') as f:
             code = f.read()
-        
-        # Inject mem-merge=on if missing from base machine flags
-        if "mem-merge=on" not in code:
-            target_str = "$flags .= ' -enable-kvm';"
-            replacement_str = "$flags .= ' -enable-kvm -machine mem-merge=on';"
-            if target_str in code:
-                code = code.replace(target_str, replacement_str)
-                with open(dev_file, 'w', encoding='utf-8') as f:
-                    f.write(code)
-                print("  [✔] Patched device_qemu.php: Machine mem-merge=on universally active")
+
+        changed = False
+        if "mem-merge=" not in code:
+            if '$flags .= " -machine smm=off ";' in code:
+                code = code.replace('$flags .= " -machine smm=off ";', '$flags .= " -machine smm=off,mem-merge=on ";')
+                changed = True
+            elif "$flags .= ' -machine smm=off ';" in code:
+                code = code.replace("$flags .= ' -machine smm=off ';", "$flags .= ' -machine smm=off,mem-merge=on ';")
+                changed = True
+            elif "function customFlag($flags)" in code:
+                code = code.replace("function customFlag($flags)", "function customFlag($flags) {\n        if (strpos($flags, 'mem-merge=') === false) {\n            $flags .= ' -machine mem-merge=on ';\n        }")
+                changed = True
+
+        if "virtio-balloon" not in code:
+            target_telnet = '$flags .= " -chardev socket,id=serial0,path="'
+            if target_telnet in code:
+                code = code.replace(target_telnet, '$flags .= " -device virtio-balloon ";\n        ' + target_telnet, 1)
+                changed = True
+
+        if changed:
+            with open(dev_file, 'w', encoding='utf-8') as f:
+                f.write(code)
+            print("  [✔] Patched device_qemu.php: Machine mem-merge=on & virtio-balloon universally active")
     except Exception as e:
         print(f"  [!] device_qemu patch note: {e}")
+
+# 3. Patch device_iol.php to enforce 100:1 CPU idle governor & KSM whole-process merge
+dev_iol = "/opt/unetlab/html/devices/iol/device_iol.php"
+if os.path.isfile(dev_iol):
+    try:
+        with open(dev_iol, 'r', encoding='utf-8') as f:
+            code_iol = f.read()
+
+        changed_iol = False
+        # Front iol_wrapper with ksm_merge_exec
+        target_iol_cmd = '$cmd = "/opt/unetlab/wrappers/iol_wrapper ";'
+        repl_iol_cmd = """$ksmWrap = '/opt/unetlab/wrappers/ksm_merge_exec';
+        $ksmLauncher = (is_executable($ksmWrap) && !file_exists('/opt/unetlab/wrappers/.ksm_merge_off')) ? $ksmWrap . ' ' : '';
+        $cmd = $ksmLauncher . '/opt/unetlab/wrappers/iol_wrapper ';"""
+        if target_iol_cmd in code_iol and 'ksm_merge_exec' not in code_iol:
+            code_iol = code_iol.replace(target_iol_cmd, repl_iol_cmd)
+            changed_iol = True
+
+        # Deploy launcher wrapper for node image execution
+        target_copy = 'copy("/opt/unetlab/addons/iol/bin/" . $this->image, $this->node->getRunningPath() . "/" . $this->image);'
+        repl_copy = """copy("/opt/unetlab/addons/iol/bin/" . $this->image, $this->node->getRunningPath() . "/" . $this->image . ".bin");
+            @chmod($this->node->getRunningPath() . "/" . $this->image . ".bin", 0755);
+            $launcher_content = "#!/bin/sh\\n" .
+                "if [ -x /opt/unetlab/wrappers/azam-iol-launcher ]; then\\n" .
+                "    exec /opt/unetlab/wrappers/azam-iol-launcher \\"$0.bin\\" \\"$@\\"\\n" .
+                "else\\n" .
+                "    exec \\"$0.bin\\" \\"$@\\"\\n" .
+                "fi\\n";
+            file_put_contents($this->node->getRunningPath() . "/" . $this->image, $launcher_content);
+            @chmod($this->node->getRunningPath() . "/" . $this->image, 0755);"""
+        if target_copy in code_iol and 'azam-iol-launcher' not in code_iol:
+            code_iol = code_iol.replace(target_copy, repl_copy)
+            changed_iol = True
+
+        if changed_iol:
+            with open(dev_iol, 'w', encoding='utf-8') as f:
+                f.write(code_iol)
+            print("  [✔] Patched device_iol.php: KSM whole-process merge & azam-iol-launcher active")
+    except Exception as e:
+        print(f"  [!] device_iol patch note: {e}")
 PYEOF
+
+# Compile and deploy ksm_merge_exec wrapper, azam-iol-shim and azam-iol-launcher
+echo "  [*] Compiling AzamLabs 100:1 Cisco IOL CPU Governor & KSM Deduplication Shim..."
+mkdir -p /opt/unetlab/wrappers /opt/unetlab/scripts 2>/dev/null || true
+
+# Compile ksm_merge_exec wrapper
+KSM_EXEC_SRC="$SCRIPT_DIR/ksm_merge_exec.c"
+[ ! -f "$KSM_EXEC_SRC" ] && KSM_EXEC_SRC="/opt/unetlab/scripts/ksm_merge_exec.c"
+[ ! -f "$KSM_EXEC_SRC" ] && KSM_EXEC_SRC="$SCRIPT_DIR/azambasha-ksm-merge-exec.c"
+[ ! -f "$KSM_EXEC_SRC" ] && KSM_EXEC_SRC="/opt/unetlab/scripts/azambasha-ksm-merge-exec.c"
+
+if [ -f "$KSM_EXEC_SRC" ] && command -v gcc >/dev/null 2>&1; then
+    gcc -O2 -Wall "$KSM_EXEC_SRC" -o /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
+    chmod 755 /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
+    echo "  [✔] Compiled /opt/unetlab/wrappers/ksm_merge_exec"
+fi
+
+SHIM_SRC="$SCRIPT_DIR/azam-iol-shim.c"
+[ ! -f "$SHIM_SRC" ] && SHIM_SRC="/opt/unetlab/scripts/azam-iol-shim.c"
+[ ! -f "$SHIM_SRC" ] && SHIM_SRC="$SCRIPT_DIR/azambasha-iol-shim.c"
+[ ! -f "$SHIM_SRC" ] && SHIM_SRC="/opt/unetlab/scripts/azambasha-iol-shim.c"
+
+if [ -f "$SHIM_SRC" ] && command -v gcc >/dev/null 2>&1; then
+    gcc -O2 -shared -fPIC -Wall -Wextra "$SHIM_SRC" -o /opt/unetlab/wrappers/azam-iol-shim64.so -ldl 2>/dev/null || true
+    cp -f /opt/unetlab/wrappers/azam-iol-shim64.so /opt/unetlab/wrappers/azam-iol-shim.so 2>/dev/null || true
+    gcc -m32 -O2 -shared -fPIC -Wall -Wextra "$SHIM_SRC" -o /opt/unetlab/wrappers/azam-iol-shim32.so -ldl 2>/dev/null || true
+    chmod 755 /opt/unetlab/wrappers/azam-iol-shim*.so 2>/dev/null || true
+    echo "  [✔] Compiled azam-iol-shim.so (64-bit and 32-bit multiarch)"
+fi
+
+# Deploy universal azam-iol-launcher
+cat << 'EOF_LAUNCHER' > /opt/unetlab/wrappers/azam-iol-launcher
+#!/bin/sh
+# AzamLabs IOL 100:1 CPU Idle Governor & Ultra-KSM Launcher
+REAL_BIN="$1"
+shift
+
+if [ -z "$REAL_BIN" ] || [ ! -e "$REAL_BIN" ]; then
+    exec "$@"
+fi
+
+# Auto-detect ELF class (1 = 32-bit, 2 = 64-bit)
+SHIM="/opt/unetlab/wrappers/azam-iol-shim.so"
+ELF_CLASS=$(od -An -j4 -N1 -tu1 "$REAL_BIN" 2>/dev/null | tr -d ' ' || echo "1")
+if [ "$ELF_CLASS" = "1" ] && [ -f /opt/unetlab/wrappers/azam-iol-shim32.so ]; then
+    SHIM="/opt/unetlab/wrappers/azam-iol-shim32.so"
+elif [ -f /opt/unetlab/wrappers/azam-iol-shim64.so ]; then
+    SHIM="/opt/unetlab/wrappers/azam-iol-shim64.so"
+fi
+
+if [ -f "$SHIM" ]; then
+    export LD_PRELOAD="$SHIM"
+fi
+
+if [ -x /opt/unetlab/wrappers/ksm_merge_exec ] && [ ! -f /opt/unetlab/wrappers/.ksm_merge_off ]; then
+    exec /opt/unetlab/wrappers/ksm_merge_exec "$REAL_BIN" "$@"
+else
+    exec "$REAL_BIN" "$@"
+fi
+EOF_LAUNCHER
+chmod 755 /opt/unetlab/wrappers/azam-iol-launcher
+[ -f /opt/unetlab/wrappers/ksm_merge_exec ] && chmod 755 /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
 
 # -----------------------------------------------------------------------------
 # 6. Deploy Systemd Services for Persistence & CPU Governor
@@ -434,9 +549,13 @@ ExecStart=/bin/sh -c ' \
 WantedBy=multi-user.target
 EOF
 
-# 2. Dynamic Lossless CPU Governor Service (if python script present)
-if [ -f "$SCRIPT_DIR/azambasha-cpu-governor.py" ]; then
-    cat << EOF > /etc/systemd/system/azambasha-cpu-governor.service
+# 2. Dynamic Lossless CPU Governor Service
+GOV_SRC="$SCRIPT_DIR/azambasha-cpu-governor.py"
+[ ! -f "$GOV_SRC" ] && GOV_SRC="/opt/unetlab/scripts/azambasha-cpu-governor.py"
+if [ -f "$GOV_SRC" ]; then
+    cp -f "$GOV_SRC" /opt/unetlab/scripts/azambasha-cpu-governor.py 2>/dev/null || true
+    chmod +x /opt/unetlab/scripts/azambasha-cpu-governor.py 2>/dev/null || true
+    cat << 'EOF_GOV' > /etc/systemd/system/azambasha-cpu-governor.service
 [Unit]
 Description=Azam Basha Lossless Dynamic CPU Governor for Heavy Virtual Routers
 After=network.target
@@ -444,7 +563,7 @@ Wants=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 $SCRIPT_DIR/azambasha-cpu-governor.py --daemon
+ExecStart=/usr/bin/python3 /opt/unetlab/scripts/azambasha-cpu-governor.py --daemon
 Restart=always
 RestartSec=5
 KillMode=process
@@ -453,14 +572,14 @@ StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
-EOF
+EOF_GOV
 fi
 
 systemctl daemon-reload
 systemctl enable azambasha-heavy-optimizer.service 2>/dev/null || true
 systemctl start azambasha-heavy-optimizer.service 2>/dev/null || true
 
-if [ -f "$SCRIPT_DIR/azambasha-cpu-governor.py" ]; then
+if [ -f "/opt/unetlab/scripts/azambasha-cpu-governor.py" ]; then
     systemctl enable azambasha-cpu-governor.service 2>/dev/null || true
     systemctl restart azambasha-cpu-governor.service 2>/dev/null || true
     echo "  [✔] Lossless CPU Governor service enabled and active"
@@ -477,9 +596,16 @@ if [ "$CLUSTER_SYNC" -eq 1 ] && [ "$ROLE" = "master" ]; then
     python3 - << 'PYEOF'
 import os, subprocess, json
 
-script_src = "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh"
-if not os.path.exists(script_src):
-    script_src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "azambasha-heavy-node-optimizer.sh") if "__file__" in locals() else ""
+sync_files = [
+    "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh",
+    "/opt/unetlab/scripts/apply-heavy-node-optimizer.sh",
+    "/opt/unetlab/scripts/azam-iol-shim.c",
+    "/opt/unetlab/scripts/azambasha-iol-shim.c",
+    "/opt/unetlab/scripts/ksm_merge_exec.c",
+    "/opt/unetlab/scripts/azambasha-ksm-merge-exec.c",
+    "/opt/unetlab/scripts/azambasha-cpu-governor.py",
+    "/opt/unetlab/scripts/azambasha-fix-node-startup.sh"
+]
 
 satellites = []
 try:
@@ -497,10 +623,14 @@ else:
     for sat_ip in satellites:
         print(f"  [*] Synchronizing High-Density Optimizer to Satellite: {sat_ip}...")
         try:
-            if os.path.exists(script_src):
-                subprocess.run(["scp", "-o", "StrictHostKeyChecking=no", script_src, f"root@{sat_ip}:/tmp/"], timeout=15)
-                subprocess.run(["ssh", "-o", "StrictHostKeyChecking=no", f"root@{sat_ip}", "bash /tmp/azambasha-heavy-node-optimizer.sh --satellite"], timeout=30)
-                print(f"  [✔] Satellite {sat_ip} successfully optimized!")
+            # Sync all optimizer files
+            for sf in sync_files:
+                if os.path.isfile(sf):
+                    subprocess.run(["scp", "-o", "StrictHostKeyChecking=no", sf, f"root@{sat_ip}:/opt/unetlab/scripts/"], timeout=15)
+                    subprocess.run(["scp", "-o", "StrictHostKeyChecking=no", sf, f"root@{sat_ip}:/tmp/"], timeout=15)
+            # Execute on satellite
+            subprocess.run(["ssh", "-o", "StrictHostKeyChecking=no", f"root@{sat_ip}", "chmod +x /opt/unetlab/scripts/azambasha-*.sh /opt/unetlab/scripts/azambasha-*.py && bash /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh --satellite && bash /opt/unetlab/scripts/azambasha-fix-node-startup.sh"], timeout=60)
+            print(f"  [✔] Satellite {sat_ip} successfully optimized and verified!")
         except Exception as e:
             print(f"  [!] Satellite {sat_ip} sync note: {e}")
 PYEOF

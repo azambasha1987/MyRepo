@@ -348,6 +348,14 @@ EOF_OVERRIDE
             || mysql pnetlab_db -e "UPDATE users SET password = SHA2('azam', 256), user_status = 1, offline = 1, session = UNIX_TIMESTAMP() + 315360000 WHERE username = 'admin';" 2>/dev/null || true
     fi
 
+    # 4b. Ensure Memory & CPU Resource Optimizers are Active
+    systemctl enable --now azambasha-heavy-optimizer.service 2>/dev/null || true
+    systemctl restart azambasha-heavy-optimizer.service 2>/dev/null || true
+    if [ -f /opt/unetlab/scripts/azambasha-cpu-governor.py ]; then
+        systemctl enable --now azambasha-cpu-governor.service 2>/dev/null || true
+        systemctl restart azambasha-cpu-governor.service 2>/dev/null || true
+    fi
+
     # 5. Live Verification Probe
     local code
     code=$(curl -sk -o /dev/null -w "%{http_code}" -X POST https://127.0.0.1/api/auth -H "Content-Type: application/json" -d '{"username":"admin","password":"azam"}' 2>/dev/null || echo "000")
@@ -426,6 +434,14 @@ EOF_OVERRIDE
     systemctl restart pnetlab-docker-image-watcher 2>/dev/null || true
     if [ -f /etc/pnetlab-satellite/satd.conf ] || [ -f /opt/unetlab/scripts/pnetlab-satd.py ]; then
         systemctl restart pnetlab-satd 2>/dev/null || true
+    fi
+
+    # 4b. Ensure Memory & CPU Resource Optimizers are Active on Satellite
+    systemctl enable --now azambasha-heavy-optimizer.service 2>/dev/null || true
+    systemctl restart azambasha-heavy-optimizer.service 2>/dev/null || true
+    if [ -f /opt/unetlab/scripts/azambasha-cpu-governor.py ]; then
+        systemctl enable --now azambasha-cpu-governor.service 2>/dev/null || true
+        systemctl restart azambasha-cpu-governor.service 2>/dev/null || true
     fi
 
     # 5. Live Satellite Verification Probe

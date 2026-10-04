@@ -384,15 +384,24 @@ try:
     if target2 in code and "if (empty($this->console)) {" not in code:
         code = code.replace(target2, replacement2, 1)
 
-    # Issue #11: Enable SMM when UEFI is active for Windows 11 Secure Boot
+    # Issue #11 & AzamLabs KSM Optimization: Enable SMM when UEFI is active and universally inject mem-merge=on
     old_smm = '$flags .= " -machine smm=off ";'
     new_smm = """if (isset($this->UEFI) && ($this->UEFI == "1" || $this->UEFI == 1)) {
-            $flags .= " -machine smm=on ";
+            $flags .= " -machine smm=on,mem-merge=on ";
         } else {
-            $flags .= " -machine smm=off ";
+            $flags .= " -machine smm=off,mem-merge=on ";
         }"""
     if old_smm in code:
         code = code.replace(old_smm, new_smm)
+
+    if "mem-merge=" not in code:
+        if "function customFlag($flags)" in code:
+            code = code.replace("function customFlag($flags)", "function customFlag($flags) {\n        if (strpos($flags, 'mem-merge=') === false) {\n            $flags .= ' -machine mem-merge=on ';\n        }")
+
+    if "virtio-balloon" not in code:
+        target_telnet = '$flags .= " -chardev socket,id=serial0,path="'
+        if target_telnet in code:
+            code = code.replace(target_telnet, '$flags .= " -device virtio-balloon ";\n        ' + target_telnet, 1)
 
     # Issue #14 & Suggestion B: Juniper vMX 3-Disk (virtioc) attachment support
     if 'virtioc' not in code:
@@ -407,7 +416,7 @@ try:
 
     with open(dev_qemu, 'w', encoding='utf-8') as f:
         f.write(code)
-    print("  [✔] Smart PDF Image Resolver, UEFI SMM & Juniper virtioc active in device_qemu.php")
+    print("  [✔] Smart PDF Image Resolver, UEFI SMM, Ultra-KSM mem-merge & Juniper virtioc active in device_qemu.php")
 except Exception as e:
     print(f"  [!] Note patching device_qemu.php: {e}")
 
@@ -638,7 +647,7 @@ chmod 0755 /opt/unetlab/addons/iol/bin/* 2>/dev/null || true
 chmod 0644 /opt/unetlab/addons/iol/bin/iourc* 2>/dev/null || true
 
 # --- 6.5. Patch Core IOL Engine & Wrapper Permissions ---
-echo "[6.5/7] Patching IOL engine and unl_wrapper for AF_UNIX socket permissions..."
+echo "[6.5/7] Patching IOL engine, Ultra-KSM deduplication & CPU governor shim..."
 python3 - << 'PY_IOL_PATCH' 2>/dev/null || true
 import os
 
@@ -648,6 +657,8 @@ if os.path.isfile(php_file):
     with open(php_file, "r", encoding="utf-8") as f:
         php_c = f.read()
     
+    changed_php = False
+
     t_php = '''        $cmd = "id -u " . $user . " 2>&1";
         exec($cmd, $o, $rc);
         $uid = $o[0];
@@ -678,8 +689,38 @@ if os.path.isfile(php_file):
         if (!posix_setuid($uid)) {'''
 
     if t_php in php_c:
+        php_c = php_c.replace(t_php, r_php)
+        changed_php = True
+
+    # Front iol_wrapper with ksm_merge_exec
+    target_iol_cmd = '$cmd = "/opt/unetlab/wrappers/iol_wrapper ";'
+    repl_iol_cmd = """$ksmWrap = '/opt/unetlab/wrappers/ksm_merge_exec';
+        $ksmLauncher = (is_executable($ksmWrap) && !file_exists('/opt/unetlab/wrappers/.ksm_merge_off')) ? $ksmWrap . ' ' : '';
+        $cmd = $ksmLauncher . '/opt/unetlab/wrappers/iol_wrapper ';"""
+    if target_iol_cmd in php_c and 'ksm_merge_exec' not in php_c:
+        php_c = php_c.replace(target_iol_cmd, repl_iol_cmd)
+        changed_php = True
+
+    # Deploy launcher wrapper for node image execution
+    target_copy = 'copy("/opt/unetlab/addons/iol/bin/" . $this->image, $this->node->getRunningPath() . "/" . $this->image);'
+    repl_copy = """copy("/opt/unetlab/addons/iol/bin/" . $this->image, $this->node->getRunningPath() . "/" . $this->image . ".bin");
+            @chmod($this->node->getRunningPath() . "/" . $this->image . ".bin", 0755);
+            $launcher_content = "#!/bin/sh\\n" .
+                "if [ -x /opt/unetlab/wrappers/azam-iol-launcher ]; then\\n" .
+                "    exec /opt/unetlab/wrappers/azam-iol-launcher \\"$0.bin\\" \\"$@\\"\\n" .
+                "else\\n" .
+                "    exec \\"$0.bin\\" \\"$@\\"\\n" .
+                "fi\\n";
+            file_put_contents($this->node->getRunningPath() . "/" . $this->image, $launcher_content);
+            @chmod($this->node->getRunningPath() . "/" . $this->image, 0755);"""
+    if target_copy in php_c and 'azam-iol-launcher' not in php_c:
+        php_c = php_c.replace(target_copy, repl_copy)
+        changed_php = True
+
+    if changed_php:
         with open(php_file, "w", encoding="utf-8") as f:
-            f.write(php_c.replace(t_php, r_php))
+            f.write(php_c)
+        print("  [✔] device_iol.php patched for netio isolation, KSM merge & CPU governor launcher")
 
 # Patch unl_wrapper
 unl_file = "/opt/unetlab/wrappers/unl_wrapper"
@@ -703,6 +744,66 @@ if os.path.isfile(unl_file):
         with open(unl_file, "w", encoding="utf-8") as f:
             f.write(unl_c.replace(t_unl, r_unl))
 PY_IOL_PATCH
+
+# Compile ksm_merge_exec wrapper
+mkdir -p /opt/unetlab/wrappers 2>/dev/null || true
+KSM_EXEC_SRC="$SCRIPT_DIR/ksm_merge_exec.c"
+[ ! -f "$KSM_EXEC_SRC" ] && KSM_EXEC_SRC="/opt/unetlab/scripts/ksm_merge_exec.c"
+[ ! -f "$KSM_EXEC_SRC" ] && KSM_EXEC_SRC="$SCRIPT_DIR/azambasha-ksm-merge-exec.c"
+[ ! -f "$KSM_EXEC_SRC" ] && KSM_EXEC_SRC="/opt/unetlab/scripts/azambasha-ksm-merge-exec.c"
+
+if [ -f "$KSM_EXEC_SRC" ] && command -v gcc >/dev/null 2>&1; then
+    gcc -O2 -Wall "$KSM_EXEC_SRC" -o /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
+    chmod 755 /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
+    echo "  [✔] Compiled /opt/unetlab/wrappers/ksm_merge_exec"
+fi
+
+# Compile azam-iol-shim CPU & memory governor
+SHIM_SRC="$SCRIPT_DIR/azam-iol-shim.c"
+[ ! -f "$SHIM_SRC" ] && SHIM_SRC="/opt/unetlab/scripts/azam-iol-shim.c"
+[ ! -f "$SHIM_SRC" ] && SHIM_SRC="$SCRIPT_DIR/azambasha-iol-shim.c"
+[ ! -f "$SHIM_SRC" ] && SHIM_SRC="/opt/unetlab/scripts/azambasha-iol-shim.c"
+
+if [ -f "$SHIM_SRC" ] && command -v gcc >/dev/null 2>&1; then
+    gcc -O2 -shared -fPIC -Wall -Wextra "$SHIM_SRC" -o /opt/unetlab/wrappers/azam-iol-shim64.so -ldl 2>/dev/null || true
+    cp -f /opt/unetlab/wrappers/azam-iol-shim64.so /opt/unetlab/wrappers/azam-iol-shim.so 2>/dev/null || true
+    gcc -m32 -O2 -shared -fPIC -Wall -Wextra "$SHIM_SRC" -o /opt/unetlab/wrappers/azam-iol-shim32.so -ldl 2>/dev/null || true
+    chmod 755 /opt/unetlab/wrappers/azam-iol-shim*.so 2>/dev/null || true
+    echo "  [✔] Compiled azam-iol-shim.so (64-bit and 32-bit multiarch)"
+fi
+
+# Deploy universal azam-iol-launcher
+cat << 'EOF_LAUNCHER' > /opt/unetlab/wrappers/azam-iol-launcher
+#!/bin/sh
+# AzamLabs IOL 100:1 CPU Idle Governor & Ultra-KSM Launcher
+REAL_BIN="$1"
+shift
+
+if [ -z "$REAL_BIN" ] || [ ! -e "$REAL_BIN" ]; then
+    exec "$@"
+fi
+
+# Auto-detect ELF class (1 = 32-bit, 2 = 64-bit)
+SHIM="/opt/unetlab/wrappers/azam-iol-shim.so"
+ELF_CLASS=$(od -An -j4 -N1 -tu1 "$REAL_BIN" 2>/dev/null | tr -d ' ' || echo "1")
+if [ "$ELF_CLASS" = "1" ] && [ -f /opt/unetlab/wrappers/azam-iol-shim32.so ]; then
+    SHIM="/opt/unetlab/wrappers/azam-iol-shim32.so"
+elif [ -f /opt/unetlab/wrappers/azam-iol-shim64.so ]; then
+    SHIM="/opt/unetlab/wrappers/azam-iol-shim64.so"
+fi
+
+if [ -f "$SHIM" ]; then
+    export LD_PRELOAD="$SHIM"
+fi
+
+if [ -x /opt/unetlab/wrappers/ksm_merge_exec ] && [ ! -f /opt/unetlab/wrappers/.ksm_merge_off ]; then
+    exec /opt/unetlab/wrappers/ksm_merge_exec "$REAL_BIN" "$@"
+else
+    exec "$REAL_BIN" "$@"
+fi
+EOF_LAUNCHER
+chmod 755 /opt/unetlab/wrappers/azam-iol-launcher
+[ -f /opt/unetlab/wrappers/ksm_merge_exec ] && chmod 755 /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
 
 # Systemd tmpfiles rule for IOL AF_UNIX socket directories
 mkdir -p /etc/tmpfiles.d

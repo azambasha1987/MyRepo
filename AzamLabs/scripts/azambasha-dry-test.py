@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
 ==============================================================================
-AzamLabs 3-Months Update Check Plan — Automated Dry-Run Test Suite
+AzamLabs Update Check Plan — Automated Dry-Run Test Suite
 ==============================================================================
-Simulates and validates all 6 pillars of the AzamLabs 3-Months Update Check Plan:
+Simulates and validates all 6 pillars of the AzamLabs Update Check Plan:
   1. Ledger & Documentation Integrity (34 issues audited, 0 legacy matches)
   2. Notification & Direct Email Engine (Target: azambasha1987@gmail.com)
   3. Additive QEMU Appliance & Template Discovery Engine
@@ -52,7 +52,9 @@ def run_probe(probe_num, probe_name, func):
         return False
 
 def probe_plan_and_ledger():
-    plan_path = os.path.join(BASE_DIR, "docs", "3_MONTHS_UPDATE_CHECK_PLAN.md")
+    plan_path = os.path.join(BASE_DIR, "docs", "UPDATE_CHECK_PLAN.md")
+    if not os.path.isfile(plan_path):
+        plan_path = os.path.join(BASE_DIR, "docs", "3_MONTHS_UPDATE_CHECK_PLAN.md")
     if not os.path.isfile(plan_path):
         return False, [f"File missing: {plan_path}"]
 
@@ -230,7 +232,9 @@ def probe_ops_dashboard():
     return True, details
 
 def probe_docker_subsystem():
-    plan_path = os.path.join(BASE_DIR, "docs", "3_MONTHS_UPDATE_CHECK_PLAN.md")
+    plan_path = os.path.join(BASE_DIR, "docs", "UPDATE_CHECK_PLAN.md")
+    if not os.path.isfile(plan_path):
+        plan_path = os.path.join(BASE_DIR, "docs", "3_MONTHS_UPDATE_CHECK_PLAN.md")
     audit_path = os.path.join(SCRIPT_DIR, "azambasha-quarterly-audit.sh")
     docker_fix = os.path.join(SCRIPT_DIR, "azambasha-upload-and-docker-fix.sh")
 
@@ -241,7 +245,7 @@ def probe_docker_subsystem():
     if "Workstream 7: Docker Appliance & Container Subsystem Audit" in plan_content:
         details.append("Workstream 7: Docker Appliance & Container Subsystem documented in plan.")
     else:
-        return False, ["Workstream 7 missing in 3_MONTHS_UPDATE_CHECK_PLAN.md"]
+        return False, ["Workstream 7 missing in UPDATE_CHECK_PLAN.md"]
 
     with open(audit_path, "r", encoding="utf-8") as f:
         audit_content = f.read()
@@ -260,7 +264,7 @@ def probe_docker_subsystem():
 
 def main():
     print("================================================================================")
-    print("      AzamLabs 3-Months Update Check Plan — Automated Dry-Run Test Suite        ")
+    print("        AzamLabs Update Check Plan — Automated Dry-Run Test Suite               ")
     print(f"      Target Recipient: {TARGET_EMAIL} • Platform: Ubuntu 26.04 / Windows       ")
     print("================================================================================")
 
@@ -287,7 +291,7 @@ def main():
 
     if passed == total:
         print(" [✔] ALL DRY-RUN PROBES PASSED (100% HEALTHY)")
-        print(f"     • 3-Months Update Plan is verified and ready for production deployment.")
+        print(f"     • Update Check Plan is verified and ready for production deployment.")
         print(f"     • Automated quarterly audit will notify: {TARGET_EMAIL}")
         print("================================================================================\n")
         sys.exit(0)

@@ -1847,6 +1847,40 @@
     setInterval(decorateUserStatuses, 2500);
   })();
 
+  /* ── Issue #53 Hardening: Node Quick Buttons Hit-Box Precision & Anti-Obstruction ── */
+  (function initNodeQuickButtonPrecisionHook() {
+    var quickStyle = document.createElement('style');
+    quickStyle.id = 'azam-quick-btn-precision-style';
+    quickStyle.textContent = [
+      '.node-quick-btn, .node-action-buttons, .quick-actions-toolbar { pointer-events: auto; }',
+      '.editing-label .node-quick-btn, .editing-text .node-quick-btn { pointer-events: none !important; opacity: 0.2 !important; }',
+      'text.link-label, .link-label, [data-link-label], .port-name, .interface-label { pointer-events: all !important; cursor: pointer !important; z-index: 50 !important; }'
+    ].join('\n');
+    if (!document.getElementById('azam-quick-btn-precision-style') && document.head) {
+      document.head.appendChild(quickStyle);
+    }
+
+    document.addEventListener('mouseover', function (ev) {
+      var isOverLabel = ev.target && ev.target.closest && ev.target.closest('text.link-label, .link-label, [data-link-label], .port-name, .interface-label, [contenteditable="true"]');
+      if (isOverLabel) {
+        var quickToolbars = document.querySelectorAll('.node-quick-btn, .node-action-buttons, #node_action_menu, .quick-actions-toolbar');
+        for (var i = 0; i < quickToolbars.length; i++) {
+          quickToolbars[i].style.pointerEvents = 'none';
+        }
+      }
+    }, true);
+
+    document.addEventListener('mouseout', function (ev) {
+      var isOverLabel = ev.target && ev.target.closest && ev.target.closest('text.link-label, .link-label, [data-link-label], .port-name, .interface-label, [contenteditable="true"]');
+      if (isOverLabel) {
+        var quickToolbars = document.querySelectorAll('.node-quick-btn, .node-action-buttons, #node_action_menu, .quick-actions-toolbar');
+        for (var i = 0; i < quickToolbars.length; i++) {
+          quickToolbars[i].style.pointerEvents = '';
+        }
+      }
+    }, true);
+  })();
+
   /* ── Register with App Router ───────────────────────────── */
   App.register('azam-features', {
     title: 'AzamLabs',

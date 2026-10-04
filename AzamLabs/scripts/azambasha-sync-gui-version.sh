@@ -36,6 +36,9 @@ if [ "$TARGET_INPUT" = "auto" ] || [ -z "$TARGET_INPUT" ]; then
     if [ -f "${REPO_ROOT}/VERSION" ]; then
         BASE_DETECT="$(grep -E '^PACKAGE_VERSION=' "${REPO_ROOT}/VERSION" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)"
     fi
+    if [ -z "$BASE_DETECT" ] && [ -f "${REPO_ROOT}/docs/UPDATE_CHECK_PLAN.md" ]; then
+        BASE_DETECT="$(grep -oP '(?<=Implemented Package Version\*\*: `)[^`]+' "${REPO_ROOT}/docs/UPDATE_CHECK_PLAN.md" 2>/dev/null | head -n1 || true)"
+    fi
     if [ -z "$BASE_DETECT" ] && [ -f "${REPO_ROOT}/docs/3_MONTHS_UPDATE_CHECK_PLAN.md" ]; then
         BASE_DETECT="$(grep -oP '(?<=Implemented Package Version\*\*: `)[^`]+' "${REPO_ROOT}/docs/3_MONTHS_UPDATE_CHECK_PLAN.md" 2>/dev/null | head -n1 || true)"
     fi
@@ -47,7 +50,7 @@ if [ "$TARGET_INPUT" = "auto" ] || [ -z "$TARGET_INPUT" ]; then
         if [ -n "$LATEST_DIR" ]; then
             BASE_DETECT="$(basename "$LATEST_DIR")"
         else
-            BASE_DETECT="6.8.84resolute1"
+            BASE_DETECT="6.8.85resolute1"
         fi
     fi
     TARGET_INPUT="$BASE_DETECT"

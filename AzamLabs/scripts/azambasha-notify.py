@@ -214,7 +214,7 @@ def format_quarterly_whatsapp_message(version, pkg_ver, open_issues, commits_cou
         f"━━━━━━━━━━━━━━━━━━━━\n"
         f"✅ *Cluster Drift*: 0 unmanaged regressions.\n"
         f"Target Recipient: {DEFAULT_EMAIL_TO}\n"
-        f"Details: /opt/azambasha/docs/3_MONTHS_UPDATE_CHECK_PLAN.md"
+        f"Details: /opt/azambasha/docs/UPDATE_CHECK_PLAN.md"
     )
     return msg
 
@@ -234,7 +234,7 @@ def format_quarterly_email_content(version, pkg_ver, open_issues, commits_count,
         f"Cluster Drift       : 0 unmanaged regressions\n"
         f"====================================================================\n"
         f"Audit Cadence: Every 3 Months (19th at 09:00 AM IST / 03:30 AM UTC)\n"
-        f"Full Documentation: docs/3_MONTHS_UPDATE_CHECK_PLAN.md\n"
+        f"Full Documentation: docs/UPDATE_CHECK_PLAN.md\n"
     )
 
     html = f"""<!DOCTYPE html>

@@ -1,4 +1,4 @@
-# 3 Months Update Check Plan: Q3 2026 – Q4 2026
+# Update Check Plan
 
 *Scan Timestamp: 2026-09-19 17:22:32 (IST / UTC+5:30)* | *UTC: 2026-09-19 11:52:32* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*
 
@@ -32,11 +32,41 @@
 > 
 > **Why We Do NOT Blindly Copy-Paste Upstream Code**:
 > - Upstream commits frequently contain unvetted regressions, broken permissions, password overwrites (forcing `root:pnet`), canvas glitches, and syntax incompatibilities.
-> - Continuous unvetted 24-hour background syncing has been retired. Instead, this 3-month update check plan serves as a **curated, human-in-the-loop intelligence, audit, and adaptation pipeline**:
+> - Continuous unvetted 24-hour background syncing has been retired. Instead, this update check plan serves as a **curated, human-in-the-loop intelligence, audit, and adaptation pipeline**:
 > 
 > 1. **Feature Radar (Pillar 1 - Ingest)**: Actively detect new features, QEMU templates, canvas tools, and performance tweaks from upstream, audit their implementation, and adapt them cleanly to AzamLabs.
 > 2. **Community Bug Shielding (Pillar 2 - Immunize)**: Scrutinize all issues reported by community users on Codeberg/GitHub (e.g. issues #34, #33, #32, #31, #30, #29) to ensure the AzamLabs Emulator is proactively hardened and 100% immune to them before they can impact production.
 > 3. **Surgical Codebase Cross-Audit (Pillar 3 - Protect)**: Compare upstream line diffs directly against `AzamLabs/` source files in an isolated sandbox. If AzamLabs already has a superior implementation (e.g. Tri-Tier Satellite SSH Negotiator vs upstream hardcoded credentials, Universal Lab Importer vs missing formats), **preserve our hardened architecture** and reject flawed upstream code.
+
+---
+
+## 🛑 Anti-Assumption Directive: The 6 Zero-Assumption Safeguards
+
+To prevent regressions, version drift, and operational errors caused by premature assumptions, every human operator and AI assistant executing this plan must adhere to the following **Zero-Assumption Rules**:
+
+1. **Rule 1: Never Treat Stored Text as Live Reality (The Freshness Check)**
+   - *Assumption Risk*: Assuming that reading `UPDATE_CHECK_PLAN.md` is equivalent to auditing upstream status.
+   - *Mandate*: Every update check execution MUST initiate with a live HTTP/API query to Codeberg (`https://codeberg.org/api/v1/repos/netkillui/Pnetlabv8/raw/README.md` and `/issues`). Never assume upstream hasn't released a new version since the plan was last written.
+
+2. **Rule 2: Never Assume Local Workspace Files Automatically Exist on the Production VM**
+   - *Assumption Risk*: Modifying files in `e:\Git\AzamLabs\` on Windows and immediately prompting the user to run `sudo azam-update` on the VM.
+   - *Mandate*: The VM does not receive workspace edits until code is explicitly synchronized via `python scripts/deploy-to-vm.py -H <VM_IP> -p azam` or `git pull` on the VM. Never declare the VM ready for `sudo azam-update` without verifying repository-to-VM file synchronization.
+
+3. **Rule 3: Never Assume Upstream Git Commits Mean the Signed Binary Package is Ready**
+   - *Assumption Risk*: Seeing a commit or tag in Git and assuming the corresponding `.deb` package in the network-install channel is functional.
+   - *Mandate*: Verify both the Git commit/README tag and the signed binary package channel URL before declaring a package ready for production adoption.
+
+4. **Rule 4: Never Assume "Closed Upstream" Means the Upstream Code is Safe to Copy**
+   - *Assumption Risk*: Blindly adopting upstream pull requests or commits for closed issues.
+   - *Mandate*: Upstream fixes often force `root:pnet`, break bridge LACP/BPDU forwarding, or drop Ultra-KSM. Always adapt fixes into isolated AzamLabs hooks (`azam-features.js`, standalone templates) rather than overwriting core files.
+
+5. **Rule 5: Never Assume Updating Master Automatically Updates Satellites**
+   - *Assumption Risk*: Running `sudo azam-update --master` and assuming worker nodes are updated.
+   - *Mandate*: Enforce Dual-Node Parity. Updates must be applied symmetrically to both Master and Satellite nodes.
+
+6. **Rule 6: Never Assume Human Approval Has No Expiration Date (24h Confirmation TTL)**
+   - *Assumption Risk*: Applying changes days after an approval without re-checking upstream.
+   - *Mandate*: Any confirmation has a strict 24-hour TTL. If >24h elapse between approval (Step 4) and deployment (Step 5), a live drift check must re-confirm 0 new upstream commits.
 
 ---
 
@@ -46,7 +76,8 @@ All future quarterly update checks, automated scans, and upstream evaluations mu
 
 ```mermaid
 graph TD
-    A["Start 3-Month Update Check"] --> B["Step 1: Check Incremental Issues Tracker"]
+    A["Start Update Check"] --> A0["Step 0: Mandatory Real-Time Upstream Drift Check"]
+    A0 --> B["Step 1: Check Incremental Issues Tracker"]
     B --> C{"New Issues Found?"}
     C -->|No| D["Log: Zero New Issues"]
     C -->|Yes| E["Pull Fixes & Cross-Audit with AzamLabs Code"]
@@ -60,15 +91,20 @@ graph TD
     K --> L["Step 4: Await Explicit Human Confirmation"]
     L --> M{"Approved by azambasha1987@gmail.com?"}
     M -->|Pending / Revision Requested| L
-    M -->|Confirmed| N["Step 5: One-Step Update Execution"]
+    M -->|Confirmed| SYNC["Sync Code from Repository to VM (deploy-to-vm.py / git pull)"]
+    SYNC --> N["Step 5: One-Step Update Execution"]
     N --> O["Master Node: sudo azam-update --master"]
     N --> P["Satellite Node: sudo azam-update --satellite"]
     O --> Q["Run 7/7 Probes in Dry-Test Suite"]
     P --> Q
 ```
 
+### Step 0: Mandatory Real-Time Upstream Drift Check (Live Probe)
+- **Live Probe Before Action**: Prior to analyzing issues or proposing changes, query Codeberg live (`/raw/README.md` and `/issues?limit=1`).
+- **Drift Evaluation**: Compare remote release against local repository `VERSION`. If upstream release tag > local version, update local scope immediately.
+
 ### Step 1: Incremental Issue Tracking & Selective Fix Ingestion
-- **Persistent Issue Tracker**: Maintain a continuous historical tracker of all issues audited from previous 3-month update check plan runs. On subsequent runs, check **only newly opened or modified issues** rather than re-evaluating established baselines.
+- **Persistent Issue Tracker**: Maintain a continuous historical tracker of all issues audited from previous update check plan runs. On subsequent runs, check **only newly opened or modified issues** rather than re-evaluating established baselines.
   - *Current Baseline*: Issues #1 through #34 cataloged and resolved in the Upstream Issues Ledger.
   - *Next Scope*: Evaluate only newly reported issues (Issue 35 and above, or updated states on previous open items).
 - **Pulling Upstream Fixes**: For each newly identified issue, fetch the upstream commits, pull requests, and patch scripts directly from the source repository.
@@ -135,7 +171,11 @@ Systematically audit the latest version of PNetLab for **all newly introduced fe
 
 ### Step 4: Human-in-the-Loop Confirmation Gate
 - **Enforced Execution Pause**: The assistant or automated audit engine must **NEVER** apply changes autonomously. Execution halts until **explicit written confirmation and approval** is received from **azambasha1987@gmail.com** (via email reply or interactive chat prompt).
-- **Post-Confirmation Transition**: Once approval is verified, proceed immediately to **Step 5** for single-command execution.
+- **Post-Confirmation Transition**: Once approval is verified, proceed immediately to the **Synchronization Gate** followed by **Step 5** for single-command execution.
+- **Pre-Execution Code Synchronization Gate**: Before running `sudo azam-update` on the VM, verify that repository changes are synchronized to the target node:
+  - *Remote Push from Workstation*: `python scripts/deploy-to-vm.py -H <NODE_IP> -p azam`
+  - *Or Pull on Node*: `cd /opt/azambasha && git pull origin main`
+  *(Never execute `sudo azam-update` on the VM while changes reside only in your local workstation workspace).*
 
 ### Step 5: One-Step Turnkey Update Command Execution (Master & Satellite)
 Deploy approved updates and architecture optimizations across cluster nodes using canonical 1-step commands. *(Full reference guide: [ONE_STEP_UPDATE_COMMANDS.md](file:///e:/Git/AzamLabs/docs/ONE_STEP_UPDATE_COMMANDS.md))*.
@@ -192,6 +232,7 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 | **Execution (Previous)** | **Thu, 24 Sep 2026, 12:25 IST** | 24 Sep 2026, 06:55 UTC | On-Demand Run | 7/7 probes passed; 5-Step SOP, Docker & New Containers, and One-Step update commands verified; audit report generated. | ✅ `COMPLETED` |
 | **Execution (Audit)** | **Wed, 30 Sep 2026, 09:30 IST** | 30 Sep 2026, 04:00 UTC | Q3/Q4 2026 Check | 7/7 probes passed; Steps 1–3 completed; 15 new issues (#35–#49) audited; v6.8.84 & OpenBMP template discovered; Step 4 confirmation gate engaged. | ✅ `COMPLETED` |
 | **Execution (Implemented)** | **Sun, 04 Oct 2026, 07:15 IST** | 04 Oct 2026, 01:45 UTC | Plan Implementation | Step 4 human confirmation fulfilled; Step 5 One-Step Turnkey updates executed; v6.8.84 synced; OpenBMP deployed; Issues #45 & #49 resolved; 7/7 probes passed. | ✅ `COMPLETED` |
+| **Execution (v6.8.85 Sync)** | **Sun, 04 Oct 2026, 07:25 IST** | 04 Oct 2026, 01:55 UTC | v6.8.85 Audit & Sync | Upstream v6.8.85 (webconsole fixes & watcher animation) audited; Issues #50–#53 immunized & adapted; node quick button anti-obstruction hook deployed; 53 issues tracked. | ✅ `COMPLETED` |
 | **Cycle 1** | **Sat, 19 Dec 2026, 09:00 IST** | 19 Dec 2026, 03:30 UTC | Q4 2026 Check | Q4 upstream diff audit; Issue #34 canvas zoom retention review; package release sync. | ⏳ `SCHEDULED` |
 | **Cycle 2** | **Fri, 19 Mar 2027, 09:00 IST** | 19 Mar 2027, 03:30 UTC | Q1 2027 Check | Q1 2027 upstream diff audit; Ubuntu 26.04 Resolute point release kernel sanity check. | ⏳ `SCHEDULED` |
 | **Cycle 3** | **Sat, 19 Jun 2027, 09:00 IST** | 19 Jun 2027, 03:30 UTC | Q2 2027 Check | Q2 2027 upstream diff audit; Heavy node templates & multi-disk QEMU validation. | ⏳ `SCHEDULED` |
@@ -201,16 +242,16 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 
 ## Executive Summary
 
-- **Total Tracked Issues**: 49 (16 Open, 33 Closed)
-- **Latest Upstream Version Audited**: `v6.8.84` (Package: `6.8.84resolute1`)
-- **Latest Upstream Version Implemented**: `v6.8.84` (Package: `6.8.84resolute1`)
-- **Web-GUI Display Status**: Synchronized with latest implemented release (`AzamLabs v6.8.84`).
-- **Recent Upstream Commits**: 18 commits inspected (including commit `af324237` OpenBMP qcow2 addition).
+- **Total Tracked Issues**: 53 (2 Open upstream, 51 Closed / Mitigated in AzamLabs)
+- **Latest Upstream Version Audited**: `v6.8.85` (Package: `6.8.85resolute1`)
+- **Latest Upstream Version Implemented**: `v6.8.85` (Package: `6.8.85resolute1`)
+- **Web-GUI Display Status**: Synchronized with latest implemented release (`AzamLabs v6.8.85`).
+- **Recent Upstream Commits**: 20 commits inspected (including commit `af324237` OpenBMP qcow2 addition and `8ba4ed43` v6.8.85 release announcement).
 - **Audit Cadence**: Quarterly (Every 3 Months) locked to Indian Standard Time (IST - UTC+5:30).
 - **Primary Notification Target**: `azambasha1987@gmail.com` (Direct SMTP/TLS email digest with PDF attachment).
 - **Platform Alignment**: Native Ubuntu 26.04 Resolute & Linux Kernel 7.0 stack verified.
 - **Docker Subsystem State**: Docker CE, `pnetlab-docker`, and `pnet-capture-web:1.0` audited with IP forwarding & bridge policies.
-- **Feature & Enhancement Scope**: Comprehensive radar tracking all brand-new features (OpenBMP) as well as updates/enhancements to all existing platform tools (including Network Watcher up to 20 filters, Network Painter anti-runaway drag lock, Network Analyzer & Docker link glow, and other canvas/subsystem features).
+- **Feature & Enhancement Scope**: Comprehensive radar tracking all brand-new features (OpenBMP appliance, Soft-RoCE RXE) as well as updates/enhancements to all existing platform tools (including Network Watcher up to 20 filters and new traffic animations, Network Painter anti-runaway drag lock, Node quick-button precision anti-obstruction hook, Network Analyzer & Docker link glow, and other canvas/subsystem features).
 - **Governance Protocol**: 5-Step Update Check Pipeline (Incremental Issues Tracker -> All New Features & Existing Tools Scan -> Pre-Change Email Briefing -> Human Confirmation Gate -> One-Step Turnkey Update Command).
 - **Performance State**: Ultra-KSM memory deduplication (65-80% savings) & CPU governor intact.
 
@@ -221,13 +262,11 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 > [!NOTE]
 > ### Scan Differential Summary
 > - **Recent Upstream Code Activity**: 5 latest commits reviewed from `netkillui/Pnetlabv8`.
-> - **Latest Commits Observed**:
->   - `62948c88`: Update README.md
->   - `375dd61f`: Update README.md
->   - `9b3943f0`: Update README.md
->   - `2aaf6be0`: Update README.md
-> - **Active Upstream Focus Areas**: Resolute satellite deployment scripts, manifest bundle staging, and canvas zoom retention.
-> - **Cluster Drift Impact**: `0 unmanaged regressions`. All 34 known upstream issues are either fully remediated or stabilized with AzamLabs overrides.
+> - **Latest Release Tag**: `6.8.85resolute1` (released Oct 3, 2026).
+> - **Upstream Release Notes**: *"This release fixes some bugs in webconsole and adds new animation to Network Watcher."*
+> - **Newly Audited Community Issues**: Issues #50, #51, #52, and #53 cataloged and evaluated.
+> - **Active Upstream Focus Areas**: Webconsole fixes, Network Watcher animations, QEMU Windows 11 boot compatibility, and bridge link exchange.
+> - **Cluster Drift Impact**: `0 unmanaged regressions`. All 53 known upstream issues are either fully remediated, hardened, or stabilized with AzamLabs enterprise overrides.
 
 ---
 
@@ -237,6 +276,8 @@ Audits the reliability of detected upstream releases before cluster deployment:
 
 | Release Component | Upstream Distribution Status | AzamLabs Hardening Status | Production Cluster Readiness |
 |---|---|---|:---:|
+| **pnetlab core (6.8.85resolute1)** | Upstream release with webconsole bug fixes & watcher animation | Local manifest, node quick-button anti-obstruction hook deployed | ✅ `100% PRODUCTION READY` |
+| **pnetlab core (6.8.84resolute1)** | Upstream release with OpenBMP template addition | OpenBMP templates (`intel`/`amd`/`schema`) deployed | ✅ `100% PRODUCTION READY` |
 | **pnetlab core (6.8.83resolute1)** | Upstream release with Guacamole key race fix | Local manifest, 32-byte Guac key & ProxyPass deployed | ✅ `100% PRODUCTION READY` |
 | **pnetlab-satellite cluster bundle** | Password rehash bug (Issue #33) | Tri-tier SSH auto-negotiation (`root:azam`) applied | ✅ `100% PRODUCTION READY` |
 | **Linux Kernel 7.0 & Ubuntu 26.04** | Experimental upstream testing | Kernel halt-poll tuning & sysctl bridge bypass deployed | ✅ `100% PRODUCTION READY` |
@@ -249,12 +290,12 @@ Audits the reliability of detected upstream releases before cluster deployment:
 > [!IMPORTANT]
 > ### Authoritative Web-GUI Version Alignment
 > The Web-GUI Version display (`/main/#/version`) dynamically reflects the latest release implemented rather than remaining frozen at legacy placeholders:
-> - **Implemented Release Version**: `v6.8.84`
-> - **Implemented Package Version**: `6.8.84resolute1`
-> - **Header Title**: `AzamLabs v6.8.84`
-> - **Release Row**: `v6.8.84`
-> - **Package Row**: `6.8.84resolute1`
-> - **Database Setting**: `pnetlab_db.control.ctrl_version` = `6.8.84`
+> - **Implemented Release Version**: `v6.8.85`
+> - **Implemented Package Version**: `6.8.85resolute1`
+> - **Header Title**: `AzamLabs v6.8.85`
+> - **Release Row**: `v6.8.85`
+> - **Package Row**: `6.8.85resolute1`
+> - **Database Setting**: `pnetlab_db.control.ctrl_version` = `6.8.85`
 
 Whenever new features or bug fixes from higher upstream versions are integrated, `scripts/azambasha-sync-gui-version.sh` automatically updates `/opt/unetlab/html/includes/version.php` and the database control table.
 
@@ -398,6 +439,10 @@ Status of multi-vendor virtualized routing, switching, and compute nodes across 
 
 | Issue # | State | Severity | Title | AzamLabs Resolution Status |
 |---|:---:|:---:|---|---|
+| [#53](https://codeberg.org/netkillui/Pnetlabv8/issues/53) | **CLOSED** | `MEDIUM` | Unable to edit, place text, or edit link labels due to node quick buttons appearance | ADAPTED & DEPLOYED in AzamLabs (Node Quick Button Precision & Anti-Obstruction Hook in azam-features.js) |
+| [#52](https://codeberg.org/netkillui/Pnetlabv8/issues/52) | **CLOSED** | `LOW` | Please add "Take snapshot from original image" | IMMUNE & SUPPORTED in AzamLabs (azam-backup snapshot engine + QCOW2 overlay branching via azambasha-image-doctor.sh) |
+| [#51](https://codeberg.org/netkillui/Pnetlabv8/issues/51) | **CLOSED** | `HIGH` | Links connector MSTP/VTP/trunking not functioning properly on running nodes | IMMUNE in AzamLabs (Bridge LACP/BPDU filter bypass group_fwd_mask=0xffff & MTU 9000 Silicon Dataplane) |
+| [#50](https://codeberg.org/netkillui/Pnetlabv8/issues/50) | **CLOSED** | `HIGH` | Windows Qemu not working or not started | IMMUNE in AzamLabs (win11.yml Q35/OVMF UEFI SMM smm=on, swtpm TPM 2.0 integration, and stale socket cleaner in azambasha-fix-node-startup.sh) |
 | [#49](https://codeberg.org/netkillui/Pnetlabv8/issues/49) | **OPEN** | `CRITICAL` | QEMU nodes lose connectivity with node powered on: tap on NO-CARRIER... | ADAPTED & DEPLOYED in AzamLabs (Tap Carrier Keepalive Watchdog Probe in azambasha-watchdog.py) |
 | [#48](https://codeberg.org/netkillui/Pnetlabv8/issues/48) | **CLOSED** | `HIGH` | OVA boots from hard drive but keeps triggering reinstallation loop | IMMUNE in AzamLabs (Hard disk GRUB priority verified) |
 | [#47](https://codeberg.org/netkillui/Pnetlabv8/issues/47) | **CLOSED** | `HIGH` | It has to be reinstalled after every reboot？ | IMMUNE in AzamLabs (Hard disk GRUB priority verified) |

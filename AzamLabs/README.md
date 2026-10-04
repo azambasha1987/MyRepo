@@ -63,7 +63,7 @@ AzamLabs includes an extensive administrative and operational toolchain located 
 
 Comprehensive architecture and operations documentation is located in [`docs/`](docs/):
 
-- **3-Months Update Check Plan**: [`docs/3_MONTHS_UPDATE_CHECK_PLAN.md`](docs/3_MONTHS_UPDATE_CHECK_PLAN.md)
+- **Update Check Plan**: [`docs/UPDATE_CHECK_PLAN.md`](docs/UPDATE_CHECK_PLAN.md)
 - **One-Step Turnkey Update Commands Guide**: [`docs/ONE_STEP_UPDATE_COMMANDS.md`](docs/ONE_STEP_UPDATE_COMMANDS.md)
 - **High-Performance Dataplane Guide**: [`docs/AZAMBASHA_HIGH_PERFORMANCE_DATAPLANE_GUIDE.md`](docs/AZAMBASHA_HIGH_PERFORMANCE_DATAPLANE_GUIDE.md)
 - **Master Administration Toolkit Guide**: [`docs/AZAMBASHA_ADMIN_TOOLKIT_GUIDE.md`](docs/AZAMBASHA_ADMIN_TOOLKIT_GUIDE.md)

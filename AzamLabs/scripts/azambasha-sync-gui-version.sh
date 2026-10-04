@@ -36,6 +36,7 @@ if [ "$TARGET_INPUT" = "auto" ] || [ -z "$TARGET_INPUT" ]; then
     # Search all candidate VERSION file locations
     for v_candidate in \
         "${REPO_ROOT}/VERSION" \
+        "/opt/azam-pnet/AzamLabs/VERSION" \
         "/opt/azam-pnet/EMULATOR/Azam-Pnet/VERSION" \
         "/opt/azambasha/VERSION" \
         "/opt/unetlab/VERSION" \

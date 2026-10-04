@@ -107,8 +107,8 @@ sync_from_github() {
 
     # Identify all candidate repository directories on the system
     local sync_targets=()
-    for cand in "${BASE_DIR}" "/opt/azam-pnet/EMULATOR/Azam-Pnet" "/opt/azambasha"; do
-        if [ -d "$cand" ] && [[ ! " ${sync_targets[*]:-} " =~ " ${cand} " ]]; then
+    for cand in "${BASE_DIR}" "$(dirname "$BASE_DIR" 2>/dev/null || true)" "/opt/azam-pnet" "/opt/azam-pnet/AzamLabs" "/opt/azambasha"; do
+        if [ -n "$cand" ] && [ -d "$cand" ] && [[ ! " ${sync_targets[*]:-} " =~ " ${cand} " ]]; then
             sync_targets+=("$cand")
         fi
     done
@@ -144,7 +144,7 @@ sync_from_github() {
 
     # Propagate latest scripts and authoritative VERSION across all system runtime locations
     local src_repo="${BASE_DIR}"
-    [ ! -f "${src_repo}/VERSION" ] && [ -f "/opt/azam-pnet/EMULATOR/Azam-Pnet/VERSION" ] && src_repo="/opt/azam-pnet/EMULATOR/Azam-Pnet"
+    [ ! -f "${src_repo}/VERSION" ] && [ -f "/opt/azam-pnet/AzamLabs/VERSION" ] && src_repo="/opt/azam-pnet/AzamLabs"
     [ ! -f "${src_repo}/VERSION" ] && [ -f "/opt/azambasha/VERSION" ] && src_repo="/opt/azambasha"
 
     if [ -d "${src_repo}/scripts" ]; then
@@ -158,7 +158,7 @@ sync_from_github() {
     fi
 
     if [ -f "${src_repo}/VERSION" ]; then
-        for v_dest in "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/opt/azam-pnet/EMULATOR/Azam-Pnet/VERSION" "/etc/pnetlab-version"; do
+        for v_dest in "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/opt/azam-pnet/AzamLabs/VERSION" "/etc/pnetlab-version"; do
             if [ -d "$(dirname "$v_dest")" ]; then
                 cp -f "${src_repo}/VERSION" "$v_dest" 2>/dev/null || true
                 chmod 0644 "$v_dest" 2>/dev/null || true

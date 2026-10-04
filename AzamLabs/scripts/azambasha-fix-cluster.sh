@@ -359,6 +359,12 @@ chmod 644 "$LOG" 2>/dev/null
 run_root 'echo "root:azam" | chpasswd 2>/dev/null || true' </dev/null >> "$LOG" 2>&1 || true
 export SSHPASS="azam"
 
+# Synchronize AzamLabs optimization suite & CLI symlinks to satellite worker
+if [ -d "/opt/unetlab/scripts" ]; then
+    sshpass -e scp "${SSH_ARGS[@]}" /opt/unetlab/scripts/azambasha-* "${SUSER}@${IP}:/opt/unetlab/scripts/" 2>/dev/null || true
+    run_root 'chmod +x /opt/unetlab/scripts/azambasha-*.sh /opt/unetlab/scripts/azambasha-*.py && ln -sf /opt/unetlab/scripts/azambasha-update.sh /usr/local/bin/azam-update && ln -sf /opt/unetlab/scripts/azambasha-quarterly-audit.sh /usr/local/bin/azam-audit && ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/pnet-satellite-join && ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join 2>/dev/null || true' </dev/null >> "$LOG" 2>&1 || true
+fi
+
 run_root 'set -e; dpkg --configure -a"""
     if old_post_install in code:
         code = code.replace(old_post_install, new_post_install)

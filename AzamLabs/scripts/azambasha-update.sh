@@ -106,6 +106,11 @@ run_diagnostics() {
 }
 
 sync_from_github() {
+    # If already re-executed with updated code, skip redundant remote fetch
+    if [ "${AZAM_REEXEC:-0}" -eq 1 ]; then
+        return 0
+    fi
+
     log_info "Connecting to GitHub to fetch the latest AzamLabs code..."
     local github_url="https://github.com/azambasha1987/MyRepo.git"
     local github_tar_url="https://github.com/azambasha1987/MyRepo/archive/refs/heads/main.tar.gz"
@@ -121,12 +126,30 @@ sync_from_github() {
         log_ok "Synchronized ${myrepo_dir} to latest commit from GitHub (origin/main)."
     else
         log_info "Cloning latest AzamLabs repository into ${myrepo_dir}..."
-        if command -v git &>/dev/null && git clone --depth 1 "$github_url" "$myrepo_dir" 2>/dev/null; then
+        local clone_ok=0
+        if command -v git &>/dev/null; then
+            if [ ! -d "$myrepo_dir" ] || [ -z "$(ls -A "$myrepo_dir" 2>/dev/null)" ]; then
+                git clone --depth 1 "$github_url" "$myrepo_dir" 2>/dev/null && clone_ok=1
+            else
+                local tmp_clone
+                tmp_clone="$(mktemp -d /tmp/azam-repo.XXXXXX)"
+                if git clone --depth 1 "$github_url" "$tmp_clone" 2>/dev/null; then
+                    rm -rf "${myrepo_dir:?}"/*
+                    cp -a "${tmp_clone}/.git" "$myrepo_dir/" 2>/dev/null || true
+                    cp -a "${tmp_clone}/." "$myrepo_dir/" 2>/dev/null || true
+                    rm -rf "$tmp_clone"
+                    clone_ok=1
+                fi
+            fi
+        fi
+        if [ "$clone_ok" -eq 1 ]; then
             log_ok "Fetched latest codebase from GitHub via Git clone."
         elif command -v curl &>/dev/null; then
+            mkdir -p "$myrepo_dir" 2>/dev/null || true
             curl -skL "$github_tar_url" | tar -xz -C "$myrepo_dir" --strip-components=1 2>/dev/null || true
             log_ok "Fetched latest codebase from GitHub via public archive tarball."
         elif command -v wget &>/dev/null; then
+            mkdir -p "$myrepo_dir" 2>/dev/null || true
             wget -qO- "$github_tar_url" | tar -xz -C "$myrepo_dir" --strip-components=1 2>/dev/null || true
             log_ok "Fetched latest codebase from GitHub via public archive tarball."
         else
@@ -145,9 +168,12 @@ sync_from_github() {
     fi
 
     # Maintain system directories and symlinks
-    mkdir -p /opt/azambasha /opt/unetlab/scripts 2>/dev/null || true
-    if [ ! -L "/opt/azambasha" ] && [ ! -d "/opt/azambasha/scripts" ]; then
-        ln -sfn "$src_repo" /opt/azambasha 2>/dev/null || true
+    mkdir -p /opt/unetlab/scripts 2>/dev/null || true
+    if [ ! -L "/opt/azambasha" ]; then
+        if [ ! -d "/opt/azambasha/scripts" ]; then
+            rm -rf /opt/azambasha 2>/dev/null || true
+            ln -sfn "$src_repo" /opt/azambasha 2>/dev/null || true
+        fi
     fi
 
     # Propagate latest scripts and authoritative VERSION across all system runtime locations
@@ -176,6 +202,8 @@ sync_from_github() {
     ln -sf /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/azam-credentials 2>/dev/null || true
     ln -sf /opt/unetlab/scripts/azambasha-fleet-status.sh /usr/local/bin/azam-fleet 2>/dev/null || true
     ln -sf /opt/unetlab/scripts/azambasha-cluster-capacity.py /usr/local/bin/azam-capacity 2>/dev/null || true
+    ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join 2>/dev/null || true
+    ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/pnet-satellite-join 2>/dev/null || true
 
     SCRIPT_DIR="/opt/unetlab/scripts"
 
@@ -279,6 +307,18 @@ EOF_OVERRIDE
 
     # 3. Synchronize root password to azam
     echo "root:azam" | chpasswd 2>/dev/null || true
+
+    # 3b. Unjail any restricted cluster SSH key to guarantee GUI package sync (Issue #33 Remediation)
+    if [ -f /root/.ssh/authorized_keys ]; then
+        if grep -q 'pnetlab-cluster' /root/.ssh/authorized_keys 2>/dev/null; then
+            sed -i -E 's/^command="[^"]*",restrict\s+//' /root/.ssh/authorized_keys 2>/dev/null || true
+            chmod 0600 /root/.ssh/authorized_keys 2>/dev/null || true
+            log_ok "Cluster SSH key verified unjailed for GUI package sync."
+        fi
+    fi
+    if [ -f /etc/pnetlab/cluster-db.conf ]; then
+        chmod 0600 /etc/pnetlab/cluster-db.conf 2>/dev/null || true
+    fi
 
     # 4. Restart/Reload worker daemons cleanly
     systemctl restart pnetlab-brokerd 2>/dev/null || true

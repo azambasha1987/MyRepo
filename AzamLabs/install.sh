@@ -1362,6 +1362,14 @@ elif [ -f "/opt/unetlab/scripts/azambasha-sync-gui-version.sh" ]; then
     bash "/opt/unetlab/scripts/azambasha-sync-gui-version.sh" auto || true
 fi
 
+# Stage Satellite Cluster Deploy Bundle & Master Remote Sync
+echo "  [*] Staging Satellite Cluster Deploy Bundle & Remote Sync..."
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-cluster.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-fix-cluster.sh" || true
+elif [ -f "/opt/unetlab/scripts/azambasha-fix-cluster.sh" ]; then
+    bash "/opt/unetlab/scripts/azambasha-fix-cluster.sh" || true
+fi
+
 echo ""
 echo "============================================================"
 echo "      Running Post-Install Diagnostic Self-Test...          "

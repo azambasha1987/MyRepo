@@ -71,8 +71,9 @@ LOG_FILE="/var/log/azambasha-satellite-install.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 # Maintain root installation symlinks
-mkdir -p /opt/azambasha /opt/pnetlab /opt/unetlab 2>/dev/null || true
+mkdir -p /opt/pnetlab /opt/unetlab 2>/dev/null || true
 if [ "$SCRIPT_DIR" != "/opt/azambasha" ]; then
+    rm -rf /opt/azambasha 2>/dev/null || true
     ln -sfn "$SCRIPT_DIR" /opt/azambasha 2>/dev/null || true
 fi
 ln -sfn /opt/azambasha /opt/pnetlab 2>/dev/null || true
@@ -1004,6 +1005,8 @@ for s_dir in "${SCRIPT_DIR}/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scri
         ln -sfn "${s_dir}/azambasha-fix-web-credentials.sh" /usr/local/bin/azam-credentials 2>/dev/null || true
         ln -sfn "${s_dir}/azambasha-fleet-status.sh" /usr/local/bin/azam-fleet 2>/dev/null || true
         ln -sfn "${s_dir}/azambasha-cluster-capacity.py" /usr/local/bin/azam-capacity 2>/dev/null || true
+        ln -sfn "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/azam-satellite-join 2>/dev/null || true
+        ln -sfn "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/pnet-satellite-join 2>/dev/null || true
         break
     fi
 done

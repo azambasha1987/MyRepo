@@ -112,7 +112,7 @@ PHPEOF
 fi
 
 # Persist authoritative VERSION metadata across system paths
-for v_dest in "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/opt/azam-pnet/EMULATOR/Azam-Pnet/VERSION" "/etc/pnetlab-version"; do
+for v_dest in "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/opt/azam-pnet/AzamLabs/VERSION" "/opt/azam-pnet/EMULATOR/Azam-Pnet/VERSION" "/etc/pnetlab-version"; do
     if [ -d "$(dirname "$v_dest")" ]; then
         cat << VEOF > "$v_dest"
 VERSION=${RELEASE_VER}

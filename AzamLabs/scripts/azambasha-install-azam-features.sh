@@ -109,7 +109,9 @@ ln -sf "${SCRIPTS}/azambasha-update.sh"            /usr/local/bin/azam-update
 ln -sf "${SCRIPTS}/azambasha-quarterly-audit.sh"   /usr/local/bin/azam-audit
 ln -sf "${SCRIPTS}/azambasha-apply-all-fixes.sh"    /usr/local/bin/azam-menu
 ln -sf "${SCRIPTS}/azambasha-apply-all-fixes.sh"    /usr/local/bin/azam-fix
-chmod +x "${SCRIPTS}/azambasha-update.sh" "${SCRIPTS}/azambasha-quarterly-audit.sh" "${SCRIPTS}/azambasha-apply-all-fixes.sh" 2>/dev/null || true
+ln -sf "${SCRIPTS}/azambasha-satellite-join.sh"     /usr/local/bin/azam-satellite-join
+ln -sf "${SCRIPTS}/azambasha-satellite-join.sh"     /usr/local/bin/pnet-satellite-join
+chmod +x "${SCRIPTS}/azambasha-update.sh" "${SCRIPTS}/azambasha-quarterly-audit.sh" "${SCRIPTS}/azambasha-apply-all-fixes.sh" "${SCRIPTS}/azambasha-satellite-join.sh" 2>/dev/null || true
 
 
 # Install scheduler timer and 24/7 autonomous watchdog daemon

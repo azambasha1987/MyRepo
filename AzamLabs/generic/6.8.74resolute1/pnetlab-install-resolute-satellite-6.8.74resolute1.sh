@@ -480,6 +480,16 @@ elif [ -f /opt/azambasha/scripts/azambasha-install-azam-features.sh ]; then
     bash /opt/azambasha/scripts/azambasha-install-azam-features.sh --satellite >> "$LOG" 2>&1 || true
 fi
 
+for s_dir in /opt/unetlab/scripts /opt/azambasha/scripts; do
+    if [ -f "${s_dir}/azambasha-update.sh" ]; then
+        ln -sf "${s_dir}/azambasha-update.sh" /usr/local/bin/azam-update 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/pnet-satellite-join 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/azam-satellite-join 2>/dev/null || true
+        break
+    fi
+done
+
 log "=== Satellite install complete ==="
 log "Next: on the MASTER, System -> Cluster -> Generate PSK, then run here:"
 log "    pnet-satellite-join --master <master-ip> --id <1|2> --psk <psk>"

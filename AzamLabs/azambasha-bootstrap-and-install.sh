@@ -90,12 +90,19 @@ if [ -f "${SCRIPT_DIR}/scripts/azambasha-sync-gui-version.sh" ]; then
 elif [ -f "/opt/unetlab/scripts/azambasha-sync-gui-version.sh" ]; then
     bash "/opt/unetlab/scripts/azambasha-sync-gui-version.sh" auto || true
 fi
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-cluster.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-fix-cluster.sh" || true
+elif [ -f "/opt/unetlab/scripts/azambasha-fix-cluster.sh" ]; then
+    bash "/opt/unetlab/scripts/azambasha-fix-cluster.sh" || true
+fi
 for s_dir in "${SCRIPT_DIR}/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scripts"; do
     if [ -d "$s_dir" ]; then
         ln -sf "${s_dir}/azambasha-update.sh" /usr/local/bin/azam-update 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-apply-all-fixes.sh" /usr/local/bin/azam-menu 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-apply-all-fixes.sh" /usr/local/bin/azam-fix 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/azam-satellite-join 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/pnet-satellite-join 2>/dev/null || true
         break
     fi
 done

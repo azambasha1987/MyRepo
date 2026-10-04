@@ -21,6 +21,10 @@
 >    - Every shell script is verified with `bash -n`, Python scripts compiled with `py_compile`, and JavaScript validated with `node -c` before execution.
 > 6. **Dual-Node Parity Guarantee (Master & Satellite Synchronization)**:
 >    - All future updates, upstream issue fixes, kernel optimizations, appliance templates, and security hardening MUST be applied symmetrically to both Master Controller and Satellite Worker nodes. Worker nodes must never drift in kernel parameters, MTU, or template definitions.
+> 7. **Satellite Subsystem & Cluster Daemon Protection (Issue #40 & #33 Immunity)**:
+>    - **Zero Wrapper Stripping**: Satellite nodes must remain 100% self-contained with all hypervisor wrappers (`qemu_wrapper`, `iol_wrapper`, `dynamips_wrapper`, `unl_wrapper`) and Windows SPICE drivers intact (eliminating upstream Issue #40).
+>    - **Unjailed Cluster SSH Keys**: Cluster keys in `/root/.ssh/authorized_keys` must never be restricted with `command="rrsync...",restrict` (eliminating upstream Issue #33).
+>    - **Authoritative Dynamic Versioning**: Satellite daemons (`pnetlab-satd.py`, `pnetlab-brokerd.py`) must dynamically query `/opt/unetlab/VERSION` rather than hardcoding `dpkg-query`.
 
 ---
 
@@ -152,7 +156,16 @@ Systematically audit the latest version of PNetLab for **all newly introduced fe
      - Verify kernel packet forwarding (`net.ipv4.ip_forward = 1`, `net.ipv6.conf.all.forwarding = 1`, `net.ipv4.conf.all.proxy_arp = 1`), bridge promiscuous mode, and `iptables -P FORWARD ACCEPT` to eliminate container packet drops.
      - Ensure dynamic link traffic glow animations and frame counters hook seamlessly across `veth*` container interfaces.
 
-6. **AzamLabs Optimization Rule**:
+6. **Satellite Worker Subsystem & Cluster Daemons (`pnetlab-satd`, `pnetlab-brokerd`, `pnet-satellite-join`, `linkwatchd` & Soft-RoCE)**:
+   - **Binary Package Inspection & Codeberg Gitea API**: Query Codeberg's Gitea Package API (`/api/v1/packages/netkillui`) and Debian pool index (`/api/packages/netkillui/debian/dists/resolute/main/binary-amd64/Packages`) directly to detect new `.deb` package releases without relying on Git commits (which contain only `README.md`).
+   - **Satellite Daemon Differential Audit**: Unpack `pnetlab-satellite_*.deb` and line-diff daemon scripts:
+     - `pnetlab-satd.py`: Audit forwarded verbs (e.g. `node_validate`). Protect AzamLabs dynamic `/opt/unetlab/VERSION` resolution against upstream hardcoded `dpkg-query`.
+     - `pnetlab-brokerd.py`: Audit Soft-RoCE `rxe-broker/v1` API (port 4050) and Traffic Control mutex locking (`TC_LOCK`). Protect AzamLabs low-latency CPU governor (`halt_poll_ns=0`) and Ultra-KSM deduplication.
+     - `pnet-satellite-join`: Immunize cluster SSH authentication against upstream `command="rrsync...",restrict` key jailing (Issue #33) and maintain `azambasha-satellite-join.sh` as canonical.
+     - `pnetlab-linkwatchd.py`: Validate L2/L3 packet decoding (`describe_packet`) and traffic glow filters.
+   - **Hypervisor Wrapper Integrity (Issue #40 Shield)**: Ensure satellite packages maintain all native wrappers (`qemu_wrapper`, `iol_wrapper`, `dynamips_wrapper`, `unl_wrapper`) and Windows SPICE drivers so worker nodes are 100% self-sufficient.
+
+7. **AzamLabs Optimization Rule**:
    - Never blindly copy-paste upstream implementations.
    - Optimize all candidate code, new feature additions, tool enhancements, and container configurations specifically for AzamLabs: integrate with **Ultra-KSM 4KB RAM deduplication** (65–80% savings), **Silicon Dataplane MTU 9000 jumbo frames**, **CPU Governor** (`halt_poll_ns=0`), **Pure Black Dark Mode** aesthetics, and **Authoritative `root:azam` credentials**.
    - Enforce symmetrical availability across **both Master Controller and Satellite Worker nodes**.
@@ -221,6 +234,7 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 | **Execution (Audit)** | **Wed, 30 Sep 2026, 09:30 IST** | 30 Sep 2026, 04:00 UTC | Q3/Q4 2026 Check | 7/7 probes passed; Steps 1–3 completed; 15 new issues (#35–#49) audited; v6.8.84 & OpenBMP template discovered; Step 4 confirmation gate engaged. | ✅ `COMPLETED` |
 | **Execution (Implemented)** | **Sun, 04 Oct 2026, 07:15 IST** | 04 Oct 2026, 01:45 UTC | Plan Implementation | Step 4 human confirmation fulfilled; Step 5 One-Step Turnkey updates executed; v6.8.84 synced; OpenBMP deployed; Issues #45 & #49 resolved; 7/7 probes passed. | ✅ `COMPLETED` |
 | **Execution (v6.8.85 Sync)** | **Sun, 04 Oct 2026, 07:25 IST** | 04 Oct 2026, 01:55 UTC | v6.8.85 Audit & Sync | Upstream v6.8.85 (webconsole fixes & watcher animation) audited; Issues #50–#53 immunized & adapted; node quick button anti-obstruction hook deployed; 53 issues tracked. | ✅ `COMPLETED` |
+| **Execution (Satellite Ingest & Harden)** | **Sun, 04 Oct 2026, 12:15 IST** | 04 Oct 2026, 06:45 UTC | Satellite Code Ingest & Hardening | Upstream v6.8.85 satellite deb inspected; node_validate, rxe-broker/v1 & TC_LOCK ingested; Issue #40 wrapper stripping shielded; unjailed SSH preserved; audit engine updated with Package API probe. | ✅ `COMPLETED` |
 | **Cycle 1** | **Sat, 19 Dec 2026, 09:00 IST** | 19 Dec 2026, 03:30 UTC | Q4 2026 Check | Q4 upstream diff audit; Issue #34 canvas zoom retention review; package release sync. | ⏳ `SCHEDULED` |
 | **Cycle 2** | **Fri, 19 Mar 2027, 09:00 IST** | 19 Mar 2027, 03:30 UTC | Q1 2027 Check | Q1 2027 upstream diff audit; Ubuntu 26.04 Resolute point release kernel sanity check. | ⏳ `SCHEDULED` |
 | **Cycle 3** | **Sat, 19 Jun 2027, 09:00 IST** | 19 Jun 2027, 03:30 UTC | Q2 2027 Check | Q2 2027 upstream diff audit; Heavy node templates & multi-disk QEMU validation. | ⏳ `SCHEDULED` |
@@ -332,6 +346,7 @@ Every feature addition, bug fix, and performance hyper-tuning in AzamLabs is exp
 | **VPCS Dual-Stack IPv6 Engine (`pnetlab-vpcs v6.8.83resolute1`)** | Active (`v6.8.83`) | Active (`v6.8.83`) | `pnetlab-vpcs_6.8.83resolute1_amd64.deb` |
 | **Interactive Canvas Tools (Network Watcher, Painter, Analyzer)** | Active (Full Web-GUI & Live Stream) | Active (Worker Packet Mirroring & Veth Hooks) | `azam-features.js`, `pnet-capture-web` |
 | **Dynamic Web-GUI Version Synchronization (`v6.8.85`)** | Active (`v6.8.85`) | Active (`v6.8.85` via `satd` & `VERSION`) | `azambasha-sync-gui-version.sh`, `azambasha-satellite-join.sh`, `azambasha-update.sh` |
+| **Satellite Cluster Daemons (`satd`, `brokerd`, `linkwatchd` v6.8.85)** | Active (`v6.8.85` Hardened) | Active (`v6.8.85` Hardened + `node_validate`) | `pnetlab-satd.py`, `pnetlab-brokerd.py`, `pnetlab-linkwatchd.py` |
 | **Apache Event FastCGI, PHP-FPM & Session Cookies** | Active | N/A (Headless Worker) | `azambasha-fix-web-credentials.sh` |
 
 ---
@@ -393,6 +408,14 @@ Prioritized tasks for continuous improvement and upstream immunity:
      - Verify seamless zero-install integration with `pnet-capture-web:1.0` HTML5 packet capture container.
      - Ensure latency, packet loss, and jitter probes accurately measure inter-node link metrics.
      - Apply upstream enhancements to packet payload dissection and `.pcapng` stream exports without client-side dependencies.
+
+### Workstream 9: Satellite Node Code Ingestion, Hardening & Issue #40 Immunity
+- **Core Principle**: Satellite worker nodes must run the latest cluster protocol verbs (`node_validate`, Soft-RoCE `rxe-broker/v1`, Traffic Control `TC_LOCK`, structured packet decode `describe_packet`) while remaining 100% immune to upstream regressions (Issue #40 wrapper stripping, Issue #33 SSH jailing, and `dpkg-query` version desynchronization).
+- **Audit & Hardening Implementation**:
+  1. **Binary Package Registry Radar**: Audit Codeberg Gitea Package API (`/api/v1/packages/netkillui`) and Debian repo index on every quarterly cycle.
+  2. **Daemon Hardening**: Deploy hardened `pnetlab-satd.py` (with dynamic `/opt/unetlab/VERSION` resolution), `pnetlab-brokerd.py` (with `TC_LOCK` and crash-safe `UsageLedger`), and `pnetlab-linkwatchd.py` directly from version-controlled `scripts/`.
+  3. **Wrapper Preservation (Issue #40 Immunity)**: Guarantee that all hypervisor wrappers (`qemu_wrapper`, `iol_wrapper`, `dynamips_wrapper`, `unl_wrapper`) and Windows SPICE drivers remain intact on all Satellite nodes.
+  4. **Unjailed Cluster Interconnects (Issue #33 Immunity)**: Maintain `azambasha-satellite-join.sh` as canonical with unjailed `authorized_keys` and tri-tier password fallback (`$SSHPASS` -> `azam` -> `pnet`).
 
 ---
 

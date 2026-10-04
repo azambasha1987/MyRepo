@@ -953,15 +953,16 @@ if [ -x "$BANNER_SCRIPT" ]; then
 fi
 cp -f /etc/issue /etc/issue.net 2>/dev/null || true
 
-# Apply High-Density Heavy Node Memory & CPU Optimization for Satellite
+# Deploy All Hardened Scripts and High-Density Heavy Node Memory & CPU Optimization
 mkdir -p /opt/unetlab/scripts 2>/dev/null || true
-cp -f "${SCRIPT_DIR}"/scripts/azambasha-*.sh /opt/unetlab/scripts/ 2>/dev/null || true
-cp -f "${SCRIPT_DIR}"/scripts/azambasha-*.py /opt/unetlab/scripts/ 2>/dev/null || true
+cp -rf "${SCRIPT_DIR}"/scripts/. /opt/unetlab/scripts/ 2>/dev/null || true
 cp -f "${SCRIPT_DIR}"/scripts/apply-heavy-node-optimizer.sh /usr/local/bin/ 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/azambasha-credentials 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/azam-credentials 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/pnet-credentials 2>/dev/null || true
-chmod +x /opt/unetlab/scripts/* /usr/local/bin/apply-heavy-node-optimizer.sh 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/pnet-satellite-join 2>/dev/null || true
+chmod +x /opt/unetlab/scripts/*.sh /opt/unetlab/scripts/*.py /usr/local/bin/apply-heavy-node-optimizer.sh 2>/dev/null || true
 
 OPT_TOOL="${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh"
 if [ -f "$OPT_TOOL" ]; then

@@ -141,37 +141,93 @@ audit_docker_subsystem() {
     echo "${docker_status}|${img_count}|${capture_web}|${fwd_status}"
 }
 
+audit_satellite_subsystem() {
+    log_info "Auditing Satellite Worker Subsystem & Cluster Daemons..." >&2
+    local satd_status="UNKNOWN"
+    local broker_status="UNKNOWN"
+    local ssh_jail_status="SECURE (Unjailed)"
+
+    local satd_file="/opt/unetlab/scripts/pnetlab-satd.py"
+    [ ! -f "$satd_file" ] && [ -f "${SCRIPT_DIR}/pnetlab-satd.py" ] && satd_file="${SCRIPT_DIR}/pnetlab-satd.py"
+
+    if [ -f "$satd_file" ]; then
+        if grep -q "node_validate" "$satd_file" 2>/dev/null && grep -q "AzamLabs authoritative" "$satd_file" 2>/dev/null; then
+            satd_status="HARDENED (v6.8.85 + node_validate + Dynamic Versioning)"
+        elif grep -q "node_validate" "$satd_file" 2>/dev/null; then
+            satd_status="STANDARD (v6.8.85 + node_validate)"
+        else
+            satd_status="LEGACY (v6.8.74 baseline)"
+        fi
+    fi
+
+    local broker_file="/opt/unetlab/scripts/pnetlab-brokerd.py"
+    [ ! -f "$broker_file" ] && [ -f "${SCRIPT_DIR}/pnetlab-brokerd.py" ] && broker_file="${SCRIPT_DIR}/pnetlab-brokerd.py"
+
+    if [ -f "$broker_file" ]; then
+        if grep -q "rxe-broker/v1" "$broker_file" 2>/dev/null && grep -q "TC_LOCK" "$broker_file" 2>/dev/null; then
+            broker_status="HARDENED (RoCE v1 API + TC_LOCK + UsageLedger Fallback)"
+        else
+            broker_status="STANDARD"
+        fi
+    fi
+
+    if [ -f "/root/.ssh/authorized_keys" ]; then
+        if grep -q "rrsync" /root/.ssh/authorized_keys 2>/dev/null; then
+            ssh_jail_status="VULNERABLE (Jailed rrsync detected - Issue #33 risk)"
+        fi
+    fi
+
+    log_ok "Satellite Agent (satd): ${satd_status}" >&2
+    log_ok "Privilege Broker (brokerd): ${broker_status}" >&2
+    log_ok "Cluster SSH Status: ${ssh_jail_status}" >&2
+
+    echo "${satd_status}|${broker_status}|${ssh_jail_status}"
+}
+
 audit_live_upstream_drift() {
     log_info "Probing Codeberg upstream repository live (netkillui/Pnetlabv8)..." >&2
     local py_bin
     py_bin="$(command -v python3 2>/dev/null || command -v python 2>/dev/null || echo python3)"
 
     local drift_info
-    drift_info="$("$py_bin" -c "
-import urllib.request, json, re
-res = {'version': 'UNKNOWN', 'issues': 0, 'pkg': 'UNKNOWN', 'status': 'OFFLINE'}
+    drift_info="$("$py_bin" -c '
+import urllib.request, json, re, ssl
+res = {"version": "UNKNOWN", "issues": 0, "pkg": "UNKNOWN", "sat_pkg": "UNKNOWN", "status": "OFFLINE"}
+ctx = ssl._create_unverified_context()
+headers = {"User-Agent": "Mozilla/5.0"}
 try:
-    req = urllib.request.Request('https://codeberg.org/api/v1/repos/netkillui/Pnetlabv8/raw/README.md', headers={'User-Agent': 'Mozilla/5.0'})
-    with urllib.request.urlopen(req, timeout=5) as r:
-        txt = r.read().decode('utf-8', errors='ignore')
-        m = re.search(r'#\s*PNetLab\s*v8\s*([0-9.]+)', txt)
-        if m: res['version'] = 'v' + m.group(1)
-        p = re.search(r'serves\s*[\`\x60]([^\`\x60]+)[\`\x60]', txt)
-        if p: res['pkg'] = p.group(1)
-        res['status'] = 'ONLINE'
+    req = urllib.request.Request("https://codeberg.org/api/v1/repos/netkillui/Pnetlabv8/raw/README.md", headers=headers)
+    with urllib.request.urlopen(req, timeout=5, context=ctx) as r:
+        txt = r.read().decode("utf-8", errors="ignore")
+        m = re.search(r"#\s*PNetLab\s*v8\s*([0-9.]+)", txt)
+        if m: res["version"] = "v" + m.group(1)
+        p = re.search(r"serves\s*[\`\x60]([^\`\x60]+)[\`\x60]", txt)
+        if p: res["pkg"] = p.group(1)
+        res["status"] = "ONLINE"
 except Exception:
     pass
 
 try:
-    req = urllib.request.Request('https://codeberg.org/api/v1/repos/netkillui/Pnetlabv8/issues?state=all&limit=1', headers={'User-Agent': 'Mozilla/5.0'})
-    with urllib.request.urlopen(req, timeout=5) as r:
-        data = json.loads(r.read().decode('utf-8'))
-        if data: res['issues'] = data[0].get('number', 0)
+    req = urllib.request.Request("https://codeberg.org/api/v1/repos/netkillui/Pnetlabv8/issues?state=all&limit=1", headers=headers)
+    with urllib.request.urlopen(req, timeout=5, context=ctx) as r:
+        data = json.loads(r.read().decode("utf-8"))
+        if data: res["issues"] = data[0].get("number", 0)
 except Exception:
     pass
 
-print(f\"{res['status']}|{res['version']}|{res['pkg']}|{res['issues']}\")
-" 2>/dev/null || echo "OFFLINE|UNKNOWN|UNKNOWN|0")"
+try:
+    req = urllib.request.Request("https://codeberg.org/api/packages/netkillui/debian/dists/resolute/main/binary-amd64/Packages", headers=headers)
+    with urllib.request.urlopen(req, timeout=5, context=ctx) as r:
+        pkg_txt = r.read().decode("utf-8", errors="ignore")
+        m_sat = re.findall(r"Package:\s*pnetlab-satellite\s*Version:\s*([^\n\r]+)", pkg_txt)
+        if m_sat:
+            res["sat_pkg"] = m_sat[-1].strip()
+except Exception:
+    pass
+
+out = f"{res[\"status\"]}|{res[\"version\"]}|{res[\"pkg\"]}|{res[\"issues\"]}|{res[\"sat_pkg\"]}"
+print(out)
+' 2>/dev/null || echo "OFFLINE|UNKNOWN|UNKNOWN|0|UNKNOWN")"
 
     echo "$drift_info"
 }
@@ -236,37 +292,47 @@ run_audit() {
     # 2b. Live Upstream Intelligence & Release Drift Check
     local upstream_raw
     upstream_raw="$(audit_live_upstream_drift)"
-    local up_status up_ver up_pkg up_issues
+    local up_status up_ver up_pkg up_issues up_sat_pkg
     up_status="$(echo "$upstream_raw" | cut -d'|' -f1)"
     up_ver="$(echo "$upstream_raw" | cut -d'|' -f2)"
     up_pkg="$(echo "$upstream_raw" | cut -d'|' -f3)"
     up_issues="$(echo "$upstream_raw" | cut -d'|' -f4)"
+    up_sat_pkg="$(echo "$upstream_raw" | cut -d'|' -f5)"
 
     if [ "$up_status" = "ONLINE" ]; then
-        log_ok "Live Codeberg Status: ${BOLD}ONLINE${RESET} (Latest Remote: ${BOLD}${up_ver}${RESET}, Issues: ${BOLD}#${up_issues}${RESET})"
+        log_ok "Live Codeberg Status: ${BOLD}ONLINE${RESET} (Latest Remote: ${BOLD}${up_ver}${RESET}, Issues: ${BOLD}#${up_issues}${RESET}, Satellite Deb: ${BOLD}${up_sat_pkg}${RESET})"
         if [ "$up_ver" != "UNKNOWN" ] && [ "$up_ver" != "$web_ver" ]; then
             log_warn "UPSTREAM RELEASE DRIFT: Remote published ${up_ver}, local repo is ${web_ver}. Re-scan required!"
         else
             log_ok "Upstream Version Alignment: Synchronized with Codeberg (${web_ver})"
         fi
+        if [ "$up_sat_pkg" != "UNKNOWN" ] && [ "$up_sat_pkg" != "$pkg_ver" ]; then
+            log_warn "UPSTREAM SATELLITE DEB DRIFT: Remote package has ${up_sat_pkg}, local is ${pkg_ver}. Diff required!"
+        else
+            log_ok "Satellite Package Alignment: Synchronized with Codeberg (${pkg_ver})"
+        fi
     else
         log_info "Live Codeberg Status: OFFLINE (Operating in cached baseline mode)"
     fi
 
-    # 3. Audit QEMU Templates & Docker Subsystem
+    # 3. Audit QEMU Templates, Docker & Satellite Subsystems
     local tpl_count
     tpl_count="$(audit_qemu_templates)"
 
     local docker_raw
     docker_raw="$(audit_docker_subsystem)"
-    local docker_engine
+    local docker_engine docker_imgs docker_cap docker_fwd
     docker_engine="$(echo "$docker_raw" | cut -d'|' -f1)"
-    local docker_imgs
     docker_imgs="$(echo "$docker_raw" | cut -d'|' -f2)"
-    local docker_cap
     docker_cap="$(echo "$docker_raw" | cut -d'|' -f3)"
-    local docker_fwd
     docker_fwd="$(echo "$docker_raw" | cut -d'|' -f4)"
+
+    local sat_raw
+    sat_raw="$(audit_satellite_subsystem)"
+    local sat_agent sat_broker sat_ssh
+    sat_agent="$(echo "$sat_raw" | cut -d'|' -f1)"
+    sat_broker="$(echo "$sat_raw" | cut -d'|' -f2)"
+    sat_ssh="$(echo "$sat_raw" | cut -d'|' -f3)"
 
     # 4. Generate Audit Report
     mkdir -p "$REPORTS_DIR"
@@ -290,6 +356,7 @@ run_audit() {
 - **Web-GUI Version**: ${web_ver}
 - **Appliance Templates**: ${tpl_count} templates audited
 - **Docker Subsystem**: ${docker_engine} (${docker_imgs} images, Capture Web: ${docker_cap}, Forwarding: ${docker_fwd})
+- **Satellite Cluster Subsystem**: Agent: ${sat_agent} | Broker: ${sat_broker} | SSH: ${sat_ssh}
 
 ## Cluster Drift Assessment
 - **Tracked Issues**: 53 audited (0 unmanaged regressions)

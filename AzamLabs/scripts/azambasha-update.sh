@@ -225,6 +225,8 @@ sync_from_github() {
     ln -sf /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
     ln -sf /opt/unetlab/scripts/azambasha-dry-test.py /usr/local/bin/azam-dry-test 2>/dev/null || true
     ln -sf /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/azam-health 2>/dev/null || true
+    ln -sf /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-doctor 2>/dev/null || true
+    ln -sf /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-image-doctor 2>/dev/null || true
     ln -sf /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/azam-bootstorm 2>/dev/null || true
     ln -sf /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/pnet-bootstorm 2>/dev/null || true
 

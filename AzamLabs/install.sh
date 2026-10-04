@@ -1163,7 +1163,8 @@ ln -sfn /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-sat
 ln -sfn /opt/unetlab/scripts/azambasha-apply-branding.sh /usr/local/bin/azam-branding 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-fix-node-startup.sh /usr/local/bin/azam-nodes 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/azam-health 2>/dev/null || true
-ln -sfn /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/azam-doctor 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-doctor 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-image-doctor 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-images 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/azam-bootstorm 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-backup-restore.sh /usr/local/bin/azam-backup 2>/dev/null || true

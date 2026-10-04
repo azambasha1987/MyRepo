@@ -965,7 +965,19 @@ ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/aza
 ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/pnet-credentials 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/pnet-satellite-join 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-optimizer 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-doctor 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-image-doctor 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/azam-bootstorm 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/pnet-bootstorm 2>/dev/null || true
 chmod +x /opt/unetlab/scripts/*.sh /opt/unetlab/scripts/*.py /usr/local/bin/apply-heavy-node-optimizer.sh 2>/dev/null || true
+
+if [ -d "${SCRIPT_DIR}/html/templates" ]; then
+    mkdir -p /opt/unetlab/html/templates/intel /opt/unetlab/html/templates/amd 2>/dev/null || true
+    cp -rf "${SCRIPT_DIR}"/html/templates/* /opt/unetlab/html/templates/ 2>/dev/null || true
+    cp -f "${SCRIPT_DIR}"/html/templates/intel/*.yml /opt/unetlab/html/templates/ 2>/dev/null || true
+fi
 
 OPT_TOOL="${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh"
 if [ -f "$OPT_TOOL" ]; then

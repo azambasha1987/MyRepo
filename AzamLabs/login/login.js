@@ -119,10 +119,10 @@
 		fetch('/login/version.php', { credentials: 'same-origin' })
 			.then(function (r) { return r.json(); })
 			.then(function (data) {
-				versionValueEl.textContent = (data && data.version) ? data.version : 'v6.8.83';
+				versionValueEl.textContent = (data && data.version) ? data.version : 'v6.8.85';
 			})
 			.catch(function () {
-				versionValueEl.textContent = 'v6.8.83';
+				versionValueEl.textContent = 'v6.8.85';
 			});
 	}
 })();

@@ -8,7 +8,7 @@
 #   sudo bash scripts/azambasha-sync-gui-version.sh [VERSION] [PACKAGE_VERSION]
 #
 # Examples:
-#   sudo bash scripts/azambasha-sync-gui-version.sh 6.8.83 6.8.83resolute1
+#   sudo bash scripts/azambasha-sync-gui-version.sh 6.8.85 6.8.85resolute1
 #   sudo bash scripts/azambasha-sync-gui-version.sh auto
 # ==============================================================================
 set -euo pipefail
@@ -33,25 +33,33 @@ TARGET_PKG="${2:-}"
 # Auto-detect latest release from repo or installed packages
 if [ "$TARGET_INPUT" = "auto" ] || [ -z "$TARGET_INPUT" ]; then
     BASE_DETECT=""
-    if [ -f "${REPO_ROOT}/VERSION" ]; then
-        BASE_DETECT="$(grep -E '^PACKAGE_VERSION=' "${REPO_ROOT}/VERSION" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)"
-    fi
-    if [ -z "$BASE_DETECT" ] && [ -f "${REPO_ROOT}/docs/UPDATE_CHECK_PLAN.md" ]; then
-        BASE_DETECT="$(grep -oP '(?<=Implemented Package Version\*\*: `)[^`]+' "${REPO_ROOT}/docs/UPDATE_CHECK_PLAN.md" 2>/dev/null | head -n1 || true)"
-    fi
-    if [ -z "$BASE_DETECT" ] && [ -f "${REPO_ROOT}/docs/3_MONTHS_UPDATE_CHECK_PLAN.md" ]; then
-        BASE_DETECT="$(grep -oP '(?<=Implemented Package Version\*\*: `)[^`]+' "${REPO_ROOT}/docs/3_MONTHS_UPDATE_CHECK_PLAN.md" 2>/dev/null | head -n1 || true)"
-    fi
-    if [ -z "$BASE_DETECT" ] && [ -f "${REPO_ROOT}/docs/WEEKLY_IMPLEMENTATION_PLAN.md" ]; then
-        BASE_DETECT="$(grep -oP '(?<=Implemented Package Version\*\*: `)[^`]+' "${REPO_ROOT}/docs/WEEKLY_IMPLEMENTATION_PLAN.md" 2>/dev/null | head -n1 || true)"
+    # Search all candidate VERSION file locations
+    for v_candidate in \
+        "${REPO_ROOT}/VERSION" \
+        "/opt/azam-pnet/EMULATOR/Azam-Pnet/VERSION" \
+        "/opt/azambasha/VERSION" \
+        "/opt/unetlab/VERSION" \
+        "/etc/pnetlab-version" \
+        "${SCRIPT_DIR}/../VERSION"; do
+        if [ -f "$v_candidate" ]; then
+            BASE_DETECT="$(grep -E '^PACKAGE_VERSION=' "$v_candidate" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)"
+            [ -n "$BASE_DETECT" ] && break
+        fi
+    done
+    if [ -z "$BASE_DETECT" ]; then
+        for doc_candidate in \
+            "${REPO_ROOT}/docs/UPDATE_CHECK_PLAN.md" \
+            "/opt/azam-pnet/EMULATOR/Azam-Pnet/docs/UPDATE_CHECK_PLAN.md" \
+            "/opt/azambasha/docs/UPDATE_CHECK_PLAN.md" \
+            "${REPO_ROOT}/docs/WEEKLY_IMPLEMENTATION_PLAN.md"; do
+            if [ -f "$doc_candidate" ]; then
+                BASE_DETECT="$(grep -oP '(?<=Implemented Package Version\*\*: `)[^`]+' "$doc_candidate" 2>/dev/null | head -n1 || true)"
+                [ -n "$BASE_DETECT" ] && break
+            fi
+        done
     fi
     if [ -z "$BASE_DETECT" ]; then
-        LATEST_DIR="$(ls -d ${REPO_ROOT}/generic/6.* 2>/dev/null | sort -V | tail -n1 || true)"
-        if [ -n "$LATEST_DIR" ]; then
-            BASE_DETECT="$(basename "$LATEST_DIR")"
-        else
-            BASE_DETECT="6.8.85resolute1"
-        fi
+        BASE_DETECT="6.8.85resolute1"
     fi
     TARGET_INPUT="$BASE_DETECT"
 fi
@@ -101,6 +109,19 @@ PHPEOF
     chmod 0644 "$VERSION_PHP" 2>/dev/null || true
     log_ok "Updated ${VERSION_PHP} (PNET_RELEASE: v${RELEASE_VER}, PNET_PACKAGE_VERSION: ${PACKAGE_VER})"
 fi
+
+# Persist authoritative VERSION metadata across system paths
+for v_dest in "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/opt/azam-pnet/EMULATOR/Azam-Pnet/VERSION" "/etc/pnetlab-version"; do
+    if [ -d "$(dirname "$v_dest")" ]; then
+        cat << VEOF > "$v_dest"
+VERSION=${RELEASE_VER}
+PACKAGE_VERSION=${PACKAGE_VER}
+RELEASE_DATE=$(date +'%Y-%m-%d')
+PLATFORM=Ubuntu 26.04 Resolute LTS
+VEOF
+        chmod 0644 "$v_dest" 2>/dev/null || true
+    fi
+done
 
 # ── 3. Patch /opt/unetlab/html/status/api.php for Package Version Override ────
 STATUS_API="/opt/unetlab/html/status/api.php"

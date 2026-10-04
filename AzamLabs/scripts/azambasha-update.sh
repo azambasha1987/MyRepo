@@ -102,16 +102,32 @@ run_diagnostics() {
 
 sync_from_github() {
     log_info "Connecting to GitHub to fetch the latest AzamLabs code..."
-    local repo_dir="${BASE_DIR}"
     local github_url="https://github.com/azambasha1987/MyRepo.git"
     local github_tar_url="https://github.com/azambasha1987/MyRepo/archive/refs/heads/main.tar.gz"
 
-    if [ -d "${repo_dir}/.git" ]; then
-        log_info "Synchronizing Git repository: ${repo_dir}..."
-        git -C "$repo_dir" fetch origin main --quiet 2>/dev/null || true
-        git -C "$repo_dir" reset --hard origin/main --quiet 2>/dev/null || git -C "$repo_dir" pull origin main --quiet 2>/dev/null || true
-        log_ok "Updated repository to latest commit from GitHub (origin/main)."
-    else
+    # Identify all candidate repository directories on the system
+    local sync_targets=()
+    for cand in "${BASE_DIR}" "/opt/azam-pnet/EMULATOR/Azam-Pnet" "/opt/azambasha"; do
+        if [ -d "$cand" ] && [[ ! " ${sync_targets[*]:-} " =~ " ${cand} " ]]; then
+            sync_targets+=("$cand")
+        fi
+    done
+
+    local updated_any=0
+    for target in "${sync_targets[@]}"; do
+        if [ -d "${target}/.git" ]; then
+            log_info "Synchronizing Git repository: ${target}..."
+            git -C "$target" fetch origin main --quiet 2>/dev/null || true
+            git -C "$target" reset --hard origin/main --quiet 2>/dev/null || true
+            git -C "$target" clean -fd --quiet 2>/dev/null || true
+            log_ok "Synchronized ${target} to latest commit from GitHub (origin/main)."
+            updated_any=1
+        fi
+    done
+
+    # If no git directory was present, pull tarball into BASE_DIR
+    if [ "$updated_any" -eq 0 ]; then
+        local repo_dir="${BASE_DIR}"
         mkdir -p "$repo_dir" 2>/dev/null || true
         if command -v git &>/dev/null && git clone --depth 1 "$github_url" "${repo_dir}_new" 2>/dev/null; then
             cp -rf "${repo_dir}_new/." "$repo_dir/" 2>/dev/null || true
@@ -123,9 +139,42 @@ sync_from_github() {
         elif command -v wget &>/dev/null; then
             wget -qO- "$github_tar_url" | tar -xz -C "$repo_dir" --strip-components=1 2>/dev/null || true
             log_ok "Fetched latest codebase from GitHub via public archive tarball."
-        else
-            log_warn "Neither git, curl, nor wget available for remote download; utilizing cached files."
         fi
+    fi
+
+    # Propagate latest scripts and authoritative VERSION across all system runtime locations
+    local src_repo="${BASE_DIR}"
+    [ ! -f "${src_repo}/VERSION" ] && [ -f "/opt/azam-pnet/EMULATOR/Azam-Pnet/VERSION" ] && src_repo="/opt/azam-pnet/EMULATOR/Azam-Pnet"
+    [ ! -f "${src_repo}/VERSION" ] && [ -f "/opt/azambasha/VERSION" ] && src_repo="/opt/azambasha"
+
+    if [ -d "${src_repo}/scripts" ]; then
+        chmod +x "${src_repo}"/*.sh "${src_repo}/scripts"/*.sh "${src_repo}/scripts"/*.py 2>/dev/null || true
+        for runtime_dir in "/opt/unetlab/scripts" "/opt/azambasha/scripts"; do
+            if [ -d "$runtime_dir" ] && [ "$runtime_dir" != "${src_repo}/scripts" ]; then
+                cp -rf "${src_repo}/scripts/." "$runtime_dir/" 2>/dev/null || true
+                chmod +x "${runtime_dir}"/*.sh "${runtime_dir}"/*.py 2>/dev/null || true
+            fi
+        done
+    fi
+
+    if [ -f "${src_repo}/VERSION" ]; then
+        for v_dest in "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/opt/azam-pnet/EMULATOR/Azam-Pnet/VERSION" "/etc/pnetlab-version"; do
+            if [ -d "$(dirname "$v_dest")" ]; then
+                cp -f "${src_repo}/VERSION" "$v_dest" 2>/dev/null || true
+                chmod 0644 "$v_dest" 2>/dev/null || true
+            fi
+        done
+    fi
+
+    # Refresh symlinks
+    ln -sf "${src_repo}/scripts/azambasha-update.sh" /usr/local/bin/azam-update 2>/dev/null || true
+    ln -sf "${src_repo}/scripts/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
+
+    # Self-reexec to ensure currently running bash process executes the newly updated script
+    if [ "${AZAM_REEXEC:-0}" -ne 1 ]; then
+        export AZAM_REEXEC=1
+        log_info "Restarting azam-update with latest synchronized code..."
+        exec bash "$REAL_PATH" "$@"
     fi
 }
 

@@ -56,12 +56,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "")
 REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Version
-VERSION_STR="v6.8.83 (6.8.83resolute1)"
-if [ -f "${REPO_ROOT}/VERSION" ]; then
-    V_VAL=$(grep -E '^VERSION=' "${REPO_ROOT}/VERSION" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)
-    P_VAL=$(grep -E '^PACKAGE_VERSION=' "${REPO_ROOT}/VERSION" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)
-    [ -n "$V_VAL" ] && VERSION_STR="v${V_VAL#v} (${P_VAL})"
-fi
+VERSION_STR="v6.8.85 (6.8.85resolute1)"
+for v_loc in "${REPO_ROOT}/VERSION" "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/opt/azam-pnet/EMULATOR/Azam-Pnet/VERSION" "/etc/pnetlab-version"; do
+    if [ -f "$v_loc" ]; then
+        V_VAL=$(grep -E '^VERSION=' "$v_loc" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)
+        P_VAL=$(grep -E '^PACKAGE_VERSION=' "$v_loc" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)
+        [ -n "$V_VAL" ] && VERSION_STR="v${V_VAL#v} (${P_VAL})" && break
+    fi
+done
 if [ -f "/opt/unetlab/html/includes/version.php" ]; then
     VERSION_VAL=$(grep -oP "(?<=define\('PNET_RELEASE', ')[^']+" /opt/unetlab/html/includes/version.php 2>/dev/null || true)
     PKG_VAL=$(grep -oP "(?<=define\('PNET_PACKAGE_VERSION', ')[^']+" /opt/unetlab/html/includes/version.php 2>/dev/null || true)

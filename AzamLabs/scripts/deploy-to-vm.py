@@ -164,11 +164,11 @@ def deploy_host(host, user, password, port, args):
         
         # Upload root installer files
         ensure_remote_dir(sftp, remote_base)
-        for rfile in ["install.sh", "install-satellite.sh", "azambasha-bootstrap-and-install.sh", "README.md", "VERIFICATION_REPORT.md"]:
+        for rfile in ["VERSION", "install.sh", "install-satellite.sh", "azambasha-bootstrap-and-install.sh", "README.md", "VERIFICATION_REPORT.md"]:
             lpath = os.path.join(BASE_DIR, rfile)
             if os.path.exists(lpath) and not args.dry_run:
                 sftp.put(lpath, f"{remote_base}/{rfile}")
-                sftp.chmod(f"{remote_base}/{rfile}", 0o755)
+                sftp.chmod(f"{remote_base}/{rfile}", 0o644 if rfile in ["VERSION", "README.md", "VERIFICATION_REPORT.md"] else 0o755)
                 
         # Sync core subdirectories
         for sdir in ["scripts", "assets", "assets-common", "login", "schema", "metadata", "generic", "debian", "html", "docs", "themes"]:
@@ -281,7 +281,7 @@ def main():
     parser.add_argument("--cluster-psk", help="Cluster 64-hex PSK key from Master")
     parser.add_argument("--join-only", action="store_true", help="Run satellite cluster join utility without full re-install")
     parser.add_argument("--fix-credentials", action="store_true", help="Restore Web-GUI admin credentials (admin / azam) and clear login throttles")
-    parser.add_argument("--sync-version", nargs="?", const="auto", help="Synchronize Web-GUI version display to latest implemented release (e.g. 6.8.83 or auto)")
+    parser.add_argument("--sync-version", nargs="?", const="auto", help="Synchronize Web-GUI version display to latest implemented release (e.g. 6.8.85 or auto)")
     parser.add_argument("--dry-run", action="store_true", help="Simulate sync without uploading")
 
     args = parser.parse_args()

@@ -610,10 +610,29 @@ sync_files = [
 satellites = []
 try:
     import pymysql
-    conn = pymysql.connect(host='localhost', user='pnetlab', password='pnetlab_password', database='pnetlab_db')
-    with conn.cursor() as cur:
-        cur.execute("SELECT ip FROM satellites WHERE status=1")
-        satellites = [row[0] for row in cur.fetchall()]
+    for db_pass in ['pnetlab', 'pnetlab_password', '']:
+        try:
+            conn = pymysql.connect(host='localhost', user='pnetlab', password=db_pass, database='pnetlab_db')
+            with conn.cursor() as cur:
+                try:
+                    cur.execute("SELECT host_ip FROM cluster_hosts WHERE host_ip != '127.0.0.1'")
+                    for row in cur.fetchall():
+                        if row[0] and row[0] not in satellites:
+                            satellites.append(row[0])
+                except Exception:
+                    pass
+                try:
+                    cur.execute("SELECT ip FROM satellites WHERE status=1")
+                    for row in cur.fetchall():
+                        if row[0] and row[0] not in satellites:
+                            satellites.append(row[0])
+                except Exception:
+                    pass
+            conn.close()
+            if satellites:
+                break
+        except Exception:
+            continue
 except Exception:
     pass
 

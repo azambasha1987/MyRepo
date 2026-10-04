@@ -12,6 +12,8 @@
 # ==============================================================================
 set -Eeuo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "/opt/unetlab/scripts")"
+
 if [ "$(id -u)" -ne 0 ]; then
     echo "[ERROR] This script must be run as root. Please run: sudo bash $0" >&2
     exit 1

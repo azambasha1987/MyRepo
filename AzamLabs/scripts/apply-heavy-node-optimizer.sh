@@ -682,18 +682,54 @@ systemctl enable --now azambasha-cpu-governor.service 2>/dev/null || true
 if [[ "${1:-}" == "--cluster" ]] && [ "$ROLE" = "master" ]; then
     echo "[*] Propagating optimization to all registered satellite nodes..."
     python3 - << 'PYEOF'
-import subprocess
-try:
-    import pymysql
-    conn = pymysql.connect(host='localhost', user='pnetlab', password='pnetlab_password', database='pnetlab_db')
-    with conn.cursor() as cur:
-        cur.execute("SELECT ip FROM satellites WHERE status=1")
-        for row in cur.fetchall():
-            ip = row[0]
-            print(f"  [*] Optimizing Satellite: {ip}...")
-            subprocess.run(["ssh", "-o", "StrictHostKeyChecking=no", f"root@{ip}", "curl -fsSL https://raw.githubusercontent.com/azambasha1987/MyRepo/main/AzamLabs/scripts/apply-heavy-node-optimizer.sh | bash"], timeout=30)
-except Exception as e:
-    print(f"  [*] Satellite sync note: {e}")
+    import os, subprocess
+    sync_files = [
+        "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh",
+        "/opt/unetlab/scripts/apply-heavy-node-optimizer.sh",
+        "/opt/unetlab/scripts/azam-iol-shim.c",
+        "/opt/unetlab/scripts/azambasha-iol-shim.c",
+        "/opt/unetlab/scripts/ksm_merge_exec.c",
+        "/opt/unetlab/scripts/azambasha-ksm-merge-exec.c",
+        "/opt/unetlab/scripts/azambasha-cpu-governor.py",
+        "/opt/unetlab/scripts/azambasha-fix-node-startup.sh"
+    ]
+    satellites = []
+    try:
+        import pymysql
+        for db_pass in ['pnetlab', 'pnetlab_password', '']:
+            try:
+                conn = pymysql.connect(host='localhost', user='pnetlab', password=db_pass, database='pnetlab_db')
+                with conn.cursor() as cur:
+                    try:
+                        cur.execute("SELECT host_ip FROM cluster_hosts WHERE host_ip != '127.0.0.1'")
+                        for row in cur.fetchall():
+                            if row[0] and row[0] not in satellites:
+                                satellites.append(row[0])
+                    except Exception:
+                        pass
+                    try:
+                        cur.execute("SELECT ip FROM satellites WHERE status=1")
+                        for row in cur.fetchall():
+                            if row[0] and row[0] not in satellites:
+                                satellites.append(row[0])
+                    except Exception:
+                        pass
+                conn.close()
+                if satellites:
+                    break
+            except Exception:
+                continue
+    except Exception:
+        pass
+
+    for ip in satellites:
+        print(f"  [*] Optimizing Satellite: {ip}...")
+        for sf in sync_files:
+            if os.path.isfile(sf):
+                subprocess.run(["scp", "-o", "StrictHostKeyChecking=no", sf, f"root@{ip}:/opt/unetlab/scripts/"], timeout=15)
+                subprocess.run(["scp", "-o", "StrictHostKeyChecking=no", sf, f"root@{ip}:/tmp/"], timeout=15)
+        subprocess.run(["ssh", "-o", "StrictHostKeyChecking=no", f"root@{ip}", "chmod +x /opt/unetlab/scripts/azambasha-*.sh /opt/unetlab/scripts/azambasha-*.py && bash /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh --satellite && bash /opt/unetlab/scripts/azambasha-fix-node-startup.sh"], timeout=60)
+        print(f"  [✔] Satellite {ip} optimized!")
 PYEOF
 fi
 

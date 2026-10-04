@@ -222,6 +222,12 @@ def deploy_host(host, user, password, port, args):
         elif args.apply_all:
             log_info("Executing Master Fix & Optimization Suite...")
             execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-apply-all-fixes.sh 19")
+        elif args.optimize:
+            log_info("Applying High-Density Heavy Node Memory & CPU Optimization (Master & Satellites)...")
+            execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-heavy-node-optimizer.sh --master --cluster && sudo bash scripts/azambasha-fix-node-startup.sh")
+        elif args.optimize_satellite:
+            log_info("Applying High-Density Heavy Node Memory & CPU Optimization (Satellite)...")
+            execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-heavy-node-optimizer.sh --satellite && sudo bash scripts/azambasha-fix-node-startup.sh")
         elif args.satellite_fixes:
             log_info("Executing Satellite Worker Fix & Optimization Suite...")
             execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-apply-all-fixes.sh 25")
@@ -266,6 +272,8 @@ def main():
     parser.add_argument("--port", "-P", type=int, default=int(os.environ.get("VM_PORT", 22)), help="SSH port (default: 22)")
     parser.add_argument("--remote-dir", default="/opt/azambasha", help="Remote base directory (default: /opt/azambasha)")
     parser.add_argument("--apply-all", action="store_true", help="Apply all fixes and speed optimizations on targets")
+    parser.add_argument("--optimize", action="store_true", help="Deploy and activate High-Density Memory & CPU Optimizer on Master (Cat8000, Cisco 8000, Cat9000, IOL)")
+    parser.add_argument("--optimize-satellite", action="store_true", help="Deploy and activate High-Density Memory & CPU Optimizer on Satellite Worker")
     parser.add_argument("--test", action="store_true", help="Run node validation test suite on targets")
     parser.add_argument("--weekly-scan", action="store_true", help="Run weekly Codeberg scanner remotely and fetch report")
     parser.add_argument("--verify", action="store_true", help="Run remote non-regression health probes across fleet")

@@ -52,11 +52,20 @@ def run_probe(probe_num, probe_name, func):
         return False
 
 def probe_plan_and_ledger():
-    plan_path = os.path.join(BASE_DIR, "docs", "UPDATE_CHECK_PLAN.md")
-    if not os.path.isfile(plan_path):
-        plan_path = os.path.join(BASE_DIR, "docs", "3_MONTHS_UPDATE_CHECK_PLAN.md")
-    if not os.path.isfile(plan_path):
-        return False, [f"File missing: {plan_path}"]
+    plan_path = None
+    for cand in [
+        os.path.join(BASE_DIR, "docs", "UPDATE_CHECK_PLAN.md"),
+        os.path.join(BASE_DIR, "docs", "3_MONTHS_UPDATE_CHECK_PLAN.md"),
+        "/opt/azambasha/docs/UPDATE_CHECK_PLAN.md",
+        "/opt/azam-pnet/EMULATOR/Azam-Pnet/docs/UPDATE_CHECK_PLAN.md",
+        "/opt/azam-pnet/AzamLabs/docs/UPDATE_CHECK_PLAN.md",
+        "/opt/unetlab/docs/UPDATE_CHECK_PLAN.md"
+    ]:
+        if os.path.isfile(cand):
+            plan_path = cand
+            break
+    if not plan_path:
+        return False, ["UPDATE_CHECK_PLAN.md not found in candidate paths"]
 
     with open(plan_path, "r", encoding="utf-8") as f:
         content = f.read()
@@ -93,9 +102,16 @@ def probe_plan_and_ledger():
         return False, ["5-Step Governance Workflow missing or incomplete in plan"]
 
     # Check ONE_STEP_UPDATE_COMMANDS.md and azambasha-update.sh exist
-    one_step_doc = os.path.join(BASE_DIR, "docs", "ONE_STEP_UPDATE_COMMANDS.md")
+    one_step_candidates = [
+        os.path.join(BASE_DIR, "docs", "ONE_STEP_UPDATE_COMMANDS.md"),
+        "/opt/azambasha/docs/ONE_STEP_UPDATE_COMMANDS.md",
+        "/opt/azam-pnet/EMULATOR/Azam-Pnet/docs/ONE_STEP_UPDATE_COMMANDS.md",
+        "/opt/azam-pnet/AzamLabs/docs/ONE_STEP_UPDATE_COMMANDS.md",
+        "/opt/unetlab/docs/ONE_STEP_UPDATE_COMMANDS.md",
+    ]
+    one_step_doc = next((c for c in one_step_candidates if os.path.isfile(c)), None)
     update_script = os.path.join(SCRIPT_DIR, "azambasha-update.sh")
-    if os.path.isfile(one_step_doc) and os.path.isfile(update_script):
+    if one_step_doc and os.path.isfile(update_script):
         details.append("ONE_STEP_UPDATE_COMMANDS.md and azambasha-update.sh verified for Master & Satellite.")
     else:
         return False, ["ONE_STEP_UPDATE_COMMANDS.md or azambasha-update.sh missing"]
@@ -183,9 +199,19 @@ def probe_audit_runner():
     return True, details
 
 def probe_canvas_viewport_retention():
-    features_js = os.path.join(BASE_DIR, "html", "main", "azam-features.js")
-    if not os.path.isfile(features_js):
-        return False, [f"File missing: {features_js}"]
+    features_js = None
+    for cand in [
+        os.path.join(BASE_DIR, "html", "main", "azam-features.js"),
+        os.path.join(BASE_DIR, "html", "main", "js", "azam-features.js"),
+        "/opt/unetlab/html/main/js/azam-features.js",
+        "/opt/azambasha/html/main/azam-features.js",
+        "/opt/azam-pnet/EMULATOR/Azam-Pnet/html/main/azam-features.js"
+    ]:
+        if os.path.isfile(cand):
+            features_js = cand
+            break
+    if not features_js:
+        return False, ["azam-features.js not found in candidate paths"]
 
     with open(features_js, "r", encoding="utf-8") as f:
         content = f.read()
@@ -210,9 +236,20 @@ def probe_canvas_viewport_retention():
     return True, details
 
 def probe_ops_dashboard():
-    ops_html = os.path.join(BASE_DIR, "html", "azam-ops", "index.html")
-    if not os.path.isfile(ops_html):
-        return False, [f"File missing: {ops_html}"]
+    ops_html = None
+    for cand in [
+        os.path.join(BASE_DIR, "html", "azam-ops", "index.html"),
+        "/opt/unetlab/html/azam-ops/index.html",
+        "/opt/azambasha/html/azam-ops/index.html",
+        "/opt/azam-pnet/AzamLabs/html/azam-ops/index.html",
+        "/opt/azam-pnet/EMULATOR/Azam-Pnet/html/azam-ops/index.html"
+    ]:
+        if os.path.isfile(cand):
+            ops_html = cand
+            break
+
+    if not ops_html:
+        return False, ["File missing: azam-ops/index.html in candidate paths"]
 
     with open(ops_html, "r", encoding="utf-8") as f:
         content = f.read()
@@ -232,9 +269,20 @@ def probe_ops_dashboard():
     return True, details
 
 def probe_docker_subsystem():
-    plan_path = os.path.join(BASE_DIR, "docs", "UPDATE_CHECK_PLAN.md")
-    if not os.path.isfile(plan_path):
-        plan_path = os.path.join(BASE_DIR, "docs", "3_MONTHS_UPDATE_CHECK_PLAN.md")
+    plan_path = None
+    for cand in [
+        os.path.join(BASE_DIR, "docs", "UPDATE_CHECK_PLAN.md"),
+        os.path.join(BASE_DIR, "docs", "3_MONTHS_UPDATE_CHECK_PLAN.md"),
+        "/opt/azambasha/docs/UPDATE_CHECK_PLAN.md",
+        "/opt/azam-pnet/EMULATOR/Azam-Pnet/docs/UPDATE_CHECK_PLAN.md",
+        "/opt/azam-pnet/AzamLabs/docs/UPDATE_CHECK_PLAN.md",
+        "/opt/unetlab/docs/UPDATE_CHECK_PLAN.md"
+    ]:
+        if os.path.isfile(cand):
+            plan_path = cand
+            break
+    if not plan_path:
+        return False, ["UPDATE_CHECK_PLAN.md not found in candidate paths"]
     audit_path = os.path.join(SCRIPT_DIR, "azambasha-quarterly-audit.sh")
     docker_fix = os.path.join(SCRIPT_DIR, "azambasha-upload-and-docker-fix.sh")
 
@@ -426,15 +474,42 @@ def probe_universal_optimization():
         details.append(f"Git Repository Templates: All {len(repo_tpls)} QEMU templates ({', '.join(repo_tpls)}) have mem-merge=on baked in.")
 
     # 8. Verify future install, bootstrap, and maintenance coverage
-    install_sh = os.path.join(BASE_DIR, "install.sh")
-    bootstrap_sh = os.path.join(BASE_DIR, "azambasha-bootstrap-and-install.sh")
+    install_candidates = [
+        os.path.join(BASE_DIR, "install.sh"),
+        "/opt/azambasha/install.sh",
+        "/opt/azam-pnet/EMULATOR/Azam-Pnet/install.sh",
+        "/opt/azam-pnet/AzamLabs/install.sh"
+    ]
+    install_sh = next((c for c in install_candidates if os.path.isfile(c)), None)
+
+    bootstrap_candidates = [
+        os.path.join(BASE_DIR, "azambasha-bootstrap-and-install.sh"),
+        "/opt/azambasha/azambasha-bootstrap-and-install.sh",
+        "/opt/azam-pnet/EMULATOR/Azam-Pnet/azambasha-bootstrap-and-install.sh",
+        "/opt/azam-pnet/AzamLabs/azambasha-bootstrap-and-install.sh",
+        os.path.join(SCRIPT_DIR, "azambasha-bootstrap-and-install.sh"),
+    ]
+    bootstrap_sh = next((c for c in bootstrap_candidates if os.path.isfile(c)), None)
+
     feat_sh = os.path.join(SCRIPT_DIR, "azambasha-install-azam-features.sh")
     perm_sh = os.path.join(SCRIPT_DIR, "azambasha-fix-permissions.sh")
     
-    for req_file in [install_sh, bootstrap_sh, feat_sh, perm_sh]:
+    req_files = [feat_sh, perm_sh]
+    if install_sh:
+        req_files.append(install_sh)
+    if bootstrap_sh:
+        req_files.append(bootstrap_sh)
+
+    for req_file in req_files:
         if os.path.isfile(req_file):
             with open(req_file, "r", encoding="utf-8") as f:
                 txt = f.read()
+            # If this is a wrapper script, follow its target
+            if "exec bash" in txt and "azambasha-bootstrap-and-install.sh" in txt:
+                target_cand = "/opt/azambasha/azambasha-bootstrap-and-install.sh"
+                if os.path.isfile(target_cand):
+                    with open(target_cand, "r", encoding="utf-8") as f:
+                        txt = f.read()
             if "azambasha-heavy-node-optimizer.sh" not in txt:
                 return False, [f"Future install script {os.path.basename(req_file)} missing optimizer integration"]
         else:

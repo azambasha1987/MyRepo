@@ -1,0 +1,15 @@
+---
+type: qemu
+description: RXE Soft-RoCE RDMA Linux Appliance (Debian Trixie)
+name: RXE
+cpulimit: 1
+icon: Server-2D-Linux-S.svg
+cpu: 2
+ram: 2048
+ethernet: 2
+console: telnet
+shutdown: 1
+qemu_arch: x86_64
+qemu_nic: virtio-net-pci
+qemu_options: -machine mem-merge=on -machine type=q35,accel=kvm -vga std -device usb-tablet -boot order=c -cpu host
+...

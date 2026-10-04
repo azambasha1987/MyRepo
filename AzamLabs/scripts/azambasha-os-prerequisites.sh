@@ -232,6 +232,7 @@ MASTER_PREREQUISITES=(
     qemu-system-x86
     qemu-system-common
     qemu-utils
+    dynamips
     libguestfs-tools
     dkms
     build-essential

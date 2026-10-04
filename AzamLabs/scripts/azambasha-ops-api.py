@@ -18,7 +18,16 @@ PID_FILE = "/var/run/azam-ops-api.pid"
 # Whitelisted commands (name → real command)
 # ──────────────────────────────────────────────────────────────────────────────
 COMMANDS = {
-    # Health & Monitoring
+    # Optimization Engine
+    "optimizer-check":   ["bash", "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh", "--check"],
+    "optimizer-run":     ["bash", "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh", "--apply"],
+    "optimizer-dry-run": ["bash", "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh", "--dry-run"],
+
+    # Health, Monitoring & Auditing
+    "audit":             ["bash", "/opt/unetlab/scripts/azambasha-quarterly-audit.sh"],
+    "health-check":      ["bash", "/opt/unetlab/scripts/azambasha-health-check.sh"],
+    "dry-test":          ["python3", "/opt/unetlab/scripts/azambasha-dry-test.py"],
+    "update-check":      ["bash", "/opt/unetlab/scripts/azambasha-update.sh", "--check"],
     "fleet":         ["bash", "/usr/local/bin/azam-fleet"],
     "capacity":      ["python3", "/usr/local/bin/azam-capacity"],
     "doctor":        ["bash", "/usr/local/bin/azam-doctor", "--check"],

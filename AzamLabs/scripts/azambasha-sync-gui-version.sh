@@ -26,9 +26,36 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-# ── 1. Determine Target Version ───────────────────────────────────────────────
+# ── 1. Determine Target Version & Command Options ─────────────────────────────
 TARGET_INPUT="${1:-auto}"
 TARGET_PKG="${2:-}"
+
+if [ "$TARGET_INPUT" = "-h" ] || [ "$TARGET_INPUT" = "--help" ]; then
+    echo "Usage: sudo bash $0 [--check | auto | <VERSION> [PACKAGE_VERSION]]"
+    echo ""
+    echo "Options:"
+    echo "  --check, check, status  Display current system and GUI version without modifying files"
+    echo "  auto                    Auto-detect and synchronize latest version"
+    echo "  <VERSION>               Specify target version (e.g. 6.8.85 or 6.8.85resolute1)"
+    exit 0
+fi
+
+if [ "$TARGET_INPUT" = "--check" ] || [ "$TARGET_INPUT" = "check" ] || [ "$TARGET_INPUT" = "-c" ] || [ "$TARGET_INPUT" = "status" ]; then
+    echo "============================================================"
+    echo "  Azam Basha Platform Version Inspection                    "
+    echo "============================================================"
+    if [ -f "/opt/unetlab/VERSION" ]; then
+        echo "[*] /opt/unetlab/VERSION:"
+        cat /opt/unetlab/VERSION | sed 's/^/    /'
+    else
+        echo "[!] /opt/unetlab/VERSION not found"
+    fi
+    if [ -f "/opt/unetlab/html/includes/version.php" ]; then
+        echo "[*] /opt/unetlab/html/includes/version.php:"
+        grep -E 'PNET_(RELEASE|VERSION|PACKAGE_VERSION)' /opt/unetlab/html/includes/version.php 2>/dev/null | sed 's/^/    /' || true
+    fi
+    exit 0
+fi
 
 # Auto-detect latest release from repo or installed packages
 if [ "$TARGET_INPUT" = "auto" ] || [ -z "$TARGET_INPUT" ]; then
@@ -65,9 +92,16 @@ if [ "$TARGET_INPUT" = "auto" ] || [ -z "$TARGET_INPUT" ]; then
     TARGET_INPUT="$BASE_DETECT"
 fi
 
+# Validate format before proceeding to prevent accidental file corruption
+TARGET_CLEAN="$(echo "$TARGET_INPUT" | sed -E 's/^v//')"
+if ! [[ "$TARGET_CLEAN" =~ ^[0-9]+(\.[0-9]+)+ ]]; then
+    log_err "Invalid version format: '${TARGET_INPUT}'. Expected semantic version (e.g. 6.8.85 or auto)."
+    echo "Usage: sudo bash $0 [--check | auto | <VERSION> [PACKAGE_VERSION]]"
+    exit 1
+fi
+
 # Normalize version and package strings
 # e.g. "6.8.79resolute1" -> RELEASE="6.8.79", PKG="6.8.79resolute1"
-TARGET_CLEAN="$(echo "$TARGET_INPUT" | sed -E 's/^v//')"
 if [[ "$TARGET_CLEAN" =~ ^([0-9]+\.[0-9]+\.[0-9]+)(.*)$ ]]; then
     RELEASE_VER="${BASH_REMATCH[1]}"
     SUF="${BASH_REMATCH[2]}"

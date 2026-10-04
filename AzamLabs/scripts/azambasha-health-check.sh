@@ -24,11 +24,23 @@ echo -e "${BOLD}${CYAN}=========================================================
 echo -e "${BOLD}${CYAN}        Azam Basha Appliance System Health Dashboard        ${NC}"
 echo -e "${BOLD}${CYAN}============================================================${NC}"
 
+# Detect Cluster Role
+IS_SATELLITE=false
+if [ -d /etc/pnetlab-satellite ] || [ -f /etc/pnetlab/cluster-db.conf ] || systemctl is-active pnetlab-satd >/dev/null 2>&1; then
+    IS_SATELLITE=true
+fi
+
 # 1. Host & CPU Virtualization
 echo -e "\n${BOLD}[1] Hypervisor & Hardware Virtualization${NC}"
 CPU_MODEL=$(grep -m1 "model name" /proc/cpuinfo 2>/dev/null | cut -d: -f2 | sed 's/^[ \t]*//' || echo "Unknown CPU")
 CPU_CORES=$(grep -c "^processor" /proc/cpuinfo 2>/dev/null || echo "1")
 echo -e "  * CPU Model:       ${CYAN}${CPU_MODEL} (${CPU_CORES} vCPUs)${NC}"
+
+if [ "$IS_SATELLITE" = true ]; then
+    echo -e "  * Appliance Role:  ${CYAN}Satellite Compute Worker (Managed Cluster Node)${NC}"
+else
+    echo -e "  * Appliance Role:  ${CYAN}Master Controller (Primary Web-GUI & Cluster Hub)${NC}"
+fi
 
 if [ -e /dev/kvm ]; then
     echo -e "  * KVM Acceleration: ${GREEN}✔ ENABLED (/dev/kvm accessible)${NC}"
@@ -77,8 +89,28 @@ check_service() {
     fi
 }
 
-check_service "apache2" "Apache Web Server"
-check_service "mysql" "MySQL Database" 2>/dev/null || check_service "mariadb" "MariaDB Database"
+if [ "$IS_SATELLITE" = true ]; then
+    check_service "pnetlab-satd" "Satellite Cluster Agent (Port 9050)"
+    check_service "pnetlab-brokerd" "Local Broker Daemon"
+    if systemctl is-active "mysql" >/dev/null 2>&1 || systemctl is-active "mariadb" >/dev/null 2>&1; then
+        echo -e "  * Local Database:    ${GREEN}✔ RUNNING${NC}"
+    fi
+    # Check Master DB connection via cluster-db.conf
+    if [ -f /etc/pnetlab/cluster-db.conf ]; then
+        DB_HOST=$(grep -E '^host=' /etc/pnetlab/cluster-db.conf 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || true)
+        DB_USER=$(grep -E '^user=' /etc/pnetlab/cluster-db.conf 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || true)
+        DB_PASS=$(grep -E '^password=' /etc/pnetlab/cluster-db.conf 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || true)
+        if [ -n "$DB_HOST" ] && [ -n "$DB_USER" ] && mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "USE pnetlab_db;" >/dev/null 2>&1; then
+            echo -e "  * Master DB Link (${DB_HOST}): ${GREEN}✔ CONNECTED (Synchronized)${NC}"
+        elif [ -n "$DB_HOST" ]; then
+            echo -e "  * Master DB Link (${DB_HOST}): ${YELLOW}✘ VERIFYING CONNECTION${NC}"
+        fi
+    fi
+else
+    check_service "apache2" "Apache Web Server"
+    check_service "mysql" "MySQL Database" 2>/dev/null || check_service "mariadb" "MariaDB Database"
+    check_service "pnetlab-brokerd" "PNETLab Broker Daemon"
+fi
 
 PHP_FPM_ACTIVE=$(systemctl list-units --type=service --state=running 2>/dev/null | grep -o 'php[0-9.]*-fpm' | head -n1 || echo "")
 if [ -n "$PHP_FPM_ACTIVE" ]; then
@@ -92,6 +124,8 @@ echo -e "\n${BOLD}[5] PNETLab Enhancements & AI Integration${NC}"
 # Session Timeout
 if grep -q "define('SESSION', '315360000')" /opt/unetlab/html/includes/config.php 2>/dev/null; then
     echo -e "  * Session Timeout:   ${GREEN}✔ 10 YEARS (Permanent Session Active)${NC}"
+elif [ "$IS_SATELLITE" = true ]; then
+    echo -e "  * Session Timeout:   ${CYAN}✔ SATELLITE (Managed centrally via Master Hub)${NC}"
 else
     echo -e "  * Session Timeout:   ${YELLOW}✘ DEFAULT (Short timeouts active)${NC}"
 fi
@@ -108,29 +142,40 @@ fi
 if systemctl is-active pnetlab-mcp 2>/dev/null | grep -q "active"; then
     echo -e "  * AI MCP Daemon:     ${GREEN}✔ ACTIVE (pnetlab-mcp.service running on port 5701)${NC}"
 else
-    echo -e "  * AI MCP Daemon:     ${YELLOW}✘ INACTIVE / NOT CONFIGURED${NC}"
+    echo -e "  * AI MCP Daemon:     ${YELLOW}✘ INACTIVE / NOT CONFIGURED (Optional Integration)${NC}"
 fi
 
 # 6. Web UI & Authentication Status
 echo -e "\n${BOLD}[6] Web Dashboard & Authentication Status${NC}"
-AUTH_RESP=$(curl -k -s -m 5 -X POST https://127.0.0.1/api/auth \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"azam"}' 2>/dev/null || echo "")
-
-ACTIVE_USER="admin/azam"
-if ! echo "$AUTH_RESP" | grep -q '"code":200'; then
+if [ "$IS_SATELLITE" = true ]; then
+    if systemctl is-active pnetlab-satd 2>/dev/null | grep -q "active"; then
+        echo -e "  * Cluster Orchestration: ${GREEN}✔ READY (Accepting commands from Master on Port 9050)${NC}"
+    else
+        echo -e "  * Cluster Orchestration: ${RED}✘ pnetlab-satd NOT ACTIVE${NC}"
+    fi
+    if curl -s -m 3 http://127.0.0.1/ >/dev/null 2>&1 || curl -k -s -m 3 https://127.0.0.1/ >/dev/null 2>&1; then
+        echo -e "  * Satellite HTTP Node:   ${GREEN}✔ ACTIVE (Port 80/443 responding)${NC}"
+    fi
+else
     AUTH_RESP=$(curl -k -s -m 5 -X POST https://127.0.0.1/api/auth \
       -H "Content-Type: application/json" \
-      -d '{"username":"admin","password":"pnet"}' 2>/dev/null || echo "")
-    ACTIVE_USER="admin/pnet"
-fi
+      -d '{"username":"admin","password":"azam"}' 2>/dev/null || echo "")
 
-if echo "$AUTH_RESP" | grep -q '"code":200'; then
-    echo -e "  * Admin Auth (${ACTIVE_USER}): ${GREEN}✔ ACTIVE (Authenticated successfully)${NC}"
-elif [ -z "$AUTH_RESP" ]; then
-    echo -e "  * Web UI HTTPS Endpoint:  ${RED}✘ UNREACHABLE (Check Apache2 / SSL service)${NC}"
-else
-    echo -e "  * Admin Auth:              ${YELLOW}✘ FAILED (${AUTH_RESP:0:80})${NC}"
+    ACTIVE_USER="admin/azam"
+    if ! echo "$AUTH_RESP" | grep -q '"code":200'; then
+        AUTH_RESP=$(curl -k -s -m 5 -X POST https://127.0.0.1/api/auth \
+          -H "Content-Type: application/json" \
+          -d '{"username":"admin","password":"pnet"}' 2>/dev/null || echo "")
+        ACTIVE_USER="admin/pnet"
+    fi
+
+    if echo "$AUTH_RESP" | grep -q '"code":200'; then
+        echo -e "  * Admin Auth (${ACTIVE_USER}): ${GREEN}✔ ACTIVE (Authenticated successfully)${NC}"
+    elif [ -z "$AUTH_RESP" ]; then
+        echo -e "  * Web UI HTTPS Endpoint:  ${RED}✘ UNREACHABLE (Check Apache2 / SSL service)${NC}"
+    else
+        echo -e "  * Admin Auth:              ${YELLOW}✘ FAILED (${AUTH_RESP:0:80})${NC}"
+    fi
 fi
 
 # Cisco IOL License Key

@@ -325,13 +325,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Azam Basha Heavy Node Lossless CPU Governor")
     parser.add_argument("--daemon", action="store_true", help="Run as background daemon")
     parser.add_argument("--status", action="store_true", help="Show current node status and priorities")
+    parser.add_argument("--once", action="store_true", help="Run one-shot diagnostic check and exit")
+    parser.add_argument("--check", action="store_true", help="Audit monitored node priorities and exit")
     parser.add_argument("--interval", type=float, default=2.0, help="Check interval in seconds (default: 2.0)")
     parser.add_argument("--hysteresis", type=float, default=5.0, help="Active hold time after packets in seconds (default: 5.0)")
 
     args = parser.parse_args()
     gov = HeavyNodeGovernor(check_interval=args.interval, hysteresis_sec=args.hysteresis)
 
-    if args.status:
+    if args.status or args.once or args.check:
         gov.status()
-    else:
+    elif args.daemon:
         gov.loop()
+    else:
+        # If run interactively without flags, display status by default rather than blocking
+        gov.status()

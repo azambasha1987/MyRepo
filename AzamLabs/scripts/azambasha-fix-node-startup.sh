@@ -840,6 +840,16 @@ chmod -R 777 /opt/unetlab/tmp 2>/dev/null || true
 chmod 777 /tmp/netio* 2>/dev/null || true
 chown -R www-data:www-data /opt/unetlab/data /opt/unetlab/labs /opt/unetlab/html 2>/dev/null || true
 
+# Ensure azam-bootstorm CLI symlinks are available
+for b_cand in /opt/unetlab/scripts/azambasha-bootstorm.py /opt/azambasha/scripts/azambasha-bootstorm.py "$SCRIPT_DIR/azambasha-bootstorm.py"; do
+    if [ -f "$b_cand" ]; then
+        ln -sf "$b_cand" /usr/local/bin/azam-bootstorm 2>/dev/null || true
+        ln -sf "$b_cand" /usr/local/bin/pnet-bootstorm 2>/dev/null || true
+        chmod +x "$b_cand" 2>/dev/null || true
+        break
+    fi
+done
+
 # Status Summary
 echo ""
 echo "Node Startup Readiness Status:"

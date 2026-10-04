@@ -20,6 +20,10 @@ import argparse
 import subprocess
 
 TARGET_PATTERNS = [
+    r'vios',
+    r'viosl2',
+    r'iosv',
+    r'iosvl2',
     r'8000v',
     r'c8000v',
     r'c8000',

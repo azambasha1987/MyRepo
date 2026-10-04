@@ -251,9 +251,21 @@ def install_symlink():
             target = "/usr/local/bin/azam-bootstorm"
             source = os.path.realpath(__file__)
             if not os.path.exists(target) or os.path.realpath(target) != source:
-                if os.path.exists(target):
-                    os.remove(target)
+                if os.path.exists(target) or os.path.islink(target):
+                    try:
+                        os.unlink(target)
+                    except Exception:
+                        pass
                 os.symlink(source, target)
+            # Also create alias pnet-bootstorm
+            pnet_target = "/usr/local/bin/pnet-bootstorm"
+            if not os.path.exists(pnet_target) or os.path.realpath(pnet_target) != source:
+                if os.path.exists(pnet_target) or os.path.islink(pnet_target):
+                    try:
+                        os.unlink(pnet_target)
+                    except Exception:
+                        pass
+                os.symlink(source, pnet_target)
         except Exception:
             pass
 
@@ -262,8 +274,9 @@ def main():
     parser = argparse.ArgumentParser(
         description="Azam-Pnet Anti-Bootstorm Staggered Node Startup Engine"
     )
-    parser.add_argument("--host", default="192.168.1.23",
-                        help="PNetLab master IP or hostname (default: 192.168.1.23)")
+    default_host = os.environ.get("AZAM_HOST", "127.0.0.1")
+    parser.add_argument("--host", default=default_host,
+                        help=f"PNetLab master IP or hostname (default: {default_host})")
     parser.add_argument("--lab", required=False, default=None,
                         help="Lab .unl file path (e.g. /Admin/mylab.unl)")
     parser.add_argument("--username", default="admin",

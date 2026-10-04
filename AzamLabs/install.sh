@@ -1165,6 +1165,7 @@ ln -sfn /opt/unetlab/scripts/azambasha-fix-node-startup.sh /usr/local/bin/azam-n
 ln -sfn /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/azam-health 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/azam-doctor 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-images 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/azam-bootstorm 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-backup-restore.sh /usr/local/bin/azam-backup 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-dark-theme.sh /usr/local/bin/azam-dark 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-update.sh /usr/local/bin/azam-update 2>/dev/null || true
@@ -1172,6 +1173,7 @@ ln -sfn /opt/unetlab/scripts/azambasha-quarterly-audit.sh /usr/local/bin/azam-au
 if [ -d "/opt/azambasha/scripts" ]; then
     ln -sfn /opt/azambasha/scripts/azambasha-update.sh /usr/local/bin/azam-update 2>/dev/null || true
     ln -sfn /opt/azambasha/scripts/azambasha-quarterly-audit.sh /usr/local/bin/azam-audit 2>/dev/null || true
+    ln -sfn /opt/azambasha/scripts/azambasha-bootstorm.py /usr/local/bin/azam-bootstorm 2>/dev/null || true
 fi
 
 ln -sfn /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/pnet-menu 2>/dev/null || true
@@ -1181,6 +1183,7 @@ ln -sfn /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/pnet-sat
 ln -sfn /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/pnet-health 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/pnet-doctor 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/pnet-images 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/pnet-bootstorm 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-fix-network-boot.sh /usr/local/bin/pnet-network 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-backup-restore.sh /usr/local/bin/pnet-backup 2>/dev/null || true
 

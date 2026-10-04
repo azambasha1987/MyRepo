@@ -439,6 +439,14 @@ target_templates = {
     "c9500v": {
         "name": "Cisco Catalyst 9500v", "cpus": 4, "ram": 8192, "ethernets": 24, "qemu_nic": "virtio-net-pci",
         "qemu_options": "-machine pc,mem-merge=on -cpu host -enable-kvm -serial mon:stdio -nographic"
+    },
+    "vios": {
+        "name": "Cisco IOSv Router", "cpus": 1, "ram": 512, "ethernets": 4, "qemu_nic": "virtio-net-pci",
+        "qemu_options": "-machine pc,mem-merge=on -cpu host -enable-kvm -serial mon:stdio -nographic -device virtio-balloon-pci"
+    },
+    "viosl2": {
+        "name": "Cisco IOSv-L2 Switch", "cpus": 1, "ram": 512, "ethernets": 16, "qemu_nic": "virtio-net-pci",
+        "qemu_options": "-machine pc,mem-merge=on -cpu host -enable-kvm -serial mon:stdio -nographic -device virtio-balloon-pci"
     }
 }
 
@@ -452,6 +460,7 @@ for tdir in templates_dirs:
                 print(f"  [DRY-RUN] Would create default template: {tpath}")
             else:
                 try:
+                    icon_name = "Switch.png" if "l2" in tkey.lower() or "switch" in tdata['name'].lower() else "Router.png"
                     tpl_yaml = f"""---
 type: qemu
 description: {tdata['name']}
@@ -462,11 +471,31 @@ ethernets: {tdata['ethernets']}
 qemu_arch: x86_64
 qemu_nic: {tdata['qemu_nic']}
 qemu_options: {tdata['qemu_options']}
-icon: Router.png
+icon: {icon_name}
 """
                     with open(tpath, 'w', encoding='utf-8') as f:
                         f.write(tpl_yaml)
                     print(f"  [✔] Created optimized baseline template {tpath}")
+                except Exception:
+                    pass
+        else:
+            if tkey in ["vios", "viosl2"]:
+                try:
+                    with open(tpath, 'r', encoding='utf-8') as yf:
+                        cur_yaml = yf.read()
+                    mod_yaml = cur_yaml
+                    if "qemu_nic: e1000" in mod_yaml:
+                        mod_yaml = mod_yaml.replace("qemu_nic: e1000", "qemu_nic: virtio-net-pci")
+                    mod_yaml = re.sub(r'ram:\s*(1024|2048)', 'ram: 512', mod_yaml)
+                    if "virtio-balloon" not in mod_yaml and "qemu_options:" in mod_yaml:
+                        mod_yaml = re.sub(r'(qemu_options:\s*[^\n]+)', r'\1 -device virtio-balloon-pci', mod_yaml)
+                    if mod_yaml != cur_yaml:
+                        if not dry_run:
+                            with open(tpath, 'w', encoding='utf-8') as yf:
+                                yf.write(mod_yaml)
+                            print(f"  [✔] Optimized existing template {tpath} (virtio-net-pci, 512MB RAM)")
+                        else:
+                            print(f"  [DRY-RUN] Would optimize template {tpath} (virtio-net-pci, 512MB RAM)")
                 except Exception:
                     pass
 
@@ -616,6 +645,16 @@ fi
 EOF_LAUNCHER
     chmod 755 /opt/unetlab/wrappers/azam-iol-launcher
     [ -f /opt/unetlab/wrappers/ksm_merge_exec ] && chmod 755 /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
+
+    # Ensure azam-bootstorm CLI symlink is active
+    for b_cand in /opt/unetlab/scripts/azambasha-bootstorm.py /opt/azambasha/scripts/azambasha-bootstorm.py "$SCRIPT_DIR/azambasha-bootstorm.py"; do
+        if [ -f "$b_cand" ]; then
+            ln -sf "$b_cand" /usr/local/bin/azam-bootstorm 2>/dev/null || true
+            ln -sf "$b_cand" /usr/local/bin/pnet-bootstorm 2>/dev/null || true
+            chmod +x "$b_cand" 2>/dev/null || true
+            break
+        fi
+    done
 fi
 
 # -----------------------------------------------------------------------------

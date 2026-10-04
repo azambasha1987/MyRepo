@@ -897,7 +897,23 @@ print("[*] Azam-Pnet Python SDK Loaded.")
                     heavy_delay = str(params.get("heavy_delay", "18"))
                     medium_delay = str(params.get("medium_delay", "10"))
                     dry_run = params.get("dry_run", False)
-                    cmd = ["python3", "/usr/local/bin/azam-bootstorm", "--heavy-delay", heavy_delay, "--medium-delay", medium_delay]
+                    bootstorm_bin = "/usr/local/bin/azam-bootstorm"
+                    if not os.path.exists(bootstorm_bin):
+                        for candidate in [
+                            "/opt/unetlab/scripts/azambasha-bootstorm.py",
+                            "/opt/azambasha/scripts/azambasha-bootstorm.py",
+                            os.path.join(os.path.dirname(os.path.abspath(__file__)), "azambasha-bootstorm.py")
+                        ]:
+                            if os.path.exists(candidate):
+                                bootstorm_bin = candidate
+                                try:
+                                    if os.path.islink("/usr/local/bin/azam-bootstorm") or os.path.exists("/usr/local/bin/azam-bootstorm"):
+                                        os.unlink("/usr/local/bin/azam-bootstorm")
+                                    os.symlink(candidate, "/usr/local/bin/azam-bootstorm")
+                                except Exception:
+                                    pass
+                                break
+                    cmd = ["python3", bootstorm_bin, "--host", "127.0.0.1", "--heavy-delay", heavy_delay, "--medium-delay", medium_delay]
                     if lab:
                         cmd.extend(["--lab", lab])
                     if dry_run:

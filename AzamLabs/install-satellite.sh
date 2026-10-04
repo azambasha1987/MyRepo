@@ -837,7 +837,8 @@ fi
 
 # Hardware virtualization and permissions
 mkdir -p /opt/unetlab/addons/{qemu,iol/bin,dynamips,docker}
-mkdir -p /opt/unetlab/data/Logs /opt/unetlab/tmp /etc/pnetlab-satellite /etc/pnetlab /etc/tmpfiles.d
+mkdir -p /opt/unetlab/labs /opt/unetlab/data/Logs /opt/unetlab/tmp /etc/pnetlab-satellite /etc/pnetlab /etc/tmpfiles.d
+ln -sfn /opt/unetlab/labs /root/labs 2>/dev/null || true
 chmod 700 /etc/pnetlab-satellite 2>/dev/null || true
 groupadd -g 32768 -f unl 2>/dev/null || true
 chown -R root:unl /opt/unetlab/tmp 2>/dev/null || true

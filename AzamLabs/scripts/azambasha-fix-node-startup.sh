@@ -122,8 +122,12 @@ echo "  [✔] Universal tunctl driver active and sudoers permissions granted"
 
 # --- 2. Ensure QEMU Binaries & /opt/qemu Symlink ---
 echo "[2/7] Setting up QEMU system dispatch, UEFI firmware & /opt/qemu symlinks..."
-mkdir -p /opt/qemu/bin /opt/unetlab/addons/qemu /usr/share/qemu /opt/qemu/share/qemu /usr/share/OVMF 2>/dev/null || true
-ln -sfn /usr /opt/qemu 2>/dev/null || true
+mkdir -p /opt/unetlab/addons/qemu /usr/share/qemu /usr/share/OVMF 2>/dev/null || true
+if [ ! -L /opt/qemu ] && [ -d /opt/qemu ]; then
+    mkdir -p /opt/qemu/bin /opt/qemu/share/qemu 2>/dev/null || true
+else
+    ln -sfn /usr /opt/qemu 2>/dev/null || true
+fi
 ln -sfn /usr/bin/qemu-system-x86_64 /opt/qemu/bin/qemu-system-x86_64 2>/dev/null || true
 ln -sfn /usr/bin/qemu-img /opt/qemu/bin/qemu-img 2>/dev/null || true
 
@@ -269,8 +273,14 @@ if os.path.exists(dev_file):
 
         # Teardown fix: ensure TAP interfaces are cleanly removed when node is stopped
         if "Azam-Pnet Teardown Fix" not in code:
-            search_str = "            return 0;\\n        }\\n\\n        return 0;\\n    }"
-            teardown_patch = """            return 0;
+            target_stop = """        if (isset($this->lock) && $this->lock == 1) {
+            return 0;
+        }
+
+        return 0;
+    }"""
+            repl_stop = """        if (isset($this->lock) && $this->lock == 1) {
+            return 0;
         }
 
         // Always clean up node TAP interfaces for this session upon stop (Azam-Pnet Teardown Fix)
@@ -282,15 +292,46 @@ if os.path.exists(dev_file):
 
         return 0;
     }"""
-            if "return 0;\n        }\n\n        return 0;\n    }" in code:
-                code = code.replace("return 0;\n        }\n\n        return 0;\n    }", "return 0;\n        }\n\n" + teardown_patch.split("        }\n\n")[1], 1)
+            if target_stop in code:
+                code = code.replace(target_stop, repl_stop)
                 with open(dev_file, 'w', encoding='utf-8') as f:
                     f.write(code)
                 print("  [✔] Teardown TAP interface cleanup active in device.php")
     except Exception as e:
         print(f"  [!] Note patching device.php: {e}")
 
-# 2. Patch device_qemu.php
+# 2. Patch api_nodes.php for safe QEMU template schema resolution
+api_nodes = "/opt/unetlab/html/includes/api_nodes.php"
+if os.path.isfile(api_nodes):
+    try:
+        with open(api_nodes, 'r', encoding='utf-8') as f:
+            acode = f.read()
+        target_readlink = """		if (is_dir('/opt/qemu')) {
+			$qemuDefault = readlink('/opt/qemu');
+			$qemuDefault = str_replace('qemu-', '', $qemuDefault);
+		}
+		$qemuOption[$qemuDefault] = $qemuDefault . "(Default)";"""
+        repl_readlink = """		$qemuDefault = '';
+		if (is_link('/opt/qemu')) {
+			$linkTarget = @readlink('/opt/qemu');
+			if ($linkTarget !== false) {
+				$qemuDefault = str_replace('qemu-', '', basename($linkTarget));
+			}
+		}
+		if ($qemuDefault !== '') {
+			$qemuOption[$qemuDefault] = $qemuDefault . " (Default)";
+		} else {
+			$qemuOption[''] = "(Default)";
+		}"""
+        if target_readlink in acode:
+            acode = acode.replace(target_readlink, repl_readlink)
+            with open(api_nodes, 'w', encoding='utf-8') as f:
+                f.write(acode)
+            print("  [✔] Safe QEMU template schema resolution active in api_nodes.php")
+    except Exception as e:
+        print(f"  [!] Note patching api_nodes.php: {e}")
+
+# 3. Patch device_qemu.php
 dev_qemu = "/opt/unetlab/html/devices/qemu/device_qemu.php"
 try:
     with open(dev_qemu, 'r', encoding='utf-8') as f:

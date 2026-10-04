@@ -517,6 +517,40 @@ qemu_options: -machine type=q35,accel=kvm,mem-merge=on -vga std -device usb-tabl
 icon: server.png
 ...
 EOF_OPENBMP
+
+        cat << 'EOF_VIOS' > "${tdir}/vios.yml"
+---
+type: qemu
+description: Cisco IOSv Router (AzamLabs High-Density Optimized)
+name: VIOS
+cpus: 1
+ram: 512
+ethernets: 4
+eth_format: Gi0/{0}
+console: telnet
+qemu_arch: x86_64
+qemu_nic: virtio-net-pci
+qemu_options: -machine pc,mem-merge=on -cpu host -enable-kvm -serial mon:stdio -nographic -device virtio-balloon-pci
+icon: Router.png
+...
+EOF_VIOS
+
+        cat << 'EOF_VIOSL2' > "${tdir}/viosl2.yml"
+---
+type: qemu
+description: Cisco IOSv-L2 Switch (AzamLabs High-Density Optimized)
+name: VIOSL2
+cpus: 1
+ram: 512
+ethernets: 16
+eth_format: Gi{0}/{1}
+console: telnet
+qemu_arch: x86_64
+qemu_nic: virtio-net-pci
+qemu_options: -machine pc,mem-merge=on -cpu host -enable-kvm -serial mon:stdio -nographic -device virtio-balloon-pci
+icon: Switch.png
+...
+EOF_VIOSL2
     fi
 done
 

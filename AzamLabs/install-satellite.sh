@@ -1110,6 +1110,8 @@ for s_dir in "/opt/unetlab/scripts" "${SCRIPT_DIR}/scripts" "/opt/azambasha/scri
         ln -sfn "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
         ln -sfn "${s_dir}/azambasha-dry-test.py" /usr/local/bin/azam-dry-test 2>/dev/null || true
         ln -sfn "${s_dir}/azambasha-health-check.sh" /usr/local/bin/azam-health 2>/dev/null || true
+        ln -sfn "${s_dir}/azambasha-bootstorm.py" /usr/local/bin/azam-bootstorm 2>/dev/null || true
+        ln -sfn "${s_dir}/azambasha-bootstorm.py" /usr/local/bin/pnet-bootstorm 2>/dev/null || true
         break
     fi
 done

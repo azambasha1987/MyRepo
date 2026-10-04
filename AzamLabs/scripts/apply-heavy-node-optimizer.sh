@@ -587,11 +587,21 @@ if os.path.isdir(templates_root):
                 with open(fpath, "r", encoding="utf-8") as yf:
                     txt = yf.read()
                 if "type: qemu" in txt or "qemu_arch:" in txt or "qemu_options:" in txt:
+                    # Repair broken YAML if qemu_options was previously appended after '...'
+                    if re.search(r'\.\.\.\s*\n+\s*qemu_options:', txt):
+                        opt_line = re.search(r'qemu_options:\s*[^\n]+', txt)
+                        if opt_line:
+                            txt = re.sub(r'\.\.\.\s*\n+\s*qemu_options:[^\n]+', '', txt).strip()
+                            txt = txt + f"\n{opt_line.group(0)}\n...\n"
                     if "mem-merge=on" not in txt:
                         if "qemu_options:" in txt:
                             txt = re.sub(r'qemu_options:\s*([^\n]+)', r'qemu_options: -machine mem-merge=on \1', txt)
                         else:
-                            txt += "\nqemu_options: -machine mem-merge=on -cpu host -enable-kvm -serial mon:stdio -nographic\n"
+                            new_opt = "qemu_options: -machine pc,mem-merge=on -cpu host -enable-kvm -serial mon:stdio -nographic\n"
+                            if "..." in txt:
+                                txt = txt.replace("...", f"{new_opt}...")
+                            else:
+                                txt += f"\n{new_opt}"
                         if not dry_run:
                             with open(fpath, "w", encoding="utf-8") as yf:
                                 yf.write(txt)

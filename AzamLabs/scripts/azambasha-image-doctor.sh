@@ -204,6 +204,14 @@ if [ "$MODE" = "--fix" ]; then
     chown -R root:root "$QEMU_DIR" "$IOL_DIR" "$DYN_DIR" 2>/dev/null || true
     chmod -R 755 "$QEMU_DIR" "$IOL_DIR" "$DYN_DIR" 2>/dev/null || true
     echo "  -> Permissions repaired."
+
+    echo -e "\n[*] Enforcing universal QEMU & IOL template and memory optimization..."
+    for opt_cand in "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" "/opt/azambasha/scripts/azambasha-heavy-node-optimizer.sh"; do
+        if [ -f "$opt_cand" ]; then
+            bash "$opt_cand" 2>/dev/null || true
+            break
+        fi
+    done
 fi
 
 echo -e "\n============================================================"

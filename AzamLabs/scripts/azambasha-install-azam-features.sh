@@ -111,12 +111,24 @@ ln -sf "${SCRIPTS}/azambasha-apply-all-fixes.sh"    /usr/local/bin/azam-menu
 ln -sf "${SCRIPTS}/azambasha-apply-all-fixes.sh"    /usr/local/bin/azam-fix
 ln -sf "${SCRIPTS}/azambasha-satellite-join.sh"     /usr/local/bin/azam-satellite-join
 ln -sf "${SCRIPTS}/azambasha-satellite-join.sh"     /usr/local/bin/pnet-satellite-join
-chmod +x "${SCRIPTS}/azambasha-update.sh" "${SCRIPTS}/azambasha-quarterly-audit.sh" "${SCRIPTS}/azambasha-apply-all-fixes.sh" "${SCRIPTS}/azambasha-satellite-join.sh" 2>/dev/null || true
+ln -sf "${SCRIPTS}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-optimizer
+ln -sf "${SCRIPTS}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-heavy-optimizer
+ln -sf "${SCRIPTS}/apply-heavy-node-optimizer.sh"    /usr/local/bin/apply-heavy-node-optimizer
+chmod +x "${SCRIPTS}/azambasha-update.sh" "${SCRIPTS}/azambasha-quarterly-audit.sh" "${SCRIPTS}/azambasha-apply-all-fixes.sh" "${SCRIPTS}/azambasha-satellite-join.sh" "${SCRIPTS}/azambasha-heavy-node-optimizer.sh" "${SCRIPTS}/apply-heavy-node-optimizer.sh" 2>/dev/null || true
 
 
 # Install scheduler timer and 24/7 autonomous watchdog daemon
 python3 "${SCRIPTS}/azambasha-scheduler.py" --install 2>/dev/null || true
 python3 "${SCRIPTS}/azambasha-watchdog.py" --install 2>/dev/null || true
+
+# Enforce High-Density Heavy Node Memory & CPU Optimization
+if [ -f "${SCRIPTS}/azambasha-heavy-node-optimizer.sh" ]; then
+    if [ "$IS_SATELLITE" -eq 1 ]; then
+        bash "${SCRIPTS}/azambasha-heavy-node-optimizer.sh" --satellite 2>/dev/null || true
+    else
+        bash "${SCRIPTS}/azambasha-heavy-node-optimizer.sh" --master 2>/dev/null || true
+    fi
+fi
 
 # Deploy Nightly SSD TRIM & Maintenance Cron (Master & Satellite)
 cat << 'TRIMEOF' > /etc/cron.d/azambasha-maintenance
@@ -127,7 +139,7 @@ chmod 0644 /etc/cron.d/azambasha-maintenance 2>/dev/null || true
 
 # If Satellite Node: finish here (no web UI or apache needed on headless workers)
 if [ "$IS_SATELLITE" -eq 1 ]; then
-    echo -e "  ${GREEN}[✔]${RESET} All 26 CLI tools, watchdog daemon, and maintenance cron installed on Satellite!"
+    echo -e "  ${GREEN}[✔]${RESET} All 28 CLI tools, optimizer suite, watchdog daemon, and maintenance cron installed on Satellite!"
     echo -e "${CYAN}================================================================${RESET}"
     exit 0
 fi

@@ -458,10 +458,12 @@ log_info "[8/8] Enforcing High-Density Heavy Node Optimizer on Satellite..."
 SCRIPT_LOC="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "/opt/unetlab/scripts")"
 if [ -f /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh ]; then
     bash /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh --satellite 2>/dev/null || true
-    log_ok "High-Density Optimizer: Active on Satellite (KSM Ultra, THP madvise, CPU governor)"
+    [ -f /opt/unetlab/scripts/azambasha-fix-node-startup.sh ] && bash /opt/unetlab/scripts/azambasha-fix-node-startup.sh 2>/dev/null || true
+    log_ok "Universal Optimizer: Active on Satellite (KSM Ultra, THP madvise, CPU governor, Universal Templates)"
 elif [ -f "$SCRIPT_LOC/azambasha-heavy-node-optimizer.sh" ]; then
     bash "$SCRIPT_LOC/azambasha-heavy-node-optimizer.sh" --satellite 2>/dev/null || true
-    log_ok "High-Density Optimizer: Active on Satellite (KSM Ultra, THP madvise, CPU governor)"
+    [ -f "$SCRIPT_LOC/azambasha-fix-node-startup.sh" ] && bash "$SCRIPT_LOC/azambasha-fix-node-startup.sh" 2>/dev/null || true
+    log_ok "Universal Optimizer: Active on Satellite (KSM Ultra, THP madvise, CPU governor, Universal Templates)"
 fi
 
 # Register global administrative CLI commands on Satellite
@@ -471,6 +473,9 @@ for s_dir in "/opt/unetlab/scripts" "/opt/azambasha/scripts" "$SCRIPT_LOC"; do
         ln -sf "${s_dir}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-apply-all-fixes.sh" /usr/local/bin/azam-menu 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-apply-all-fixes.sh" /usr/local/bin/azam-fix 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-optimizer 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
+        ln -sf "${s_dir}/apply-heavy-node-optimizer.sh" /usr/local/bin/apply-heavy-node-optimizer 2>/dev/null || true
         break
     fi
 done

@@ -1345,9 +1345,11 @@ if [ -f "${SCRIPT_DIR}/VERSION" ]; then
     cp -f "${SCRIPT_DIR}/VERSION" /etc/pnetlab-version 2>/dev/null || true
 fi
 chmod +x /opt/unetlab/scripts/*.sh /opt/unetlab/scripts/*.py /usr/local/bin/apply-heavy-node-optimizer.sh 2>/dev/null || true
+ln -sf /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-optimizer 2>/dev/null || true
+ln -sf /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
 
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh" ]; then
-    echo "  [*] Applying High-Density Heavy Node Optimizer (Cat8000, Cisco 8000, Cat9000)..."
+    echo "  [*] Applying Universal High-Density Node Optimizer (All QEMU & IOL Images)..."
     bash "${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh" --master 2>/dev/null || true
 elif [ -f "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" ]; then
     bash "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" --master 2>/dev/null || true
@@ -1448,6 +1450,7 @@ echo "  azam-ai          -> AI lab copilot & vendor syntax assistant"
 echo "  azam-git         -> Topology Git version control & rollbacks"
 echo "  azam-console-fix -> Quick HTML5 console session healer"
 echo "  azam-perf        -> Live per-process hot-node CPU/RAM profiler"
+echo "  azam-optimizer   -> Universal QEMU & IOL memory/CPU optimizer"
 echo "  azam-watchdog    -> 24/7 autonomous node failure recovery"
 echo "  azam-images      -> Validate images, templates & fix permissions"
 echo "  azam-backup      -> Create full labs & database backup archive"

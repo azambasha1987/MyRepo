@@ -184,6 +184,7 @@ def deploy_host(host, user, password, port, args):
         # Make scripts executable and register CLI commands
         if not args.dry_run:
             execute_remote_cmd(client, f"chmod +x {remote_base}/*.sh {remote_base}/scripts/*.sh {remote_base}/scripts/*.py 2>/dev/null || true", stream=False)
+            execute_remote_cmd(client, f"mkdir -p /opt/unetlab/scripts && cp -f {remote_base}/scripts/azambasha-* {remote_base}/scripts/azam-* {remote_base}/scripts/apply-* {remote_base}/scripts/ksm_* /opt/unetlab/scripts/ 2>/dev/null && chmod +x /opt/unetlab/scripts/azambasha-*.sh /opt/unetlab/scripts/azambasha-*.py /opt/unetlab/scripts/apply-*.sh 2>/dev/null || true", stream=False)
             execute_remote_cmd(client, f"ln -sf {remote_base}/scripts/azambasha-update.sh /usr/local/bin/azam-update && ln -sf {remote_base}/scripts/azambasha-quarterly-audit.sh /usr/local/bin/azam-audit && ln -sf {remote_base}/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/azam-menu && ln -sf {remote_base}/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/azam-fix && ln -sf {remote_base}/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join && ln -sf {remote_base}/scripts/azambasha-satellite-join.sh /usr/local/bin/pnet-satellite-join 2>/dev/null || true", stream=False)
             execute_remote_cmd(client, "for s in php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2 pnetlab-satd pnetlab-brokerd pnetlab-docker-image-watcher docker; do mkdir -p /etc/systemd/system/${s}.service.d && printf '[Unit]\\nStartLimitIntervalSec=0\\nStartLimitBurst=0\\n[Service]\\nRestart=on-failure\\nRestartSec=1s\\n' > /etc/systemd/system/${s}.service.d/override.conf; done && systemctl daemon-reload 2>/dev/null && systemctl reset-failed 2>/dev/null || true", stream=False)
 
@@ -222,6 +223,9 @@ def deploy_host(host, user, password, port, args):
         elif args.apply_all:
             log_info("Executing Master Fix & Optimization Suite...")
             execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-apply-all-fixes.sh 19")
+        elif getattr(args, 'dry_run_optimize', False):
+            log_info("Executing Universal Optimizer Dry-Run Simulation...")
+            execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-heavy-node-optimizer.sh --dry-run")
         elif args.optimize:
             log_info("Applying High-Density Heavy Node Memory & CPU Optimization (Master & Satellites)...")
             execute_remote_cmd(client, f"cd {remote_base} && sudo bash scripts/azambasha-heavy-node-optimizer.sh --master --cluster && sudo bash scripts/azambasha-fix-node-startup.sh")
@@ -272,6 +276,7 @@ def main():
     parser.add_argument("--port", "-P", type=int, default=int(os.environ.get("VM_PORT", 22)), help="SSH port (default: 22)")
     parser.add_argument("--remote-dir", default="/opt/azambasha", help="Remote base directory (default: /opt/azambasha)")
     parser.add_argument("--apply-all", action="store_true", help="Apply all fixes and speed optimizations on targets")
+    parser.add_argument("--dry-run-optimize", action="store_true", help="Simulate optimization remotely without making system changes")
     parser.add_argument("--optimize", action="store_true", help="Deploy and activate High-Density Memory & CPU Optimizer on Master (Cat8000, Cisco 8000, Cat9000, IOL)")
     parser.add_argument("--optimize-satellite", action="store_true", help="Deploy and activate High-Density Memory & CPU Optimizer on Satellite Worker")
     parser.add_argument("--test", action="store_true", help="Run node validation test suite on targets")

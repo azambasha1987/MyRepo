@@ -165,10 +165,14 @@ if [ -f "$IOL_BIN/iourc" ]; then
     echo "  -> Cisco IOL license (iourc) linked successfully."
 fi
 
-# Ensure all Cisco IOL binaries are executable
-chmod 0755 "$IOL_BIN"/* 2>/dev/null || true
-chmod 0644 "$IOL_BIN"/iourc* 2>/dev/null || true
-
+# 6. Ensure Universal QEMU & IOL Optimizations are Active
+echo "[6/6] Ensuring universal node, template & memory optimizations..."
+for opt_cand in "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" "/opt/azambasha/scripts/azambasha-heavy-node-optimizer.sh"; do
+    if [ -f "$opt_cand" ]; then
+        bash "$opt_cand" 2>/dev/null || true
+        break
+    fi
+done
 
 echo ""
-echo "=== [SUCCESS] PNETLab permissions and node environment repaired! ==="
+echo "=== [SUCCESS] PNETLab permissions, optimizations, and node environment repaired! ==="

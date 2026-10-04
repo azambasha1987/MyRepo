@@ -95,6 +95,11 @@ if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-cluster.sh" ]; then
 elif [ -f "/opt/unetlab/scripts/azambasha-fix-cluster.sh" ]; then
     bash "/opt/unetlab/scripts/azambasha-fix-cluster.sh" || true
 fi
+if [ -f "${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh" ]; then
+    bash "${SCRIPT_DIR}/scripts/azambasha-heavy-node-optimizer.sh" --master 2>/dev/null || true
+elif [ -f "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" ]; then
+    bash "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" --master 2>/dev/null || true
+fi
 for s_dir in "${SCRIPT_DIR}/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scripts"; do
     if [ -d "$s_dir" ]; then
         ln -sf "${s_dir}/azambasha-update.sh" /usr/local/bin/azam-update 2>/dev/null || true
@@ -103,6 +108,9 @@ for s_dir in "${SCRIPT_DIR}/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scri
         ln -sf "${s_dir}/azambasha-apply-all-fixes.sh" /usr/local/bin/azam-fix 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/azam-satellite-join 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/pnet-satellite-join 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-optimizer 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
+        ln -sf "${s_dir}/apply-heavy-node-optimizer.sh" /usr/local/bin/apply-heavy-node-optimizer 2>/dev/null || true
         break
     fi
 done

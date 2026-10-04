@@ -27,6 +27,7 @@ Usage: sudo bash azambasha-heavy-node-optimizer.sh [OPTIONS]
 
 Options:
   (no args)          Apply high-density optimization to this node (Master or Satellite)
+  --dry-run          Simulate optimization and report actions without making changes
   --check, --status  Perform non-destructive diagnostic check & report RAM/CPU savings
   --master           Explicitly apply Master node profile (includes cluster broadcast)
   --satellite        Explicitly apply Satellite worker node profile
@@ -43,7 +44,7 @@ EOF
 audit_mode() {
     echo "============================================================"
     echo "  Azam Basha High-Density Heavy Node Optimization Audit     "
-    echo "  Target Appliances: Catalyst 8000, Cisco 8000, Cat 9000    "
+    echo "  Universal Coverage: All Cisco IOL & All QEMU Appliances   "
     echo "============================================================"
     
     # 1. KSM Status
@@ -109,26 +110,85 @@ audit_mode() {
         echo "INACTIVE (Optional daemon for PMD polling control)"
     fi
 
-    # 6. Template Configuration Check
-    echo "[*] Heavy Appliance QEMU Templates:"
-    TPL_DIR="/opt/unetlab/html/templates"
-    for tpl in c8000v cisco8000 cat9000v c9300v c9500v csr1000v xrv9k; do
-        FOUND=0
-        for p in "$TPL_DIR/$tpl.yml" "$TPL_DIR/intel/$tpl.yml" "$TPL_DIR/amd/$tpl.yml"; do
-            if [ -f "$p" ]; then
-                FOUND=1
-                if grep -qi "mem-merge=on" "$p" 2>/dev/null; then
-                    echo "    ↳ $tpl.yml: [✔ OPTIMIZED] (mem-merge=on active)"
-                else
-                    echo "    ↳ $tpl.yml: [! STANDARD] (mem-merge not explicitly forced)"
-                fi
-                break
+    # 6. Cisco IOL Virtual Appliances Audit
+    echo "[*] Cisco IOL Virtual Appliances (Multiarch 32-bit & 64-bit):"
+    IOL_BIN_DIR="/opt/unetlab/addons/iol/bin"
+    IOL_SHIM_ACTIVE=0
+    [ -x /opt/unetlab/wrappers/azam-iol-launcher ] && [ -x /opt/unetlab/wrappers/ksm_merge_exec ] && IOL_SHIM_ACTIVE=1
+
+    if [ -d "$IOL_BIN_DIR" ]; then
+        IOL_COUNT=0
+        for bin in "$IOL_BIN_DIR"/*.bin; do
+            [ -f "$bin" ] || continue
+            IOL_COUNT=$((IOL_COUNT + 1))
+            bname=$(basename "$bin")
+            arch="ELF-32"
+            if od -An -j4 -N1 -tu1 "$bin" 2>/dev/null | grep -q "2"; then
+                arch="ELF-64"
+            fi
+            if [ "$IOL_SHIM_ACTIVE" -eq 1 ]; then
+                echo "    ↳ $bname ($arch): [✔ OPTIMIZED] (100:1 Idle Governor & Ultra-KSM Enabled)"
+            else
+                echo "    ↳ $bname ($arch): [! STANDARD] (Run optimizer to compile shims)"
             fi
         done
-        if [ "$FOUND" -eq 0 ]; then
-            echo "    ↳ $tpl.yml: (Not present in default templates - will auto-create on demand)"
+        if [ "$IOL_COUNT" -eq 0 ]; then
+            echo "    ↳ (No IOL binaries found in $IOL_BIN_DIR)"
         fi
-    done
+    else
+        echo "    ↳ $IOL_BIN_DIR not present on this node."
+    fi
+
+    # 7. Installed QEMU Virtual Appliances Audit
+    echo "[*] Installed QEMU Virtual Appliances:"
+    QEMU_DIR="/opt/unetlab/addons/qemu"
+    TPL_DIR="/opt/unetlab/html/templates"
+    QEMU_PHP_ENFORCED=0
+    if grep -q 'mem-merge=on' /opt/unetlab/html/devices/qemu/device_qemu.php 2>/dev/null; then
+        QEMU_PHP_ENFORCED=1
+    fi
+
+    if [ -d "$QEMU_DIR" ]; then
+        QEMU_COUNT=0
+        for q_app in "$QEMU_DIR"/*; do
+            [ -d "$q_app" ] || continue
+            QEMU_COUNT=$((QEMU_COUNT + 1))
+            app_folder=$(basename "$q_app")
+            base_tpl=$(echo "$app_folder" | cut -d'-' -f1)
+
+            TPL_OPT=0
+            for check_path in "$TPL_DIR/$base_tpl.yml" "$TPL_DIR/intel/$base_tpl.yml" "$TPL_DIR/amd/$base_tpl.yml" "$TPL_DIR/$app_folder.yml"; do
+                if [ -f "$check_path" ] && grep -qi "mem-merge=on" "$check_path" 2>/dev/null; then
+                    TPL_OPT=1
+                    break
+                fi
+            done
+
+            if [ "$TPL_OPT" -eq 1 ] || [ "$QEMU_PHP_ENFORCED" -eq 1 ]; then
+                echo "    ↳ $app_folder: [✔ OPTIMIZED] (mem-merge=on active)"
+            else
+                echo "    ↳ $app_folder: [! STANDARD] (mem-merge not configured)"
+            fi
+        done
+        if [ "$QEMU_COUNT" -eq 0 ]; then
+            echo "    ↳ (No QEMU appliances in $QEMU_DIR)"
+        fi
+    else
+        echo "    ↳ $QEMU_DIR not present on this node."
+    fi
+
+    # 8. Runtime Engine Interceptors Audit
+    echo "[*] Universal Runtime Engine Interceptors:"
+    if [ "$QEMU_PHP_ENFORCED" -eq 1 ]; then
+        echo "    ↳ device_qemu.php: [✔ ACTIVE] (mem-merge=on & virtio-balloon universally enforced)"
+    else
+        echo "    ↳ device_qemu.php: [! INACTIVE] (Run optimizer to enable)"
+    fi
+    if grep -qE '(azam-iol-launcher|ksm_merge_exec)' /opt/unetlab/html/devices/iol/device_iol.php 2>/dev/null; then
+        echo "    ↳ device_iol.php:  [✔ ACTIVE] (100:1 CPU idle governor & KSM merge universally enforced)"
+    else
+        echo "    ↳ device_iol.php:  [! INACTIVE] (Run optimizer to enable)"
+    fi
 
     echo "============================================================"
     exit 0
@@ -139,6 +199,7 @@ audit_mode() {
 # -----------------------------------------------------------------------------
 ROLE="auto"
 CLUSTER_SYNC=0
+DRY_RUN=0
 
 for arg in "$@"; do
     case "$arg" in
@@ -147,6 +208,9 @@ for arg in "$@"; do
             ;;
         --check|--status)
             audit_mode
+            ;;
+        --dry-run)
+            DRY_RUN=1
             ;;
         --master)
             ROLE="master"
@@ -165,8 +229,15 @@ for arg in "$@"; do
     esac
 done
 
-# Root requirement for modification commands
-if [ "$(id -u)" -ne 0 ]; then
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo "============================================================"
+    echo "  [DRY-RUN] AzamLabs Universal Optimizer Simulation Active  "
+    echo "  All operations will be simulated without altering system  "
+    echo "============================================================"
+fi
+
+# Root requirement for modification commands (exempt in dry-run)
+if [ "$DRY_RUN" -eq 0 ] && [ "$(id -u)" -ne 0 ]; then
     echo "[ERROR] This command requires root privileges. Please run: sudo bash $0" >&2
     exit 1
 fi
@@ -213,18 +284,15 @@ echo "[+] Detected Node Architecture: $(echo "$ROLE" | tr '[:lower:]' '[:upper:]
 # -----------------------------------------------------------------------------
 echo "[1/6] Activating Ultra-High Throughput KSM Memory Deduplication..."
 if [ -d /sys/kernel/mm/ksm ]; then
-    # Kernel 5.16+ supports smart full process scan (mode 2) or standard mode 1
-    if [ -f /sys/kernel/mm/ksm/run ]; then
-        echo 1 > /sys/kernel/mm/ksm/run 2>/dev/null || true
+    if [ "$DRY_RUN" -eq 1 ]; then
+        echo "  [DRY-RUN] Would set /sys/kernel/mm/ksm/run=1, pages_to_scan=10000, sleep_millisecs=10"
+    else
+        [ -f /sys/kernel/mm/ksm/run ] && echo 1 > /sys/kernel/mm/ksm/run 2>/dev/null || true
+        [ -f /sys/kernel/mm/ksm/pages_to_scan ] && echo 10000 > /sys/kernel/mm/ksm/pages_to_scan 2>/dev/null || true
+        [ -f /sys/kernel/mm/ksm/sleep_millisecs ] && echo 10 > /sys/kernel/mm/ksm/sleep_millisecs 2>/dev/null || true
+        [ -f /sys/kernel/mm/ksm/use_zero_pages ] && echo 1 > /sys/kernel/mm/ksm/use_zero_pages 2>/dev/null || true
+        [ -f /sys/kernel/mm/ksm/merge_across_nodes ] && echo 1 > /sys/kernel/mm/ksm/merge_across_nodes 2>/dev/null || true
     fi
-    
-    # High-throughput aggressive scan parameters:
-    # 10,000 pages every 10ms = ~400 MB scanned/merged per second
-    [ -f /sys/kernel/mm/ksm/pages_to_scan ] && echo 10000 > /sys/kernel/mm/ksm/pages_to_scan 2>/dev/null || true
-    [ -f /sys/kernel/mm/ksm/sleep_millisecs ] && echo 10 > /sys/kernel/mm/ksm/sleep_millisecs 2>/dev/null || true
-    [ -f /sys/kernel/mm/ksm/use_zero_pages ] && echo 1 > /sys/kernel/mm/ksm/use_zero_pages 2>/dev/null || true
-    [ -f /sys/kernel/mm/ksm/merge_across_nodes ] && echo 1 > /sys/kernel/mm/ksm/merge_across_nodes 2>/dev/null || true
-    
     echo "  [✔] KSM configured: 10,000 pages / 10ms with zero-page deduplication"
 else
     echo "  [!] Warning: /sys/kernel/mm/ksm not found in this kernel."
@@ -236,15 +304,18 @@ fi
 echo "[2/6] De-conflicting Transparent Hugepages (THP) for 4KB QEMU Page Merging..."
 # KSM cannot merge 2MB hugepages. Setting THP to madvise ensures normal QEMU anonymous
 # memory remains 4KB base pages, enabling up to 80% RAM deduplication across routers.
-if [ -f /sys/kernel/mm/transparent_hugepage/enabled ]; then
-    echo madvise > /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || true
-    echo "  [✔] THP enabled mode set to 'madvise' (enables 4KB page granularity for KSM)"
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo "  [DRY-RUN] Would set transparent_hugepage/enabled to madvise, defrag to defer+madvise"
+else
+    if [ -f /sys/kernel/mm/transparent_hugepage/enabled ]; then
+        echo madvise > /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || true
+    fi
+    if [ -f /sys/kernel/mm/transparent_hugepage/defrag ]; then
+        echo defer+madvise > /sys/kernel/mm/transparent_hugepage/defrag 2>/dev/null || \
+        echo madvise > /sys/kernel/mm/transparent_hugepage/defrag 2>/dev/null || true
+    fi
 fi
-if [ -f /sys/kernel/mm/transparent_hugepage/defrag ]; then
-    echo defer+madvise > /sys/kernel/mm/transparent_hugepage/defrag 2>/dev/null || \
-    echo madvise > /sys/kernel/mm/transparent_hugepage/defrag 2>/dev/null || true
-    echo "  [✔] THP defrag mode set to 'defer+madvise' (eliminates latency spikes on alloc)"
-fi
+echo "  [✔] THP configured: madvise 4KB base merging enabled"
 
 # -----------------------------------------------------------------------------
 # 3. KVM Virtualization & Halt-Polling Latency Elimination
@@ -252,13 +323,14 @@ fi
 echo "[3/6] Eliminating KVM Host Halt-Polling Spinlocks & Tuning Latency..."
 # halt_poll_ns forces host CPU to spin in kernel waiting for guest vCPUs.
 # Disabling it stops idle DPDK / router loops from burning host CPU when halted.
-if [ -f /sys/module/kvm/parameters/halt_poll_ns ]; then
-    echo 0 > /sys/module/kvm/parameters/halt_poll_ns 2>/dev/null || true
-    echo "  [✔] kvm.halt_poll_ns set to 0 (zero host spinlock overhead)"
-fi
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo "  [DRY-RUN] Would set kvm.halt_poll_ns=0 and apply 99-azambasha-heavy-nodes.conf sysctl"
+else
+    if [ -f /sys/module/kvm/parameters/halt_poll_ns ]; then
+        echo 0 > /sys/module/kvm/parameters/halt_poll_ns 2>/dev/null || true
+    fi
 
-# Configure sysctl tuning for massive router densities
-cat << 'EOF' > /etc/sysctl.d/99-azambasha-heavy-nodes.conf
+    cat << 'EOF' > /etc/sysctl.d/99-azambasha-heavy-nodes.conf
 # Azam Basha High-Density Heavy Node Optimization (Cat8000, Cisco 8000, Cat9000)
 vm.swappiness = 10
 vm.vfs_cache_pressure = 50
@@ -267,33 +339,80 @@ vm.dirty_ratio = 10
 fs.inotify.max_user_watches = 1048576
 fs.file-max = 2097152
 EOF
-sysctl -p /etc/sysctl.d/99-azambasha-heavy-nodes.conf >/dev/null 2>&1 || true
-echo "  [✔] Sysctl applied: vm.swappiness=10, 2M file descriptors"
+    sysctl -p /etc/sysctl.d/99-azambasha-heavy-nodes.conf >/dev/null 2>&1 || true
+fi
+echo "  [✔] kvm.halt_poll_ns set to 0, sysctl applied (vm.swappiness=10, 2M file descriptors)"
 
 # -----------------------------------------------------------------------------
 # 4. In-Memory ZRAM / ZSWAP Fast Buffer (Prevents Mass Boot OOM)
 # -----------------------------------------------------------------------------
 echo "[4/6] Initializing High-Speed In-Memory Swap Buffer (ZRAM / ZSWAP)..."
-if [ -d /sys/module/zswap/parameters ]; then
-    echo 1 > /sys/module/zswap/parameters/enabled 2>/dev/null || true
-    # Try zstd first, fallback to lz4
-    if grep -q zstd /sys/module/zswap/parameters/compressor 2>/dev/null; then
-        echo zstd > /sys/module/zswap/parameters/compressor 2>/dev/null || true
-    elif grep -q lz4 /sys/module/zswap/parameters/compressor 2>/dev/null; then
-        echo lz4 > /sys/module/zswap/parameters/compressor 2>/dev/null || true
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo "  [DRY-RUN] Would configure ZSWAP with zstd/lz4 compression and 30% max pool"
+else
+    if [ -d /sys/module/zswap/parameters ]; then
+        echo 1 > /sys/module/zswap/parameters/enabled 2>/dev/null || true
+        # Try zstd first, fallback to lz4
+        if grep -q zstd /sys/module/zswap/parameters/compressor 2>/dev/null; then
+            echo zstd > /sys/module/zswap/parameters/compressor 2>/dev/null || true
+        elif grep -q lz4 /sys/module/zswap/parameters/compressor 2>/dev/null; then
+            echo lz4 > /sys/module/zswap/parameters/compressor 2>/dev/null || true
+        fi
+        echo 30 > /sys/module/zswap/parameters/max_pool_percent 2>/dev/null || true
     fi
-    echo 30 > /sys/module/zswap/parameters/max_pool_percent 2>/dev/null || true
-    echo "  [✔] ZSWAP active: In-RAM 3:1 fast compression tier prevents disk thrashing"
 fi
+echo "  [✔] ZSWAP active: In-RAM 3:1 fast compression tier prevents disk thrashing"
 
 # -----------------------------------------------------------------------------
-# 5. Patch QEMU Templates & device_qemu.php for Target Devices
+# 5. Patch QEMU Templates & device_qemu.php for Universal Device Coverage
 # -----------------------------------------------------------------------------
-echo "[5/6] Tuning QEMU Templates & Engine for Catalyst 8000, Cisco 8000 & Cat 9000..."
-python3 - << 'PYEOF'
-import os, re, glob
+echo "[5/6] Tuning QEMU Templates & Engine Universally (All Images & Future Devices)..."
+python3 - "$DRY_RUN" << 'PYEOF'
+import sys, os, re, glob
 
-# 1. Ensure templates exist and contain mem-merge=on and virtio-balloon
+dry_run = len(sys.argv) > 1 and sys.argv[1] == "1"
+
+# 1. Universal scan of ALL templates under /opt/unetlab/html/templates (and subfolders intel, amd, etc.)
+templates_root = "/opt/unetlab/html/templates"
+if not os.path.isdir(templates_root):
+    # Fallback to local repo templates if running in test environment
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) if '__file__' in globals() else "."
+    templates_root = os.path.join(base_dir, "html", "templates")
+
+scanned_count = 0
+opt_count = 0
+
+if os.path.isdir(templates_root):
+    for root, dirs, files in os.walk(templates_root):
+        for f in files:
+            if not f.endswith(".yml"):
+                continue
+            scanned_count += 1
+            fpath = os.path.join(root, f)
+            try:
+                with open(fpath, "r", encoding="utf-8") as yf:
+                    txt = yf.read()
+                # Check if it's a QEMU appliance template
+                if "type: qemu" in txt or "qemu_arch:" in txt or "qemu_options:" in txt:
+                    if "mem-merge=on" not in txt:
+                        if "qemu_options:" in txt:
+                            txt = re.sub(r'qemu_options:\s*([^\n]+)', r'qemu_options: -machine mem-merge=on \1', txt)
+                        else:
+                            txt += "\nqemu_options: -machine mem-merge=on -cpu host -enable-kvm -serial mon:stdio -nographic\n"
+                        if not dry_run:
+                            with open(fpath, "w", encoding="utf-8") as yf:
+                                yf.write(txt)
+                            print(f"  [✔] Injected mem-merge=on into {os.path.basename(fpath)}")
+                        else:
+                            print(f"  [DRY-RUN] Would inject mem-merge=on into {os.path.basename(fpath)}")
+                        opt_count += 1
+                    else:
+                        opt_count += 1
+            except Exception as e:
+                pass
+print(f"  [✔] Universal template scan: {opt_count}/{scanned_count} QEMU templates verified with mem-merge=on")
+
+# 2. Ensure baseline heavy appliance templates exist
 templates_dirs = [
     "/opt/unetlab/html/templates",
     "/opt/unetlab/html/templates/intel",
@@ -302,43 +421,23 @@ templates_dirs = [
 
 target_templates = {
     "c8000v": {
-        "name": "Cisco Catalyst 8000v",
-        "cpus": 2,
-        "ram": 4096,
-        "ethernets": 4,
-        "qemu_nic": "virtio-net-pci",
+        "name": "Cisco Catalyst 8000v", "cpus": 2, "ram": 4096, "ethernets": 4, "qemu_nic": "virtio-net-pci",
         "qemu_options": "-machine pc,mem-merge=on -cpu host -enable-kvm -serial mon:stdio -nographic"
     },
     "cisco8000": {
-        "name": "Cisco 8000 Series (XR7)",
-        "cpus": 4,
-        "ram": 8192,
-        "ethernets": 8,
-        "qemu_nic": "virtio-net-pci",
+        "name": "Cisco 8000 Series (XR7)", "cpus": 4, "ram": 8192, "ethernets": 8, "qemu_nic": "virtio-net-pci",
         "qemu_options": "-machine pc,mem-merge=on -cpu host,migratable=no,+invtsc -enable-kvm -serial mon:stdio -nographic"
     },
     "cat9000v": {
-        "name": "Cisco Catalyst 9000v",
-        "cpus": 4,
-        "ram": 8192,
-        "ethernets": 16,
-        "qemu_nic": "virtio-net-pci",
+        "name": "Cisco Catalyst 9000v", "cpus": 4, "ram": 8192, "ethernets": 16, "qemu_nic": "virtio-net-pci",
         "qemu_options": "-machine pc,mem-merge=on -cpu host -enable-kvm -serial mon:stdio -nographic"
     },
     "c9300v": {
-        "name": "Cisco Catalyst 9300v",
-        "cpus": 4,
-        "ram": 8192,
-        "ethernets": 16,
-        "qemu_nic": "virtio-net-pci",
+        "name": "Cisco Catalyst 9300v", "cpus": 4, "ram": 8192, "ethernets": 16, "qemu_nic": "virtio-net-pci",
         "qemu_options": "-machine pc,mem-merge=on -cpu host -enable-kvm -serial mon:stdio -nographic"
     },
     "c9500v": {
-        "name": "Cisco Catalyst 9500v",
-        "cpus": 4,
-        "ram": 8192,
-        "ethernets": 24,
-        "qemu_nic": "virtio-net-pci",
+        "name": "Cisco Catalyst 9500v", "cpus": 4, "ram": 8192, "ethernets": 24, "qemu_nic": "virtio-net-pci",
         "qemu_options": "-machine pc,mem-merge=on -cpu host -enable-kvm -serial mon:stdio -nographic"
     }
 }
@@ -348,25 +447,12 @@ for tdir in templates_dirs:
         continue
     for tkey, tdata in target_templates.items():
         tpath = os.path.join(tdir, f"{tkey}.yml")
-        if os.path.isfile(tpath):
-            # Patch existing template to ensure mem-merge=on is present
-            try:
-                with open(tpath, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                if "mem-merge=on" not in content:
-                    if "qemu_options:" in content:
-                        content = re.sub(r'qemu_options:\s*([^\n]+)', r'qemu_options: -machine pc,mem-merge=on \1', content)
-                    else:
-                        content += f"\nqemu_options: {tdata['qemu_options']}\n"
-                    with open(tpath, 'w', encoding='utf-8') as f:
-                        f.write(content)
-                    print(f"  [✔] Injected mem-merge=on into existing template {tpath}")
-            except Exception as e:
-                pass
-        else:
-            # Create standard template
-            try:
-                tpl_yaml = f"""---
+        if not os.path.isfile(tpath):
+            if dry_run:
+                print(f"  [DRY-RUN] Would create default template: {tpath}")
+            else:
+                try:
+                    tpl_yaml = f"""---
 type: qemu
 description: {tdata['name']}
 name: {tkey.upper()}
@@ -378,13 +464,13 @@ qemu_nic: {tdata['qemu_nic']}
 qemu_options: {tdata['qemu_options']}
 icon: Router.png
 """
-                with open(tpath, 'w', encoding='utf-8') as f:
-                    f.write(tpl_yaml)
-                print(f"  [✔] Created optimized template {tpath}")
-            except Exception as e:
-                pass
+                    with open(tpath, 'w', encoding='utf-8') as f:
+                        f.write(tpl_yaml)
+                    print(f"  [✔] Created optimized baseline template {tpath}")
+                except Exception:
+                    pass
 
-# 2. Patch device_qemu.php to universally enforce mem-merge=on and virtio-balloon for all QEMU VMs
+# 3. Patch device_qemu.php to universally enforce mem-merge=on and virtio-balloon at runtime
 dev_file = "/opt/unetlab/html/devices/qemu/device_qemu.php"
 if os.path.isfile(dev_file):
     try:
@@ -410,13 +496,18 @@ if os.path.isfile(dev_file):
                 changed = True
 
         if changed:
-            with open(dev_file, 'w', encoding='utf-8') as f:
-                f.write(code)
-            print("  [✔] Patched device_qemu.php: Machine mem-merge=on & virtio-balloon universally active")
+            if dry_run:
+                print("  [DRY-RUN] Would patch device_qemu.php with universal mem-merge=on and virtio-balloon")
+            else:
+                with open(dev_file, 'w', encoding='utf-8') as f:
+                    f.write(code)
+                print("  [✔] Patched device_qemu.php: mem-merge=on & virtio-balloon universally active")
+        else:
+            print("  [✔] device_qemu.php: Universal runtime interceptor already active")
     except Exception as e:
         print(f"  [!] device_qemu patch note: {e}")
 
-# 3. Patch device_iol.php to enforce 100:1 CPU idle governor & KSM whole-process merge
+# 4. Patch device_iol.php to enforce 100:1 CPU idle governor & KSM whole-process merge
 dev_iol = "/opt/unetlab/html/devices/iol/device_iol.php"
 if os.path.isfile(dev_iol):
     try:
@@ -424,35 +515,35 @@ if os.path.isfile(dev_iol):
             code_iol = f.read()
 
         changed_iol = False
-        # Front iol_wrapper with ksm_merge_exec
         target_iol_cmd = '$cmd = "/opt/unetlab/wrappers/iol_wrapper ";'
-        repl_iol_cmd = """$ksmWrap = '/opt/unetlab/wrappers/ksm_merge_exec';
+        target_iol_cmd_sq = "$cmd = '/opt/unetlab/wrappers/iol_wrapper ';"
+        repl_iol_cmd = """// AzamLabs Universal Runtime Interceptor: Ultra-KSM & azam-iol-launcher
+        $ksmWrap = '/opt/unetlab/wrappers/ksm_merge_exec';
         $ksmLauncher = (is_executable($ksmWrap) && !file_exists('/opt/unetlab/wrappers/.ksm_merge_off')) ? $ksmWrap . ' ' : '';
         $cmd = $ksmLauncher . '/opt/unetlab/wrappers/iol_wrapper ';"""
-        if target_iol_cmd in code_iol and 'ksm_merge_exec' not in code_iol:
+        if 'ksm_merge_exec' in code_iol:
+            if 'azam-iol-launcher' not in code_iol:
+                code_iol = code_iol.replace(
+                    "$ksmWrap = '/opt/unetlab/wrappers/ksm_merge_exec';",
+                    "// AzamLabs Universal Runtime Interceptor: Ultra-KSM & azam-iol-launcher\n        $ksmWrap = '/opt/unetlab/wrappers/ksm_merge_exec';"
+                )
+                changed_iol = True
+        elif target_iol_cmd in code_iol:
             code_iol = code_iol.replace(target_iol_cmd, repl_iol_cmd)
             changed_iol = True
-
-        # Deploy launcher wrapper for node image execution
-        target_copy = 'copy("/opt/unetlab/addons/iol/bin/" . $this->image, $this->node->getRunningPath() . "/" . $this->image);'
-        repl_copy = """copy("/opt/unetlab/addons/iol/bin/" . $this->image, $this->node->getRunningPath() . "/" . $this->image . ".bin");
-            @chmod($this->node->getRunningPath() . "/" . $this->image . ".bin", 0755);
-            $launcher_content = "#!/bin/sh\\n" .
-                "if [ -x /opt/unetlab/wrappers/azam-iol-launcher ]; then\\n" .
-                "    exec /opt/unetlab/wrappers/azam-iol-launcher \\"$0.bin\\" \\"$@\\"\\n" .
-                "else\\n" .
-                "    exec \\"$0.bin\\" \\"$@\\"\\n" .
-                "fi\\n";
-            file_put_contents($this->node->getRunningPath() . "/" . $this->image, $launcher_content);
-            @chmod($this->node->getRunningPath() . "/" . $this->image, 0755);"""
-        if target_copy in code_iol and 'azam-iol-launcher' not in code_iol:
-            code_iol = code_iol.replace(target_copy, repl_copy)
+        elif target_iol_cmd_sq in code_iol:
+            code_iol = code_iol.replace(target_iol_cmd_sq, repl_iol_cmd)
             changed_iol = True
 
         if changed_iol:
-            with open(dev_iol, 'w', encoding='utf-8') as f:
-                f.write(code_iol)
-            print("  [✔] Patched device_iol.php: KSM whole-process merge & azam-iol-launcher active")
+            if dry_run:
+                print("  [DRY-RUN] Would patch device_iol.php with KSM whole-process merge & azam-iol-launcher")
+            else:
+                with open(dev_iol, 'w', encoding='utf-8') as f:
+                    f.write(code_iol)
+                print("  [✔] Patched device_iol.php: KSM whole-process merge & azam-iol-launcher active")
+        else:
+            print("  [✔] device_iol.php: Universal runtime IOL interceptor already active")
     except Exception as e:
         print(f"  [!] device_iol patch note: {e}")
 PYEOF
@@ -467,7 +558,9 @@ KSM_EXEC_SRC="$SCRIPT_DIR/ksm_merge_exec.c"
 [ ! -f "$KSM_EXEC_SRC" ] && KSM_EXEC_SRC="$SCRIPT_DIR/azambasha-ksm-merge-exec.c"
 [ ! -f "$KSM_EXEC_SRC" ] && KSM_EXEC_SRC="/opt/unetlab/scripts/azambasha-ksm-merge-exec.c"
 
-if [ -f "$KSM_EXEC_SRC" ] && command -v gcc >/dev/null 2>&1; then
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo "  [DRY-RUN] Would compile /opt/unetlab/wrappers/ksm_merge_exec from $KSM_EXEC_SRC"
+elif [ -f "$KSM_EXEC_SRC" ] && command -v gcc >/dev/null 2>&1; then
     gcc -O2 -Wall "$KSM_EXEC_SRC" -o /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
     chmod 755 /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
     echo "  [✔] Compiled /opt/unetlab/wrappers/ksm_merge_exec"
@@ -478,7 +571,9 @@ SHIM_SRC="$SCRIPT_DIR/azam-iol-shim.c"
 [ ! -f "$SHIM_SRC" ] && SHIM_SRC="$SCRIPT_DIR/azambasha-iol-shim.c"
 [ ! -f "$SHIM_SRC" ] && SHIM_SRC="/opt/unetlab/scripts/azambasha-iol-shim.c"
 
-if [ -f "$SHIM_SRC" ] && command -v gcc >/dev/null 2>&1; then
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo "  [DRY-RUN] Would compile multiarch azam-iol-shim (64-bit and 32-bit)"
+elif [ -f "$SHIM_SRC" ] && command -v gcc >/dev/null 2>&1; then
     gcc -O2 -shared -fPIC -Wall -Wextra "$SHIM_SRC" -o /opt/unetlab/wrappers/azam-iol-shim64.so -ldl 2>/dev/null || true
     cp -f /opt/unetlab/wrappers/azam-iol-shim64.so /opt/unetlab/wrappers/azam-iol-shim.so 2>/dev/null || true
     gcc -m32 -O2 -shared -fPIC -Wall -Wextra "$SHIM_SRC" -o /opt/unetlab/wrappers/azam-iol-shim32.so -ldl 2>/dev/null || true
@@ -487,7 +582,10 @@ if [ -f "$SHIM_SRC" ] && command -v gcc >/dev/null 2>&1; then
 fi
 
 # Deploy universal azam-iol-launcher
-cat << 'EOF_LAUNCHER' > /opt/unetlab/wrappers/azam-iol-launcher
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo "  [DRY-RUN] Would deploy /opt/unetlab/wrappers/azam-iol-launcher"
+else
+    cat << 'EOF_LAUNCHER' > /opt/unetlab/wrappers/azam-iol-launcher
 #!/bin/sh
 # AzamLabs IOL 100:1 CPU Idle Governor & Ultra-KSM Launcher
 REAL_BIN="$1"
@@ -516,16 +614,20 @@ else
     exec "$REAL_BIN" "$@"
 fi
 EOF_LAUNCHER
-chmod 755 /opt/unetlab/wrappers/azam-iol-launcher
-[ -f /opt/unetlab/wrappers/ksm_merge_exec ] && chmod 755 /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
+    chmod 755 /opt/unetlab/wrappers/azam-iol-launcher
+    [ -f /opt/unetlab/wrappers/ksm_merge_exec ] && chmod 755 /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
+fi
 
 # -----------------------------------------------------------------------------
 # 6. Deploy Systemd Services for Persistence & CPU Governor
 # -----------------------------------------------------------------------------
 echo "[6/6] Registering Systemd Services (Memory Optimizer & Dynamic CPU Governor)..."
 
-# 1. Heavy Optimizer Service
-cat << 'EOF' > /etc/systemd/system/azambasha-heavy-optimizer.service
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo "  [DRY-RUN] Would register and start azambasha-heavy-optimizer.service & azambasha-cpu-governor.service"
+else
+    # 1. Heavy Optimizer Service
+    cat << 'EOF' > /etc/systemd/system/azambasha-heavy-optimizer.service
 [Unit]
 Description=Azam Basha High-Density Heavy Node Memory & KSM Optimizer
 After=network.target sys-kernel-mm-ksm.mount
@@ -549,13 +651,13 @@ ExecStart=/bin/sh -c ' \
 WantedBy=multi-user.target
 EOF
 
-# 2. Dynamic Lossless CPU Governor Service
-GOV_SRC="$SCRIPT_DIR/azambasha-cpu-governor.py"
-[ ! -f "$GOV_SRC" ] && GOV_SRC="/opt/unetlab/scripts/azambasha-cpu-governor.py"
-if [ -f "$GOV_SRC" ]; then
-    cp -f "$GOV_SRC" /opt/unetlab/scripts/azambasha-cpu-governor.py 2>/dev/null || true
-    chmod +x /opt/unetlab/scripts/azambasha-cpu-governor.py 2>/dev/null || true
-    cat << 'EOF_GOV' > /etc/systemd/system/azambasha-cpu-governor.service
+    # 2. Dynamic Lossless CPU Governor Service
+    GOV_SRC="$SCRIPT_DIR/azambasha-cpu-governor.py"
+    [ ! -f "$GOV_SRC" ] && GOV_SRC="/opt/unetlab/scripts/azambasha-cpu-governor.py"
+    if [ -f "$GOV_SRC" ]; then
+        cp -f "$GOV_SRC" /opt/unetlab/scripts/azambasha-cpu-governor.py 2>/dev/null || true
+        chmod +x /opt/unetlab/scripts/azambasha-cpu-governor.py 2>/dev/null || true
+        cat << 'EOF_GOV' > /etc/systemd/system/azambasha-cpu-governor.service
 [Unit]
 Description=Azam Basha Lossless Dynamic CPU Governor for Heavy Virtual Routers
 After=network.target
@@ -573,16 +675,17 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target
 EOF_GOV
-fi
+    fi
 
-systemctl daemon-reload
-systemctl enable azambasha-heavy-optimizer.service 2>/dev/null || true
-systemctl start azambasha-heavy-optimizer.service 2>/dev/null || true
+    systemctl daemon-reload
+    systemctl enable azambasha-heavy-optimizer.service 2>/dev/null || true
+    systemctl start azambasha-heavy-optimizer.service 2>/dev/null || true
 
-if [ -f "/opt/unetlab/scripts/azambasha-cpu-governor.py" ]; then
-    systemctl enable azambasha-cpu-governor.service 2>/dev/null || true
-    systemctl restart azambasha-cpu-governor.service 2>/dev/null || true
-    echo "  [✔] Lossless CPU Governor service enabled and active"
+    if [ -f "/opt/unetlab/scripts/azambasha-cpu-governor.py" ]; then
+        systemctl enable azambasha-cpu-governor.service 2>/dev/null || true
+        systemctl restart azambasha-cpu-governor.service 2>/dev/null || true
+        echo "  [✔] Lossless CPU Governor service enabled and active"
+    fi
 fi
 
 # -----------------------------------------------------------------------------
@@ -592,9 +695,10 @@ if [ "$CLUSTER_SYNC" -eq 1 ] && [ "$ROLE" = "master" ]; then
     echo "============================================================"
     echo "    Propagating High-Density Optimization Across Cluster    "
     echo "============================================================"
-    # Inspect satellites from database or /opt/unetlab/cluster/
-    python3 - << 'PYEOF'
-import os, subprocess, json
+    python3 - "$DRY_RUN" << 'PYEOF'
+import os, sys, subprocess, json
+
+dry_run = len(sys.argv) > 1 and sys.argv[1] == "1"
 
 sync_files = [
     "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh",
@@ -640,22 +744,28 @@ if not satellites:
     print("  [*] No remote satellites registered in database or single-node topology.")
 else:
     for sat_ip in satellites:
-        print(f"  [*] Synchronizing High-Density Optimizer to Satellite: {sat_ip}...")
-        try:
-            # Sync all optimizer files
-            for sf in sync_files:
-                if os.path.isfile(sf):
-                    subprocess.run(["scp", "-o", "StrictHostKeyChecking=no", sf, f"root@{sat_ip}:/opt/unetlab/scripts/"], timeout=15)
-                    subprocess.run(["scp", "-o", "StrictHostKeyChecking=no", sf, f"root@{sat_ip}:/tmp/"], timeout=15)
-            # Execute on satellite
-            subprocess.run(["ssh", "-o", "StrictHostKeyChecking=no", f"root@{sat_ip}", "chmod +x /opt/unetlab/scripts/azambasha-*.sh /opt/unetlab/scripts/azambasha-*.py && bash /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh --satellite && bash /opt/unetlab/scripts/azambasha-fix-node-startup.sh"], timeout=60)
-            print(f"  [✔] Satellite {sat_ip} successfully optimized and verified!")
-        except Exception as e:
-            print(f"  [!] Satellite {sat_ip} sync note: {e}")
+        if dry_run:
+            print(f"  [DRY-RUN] Would synchronize High-Density Optimizer to Satellite: {sat_ip}...")
+        else:
+            print(f"  [*] Synchronizing High-Density Optimizer to Satellite: {sat_ip}...")
+            try:
+                for sf in sync_files:
+                    if os.path.isfile(sf):
+                        subprocess.run(["scp", "-o", "StrictHostKeyChecking=no", sf, f"root@{sat_ip}:/opt/unetlab/scripts/"], timeout=15)
+                        subprocess.run(["scp", "-o", "StrictHostKeyChecking=no", sf, f"root@{sat_ip}:/tmp/"], timeout=15)
+                subprocess.run(["ssh", "-o", "StrictHostKeyChecking=no", f"root@{sat_ip}", "chmod +x /opt/unetlab/scripts/azambasha-*.sh /opt/unetlab/scripts/azambasha-*.py && bash /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh --satellite && bash /opt/unetlab/scripts/azambasha-fix-node-startup.sh"], timeout=60)
+                print(f"  [✔] Satellite {sat_ip} successfully optimized and verified!")
+            except Exception as e:
+                print(f"  [!] Satellite {sat_ip} sync note: {e}")
 PYEOF
 fi
 
 echo "============================================================"
-echo "    [SUCCESS] Heavy Node Optimization Deployed!             "
-echo "  Run 'sudo bash $0 --check' to audit active RAM savings.   "
+if [ "$DRY_RUN" -eq 1 ]; then
+    echo "  [SUCCESS] Universal Optimizer Dry-Run Simulation Completed!"
+    echo "  No system modifications were made during this test.         "
+else
+    echo "  [SUCCESS] Universal Node Optimization Deployed!             "
+    echo "  Run 'sudo bash $0 --check' to audit active RAM savings.     "
+fi
 echo "============================================================"

@@ -7,14 +7,13 @@ set -euo pipefail
 
 # Resolve physical script location across symlinks (e.g. /usr/local/bin/azam-update)
 REAL_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" 2>/dev/null && pwd || echo "/opt/azambasha/scripts")"
-if [ ! -f "${SCRIPT_DIR}/azambasha-apply-all-fixes.sh" ]; then
-    if [ -f "/opt/azambasha/scripts/azambasha-apply-all-fixes.sh" ]; then
-        SCRIPT_DIR="/opt/azambasha/scripts"
-    elif [ -f "/opt/unetlab/scripts/azambasha-apply-all-fixes.sh" ]; then
-        SCRIPT_DIR="/opt/unetlab/scripts"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" 2>/dev/null && pwd || echo "/opt/unetlab/scripts")"
+for cand_dir in "/opt/azam-pnet/AzamLabs/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scripts"; do
+    if [ -f "${cand_dir}/azambasha-apply-all-fixes.sh" ]; then
+        SCRIPT_DIR="$cand_dir"
+        break
     fi
-fi
+done
 BASE_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Color tokens
@@ -59,9 +58,15 @@ usage() {
     exit 0
 }
 
-# Auto-install symlink if running as root
+# Auto-install symlinks if running as root
 if [ "$(id -u)" -eq 0 ]; then
-    ln -sf "$(realpath "$0")" /usr/local/bin/azam-update 2>/dev/null || true
+    local_target="$(realpath "$0" 2>/dev/null || echo "$0")"
+    if [ -f "/opt/unetlab/scripts/azambasha-update.sh" ]; then
+        local_target="/opt/unetlab/scripts/azambasha-update.sh"
+    elif [ -f "${SCRIPT_DIR}/azambasha-update.sh" ]; then
+        local_target="${SCRIPT_DIR}/azambasha-update.sh"
+    fi
+    ln -sf "$local_target" /usr/local/bin/azam-update 2>/dev/null || true
     if [ -f "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" ]; then
         ln -sf "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
     fi
@@ -105,76 +110,80 @@ sync_from_github() {
     local github_url="https://github.com/azambasha1987/MyRepo.git"
     local github_tar_url="https://github.com/azambasha1987/MyRepo/archive/refs/heads/main.tar.gz"
 
-    # Identify all candidate repository directories on the system
-    local sync_targets=()
-    for cand in "${BASE_DIR}" "$(dirname "$BASE_DIR" 2>/dev/null || true)" "/opt/azam-pnet" "/opt/azam-pnet/AzamLabs" "/opt/azambasha"; do
-        if [ -n "$cand" ] && [ -d "$cand" ] && [[ ! " ${sync_targets[*]:-} " =~ " ${cand} " ]]; then
-            sync_targets+=("$cand")
-        fi
-    done
+    local myrepo_dir="/opt/azam-pnet"
+    mkdir -p "$myrepo_dir" 2>/dev/null || true
 
-    local updated_any=0
-    for target in "${sync_targets[@]}"; do
-        if [ -d "${target}/.git" ]; then
-            log_info "Synchronizing Git repository: ${target}..."
-            git -C "$target" fetch origin main --quiet 2>/dev/null || true
-            git -C "$target" reset --hard origin/main --quiet 2>/dev/null || true
-            git -C "$target" clean -fd --quiet 2>/dev/null || true
-            log_ok "Synchronized ${target} to latest commit from GitHub (origin/main)."
-            updated_any=1
-        fi
-    done
-
-    # If no git directory was present, pull tarball into BASE_DIR
-    if [ "$updated_any" -eq 0 ]; then
-        local repo_dir="${BASE_DIR}"
-        mkdir -p "$repo_dir" 2>/dev/null || true
-        if command -v git &>/dev/null && git clone --depth 1 "$github_url" "${repo_dir}_new" 2>/dev/null; then
-            cp -rf "${repo_dir}_new/." "$repo_dir/" 2>/dev/null || true
-            rm -rf "${repo_dir}_new" 2>/dev/null || true
+    if [ -d "${myrepo_dir}/.git" ]; then
+        log_info "Synchronizing Git repository: ${myrepo_dir}..."
+        git -C "$myrepo_dir" fetch origin main --quiet 2>/dev/null || true
+        git -C "$myrepo_dir" reset --hard origin/main --quiet 2>/dev/null || true
+        git -C "$myrepo_dir" clean -fd --quiet 2>/dev/null || true
+        log_ok "Synchronized ${myrepo_dir} to latest commit from GitHub (origin/main)."
+    else
+        log_info "Cloning latest AzamLabs repository into ${myrepo_dir}..."
+        if command -v git &>/dev/null && git clone --depth 1 "$github_url" "$myrepo_dir" 2>/dev/null; then
             log_ok "Fetched latest codebase from GitHub via Git clone."
         elif command -v curl &>/dev/null; then
-            curl -skL "$github_tar_url" | tar -xz -C "$repo_dir" --strip-components=1 2>/dev/null || true
+            curl -skL "$github_tar_url" | tar -xz -C "$myrepo_dir" --strip-components=1 2>/dev/null || true
             log_ok "Fetched latest codebase from GitHub via public archive tarball."
         elif command -v wget &>/dev/null; then
-            wget -qO- "$github_tar_url" | tar -xz -C "$repo_dir" --strip-components=1 2>/dev/null || true
+            wget -qO- "$github_tar_url" | tar -xz -C "$myrepo_dir" --strip-components=1 2>/dev/null || true
             log_ok "Fetched latest codebase from GitHub via public archive tarball."
+        else
+            log_warn "Installing git to complete repository synchronization..."
+            apt-get update -qq >/dev/null 2>&1 || true
+            apt-get install -y -qq git >/dev/null 2>&1 || true
+            git clone --depth 1 "$github_url" "$myrepo_dir" 2>/dev/null || true
+            log_ok "Fetched latest codebase from GitHub via Git clone."
         fi
+    fi
+
+    # Locate source AzamLabs directory inside repository
+    local src_repo="${myrepo_dir}"
+    if [ -d "${myrepo_dir}/AzamLabs" ]; then
+        src_repo="${myrepo_dir}/AzamLabs"
+    fi
+
+    # Maintain system directories and symlinks
+    mkdir -p /opt/azambasha /opt/unetlab/scripts 2>/dev/null || true
+    if [ ! -L "/opt/azambasha" ] && [ ! -d "/opt/azambasha/scripts" ]; then
+        ln -sfn "$src_repo" /opt/azambasha 2>/dev/null || true
     fi
 
     # Propagate latest scripts and authoritative VERSION across all system runtime locations
-    local src_repo="${BASE_DIR}"
-    [ ! -f "${src_repo}/VERSION" ] && [ -f "/opt/azam-pnet/AzamLabs/VERSION" ] && src_repo="/opt/azam-pnet/AzamLabs"
-    [ ! -f "${src_repo}/VERSION" ] && [ -f "/opt/azambasha/VERSION" ] && src_repo="/opt/azambasha"
-
     if [ -d "${src_repo}/scripts" ]; then
         chmod +x "${src_repo}"/*.sh "${src_repo}/scripts"/*.sh "${src_repo}/scripts"/*.py 2>/dev/null || true
-        for runtime_dir in "/opt/unetlab/scripts" "/opt/azambasha/scripts"; do
-            if [ -d "$runtime_dir" ] && [ "$runtime_dir" != "${src_repo}/scripts" ]; then
-                cp -rf "${src_repo}/scripts/." "$runtime_dir/" 2>/dev/null || true
-                chmod +x "${runtime_dir}"/*.sh "${runtime_dir}"/*.py 2>/dev/null || true
-            fi
-        done
+        cp -rf "${src_repo}/scripts/." /opt/unetlab/scripts/ 2>/dev/null || true
+        if [ -d "/opt/azambasha/scripts" ] && [ "/opt/azambasha/scripts" != "${src_repo}/scripts" ]; then
+            cp -rf "${src_repo}/scripts/." /opt/azambasha/scripts/ 2>/dev/null || true
+        fi
+        chmod +x /opt/unetlab/scripts/*.sh /opt/unetlab/scripts/*.py 2>/dev/null || true
     fi
 
     if [ -f "${src_repo}/VERSION" ]; then
-        for v_dest in "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/opt/azam-pnet/AzamLabs/VERSION" "/etc/pnetlab-version"; do
-            if [ -d "$(dirname "$v_dest")" ]; then
-                cp -f "${src_repo}/VERSION" "$v_dest" 2>/dev/null || true
-                chmod 0644 "$v_dest" 2>/dev/null || true
-            fi
+        for v_dest in "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/etc/pnetlab-version"; do
+            mkdir -p "$(dirname "$v_dest")" 2>/dev/null || true
+            cp -f "${src_repo}/VERSION" "$v_dest" 2>/dev/null || true
+            chmod 0644 "$v_dest" 2>/dev/null || true
         done
     fi
 
-    # Refresh symlinks
-    ln -sf "${src_repo}/scripts/azambasha-update.sh" /usr/local/bin/azam-update 2>/dev/null || true
-    ln -sf "${src_repo}/scripts/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
+    # Refresh global administrative symlinks
+    ln -sf /opt/unetlab/scripts/azambasha-update.sh /usr/local/bin/azam-update 2>/dev/null || true
+    ln -sf /opt/unetlab/scripts/azambasha-quarterly-audit.sh /usr/local/bin/azam-audit 2>/dev/null || true
+    ln -sf /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/azam-menu 2>/dev/null || true
+    ln -sf /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/azam-fix 2>/dev/null || true
+    ln -sf /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/azam-credentials 2>/dev/null || true
+    ln -sf /opt/unetlab/scripts/azambasha-fleet-status.sh /usr/local/bin/azam-fleet 2>/dev/null || true
+    ln -sf /opt/unetlab/scripts/azambasha-cluster-capacity.py /usr/local/bin/azam-capacity 2>/dev/null || true
+
+    SCRIPT_DIR="/opt/unetlab/scripts"
 
     # Self-reexec to ensure currently running bash process executes the newly updated script
     if [ "${AZAM_REEXEC:-0}" -ne 1 ]; then
         export AZAM_REEXEC=1
         log_info "Restarting azam-update with latest synchronized code..."
-        exec bash "$REAL_PATH" "$@"
+        exec bash /usr/local/bin/azam-update "$@"
     fi
 }
 

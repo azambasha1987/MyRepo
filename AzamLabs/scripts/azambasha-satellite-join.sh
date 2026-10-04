@@ -437,7 +437,16 @@ elif [ -f "$SCRIPT_LOC/azambasha-heavy-node-optimizer.sh" ]; then
     log_ok "High-Density Optimizer: Active on Satellite (KSM Ultra, THP madvise, CPU governor)"
 fi
 
-echo ""
+# Register global administrative CLI commands on Satellite
+for s_dir in "/opt/unetlab/scripts" "/opt/azambasha/scripts" "$SCRIPT_LOC"; do
+    if [ -f "${s_dir}/azambasha-update.sh" ]; then
+        ln -sf "${s_dir}/azambasha-update.sh" /usr/local/bin/azam-update 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-apply-all-fixes.sh" /usr/local/bin/azam-menu 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-apply-all-fixes.sh" /usr/local/bin/azam-fix 2>/dev/null || true
+        break
+    fi
+done
 echo "============================================================"
 echo "  [SUCCESS] SATELLITE NODE JOINED TO MASTER SUCCESSFULLY!   "
 echo "============================================================"

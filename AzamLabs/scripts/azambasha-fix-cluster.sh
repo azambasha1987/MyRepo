@@ -676,6 +676,15 @@ if [ "${SAT_COUNT:-0}" -gt 0 ]; then
             PING_OK="REACHABLE"
         fi
         log_info "Satellite #$s_id: $s_name ($s_ip) | Ping: $PING_OK | Status: $s_status | Version: $s_ver"
+        if [ "$PING_OK" = "REACHABLE" ] && [ -f "$CLUSTER_KEY" ]; then
+            if ! ssh -i "$CLUSTER_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=3 "root@$s_ip" "command -v azam-update" &>/dev/null; then
+                log_info "Synchronizing azam-update engine to Satellite #$s_id ($s_ip)..."
+                ssh -i "$CLUSTER_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "root@$s_ip" "mkdir -p /opt/unetlab/scripts" &>/dev/null || true
+                scp -i "$CLUSTER_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "${SCRIPT_DIR}/azambasha-update.sh" "root@$s_ip:/opt/unetlab/scripts/azambasha-update.sh" &>/dev/null || true
+                ssh -i "$CLUSTER_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "root@$s_ip" "chmod +x /opt/unetlab/scripts/azambasha-update.sh && ln -sf /opt/unetlab/scripts/azambasha-update.sh /usr/local/bin/azam-update" &>/dev/null || true
+                log_ok "Installed /usr/local/bin/azam-update on Satellite #$s_id ($s_ip)."
+            fi
+        fi
     done
 fi
 

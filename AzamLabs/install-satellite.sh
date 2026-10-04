@@ -1001,6 +1001,9 @@ for s_dir in "${SCRIPT_DIR}/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scri
         ln -sfn "${s_dir}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
         ln -sfn "${s_dir}/azambasha-apply-all-fixes.sh" /usr/local/bin/azam-menu 2>/dev/null || true
         ln -sfn "${s_dir}/azambasha-apply-all-fixes.sh" /usr/local/bin/azam-fix 2>/dev/null || true
+        ln -sfn "${s_dir}/azambasha-fix-web-credentials.sh" /usr/local/bin/azam-credentials 2>/dev/null || true
+        ln -sfn "${s_dir}/azambasha-fleet-status.sh" /usr/local/bin/azam-fleet 2>/dev/null || true
+        ln -sfn "${s_dir}/azambasha-cluster-capacity.py" /usr/local/bin/azam-capacity 2>/dev/null || true
         break
     fi
 done

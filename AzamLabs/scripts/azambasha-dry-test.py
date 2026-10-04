@@ -294,6 +294,46 @@ def probe_satellite_version_alignment():
 
     return True, details
 
+def probe_template_schema_and_startup():
+    details = []
+    startup_path = os.path.join(SCRIPT_DIR, "azambasha-fix-node-startup.sh")
+    sat_install_path = os.path.join(BASE_DIR, "install-satellite.sh")
+
+    if not os.path.isfile(startup_path):
+        return False, [f"Missing startup fix script: {startup_path}"]
+
+    with open(startup_path, "r", encoding="utf-8") as f:
+        startup_code = f.read()
+
+    # 1. Check api_nodes.php safe QEMU template schema patch
+    if "api_nodes.php" in startup_code and "Safe QEMU template schema resolution" in startup_code and "$qemuDefault" in startup_code:
+        details.append("api_nodes.php: Safe QEMU template schema resolution hook verified.")
+    else:
+        return False, ["azambasha-fix-node-startup.sh missing api_nodes.php safe schema patch"]
+
+    # 2. Check /opt/qemu directory vs symlink clash immunity
+    if "if [ ! -L /opt/qemu ] && [ -d /opt/qemu ]" in startup_code:
+        details.append("/opt/qemu: Directory vs symlink collision immunity verified.")
+    else:
+        return False, ["azambasha-fix-node-startup.sh missing /opt/qemu collision protection"]
+
+    # 3. Check TAP interface teardown hook
+    if "Teardown TAP interface cleanup" in startup_code and "Azam-Pnet Teardown Fix" in startup_code:
+        details.append("device.php: Node TAP interface teardown cleanup hook verified.")
+    else:
+        return False, ["azambasha-fix-node-startup.sh missing TAP interface teardown cleanup"]
+
+    # 4. Check Satellite lab symlink
+    if os.path.isfile(sat_install_path):
+        with open(sat_install_path, "r", encoding="utf-8") as f:
+            sat_code = f.read()
+        if "/opt/unetlab/labs" in sat_code and "/root/labs" in sat_code:
+            details.append("install-satellite.sh: Satellite lab directory and /root/labs symlink verified.")
+        else:
+            return False, ["install-satellite.sh missing /opt/unetlab/labs or /root/labs link"]
+
+    return True, details
+
 def main():
     print("================================================================================")
     print("        AzamLabs Update Check Plan — Automated Dry-Run Test Suite               ")
@@ -309,6 +349,7 @@ def main():
         (6, "AzamLabs Operations Center Audit Card", probe_ops_dashboard),
         (7, "Docker Container Subsystem & Official Images", probe_docker_subsystem),
         (8, "Cluster Daemon & Satellite Version Alignment", probe_satellite_version_alignment),
+        (9, "Template Schema & Node Startup Hardening", probe_template_schema_and_startup),
     ]
 
     passed = 0

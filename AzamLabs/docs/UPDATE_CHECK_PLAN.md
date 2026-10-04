@@ -25,6 +25,10 @@
 >    - **Zero Wrapper Stripping**: Satellite nodes must remain 100% self-contained with all hypervisor wrappers (`qemu_wrapper`, `iol_wrapper`, `dynamips_wrapper`, `unl_wrapper`) and Windows SPICE drivers intact (eliminating upstream Issue #40).
 >    - **Unjailed Cluster SSH Keys**: Cluster keys in `/root/.ssh/authorized_keys` must never be restricted with `command="rrsync...",restrict` (eliminating upstream Issue #33).
 >    - **Authoritative Dynamic Versioning**: Satellite daemons (`pnetlab-satd.py`, `pnetlab-brokerd.py`) must dynamically query `/opt/unetlab/VERSION` rather than hardcoding `dpkg-query`.
+> 8. **Template Schema & Hypervisor Symlink Immunity Protocol**:
+>    - **Zero-Failure Template Resolution**: Upstream files (`api_nodes.php`, `device_qemu.php`) must be hardened against fragile `readlink('/opt/qemu')` assumptions. `/opt/qemu` directory vs symlink collisions must be eliminated so REST schema endpoints (`/api/list/templates/<name>`) never fail.
+>    - **Symmetric Lab Sync Directory**: Satellite worker nodes must maintain `/opt/unetlab/labs` and `/root/labs -> /opt/unetlab/labs` so cross-cluster lab synchronization never drops with missing file errors.
+>    - **Automated TAP Teardown Cleanup**: When nodes are stopped, all corresponding virtual TAP interfaces must be systematically cleaned up in `device.php` to prevent interface leaks.
 
 ---
 

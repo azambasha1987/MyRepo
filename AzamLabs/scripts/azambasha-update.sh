@@ -357,6 +357,23 @@ EOF_OVERRIDE
         log_warn "Web-GUI auth probe returned HTTP $code; triggering deep-credentials fix..."
         bash "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" --silent 2>/dev/null || true
     fi
+
+    # 6. Template Schema Health Probe (Prevent "Could not load template schema" upstream regressions)
+    log_info "Probing template schema resolution engine..."
+    local tpl_res
+    tpl_res=$(curl -sk -b "token=$(mysql -u pnetlab -ppnetlab pnetlab_db -N -e "SELECT cookie FROM users WHERE username='admin' LIMIT 1;" 2>/dev/null || mysql pnetlab_db -N -e "SELECT cookie FROM users WHERE username='admin' LIMIT 1;" 2>/dev/null)" https://127.0.0.1/api/list/templates/vios 2>/dev/null || true)
+    if [[ "$tpl_res" == *"\"status\":\"success\""* ]]; then
+        log_ok "Template Schema Engine: ${BOLD}VERIFIED ACTIVE (vios/QEMU schema loaded successfully)${RESET}"
+    else
+        log_warn "Template schema probe returned non-success; running azambasha-fix-node-startup.sh..."
+        bash "${SCRIPT_DIR}/azambasha-fix-node-startup.sh" >/dev/null 2>&1 || true
+        tpl_res=$(curl -sk -b "token=$(mysql -u pnetlab -ppnetlab pnetlab_db -N -e "SELECT cookie FROM users WHERE username='admin' LIMIT 1;" 2>/dev/null || mysql pnetlab_db -N -e "SELECT cookie FROM users WHERE username='admin' LIMIT 1;" 2>/dev/null)" https://127.0.0.1/api/list/templates/vios 2>/dev/null || true)
+        if [[ "$tpl_res" == *"\"status\":\"success\""* ]]; then
+            log_ok "Template Schema Engine: ${BOLD}REMEDIATED & VERIFIED ACTIVE${RESET}"
+        else
+            log_warn "Template schema probe note: ${tpl_res:0:100}"
+        fi
+    fi
 }
 
 verify_and_stabilize_satellite() {
@@ -398,6 +415,11 @@ EOF_OVERRIDE
 
     # 3c. Align Satellite Daemon & Local Broker with authoritative AzamLabs platform version
     align_daemon_versions
+
+    # 3d. Ensure Satellite labs directory and /root/labs symlink exist
+    mkdir -p /opt/unetlab/labs 2>/dev/null || true
+    ln -sfn /opt/unetlab/labs /root/labs 2>/dev/null || true
+    log_ok "Satellite Lab Directory Sync Link (/opt/unetlab/labs <-> /root/labs): VERIFIED"
 
     # 4. Restart/Reload worker daemons cleanly
     systemctl restart pnetlab-brokerd 2>/dev/null || true

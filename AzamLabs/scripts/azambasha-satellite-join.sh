@@ -338,11 +338,38 @@ with open(cert_path, "r") as f:
     der = ssl.PEM_cert_to_DER_cert(f.read())
 cert_fp = "sha256:" + hashlib.sha256(der).hexdigest()
 
-pkg_ver = "6.8.74resolute1"
-p = subprocess.run(["dpkg-query", "-W", "-f", "\${Version}", "pnetlab-satellite"],
-                   stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-if p.returncode == 0 and p.stdout:
-    pkg_ver = p.stdout.decode().strip()
+pkg_ver = "6.8.85resolute1"
+found_ver = False
+for v_file in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/pnetlab-version"):
+    try:
+        if os.path.isfile(v_file):
+            with open(v_file, "r", encoding="utf-8") as vf:
+                v_pkg = ""
+                v_rel = ""
+                for line in vf:
+                    line = line.strip()
+                    if line.startswith("PACKAGE_VERSION="):
+                        v_pkg = line.split("=", 1)[1].strip()
+                    elif line.startswith("VERSION="):
+                        v_rel = line.split("=", 1)[1].strip()
+                if v_pkg:
+                    pkg_ver = v_pkg
+                    found_ver = True
+                    break
+                if v_rel:
+                    pkg_ver = v_rel
+                    found_ver = True
+                    break
+    except Exception:
+        pass
+
+if not found_ver:
+    for pkg in ("pnetlab-satellite", "pnetlab"):
+        p = subprocess.run(["dpkg-query", "-W", "-f", "${Version}", pkg],
+                           stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        if p.returncode == 0 and p.stdout:
+            pkg_ver = p.stdout.decode().strip()
+            break
 
 body = {
     "host_id": slot,

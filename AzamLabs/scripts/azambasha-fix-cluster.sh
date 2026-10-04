@@ -37,8 +37,17 @@ echo "============================================================"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-MASTER_RELEASE="6.8.74resolute1"
-if command -v dpkg-query >/dev/null 2>&1; then
+MASTER_RELEASE="6.8.85resolute1"
+for v_candidate in "${REPO_ROOT}/VERSION" "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/etc/pnetlab-version"; do
+    if [ -f "$v_candidate" ]; then
+        V_VAL="$(grep -E '^PACKAGE_VERSION=' "$v_candidate" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)"
+        if [ -n "$V_VAL" ]; then
+            MASTER_RELEASE="$V_VAL"
+            break
+        fi
+    fi
+done
+if [ -z "$MASTER_RELEASE" ] && command -v dpkg-query >/dev/null 2>&1; then
     DETECTED_VER="$(dpkg-query -W -f='${Version}' pnetlab 2>/dev/null || true)"
     if [[ "$DETECTED_VER" =~ ^6\.8\.[0-9]+resolute1$ ]]; then
         MASTER_RELEASE="$DETECTED_VER"
@@ -659,11 +668,67 @@ try:
 
     if target in content:
         new_content = content.replace(target, replacement, 1)
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(new_content)
         print("Patched cluster/api.php with dynamic satellite probe.")
     else:
+        new_content = content
         print("cluster/api.php already patched or signature altered.")
+
+    target_mpkg = """    require_once '/opt/unetlab/html/includes/version.php';   // PNET_RELEASE
+    $masterPkg = '';
+    exec('dpkg-query -W -f \\'${Version}\\' pnetlab 2>/dev/null', $mvOut, $mvRc);
+    if ($mvRc === 0 && count($mvOut)) {
+        $masterPkg = trim($mvOut[0]);
+    }"""
+
+    replacement_mpkg = """    require_once '/opt/unetlab/html/includes/version.php';   // PNET_RELEASE
+    $masterPkg = defined('PNET_PACKAGE_VERSION') ? PNET_PACKAGE_VERSION : '';
+    if (empty($masterPkg)) {
+        exec('dpkg-query -W -f \\'${Version}\\' pnetlab 2>/dev/null', $mvOut, $mvRc);
+        if ($mvRc === 0 && count($mvOut)) {
+            $masterPkg = trim($mvOut[0]);
+        }
+    }"""
+
+    if target_mpkg in new_content:
+        new_content = new_content.replace(target_mpkg, replacement_mpkg, 1)
+        print("Patched cluster/api.php with authoritative master package version.")
+
+    if new_content != content:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(new_content)
+
+    # Align local brokerd version resolution if present
+    broker_file = "/opt/unetlab/scripts/pnetlab-brokerd.py"
+    if os.path.isfile(broker_file):
+        try:
+            with open(broker_file, "r", encoding="utf-8") as f:
+                b_code = f.read()
+            target_pattern_b = r'def _master_version\(\):\s+global _MASTER_VERSION\s+if _MASTER_VERSION is None:'
+            replacement_b = '''def _master_version():
+    global _MASTER_VERSION
+    if _MASTER_VERSION is None:
+        for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/pnetlab-version"):
+            try:
+                if os.path.isfile(v_path):
+                    with open(v_path, "r", encoding="utf-8") as f:
+                        for line in f:
+                            line = line.strip()
+                            if line.startswith("PACKAGE_VERSION="):
+                                _MASTER_VERSION = line.split("=", 1)[1].strip()
+                                return _MASTER_VERSION
+                            elif line.startswith("VERSION="):
+                                _MASTER_VERSION = line.split("=", 1)[1].strip()
+                                return _MASTER_VERSION
+            except Exception:
+                pass'''
+            if "AzamLabs authoritative version resolution" not in b_code:
+                new_b = re.sub(target_pattern_b, replacement_b, b_code, count=1)
+                if new_b != b_code:
+                    with open(broker_file, "w", encoding="utf-8") as f:
+                        f.write(new_b)
+                    print("Patched pnetlab-brokerd.py for authoritative platform version.")
+        except Exception as be:
+            print(f"brokerd patch note: {be}")
 except Exception as e:
     print(f"Cluster API patch note: {e}")
 PYAPI
@@ -676,6 +741,9 @@ SAT_COUNT="$(mysql -u pnetlab -ppnetlab pnetlab_db -N -e "SELECT COUNT(*) FROM c
 log_ok "Registered cluster satellites in database: $SAT_COUNT"
 
 if [ "${SAT_COUNT:-0}" -gt 0 ]; then
+    # Ensure MySQL cluster_hosts table reflects the latest AzamLabs version for online satellites
+    mysql -u pnetlab -ppnetlab pnetlab_db -e "UPDATE cluster_hosts SET host_version = '${MASTER_RELEASE}' WHERE host_status = 1 AND (host_version = '6.8.74resolute1' OR host_version IS NULL);" 2>/dev/null || true
+
     mysql -u pnetlab -ppnetlab pnetlab_db -N -e "SELECT host_id, host_name, host_ip, host_status, host_version FROM cluster_hosts ORDER BY host_id;" 2>/dev/null | while read -r s_id s_name s_ip s_status s_ver; do
         PING_OK="UNREACHABLE"
         if ping -c 1 -W 1 "$s_ip" &>/dev/null; then
@@ -683,13 +751,11 @@ if [ "${SAT_COUNT:-0}" -gt 0 ]; then
         fi
         log_info "Satellite #$s_id: $s_name ($s_ip) | Ping: $PING_OK | Status: $s_status | Version: $s_ver"
         if [ "$PING_OK" = "REACHABLE" ] && [ -f "$CLUSTER_KEY" ]; then
-            if ! ssh -i "$CLUSTER_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=3 "root@$s_ip" "command -v azam-update" &>/dev/null; then
-                log_info "Synchronizing azam-update engine to Satellite #$s_id ($s_ip)..."
-                ssh -i "$CLUSTER_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "root@$s_ip" "mkdir -p /opt/unetlab/scripts" &>/dev/null || true
-                scp -i "$CLUSTER_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "${SCRIPT_DIR}/azambasha-update.sh" "root@$s_ip:/opt/unetlab/scripts/azambasha-update.sh" &>/dev/null || true
-                ssh -i "$CLUSTER_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "root@$s_ip" "chmod +x /opt/unetlab/scripts/azambasha-update.sh && ln -sf /opt/unetlab/scripts/azambasha-update.sh /usr/local/bin/azam-update" &>/dev/null || true
-                log_ok "Installed /usr/local/bin/azam-update on Satellite #$s_id ($s_ip)."
-            fi
+            log_info "Synchronizing azam-update engine to Satellite #$s_id ($s_ip)..."
+            ssh -i "$CLUSTER_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "root@$s_ip" "mkdir -p /opt/unetlab/scripts" &>/dev/null || true
+            scp -i "$CLUSTER_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "${SCRIPT_DIR}/azambasha-update.sh" "root@$s_ip:/opt/unetlab/scripts/azambasha-update.sh" &>/dev/null || true
+            ssh -i "$CLUSTER_KEY" -o StrictHostKeyChecking=no -o ConnectTimeout=5 "root@$s_ip" "chmod +x /opt/unetlab/scripts/azambasha-update.sh && ln -sf /opt/unetlab/scripts/azambasha-update.sh /usr/local/bin/azam-update && /usr/local/bin/azam-update --satellite >/dev/null 2>&1 &" &>/dev/null || true
+            log_ok "Synchronized and triggered azam-update on Satellite #$s_id ($s_ip)."
         fi
     done
 fi

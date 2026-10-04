@@ -995,6 +995,78 @@ if [ -f "${SCRIPT_DIR}/VERSION" ]; then
     cp -f "${SCRIPT_DIR}/VERSION" /etc/pnetlab-version 2>/dev/null || true
 fi
 
+# Align daemon versions with authoritative AzamLabs platform version
+python3 - << 'PY_DAEMON_ALIGN' 2>/dev/null || true
+import re, os
+
+satd_file = "/opt/unetlab/scripts/pnetlab-satd.py"
+if os.path.isfile(satd_file):
+    try:
+        with open(satd_file, "r", encoding="utf-8") as f:
+            code = f.read()
+        target_pattern = r'def pkg_version\(\):\s+for pkg in \("pnetlab-satellite", "pnetlab"\):'
+        replacement = '''def pkg_version():
+    # AzamLabs authoritative version resolution
+    for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/pnetlab-version"):
+        try:
+            if os.path.isfile(v_path):
+                with open(v_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line.startswith("PACKAGE_VERSION="):
+                            return line.split("=", 1)[1].strip()
+                        elif line.startswith("VERSION="):
+                            return line.split("=", 1)[1].strip()
+        except Exception:
+            pass
+    for pkg in ("pnetlab-satellite", "pnetlab"):'''
+        if "AzamLabs authoritative version resolution" not in code:
+            new_code = re.sub(target_pattern, replacement, code, count=1)
+            if new_code != code:
+                with open(satd_file, "w", encoding="utf-8") as f:
+                    f.write(new_code)
+                print("Patched pnetlab-satd.py to report authoritative AzamLabs platform version.")
+    except Exception as e:
+        print(f"pnetlab-satd patch note: {e}")
+
+broker_file = "/opt/unetlab/scripts/pnetlab-brokerd.py"
+if os.path.isfile(broker_file):
+    try:
+        with open(broker_file, "r", encoding="utf-8") as f:
+            code = f.read()
+        target_pattern = r'def _master_version\(\):\s+global _MASTER_VERSION\s+if _MASTER_VERSION is None:'
+        replacement = '''def _master_version():
+    global _MASTER_VERSION
+    if _MASTER_VERSION is None:
+        # AzamLabs authoritative version resolution
+        for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/pnetlab-version"):
+            try:
+                if os.path.isfile(v_path):
+                    with open(v_path, "r", encoding="utf-8") as f:
+                        for line in f:
+                            line = line.strip()
+                            if line.startswith("PACKAGE_VERSION="):
+                                _MASTER_VERSION = line.split("=", 1)[1].strip()
+                                return _MASTER_VERSION
+                            elif line.startswith("VERSION="):
+                                _MASTER_VERSION = line.split("=", 1)[1].strip()
+                                return _MASTER_VERSION
+            except Exception:
+                pass'''
+        if "AzamLabs authoritative version resolution" not in code:
+            new_code = re.sub(target_pattern, replacement, code, count=1)
+            if new_code != code:
+                with open(broker_file, "w", encoding="utf-8") as f:
+                    f.write(new_code)
+                print("Patched pnetlab-brokerd.py to report authoritative AzamLabs platform version.")
+    except Exception as e:
+        print(f"pnetlab-brokerd patch note: {e}")
+PY_DAEMON_ALIGN
+systemctl restart pnetlab-brokerd 2>/dev/null || true
+if [ -f /etc/pnetlab-satellite/satd.conf ] || [ -f /opt/unetlab/scripts/pnetlab-satd.py ]; then
+    systemctl restart pnetlab-satd 2>/dev/null || true
+fi
+
 # Register global administrative CLI commands on Satellite
 for s_dir in "${SCRIPT_DIR}/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scripts"; do
     if [ -d "$s_dir" ]; then

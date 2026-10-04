@@ -331,7 +331,7 @@ Every feature addition, bug fix, and performance hyper-tuning in AzamLabs is exp
 | **Docker Subsystem (`pnetlab-docker`, `pnet-capture-web`, Forwarding)** | Active (Master Host) | Active (Worker Client) | `azambasha-upload-and-docker-fix.sh`, `azambasha-quarterly-audit.sh` |
 | **VPCS Dual-Stack IPv6 Engine (`pnetlab-vpcs v6.8.83resolute1`)** | Active (`v6.8.83`) | Active (`v6.8.83`) | `pnetlab-vpcs_6.8.83resolute1_amd64.deb` |
 | **Interactive Canvas Tools (Network Watcher, Painter, Analyzer)** | Active (Full Web-GUI & Live Stream) | Active (Worker Packet Mirroring & Veth Hooks) | `azam-features.js`, `pnet-capture-web` |
-| **Dynamic Web-GUI Version Synchronization (`v6.8.85`)** | Active (`v6.8.85`) | N/A (Headless Worker) | `azambasha-sync-gui-version.sh` |
+| **Dynamic Web-GUI Version Synchronization (`v6.8.85`)** | Active (`v6.8.85`) | Active (`v6.8.85` via `satd` & `VERSION`) | `azambasha-sync-gui-version.sh`, `azambasha-satellite-join.sh`, `azambasha-update.sh` |
 | **Apache Event FastCGI, PHP-FPM & Session Cookies** | Active | N/A (Headless Worker) | `azambasha-fix-web-credentials.sh` |
 
 ---

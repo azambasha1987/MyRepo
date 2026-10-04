@@ -262,6 +262,38 @@ def probe_docker_subsystem():
 
     return True, details
 
+def probe_satellite_version_alignment():
+    details = []
+    join_path = os.path.join(SCRIPT_DIR, "azambasha-satellite-join.sh")
+    update_path = os.path.join(SCRIPT_DIR, "azambasha-update.sh")
+    fix_cluster_path = os.path.join(SCRIPT_DIR, "azambasha-fix-cluster.sh")
+
+    if not os.path.isfile(join_path) or not os.path.isfile(update_path) or not os.path.isfile(fix_cluster_path):
+        return False, ["Cluster synchronization scripts missing"]
+
+    with open(join_path, "r", encoding="utf-8") as f:
+        join_content = f.read()
+    if "/opt/unetlab/VERSION" in join_content and "PACKAGE_VERSION=" in join_content:
+        details.append("azambasha-satellite-join.sh queries authoritative /opt/unetlab/VERSION.")
+    else:
+        return False, ["azambasha-satellite-join.sh missing authoritative VERSION query"]
+
+    with open(update_path, "r", encoding="utf-8") as f:
+        update_content = f.read()
+    if "align_daemon_versions" in update_content:
+        details.append("azambasha-update.sh includes align_daemon_versions for pnetlab-satd & pnetlab-brokerd.")
+    else:
+        return False, ["azambasha-update.sh missing align_daemon_versions"]
+
+    with open(fix_cluster_path, "r", encoding="utf-8") as f:
+        fix_content = f.read()
+    if "MASTER_RELEASE" in fix_content and "cluster_hosts" in fix_content and "UPDATE cluster_hosts SET host_version" in fix_content:
+        details.append("azambasha-fix-cluster.sh synchronizes active satellite host_version in database.")
+    else:
+        return False, ["azambasha-fix-cluster.sh missing host_version synchronization"]
+
+    return True, details
+
 def main():
     print("================================================================================")
     print("        AzamLabs Update Check Plan — Automated Dry-Run Test Suite               ")
@@ -276,6 +308,7 @@ def main():
         (5, "Issue #34 Canvas Viewport & Zoom Retention Hook", probe_canvas_viewport_retention),
         (6, "AzamLabs Operations Center Audit Card", probe_ops_dashboard),
         (7, "Docker Container Subsystem & Official Images", probe_docker_subsystem),
+        (8, "Cluster Daemon & Satellite Version Alignment", probe_satellite_version_alignment),
     ]
 
     passed = 0

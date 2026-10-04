@@ -24,7 +24,13 @@ if sys.stdout and hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+REAL_FILE = os.path.realpath(__file__)
+SCRIPT_DIR = os.path.dirname(REAL_FILE)
+if not os.path.isfile(os.path.join(SCRIPT_DIR, "azambasha-update.sh")):
+    for s_cand in ["/opt/unetlab/scripts", "/opt/azambasha/scripts", "/opt/azam-pnet/EMULATOR/Azam-Pnet/scripts", "/opt/azam-pnet/AzamLabs/scripts"]:
+        if os.path.isfile(os.path.join(s_cand, "azambasha-update.sh")):
+            SCRIPT_DIR = s_cand
+            break
 BASE_DIR = os.path.dirname(SCRIPT_DIR)
 TARGET_EMAIL = "azambasha1987@gmail.com"
 

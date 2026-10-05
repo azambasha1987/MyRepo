@@ -43,17 +43,10 @@ if [ -d "$LOGIN_SRC" ]; then
     echo "  [✔] Modernized Azam Basha Login UI deployed to /opt/unetlab/html/login/"
     echo "  [✔] Avatar logo image deployed to /opt/unetlab/html/login/img/"
 
-    # === Deploy AzamLabs Official Platform Logo ===
-    OFFICIAL_LOGO=""
-    for cand in "${PARENT_DIR}/assets/logo.png" "${ASSETS_DIR}/logo.png" "/opt/azambasha/assets/logo.png" "${PARENT_DIR}/assets/logo-icon.png"; do
-        if [ -f "$cand" ]; then
-            OFFICIAL_LOGO="$cand"
-            break
-        fi
-    done
-
-    if [ -n "$OFFICIAL_LOGO" ]; then
-        echo "  [*] Propagating official AzamLabs logo to all platform logo paths..."
+    # === Deploy Home Screen Avatar as Universal Platform Logo ===
+    AVATAR_SRC="/opt/unetlab/html/login/img/azam_home_avatar.png"
+    if [ -f "$AVATAR_SRC" ]; then
+        echo "  [*] Propagating home screen avatar to all platform logo paths..."
         mkdir -p /opt/unetlab/data/branding \
                  /opt/unetlab/html/images \
                  /opt/unetlab/html/themes/default/images \
@@ -61,35 +54,44 @@ if [ -d "$LOGIN_SRC" ]; then
                  /opt/unetlab/html/favicon 2>/dev/null || true
 
         # Core logo paths (used by sidebar, topbar, branding API)
-        cp -f "$OFFICIAL_LOGO" /opt/unetlab/data/branding/logo.png 2>/dev/null || true
-        cp -f "$OFFICIAL_LOGO" /opt/unetlab/html/images/logo.png 2>/dev/null || true
-        cp -f "$OFFICIAL_LOGO" /opt/unetlab/html/themes/default/images/logo.png 2>/dev/null || true
-        cp -f "$OFFICIAL_LOGO" /opt/unetlab/html/assets-common/img/logo.png 2>/dev/null || true
+        cp -f "$AVATAR_SRC" /opt/unetlab/data/branding/logo.png 2>/dev/null || true
+        cp -f "$AVATAR_SRC" /opt/unetlab/html/images/logo.png 2>/dev/null || true
+        cp -f "$AVATAR_SRC" /opt/unetlab/html/themes/default/images/logo.png 2>/dev/null || true
+        cp -f "$AVATAR_SRC" /opt/unetlab/html/assets-common/img/logo.png 2>/dev/null || true
 
-        # Favicon paths
-        for fav_src in "${PARENT_DIR}/assets/favicon.ico" "${ASSETS_DIR}/favicon.ico"; do
-            [ -f "$fav_src" ] && cp -f "$fav_src" /opt/unetlab/html/themes/default/images/favicon.ico 2>/dev/null || true
-            [ -f "$fav_src" ] && cp -f "$fav_src" /opt/unetlab/html/favicon.ico 2>/dev/null || true
-        done
-        for fav_png in "${PARENT_DIR}/assets/favicon.png" "${ASSETS_DIR}/favicon.png"; do
-            [ -f "$fav_png" ] && cp -f "$fav_png" /opt/unetlab/html/assets-common/img/favicon.png 2>/dev/null || true
-            [ -f "$fav_png" ] && cp -f "$fav_png" /opt/unetlab/html/images/favicon.png 2>/dev/null || true
+        # Favicon paths — serve avatar as PNG favicon (browsers auto-scale)
+        cp -f "$AVATAR_SRC" /opt/unetlab/html/assets-common/img/favicon.png 2>/dev/null || true
+        cp -f "$AVATAR_SRC" /opt/unetlab/html/assets-common/img/favicon.ico 2>/dev/null || true
+        cp -f "$AVATAR_SRC" /opt/unetlab/html/images/favicon.png 2>/dev/null || true
+        cp -f "$AVATAR_SRC" /opt/unetlab/html/themes/default/images/favicon.ico 2>/dev/null || true
+        cp -f "$AVATAR_SRC" /opt/unetlab/html/favicon.ico 2>/dev/null || true
+
+        # Plymouth boot splash logo
+        for p in /usr/share/plymouth/themes/azamlabs/logo*.png; do
+            [ -f "$p" ] && cp -f "$AVATAR_SRC" "$p" 2>/dev/null || true
         done
 
         chmod 0644 /opt/unetlab/data/branding/logo.png \
                    /opt/unetlab/html/images/logo.png \
                    /opt/unetlab/html/themes/default/images/logo.png \
-                   /opt/unetlab/html/assets-common/img/logo.png 2>/dev/null || true
+                   /opt/unetlab/html/assets-common/img/logo.png \
+                   /opt/unetlab/html/assets-common/img/favicon.png \
+                   /opt/unetlab/html/assets-common/img/favicon.ico \
+                   /opt/unetlab/html/images/favicon.png \
+                   /opt/unetlab/html/favicon.ico 2>/dev/null || true
         chown -R www-data:www-data \
                    /opt/unetlab/data/branding \
                    /opt/unetlab/html/assets-common/img \
                    /opt/unetlab/html/images \
                    /opt/unetlab/html/themes/default/images 2>/dev/null || true
-        echo "  [✔] Official AzamLabs logo deployed as universal platform logo"
+        echo "  [✔] Home screen avatar deployed as universal platform logo (all paths)"
+    else
+        echo "  [!] Avatar source not found at $AVATAR_SRC — skipping universal logo deploy"
     fi
 elif [ -f /opt/unetlab/html/login/index.html ]; then
     sed -i -E 's/admin<\/strong> \/ <strong>[a-zA-Z0-9]+/admin<\/strong> \/ <strong>azam/g' /opt/unetlab/html/login/index.html 2>/dev/null || true
-    echo "  [✔] Login page default credentials set to admin / azam"
+    sed -i '/Offline appliance access/d' /opt/unetlab/html/login/index.html 2>/dev/null || true
+    echo "  [✔] Login page default credentials set to admin / azam (footnote removed)"
 fi
 
 # 3. Update Database Admin Password to 'azam' and Synchronize Version
@@ -115,15 +117,27 @@ mkdir -p "$BRAND_DIR"
 
 cat > "${BRAND_DIR}/config.json" << 'EOF'
 {
-  "name": "AzamLabs",
-  "login_header": "Next-Gen Network Emulation Platform",
+  "name": "Azam Basha",
+  "login_header": "Azam Basha Network Emulation Platform",
   "hide_default_creds": false
 }
 EOF
 
-# 7. Deploy Logo Assets
-if [ -n "${OFFICIAL_LOGO:-}" ] && [ -f "$OFFICIAL_LOGO" ]; then
-    cp -f "$OFFICIAL_LOGO" "${BRAND_DIR}/logo.png" 2>/dev/null || true
+# 7. Deploy Logo Assets — prefer the home screen avatar, fall back to assets/logo.png
+# The avatar (azam_home_avatar.png) is the canonical brand logo for the entire platform.
+AVATAR_SRC_FALLBACK="${PARENT_DIR}/login/img/azam_home_avatar.png"
+if [ -f "$AVATAR_SRC_FALLBACK" ]; then
+    LOGO_MASTER="$AVATAR_SRC_FALLBACK"
+    echo "  [*] Using home screen avatar as master logo source"
+elif [ -f "${ASSETS_DIR}/logo.png" ]; then
+    LOGO_MASTER="${ASSETS_DIR}/logo.png"
+    echo "  [*] Using assets/logo.png as master logo source"
+else
+    LOGO_MASTER=""
+fi
+
+if [ -n "$LOGO_MASTER" ]; then
+    cp -f "$LOGO_MASTER" "${BRAND_DIR}/logo.png" 2>/dev/null || true
     echo "  [✔] Branding logo deployed to ${BRAND_DIR}/logo.png"
 fi
 

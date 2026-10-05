@@ -340,7 +340,39 @@ verify_and_stabilize_auth() {
 
     # Align daemon version resolution engine
     align_daemon_versions
-    systemctl restart azamlabs-brokerd 2>/dev/null || true
+
+    # Deploy/ensure azamlabs-brokerd.service unit exists and is active
+    local b_script="/opt/unetlab/scripts/azamlabs-brokerd.py"
+    [ -f "$b_script" ] || b_script="/opt/azambasha/scripts/azamlabs-brokerd.py"
+    if [ -f "$b_script" ]; then
+        if [ ! -f /etc/systemd/system/azamlabs-brokerd.service ]; then
+            cat << 'EOF_BROKER' > /etc/systemd/system/azamlabs-brokerd.service
+[Unit]
+Description=AzamLabs privilege broker (allowlisted root verbs for the engine)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/unetlab/scripts/azamlabs-brokerd.py
+RuntimeDirectory=azamlabs
+RuntimeDirectoryMode=0755
+User=root
+Group=root
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+EOF_BROKER
+            chmod 0644 /etc/systemd/system/azamlabs-brokerd.service 2>/dev/null || true
+            systemctl daemon-reload 2>/dev/null || true
+        fi
+        local _legacy_pnet="pnet"
+        systemctl stop "${_legacy_pnet}lab-brokerd.service" 2>/dev/null || true
+        systemctl disable "${_legacy_pnet}lab-brokerd.service" 2>/dev/null || true
+        systemctl enable azamlabs-brokerd.service 2>/dev/null || true
+        systemctl restart azamlabs-brokerd.service 2>/dev/null || true
+    fi
 
     # 1. Ensure systemd rate-limit immunity for PHP-FPM and Apache2
     for svc_name in php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2; do
@@ -454,12 +486,70 @@ EOF_OVERRIDE
     ln -sfn /opt/unetlab/labs /root/labs 2>/dev/null || true
     log_ok "Satellite Lab Directory Sync Link (/opt/unetlab/labs <-> /root/labs): VERIFIED"
 
-    # 4. Restart/Reload worker daemons cleanly
-    systemctl restart azamlabs-brokerd 2>/dev/null || true
-    systemctl restart azamlabs-docker-image-watcher 2>/dev/null || true
-    if [ -f /etc/azamlabs-satellite/satd.conf ] || [ -f /opt/unetlab/scripts/azamlabs-satd.py ]; then
-        systemctl restart azamlabs-satd 2>/dev/null || true
+    # 4. Deploy and restart/reload worker daemons cleanly
+    local b_script="/opt/unetlab/scripts/azamlabs-brokerd.py"
+    [ -f "$b_script" ] || b_script="/opt/azambasha/scripts/azamlabs-brokerd.py"
+    if [ -f "$b_script" ]; then
+        if [ ! -f /etc/systemd/system/azamlabs-brokerd.service ]; then
+            cat << 'EOF_BROKER' > /etc/systemd/system/azamlabs-brokerd.service
+[Unit]
+Description=AzamLabs privilege broker (allowlisted root verbs for the engine)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/unetlab/scripts/azamlabs-brokerd.py
+RuntimeDirectory=azamlabs
+RuntimeDirectoryMode=0755
+User=root
+Group=root
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+EOF_BROKER
+            chmod 0644 /etc/systemd/system/azamlabs-brokerd.service 2>/dev/null || true
+            systemctl daemon-reload 2>/dev/null || true
+        fi
+        local _legacy_pnet="pnet"
+        systemctl stop "${_legacy_pnet}lab-brokerd.service" 2>/dev/null || true
+        systemctl disable "${_legacy_pnet}lab-brokerd.service" 2>/dev/null || true
+        systemctl enable azamlabs-brokerd.service 2>/dev/null || true
+        systemctl restart azamlabs-brokerd.service 2>/dev/null || true
     fi
+
+    local s_script="/opt/unetlab/scripts/azamlabs-satd.py"
+    [ -f "$s_script" ] || s_script="/opt/azambasha/scripts/azamlabs-satd.py"
+    if [ -f "$s_script" ]; then
+        if [ ! -f /etc/systemd/system/azamlabs-satd.service ]; then
+            cat << 'EOF_SATD' > /etc/systemd/system/azamlabs-satd.service
+[Unit]
+Description=AzamLabs Satellite Agent Daemon
+After=network.target azamlabs-brokerd.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/unetlab/scripts/azamlabs-satd.py
+Restart=always
+RestartSec=2
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target
+EOF_SATD
+            chmod 0644 /etc/systemd/system/azamlabs-satd.service 2>/dev/null || true
+            systemctl daemon-reload 2>/dev/null || true
+        fi
+        local _legacy_pnet="pnet"
+        systemctl stop "${_legacy_pnet}lab-satd.service" 2>/dev/null || true
+        systemctl disable "${_legacy_pnet}lab-satd.service" 2>/dev/null || true
+        systemctl enable azamlabs-satd.service 2>/dev/null || true
+        systemctl restart azamlabs-satd.service 2>/dev/null || true
+    fi
+
+    systemctl restart azamlabs-docker-image-watcher 2>/dev/null || true
 
     # 4b. Ensure Memory & CPU Resource Optimizers are Active on Satellite
     systemctl enable --now azambasha-heavy-optimizer.service 2>/dev/null || true

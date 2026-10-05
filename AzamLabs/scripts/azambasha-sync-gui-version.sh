@@ -78,8 +78,7 @@ if [ "$TARGET_INPUT" = "auto" ] || [ -z "$TARGET_INPUT" ]; then
         for doc_candidate in \
             "${REPO_ROOT}/docs/UPDATE_CHECK_PLAN.md" \
             "/opt/azamlabs/EMULATOR/AzamLabs/docs/UPDATE_CHECK_PLAN.md" \
-            "/opt/azambasha/docs/UPDATE_CHECK_PLAN.md" \
-            "${REPO_ROOT}/docs/WEEKLY_IMPLEMENTATION_PLAN.md"; do
+            "/opt/azambasha/docs/UPDATE_CHECK_PLAN.md"; do
             if [ -f "$doc_candidate" ]; then
                 BASE_DETECT="$(grep -oP '(?<=Implemented Package Version\*\*: `)[^`]+' "$doc_candidate" 2>/dev/null | head -n1 || true)"
                 [ -n "$BASE_DETECT" ] && break

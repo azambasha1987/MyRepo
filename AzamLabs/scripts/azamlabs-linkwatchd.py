@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-# pnetlab-linkwatchd — per-link traffic watcher for the Network Watcher UI.
+# azamlabs-linkwatchd — per-link traffic watcher for the Network Watcher UI.
 #
-# One process per watch session, spawned by pnetlab-brokerd (linkwatch_start)
+# One process per watch session, spawned by azamlabs-brokerd (linkwatch_start)
 # as a transient systemd unit "pnet-linkwatch-<watch_id>". Reads its config
 # from /dev/shm/pnet-watch/<watch_id>.conf.json (root-written by brokerd):
 #
@@ -482,7 +482,7 @@ class Watcher:
 
 def main():
     if len(sys.argv) != 2:
-        log("usage: pnetlab-linkwatchd.py <watch_id>")
+        log("usage: azamlabs-linkwatchd.py <watch_id>")
         return 2
     return Watcher(sys.argv[1]).run()
 

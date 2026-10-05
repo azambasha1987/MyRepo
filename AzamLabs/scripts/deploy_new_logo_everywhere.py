@@ -39,7 +39,7 @@ def deploy_locally():
         "/opt/unetlab/html/themes/default/images/logo.png",
         "/opt/unetlab/html/assets-common/img/logo.png",
         "/opt/unetlab/html/login/img/azam_home_avatar.png",  # ensure avatar is on VM
-        "/usr/share/plymouth/themes/pnetlab/logo.png"
+        "/usr/share/plymouth/themes/azamlabs/logo.png"
     ]
 
     for rpath in remote_logo_paths:

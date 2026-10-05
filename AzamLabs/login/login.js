@@ -1,5 +1,5 @@
 /* ============================================================================
-   Azam Basha & PNetLab Enterprise Login Controller
+   Azam Basha & AzamLabs Enterprise Login Controller
    Handles authentication, session establishment, and error diagnostics.
    ============================================================================ */
 (function () {

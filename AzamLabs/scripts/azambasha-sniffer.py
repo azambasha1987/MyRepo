@@ -3,7 +3,7 @@
 ==============================================================================
 Azam Basha In-Browser Web Wireshark & Packet Sniffer (azambasha-sniffer.py)
 ==============================================================================
-Performs real-time packet capture on physical and virtual PNetLab interfaces,
+Performs real-time packet capture on physical and virtual AzamLabs interfaces,
 dissects common network protocols (Ethernet, ARP, IPv4/v6, ICMP, TCP, UDP,
 OSPF, BGP), and writes standard Wireshark-compatible PCAP files.
 ==============================================================================
@@ -220,7 +220,7 @@ def capture_stream(interface="eth0", count=20, pcap_out=None, timeout_sec=10, co
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Azam-Pnet Web Wireshark Sniffer")
+    parser = argparse.ArgumentParser(description="AzamLabs Web Wireshark Sniffer")
     parser.add_argument("-i", "--interface", type=str, default="eth0", help="Interface name (e.g. eth0, pnet0)")
     parser.add_argument("-c", "--count", type=int, default=20, help="Number of packets to capture (default 20)")
     parser.add_argument("-t", "--timeout", type=int, default=10, help="Capture timeout in seconds (default 10)")

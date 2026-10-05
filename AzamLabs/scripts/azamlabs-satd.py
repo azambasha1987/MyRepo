@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
-# pnetlab-satd — satellite-side cluster agent.
+# azamlabs-satd — satellite-side cluster agent.
 #
 # Runs as root on a cluster SATELLITE and is the only management path into it:
 # the master's brokerd `cluster_call` verb TLS-connects here (port 9050),
 # authenticates with an HMAC over the cluster PSK, and either forwards an
-# allowlisted verb to the satellite's LOCAL pnetlab-brokerd (unix socket) or
+# allowlisted verb to the satellite's LOCAL azamlabs-brokerd (unix socket) or
 # runs one of the few satd-native verbs (sysinfo, image_check).
 #
 # Protocol (one request per TLS connection, JSON-per-line, mirrors brokerd):
-#   S->C  {"hello":"pnetlab-satd","version":"...","host_id":1,"nonce":"<32hex>"}\n
+#   S->C  {"hello":"azamlabs-satd","version":"...","host_id":1,"nonce":"<32hex>"}\n
 #   C->S  {"verb":"...","args":{...},"hmac":"<hex>"}\n
 #   S->C  {"ok":bool,"rc":int,"out":[lines],"err":"..."}\n
 #
@@ -17,7 +17,7 @@
 # wire; a fresh nonce per connection kills replay. TLS gives confidentiality;
 # the master pins this host's self-signed cert fingerprint recorded at join.
 #
-# Run via pnetlab-satd.service (shipped in the pnetlab-satellite deb).
+# Run via azamlabs-satd.service (shipped in the azamlabs-satellite deb).
 
 import hashlib
 import hmac as hmac_mod
@@ -32,10 +32,10 @@ import subprocess
 import sys
 import time
 
-CONF_PATH = "/etc/pnetlab-satellite/satd.conf"
-CERT_PATH = "/etc/pnetlab-satellite/satd-cert.pem"
-KEY_PATH = "/etc/pnetlab-satellite/satd-key.pem"
-BROKER_SOCK = "/run/pnetlab/broker.sock"
+CONF_PATH = "/etc/azamlabs-satellite/satd.conf"
+CERT_PATH = "/etc/azamlabs-satellite/satd-cert.pem"
+KEY_PATH = "/etc/azamlabs-satellite/satd-key.pem"
+BROKER_SOCK = "/run/azamlabs/broker.sock"
 LISTEN = ("0.0.0.0", 9050)
 MAX_REQUEST = 1048576
 ADDONS = "/opt/unetlab/addons"
@@ -83,7 +83,7 @@ def pkg_version():
     # AzamLabs authoritative dynamic version resolution
     base_ver = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "VERSION")
     local_ver = os.path.join(os.path.dirname(os.path.abspath(__file__)), "VERSION")
-    for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/pnetlab-version", base_ver, local_ver):
+    for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/azamlabs-version", base_ver, local_ver):
         try:
             if os.path.isfile(v_path):
                 with open(v_path, "r", encoding="utf-8") as f:
@@ -101,7 +101,7 @@ def pkg_version():
                         return v_ver
         except Exception:
             pass
-    for pkg in ("pnetlab-satellite", "pnetlab"):
+    for pkg in ("azamlabs-satellite", "azamlabs"):
         try:
             rc = subprocess.run(
                 ["dpkg-query", "-W", "-f", "${Version}", pkg],
@@ -317,7 +317,7 @@ class Handler(socketserver.StreamRequestHandler):
         conf = self.server.conf
         peer = self.client_address[0]
         nonce = secrets.token_hex(16)
-        hello = {"hello": "pnetlab-satd", "version": self.server.version,
+        hello = {"hello": "azamlabs-satd", "version": self.server.version,
                  "host_id": int(conf["host_id"]), "nonce": nonce}
         try:
             self.wfile.write((json.dumps(hello) + "\n").encode())
@@ -403,7 +403,7 @@ def main():
     srv = Server(LISTEN, Handler, ctx)
     srv.conf = conf
     srv.version = pkg_version()
-    log("pnetlab-satd host_id=%s listening on %s:%d" %
+    log("azamlabs-satd host_id=%s listening on %s:%d" %
         (conf["host_id"], LISTEN[0], LISTEN[1]))
     srv.serve_forever()
 

@@ -26,11 +26,11 @@ RESET="\033[0m"
 MODE="${1:---fix}"
 
 echo -e "${CYAN}================================================================================"
-echo -e "     ${BOLD}Azam-Pnet HTML5 Guacamole & Console Zero-Lag Auto-Fixer${RESET}${CYAN}"
+echo -e "     ${BOLD}AzamLabs HTML5 Guacamole & Console Zero-Lag Auto-Fixer${RESET}${CYAN}"
 echo -e "================================================================================${RESET}"
 
 APACHE_CONF_DIR="/etc/apache2/sites-available"
-PNETLAB_CONF="${APACHE_CONF_DIR}/pnetlab.conf"
+AZAMLABS_CONF="${APACHE_CONF_DIR}/azamlabs.conf"
 GUACD_CONF="/etc/guacamole/guacd.conf"
 FIXES_APPLIED=0
 
@@ -50,34 +50,34 @@ fi
 # === 2. WebSocket Upgrade Headers in Apache Config ===
 echo -e "\n[2/6] ${BOLD}Apache WebSocket Upgrade Headers${RESET}"
 MISSING_HEADERS=false
-if [ -f "$PNETLAB_CONF" ]; then
-    if ! grep -q "proxy_set_header Upgrade" "$PNETLAB_CONF" 2>/dev/null; then
+if [ -f "$AZAMLABS_CONF" ]; then
+    if ! grep -q "proxy_set_header Upgrade" "$AZAMLABS_CONF" 2>/dev/null; then
         MISSING_HEADERS=true
     fi
-    if ! grep -q "proxy_set_header Connection" "$PNETLAB_CONF" 2>/dev/null; then
+    if ! grep -q "proxy_set_header Connection" "$AZAMLABS_CONF" 2>/dev/null; then
         MISSING_HEADERS=true
     fi
 fi
 
-if [ "$MISSING_HEADERS" = false ] && [ -f "$PNETLAB_CONF" ]; then
+if [ "$MISSING_HEADERS" = false ] && [ -f "$AZAMLABS_CONF" ]; then
     echo -e "  ${GREEN}[✔ OK]${RESET} WebSocket upgrade headers are configured in Apache."
 else
     echo -e "  ${YELLOW}[⚠ FIXING]${RESET} Missing WebSocket headers — HTML5 console sessions will lag/drop."
     if [ "$MODE" = "--fix" ]; then
         # Find the ProxyPass /guacamole block and inject upgrade headers if missing
-        if [ -f "$PNETLAB_CONF" ]; then
+        if [ -f "$AZAMLABS_CONF" ]; then
             # Backup original
-            cp -f "$PNETLAB_CONF" "${PNETLAB_CONF}.bak.$(date +%s)"
+            cp -f "$AZAMLABS_CONF" "${AZAMLABS_CONF}.bak.$(date +%s)"
             
             # Inject WebSocket headers after any existing ProxyPass block
-            if grep -q "ProxyPass /guacamole" "$PNETLAB_CONF"; then
-                sed -i '/ProxyPass \/guacamole/a\        ProxyPassReverse /guacamole http://127.0.0.1:8080/guacamole\n        ProxyPreserveHost On\n        RequestHeader set Upgrade $http_upgrade\n        RequestHeader set Connection "upgrade"' "$PNETLAB_CONF"
+            if grep -q "ProxyPass /guacamole" "$AZAMLABS_CONF"; then
+                sed -i '/ProxyPass \/guacamole/a\        ProxyPassReverse /guacamole http://127.0.0.1:8080/guacamole\n        ProxyPreserveHost On\n        RequestHeader set Upgrade $http_upgrade\n        RequestHeader set Connection "upgrade"' "$AZAMLABS_CONF"
             fi
             # Upstream 6.8.83 Guac-Lite Port 8081 WebSocket Proxy
-            if ! grep -q "ProxyPass /guac/" "$PNETLAB_CONF"; then
-                sed -i '/<\/VirtualHost>/i\        # Upstream 6.8.83 Guac-Lite WebSocket Proxy\n        ProxyPass /guac/ ws://127.0.0.1:8081/ upgrade=websocket\n        ProxyPassReverse /guac/ ws://127.0.0.1:8081/\n' "$PNETLAB_CONF"
+            if ! grep -q "ProxyPass /guac/" "$AZAMLABS_CONF"; then
+                sed -i '/<\/VirtualHost>/i\        # Upstream 6.8.83 Guac-Lite WebSocket Proxy\n        ProxyPass /guac/ ws://127.0.0.1:8081/ upgrade=websocket\n        ProxyPassReverse /guac/ ws://127.0.0.1:8081/\n' "$AZAMLABS_CONF"
             fi
-            echo -e "  ${GREEN}[✔ DONE]${RESET} WebSocket upgrade headers injected into ${PNETLAB_CONF}."
+            echo -e "  ${GREEN}[✔ DONE]${RESET} WebSocket upgrade headers injected into ${AZAMLABS_CONF}."
             FIXES_APPLIED=$((FIXES_APPLIED+1))
         fi
     fi
@@ -111,9 +111,9 @@ else
 fi
 
 # Guac-Lite 6.8.83 GUAC_CRYPT_KEY pre-seeding (fixes Issue #35 / #19)
-GUAC_ENV_DIR="/etc/pnet-webconsole"
+GUAC_ENV_DIR="/etc/azam-webconsole"
 GUAC_ENV_FILE="${GUAC_ENV_DIR}/guac.env"
-if [ -d "$GUAC_ENV_DIR" ] || [ -f "/lib/systemd/system/pnet-guac-lite.service" ]; then
+if [ -d "$GUAC_ENV_DIR" ] || [ -f "/lib/systemd/system/azam-guac-lite.service" ]; then
     mkdir -p "$GUAC_ENV_DIR"
     if [ ! -f "$GUAC_ENV_FILE" ] || [ ! -s "$GUAC_ENV_FILE" ]; then
         echo -e "  ${YELLOW}[⚠ FIXING]${RESET} Missing GUAC_CRYPT_KEY environment file (Issue #35/#19 fix)..."
@@ -132,7 +132,7 @@ if [ -d "$GUAC_ENV_DIR" ] || [ -f "/lib/systemd/system/pnet-guac-lite.service" ]
 
     if systemctl is-active pnet-guac-lite &>/dev/null; then
         echo -e "  ${GREEN}[✔ OK]${RESET} pnet-guac-lite service is active (port 8081)."
-    elif [ -f "/lib/systemd/system/pnet-guac-lite.service" ]; then
+    elif [ -f "/lib/systemd/system/azam-guac-lite.service" ]; then
         echo -e "  ${YELLOW}[⚠ FIXING]${RESET} pnet-guac-lite service installed but inactive."
         if [ "$MODE" = "--fix" ]; then
             systemctl enable --now pnet-guac-lite 2>/dev/null || true
@@ -190,7 +190,7 @@ cat > "$REG_FILE" << 'REGEOF'
 Windows Registry Editor Version 5.00
 
 ; ============================================================
-; Azam-Pnet Console URL Handlers for Windows Host
+; AzamLabs Console URL Handlers for Windows Host
 ; Double-click azam-console-handlers.reg to install.
 ; ============================================================
 

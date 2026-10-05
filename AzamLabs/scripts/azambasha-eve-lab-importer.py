@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 ================================================================================
-Azam-Pnet Enterprise: Universal Lab Converter & Importer (CML2 / GNS3 / EVE-NG)
-Translates CML2 YAML, GNS3 JSON, and EVE-NG UNL into Azam-Basha / PNetLab v8 format.
+AzamLabs Enterprise: Universal Lab Converter & Importer (CML2 / GNS3 / EVE-NG)
+Translates CML2 YAML, GNS3 JSON, and EVE-NG UNL into Azam-Basha / AzamLabs v8 format.
 Auto-wires links, harvests base configs, generates rich HTML task workbooks,
 and embeds permanent upstream source links.
 ================================================================================
@@ -267,8 +267,8 @@ PRESET_REPOS = {
                 "nodes": 4
             },
             {
-                "name": "PNetLab_Multi_Vendor_Mesh",
-                "title": "PNetLab Multi-Vendor Full Mesh Testbed (EVE-NG UNL)",
+                "name": "AzamLabs_Multi_Vendor_Mesh",
+                "title": "AzamLabs Multi-Vendor Full Mesh Testbed (EVE-NG UNL)",
                 "format": "eve-ng",
                 "category": "ccie",
                 "desc": "Multi-node full mesh topology for testing dynamic routing and failover scenarios.",
@@ -341,17 +341,17 @@ PRESET_REPOS = {
         "name": "Azam-Basha Built-in Offline Library",
         "url": "local",
         "branch": "local",
-        "format": "pnetlab-v8",
+        "format": "azamlabs-v8",
         "desc": "Air-gapped reference library pre-bundled locally with zero internet dependency.",
         "curated_labs": [
-            {"name": "ccna-routing", "title": "CCNA Routing Full Mesh", "format": "pnetlab-v8", "category": "ccna", "desc": "Interconnected OSPF & EIGRP dual-stack lab.", "nodes": 6, "source_url": "local", "raw_url": "local"},
-            {"name": "ccna-switching", "title": "CCNA Enterprise Switching", "format": "pnetlab-v8", "category": "ccna", "desc": "STP, EtherChannel, and Inter-VLAN routing.", "nodes": 8, "source_url": "local", "raw_url": "local"},
-            {"name": "bgp-internet-edge", "title": "BGP Internet Edge Dual-Homed", "format": "pnetlab-v8", "category": "bgp", "desc": "Multi-homed BGP with prefix lists.", "nodes": 4, "source_url": "local", "raw_url": "local"},
-            {"name": "ospf-multi-area", "title": "OSPF Multi-Area Backbone", "format": "pnetlab-v8", "category": "ospf", "desc": "Areas 0, 1, 2, stub, NSSA, and virtual links.", "nodes": 6, "source_url": "local", "raw_url": "local"},
-            {"name": "mpls-sr", "title": "MPLS Segment Routing & TI-LFA", "format": "pnetlab-v8", "category": "mpls", "desc": "Segment Routing with fast reroute.", "nodes": 4, "source_url": "local", "raw_url": "local"},
-            {"name": "datacenter-vxlan", "title": "Datacenter VXLAN EVPN Fabric", "format": "pnetlab-v8", "category": "datacenter", "desc": "Nexus 9000v spine-leaf EVPN fabric.", "nodes": 6, "source_url": "local", "raw_url": "local"},
-            {"name": "firewall-perimeter", "title": "Perimeter Security & Firewall", "format": "pnetlab-v8", "category": "security", "desc": "ASAv with DMZ, NAT, and VPN.", "nodes": 5, "source_url": "local", "raw_url": "local"},
-            {"name": "ccie-rs-lab1", "title": "CCIE Enterprise Practice Scenario", "format": "pnetlab-v8", "category": "ccie", "desc": "Complex enterprise scenario with OSPF, BGP, and MPLS.", "nodes": 8, "source_url": "local", "raw_url": "local"}
+            {"name": "ccna-routing", "title": "CCNA Routing Full Mesh", "format": "azamlabs-v8", "category": "ccna", "desc": "Interconnected OSPF & EIGRP dual-stack lab.", "nodes": 6, "source_url": "local", "raw_url": "local"},
+            {"name": "ccna-switching", "title": "CCNA Enterprise Switching", "format": "azamlabs-v8", "category": "ccna", "desc": "STP, EtherChannel, and Inter-VLAN routing.", "nodes": 8, "source_url": "local", "raw_url": "local"},
+            {"name": "bgp-internet-edge", "title": "BGP Internet Edge Dual-Homed", "format": "azamlabs-v8", "category": "bgp", "desc": "Multi-homed BGP with prefix lists.", "nodes": 4, "source_url": "local", "raw_url": "local"},
+            {"name": "ospf-multi-area", "title": "OSPF Multi-Area Backbone", "format": "azamlabs-v8", "category": "ospf", "desc": "Areas 0, 1, 2, stub, NSSA, and virtual links.", "nodes": 6, "source_url": "local", "raw_url": "local"},
+            {"name": "mpls-sr", "title": "MPLS Segment Routing & TI-LFA", "format": "azamlabs-v8", "category": "mpls", "desc": "Segment Routing with fast reroute.", "nodes": 4, "source_url": "local", "raw_url": "local"},
+            {"name": "datacenter-vxlan", "title": "Datacenter VXLAN EVPN Fabric", "format": "azamlabs-v8", "category": "datacenter", "desc": "Nexus 9000v spine-leaf EVPN fabric.", "nodes": 6, "source_url": "local", "raw_url": "local"},
+            {"name": "firewall-perimeter", "title": "Perimeter Security & Firewall", "format": "azamlabs-v8", "category": "security", "desc": "ASAv with DMZ, NAT, and VPN.", "nodes": 5, "source_url": "local", "raw_url": "local"},
+            {"name": "ccie-rs-lab1", "title": "CCIE Enterprise Practice Scenario", "format": "azamlabs-v8", "category": "ccie", "desc": "Complex enterprise scenario with OSPF, BGP, and MPLS.", "nodes": 8, "source_url": "local", "raw_url": "local"}
         ]
     }
 }
@@ -552,7 +552,7 @@ def simple_yaml_parse(text):
 # ── Rich HTML Workbook Builder with Clickable Upstream Source Banner ───────────
 def build_html_workbook(lab_name, title, desc, source_url, tasks, ip_table, format_source="Community"):
     now_str = datetime.now().strftime("%Y-%m-%d %H:%M UTC")
-    html = f"""<!-- Azam-Pnet Enterprise Interactive Lab Workbook -->
+    html = f"""<!-- AzamLabs Enterprise Interactive Lab Workbook -->
 <div class="azam-workbook-container" style="font-family:'Segoe UI',system-ui,sans-serif;color:#1e293b;line-height:1.6;max-width:960px;margin:0 auto;padding:12px;">
 
   <!-- Upstream Source Reference Card -->
@@ -564,7 +564,7 @@ def build_html_workbook(lab_name, title, desc, source_url, tasks, ip_table, form
       <span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;background:#0284c7;color:#fff;text-transform:uppercase;">{format_source} Format</span>
     </div>
     <div style="font-size:12.5px;color:#475569;margin-top:6px;">
-      Converted and optimized for <strong>Azam-Basha / PNetLab v8</strong> from:
+      Converted and optimized for <strong>Azam-Basha / AzamLabs v8</strong> from:
     </div>
     <div style="margin-top:6px;word-break:break-all;">
       <a href="{source_url}" target="_blank" rel="noopener noreferrer" style="color:#0284c7;font-weight:600;font-size:13px;text-decoration:underline;">
@@ -572,7 +572,7 @@ def build_html_workbook(lab_name, title, desc, source_url, tasks, ip_table, form
       </a>
     </div>
     <div style="font-size:11px;color:#94a3b8;margin-top:6px;">
-      Imported: {now_str} • Verified plug-and-play on Azam-Pnet Enterprise Engine
+      Imported: {now_str} • Verified plug-and-play on AzamLabs Enterprise Engine
     </div>
   </div>
 
@@ -645,8 +645,8 @@ def build_html_workbook(lab_name, title, desc, source_url, tasks, ip_table, form
     return html
 
 
-# ── Generate PNetLab v8 XML Specification ─────────────────────────────────────
-def create_pnetlab_v8_xml(lab_name, title, desc, source_url, nodes, links, configs, tasks, ip_table, format_source="Community"):
+# ── Generate AzamLabs v8 XML Specification ─────────────────────────────────────
+def create_azamlabs_v8_xml(lab_name, title, desc, source_url, nodes, links, configs, tasks, ip_table, format_source="Community"):
     lab_uuid = str(uuid.uuid4())
     html_body = build_html_workbook(lab_name, title, desc, source_url, tasks, ip_table, format_source)
 
@@ -657,7 +657,7 @@ def create_pnetlab_v8_xml(lab_name, title, desc, source_url, nodes, links, confi
         "scripttimeout": "300",
         "countdown": "0",
         "description": f"{desc} | Source: {source_url}",
-        "author": "Azam-Pnet Universal Importer",
+        "author": "AzamLabs Universal Importer",
         "body": html_body
     })
 
@@ -899,7 +899,7 @@ end"""
         }
     ]
 
-    xml = create_pnetlab_v8_xml(lab_name, title, desc, source_url, nodes, links, configs, tasks, ip_table, "Cisco CML / CCNA")
+    xml = create_azamlabs_v8_xml(lab_name, title, desc, source_url, nodes, links, configs, tasks, ip_table, "Cisco CML / CCNA")
     return xml, {
         "name": lab_name,
         "title": title,
@@ -950,8 +950,8 @@ def harvest_ip_table_from_configs(configs, pnet_nodes):
     return ip_table
 
 
-def convert_cml2_yaml_to_pnetlab(yaml_content_or_dict, source_url, lab_name_override=None):
-    """Converts a CML2 YAML topology into an interconnected, fully configured PNetLab v8 lab."""
+def convert_cml2_yaml_to_azamlabs(yaml_content_or_dict, source_url, lab_name_override=None):
+    """Converts a CML2 YAML topology into an interconnected, fully configured AzamLabs v8 lab."""
     if isinstance(yaml_content_or_dict, dict):
         cml_data = yaml_content_or_dict
     else:
@@ -1033,7 +1033,7 @@ def convert_cml2_yaml_to_pnetlab(yaml_content_or_dict, source_url, lab_name_over
         if cfg and str(cfg).strip():
             configs[idx] = str(cfg).strip()
 
-        # Map CML interfaces to PNetLab ethernet ports
+        # Map CML interfaces to AzamLabs ethernet ports
         cml_ifaces = n.get("interfaces", [])
         phys_count = 0
         for iface in cml_ifaces:
@@ -1090,7 +1090,7 @@ def convert_cml2_yaml_to_pnetlab(yaml_content_or_dict, source_url, lab_name_over
         }
     ]
 
-    xml = create_pnetlab_v8_xml(
+    xml = create_azamlabs_v8_xml(
         lab_name=lab_name,
         title=title,
         desc=desc,
@@ -1271,7 +1271,7 @@ links:
     label: HQ-Core-R2<->Dist-SW1
 """
     source_url = "https://github.com/CiscoDevNet/cml-community/tree/master/lab-topologies/bgp-enterprise"
-    return convert_cml2_yaml_to_pnetlab(sample_cml_yaml, source_url, "cml2-bgp-enterprise")
+    return convert_cml2_yaml_to_azamlabs(sample_cml_yaml, source_url, "cml2-bgp-enterprise")
 
 
 def import_cml2_lab(source_arg="test", lab_name_override=None, category="cml"):
@@ -1295,7 +1295,7 @@ def import_cml2_lab(source_arg="test", lab_name_override=None, category="cml"):
     # Remote URL
     if source_arg.startswith("http://") or source_arg.startswith("https://"):
         safe_print(f"[*] Fetching CML2 YAML from: {source_arg}...")
-        headers = {"User-Agent": "Azam-Pnet-Universal-Importer"}
+        headers = {"User-Agent": "AzamLabs-Universal-Importer"}
         req = urllib.request.Request(source_arg, headers=headers)
         with urllib.request.urlopen(req, timeout=15) as resp:
             content = resp.read().decode("utf-8")
@@ -1309,7 +1309,7 @@ def import_cml2_lab(source_arg="test", lab_name_override=None, category="cml"):
         safe_print(f"[✘ ERROR] Invalid source path or URL: {source_arg}")
         return None, None
 
-    xml, meta, lab_name = convert_cml2_yaml_to_pnetlab(content, source_url, lab_name_override)
+    xml, meta, lab_name = convert_cml2_yaml_to_azamlabs(content, source_url, lab_name_override)
     unl_path, meta_path = deploy_lab_unl(lab_name, category or "cml", xml, meta)
     safe_print(f"[✔ DEPLOYED] CML2 Lab '{lab_name}' converted and deployed at: {unl_path}")
     safe_print(f"    ➔ Upstream: {meta['source_url']}")
@@ -1321,7 +1321,7 @@ def import_cml2_lab(source_arg="test", lab_name_override=None, category="cml"):
 def scan_repo_archive_in_memory(owner, repo, repo_url):
     """Fallback indexer using GitHub public archive tarball in-memory (no git clone, no API rate limit)."""
     import tarfile, io
-    headers = {"User-Agent": "Azam-Pnet-Universal-Importer"}
+    headers = {"User-Agent": "AzamLabs-Universal-Importer"}
     for branch in ("main", "master"):
         archive_url = f"https://github.com/{owner}/{repo}/archive/refs/heads/{branch}.tar.gz"
         try:
@@ -1412,7 +1412,7 @@ def index_github_repository(repo_arg):
 
     # Try GitHub API first
     api_url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/HEAD?recursive=1"
-    headers = {"User-Agent": "Azam-Pnet-Universal-Importer"}
+    headers = {"User-Agent": "AzamLabs-Universal-Importer"}
 
     try:
         req = urllib.request.Request(api_url, headers=headers)
@@ -1478,7 +1478,7 @@ def import_eve_lab(source_arg, lab_name_override=None, category="eve-ng"):
     """Downloads or reads an authentic EVE-NG .unl file, repairs illegal XML, and deploys it."""
     lab_name = lab_name_override or "eve-lab"
     if source_arg.startswith("http://") or source_arg.startswith("https://"):
-        headers = {"User-Agent": "Azam-Pnet-Universal-Importer"}
+        headers = {"User-Agent": "AzamLabs-Universal-Importer"}
         req = urllib.request.Request(source_arg, headers=headers)
         with urllib.request.urlopen(req, timeout=15) as resp:
             content = resp.read().decode("utf-8")
@@ -1505,12 +1505,12 @@ def import_eve_lab(source_arg, lab_name_override=None, category="eve-ng"):
     return unl_path, meta
 
 def import_gns3_lab(source_arg, lab_name_override=None, category="gns3"):
-    """Imports and converts a GNS3 JSON topology into PNetLab v8 format."""
+    """Imports and converts a GNS3 JSON topology into AzamLabs v8 format."""
     lab_name = lab_name_override or "gns3-lab"
     source_url = source_arg
     content = ""
     if source_arg.startswith("http://") or source_arg.startswith("https://"):
-        headers = {"User-Agent": "Azam-Pnet-Universal-Importer"}
+        headers = {"User-Agent": "AzamLabs-Universal-Importer"}
         req = urllib.request.Request(source_arg, headers=headers)
         with urllib.request.urlopen(req, timeout=15) as resp:
             content = resp.read().decode("utf-8")
@@ -1554,10 +1554,10 @@ def import_gns3_lab(source_arg, lab_name_override=None, category="gns3"):
         fix_existing_unl_file(unl_path)
         return unl_path, meta
 
-    xml = create_pnetlab_v8_xml(
+    xml = create_azamlabs_v8_xml(
         lab_name=lab_name,
         title=f"GNS3 Imported Lab: {lab_name}",
-        desc=f"Converted from GNS3 project ({source_url}) into native PNetLab v8 format.",
+        desc=f"Converted from GNS3 project ({source_url}) into native AzamLabs v8 format.",
         source_url=source_url,
         nodes=nodes,
         links=links,
@@ -1578,7 +1578,7 @@ def import_gns3_lab(source_arg, lab_name_override=None, category="gns3"):
     return unl_path, meta
 
 
-# ── Deploy / Save Lab to PNetLab v8 ────────────────────────────────────────────
+# ── Deploy / Save Lab to AzamLabs v8 ────────────────────────────────────────────
 def deploy_lab_unl(lab_name, category, xml_content, meta_dict):
     dest_dir = os.path.join(LABS_BASE, "Azam-Templates", category)
     os.makedirs(dest_dir, exist_ok=True)
@@ -1675,13 +1675,13 @@ def fix_existing_unl_file(file_path):
 
 # ── Main CLI Entry Point ──────────────────────────────────────────────────────
 def main():
-    parser = argparse.ArgumentParser(description="Azam-Pnet Universal Lab Importer & Auto-Fixer")
+    parser = argparse.ArgumentParser(description="AzamLabs Universal Lab Importer & Auto-Fixer")
     parser.add_argument("--list-repos", action="store_true", help="List configured curated repository sources")
     parser.add_argument("--repo", help="Preset name or custom GitHub repository URL")
     parser.add_argument("--browse", action="store_true", help="Browse and index labs in the selected repository")
     parser.add_argument("--pull", help="Name or path of lab to pull and convert")
     parser.add_argument("--raw-url", help="Direct raw URL to download topology")
-    parser.add_argument("--format", help="Topology format: cml2, eve-ng, gns3, pnetlab-v8")
+    parser.add_argument("--format", help="Topology format: cml2, eve-ng, gns3, azamlabs-v8")
     parser.add_argument("--category", help="Target category (ccna, ccie, bgp, ospf, security, etc.)")
     parser.add_argument("--build-template", help="Build pre-wired reference lab (e.g. ccna-routing)")
     parser.add_argument("--test-cml", action="store_true", help="Test CML2 import with authentic Cisco DevNet CML2 topology")
@@ -1699,7 +1699,7 @@ def main():
             print(json.dumps(PRESET_REPOS, indent=2))
         else:
             safe_print("================================================================================")
-            safe_print("         Azam-Pnet Curated Lab Repository Sources")
+            safe_print("         AzamLabs Curated Lab Repository Sources")
             safe_print("================================================================================")
             for k, v in PRESET_REPOS.items():
                 safe_print(f"  [{k}] - {v['name']}")
@@ -1722,7 +1722,7 @@ def main():
             unl_path, meta_path = deploy_lab_unl("ccna-routing", "ccna", xml, meta)
             safe_print(f"[✔ DEPLOYED] Interconnected CCNA Routing Lab ready at: {unl_path}")
             safe_print(f"[✔] Upstream Source: {meta['source_url']}")
-            safe_print(f"[✔] PNetLab v8 XML generated with {meta['nodes']} nodes, {meta['links']} wired links, base configs, and task workbook.")
+            safe_print(f"[✔] AzamLabs v8 XML generated with {meta['nodes']} nodes, {meta['links']} wired links, base configs, and task workbook.")
         elif "cml" in tmpl or "bgp" in tmpl:
             import_cml2_lab("test")
         else:

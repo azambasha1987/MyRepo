@@ -16,8 +16,8 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "/opt/azambasha")"
-mkdir -p /opt/pnetlab 2>/dev/null || true
-ln -sfn "$SCRIPT_DIR" /opt/pnetlab 2>/dev/null || true
+mkdir -p /opt/azamlabs 2>/dev/null || true
+ln -sfn "$SCRIPT_DIR" /opt/azamlabs 2>/dev/null || true
 
 echo "============================================================"
 echo "    AzamLabs Master Bootstrap & Installer (Ubuntu 26.04+)   "
@@ -83,7 +83,7 @@ fi
 if [ -f "${SCRIPT_DIR}/VERSION" ]; then
     mkdir -p /opt/unetlab 2>/dev/null || true
     cp -f "${SCRIPT_DIR}/VERSION" /opt/unetlab/VERSION 2>/dev/null || true
-    cp -f "${SCRIPT_DIR}/VERSION" /etc/pnetlab-version 2>/dev/null || true
+    cp -f "${SCRIPT_DIR}/VERSION" /etc/azamlabs-version 2>/dev/null || true
 fi
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-sync-gui-version.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-sync-gui-version.sh" auto || true
@@ -116,7 +116,7 @@ for s_dir in "${SCRIPT_DIR}/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scri
         ln -sf "${s_dir}/azambasha-apply-all-fixes.sh" /usr/local/bin/azam-menu 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-apply-all-fixes.sh" /usr/local/bin/azam-fix 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/azam-satellite-join 2>/dev/null || true
-        ln -sf "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/pnet-satellite-join 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/azam-satellite-join 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-optimizer 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
         ln -sf "${s_dir}/apply-heavy-node-optimizer.sh" /usr/local/bin/apply-heavy-node-optimizer 2>/dev/null || true

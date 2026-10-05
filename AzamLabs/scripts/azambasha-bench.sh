@@ -42,7 +42,7 @@ if [ "$IFACE" = "auto" ]; then
 fi
 
 echo -e "${CYAN}================================================================================"
-echo -e "     ${BOLD}Azam-Pnet MTU 9000 & RoCE Dataplane Benchmark Probe (azam-bench)${RESET}${CYAN}"
+echo -e "     ${BOLD}AzamLabs MTU 9000 & RoCE Dataplane Benchmark Probe (azam-bench)${RESET}${CYAN}"
 echo -e "================================================================================${RESET}"
 echo -e " Probing Satellite:  ${BOLD}${PEER}${RESET}"
 echo -e " Local Interface:    ${BOLD}${IFACE}${RESET}"

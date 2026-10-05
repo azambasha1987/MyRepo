@@ -4,7 +4,7 @@
 Azam Basha Node Failure Detection & Auto-Recovery Watchdog (azam-watchdog)
 ==============================================================================
 A systemd-compatible daemon that monitors every active QEMU/IOL process,
-detects silent crashes, auto-recovers nodes via PNetLab REST API,
+detects silent crashes, auto-recovers nodes via AzamLabs REST API,
 and dispatches WhatsApp alerts when a node fails and is recovered.
 ==============================================================================
 """
@@ -26,7 +26,7 @@ import ssl
 WATCHDOG_LOG = "/opt/azambasha/logs/watchdog.log"
 PID_FILE = "/var/run/azam-watchdog.pid"
 NOTIFY_SCRIPT = "/opt/azambasha/scripts/azambasha-notify.py"
-NOTIFY_CONF = "/etc/pnetlab/azambasha-notify.conf"
+NOTIFY_CONF = "/etc/azamlabs/azambasha-notify.conf"
 POLL_INTERVAL = 30  # seconds between health checks
 
 
@@ -134,7 +134,7 @@ def send_alert(title: str, message: str):
 
 
 def attempt_node_recovery(node_info: dict, master_ip: str, password: str) -> bool:
-    """Attempt to restart a dead node via the PNetLab REST API."""
+    """Attempt to restart a dead node via the AzamLabs REST API."""
     tenant = node_info.get("tenant")
     session = node_info.get("session")
     node_id = node_info.get("node_id")
@@ -380,11 +380,11 @@ def install_symlink():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Azam-Pnet Node Watchdog")
+    parser = argparse.ArgumentParser(description="AzamLabs Node Watchdog")
     parser.add_argument("--host", default="127.0.0.1",
-                        help="PNetLab master IP (default: 127.0.0.1 for local)")
+                        help="AzamLabs master IP (default: 127.0.0.1 for local)")
     parser.add_argument("--password", default="azam",
-                        help="PNetLab admin password (default: azam)")
+                        help="AzamLabs admin password (default: azam)")
     parser.add_argument("--poll", type=int, default=POLL_INTERVAL,
                         help=f"Poll interval in seconds (default: {POLL_INTERVAL})")
     parser.add_argument("--install", action="store_true",
@@ -402,7 +402,7 @@ def main():
         return
 
     if args.status:
-        print("[*] Azam-Pnet Watchdog Status:")
+        print("[*] AzamLabs Watchdog Status:")
         subprocess.run(["systemctl", "status", "azam-watchdog.service", "--no-pager"],
                        check=False)
         if os.path.isfile(WATCHDOG_LOG):

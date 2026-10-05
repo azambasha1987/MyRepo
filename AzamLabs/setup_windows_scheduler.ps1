@@ -33,7 +33,7 @@ $Principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" 
 Unregister-ScheduledTask -TaskName $TaskName -Confirm:$false -ErrorAction SilentlyContinue
 
 # Register new task
-Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Settings $Settings -Principal $Principal -Description "Automated 24-hour differential check and download for PNetLab Git source and Codeberg Package API releases." | Out-Null
+Register-ScheduledTask -TaskName $TaskName -Action $Action -Trigger $Trigger -Settings $Settings -Principal $Principal -Description "Automated 24-hour differential check and download for AzamLabs Git source and Codeberg Package API releases." | Out-Null
 
 Write-Host ""
 Write-Host "SUCCESS: Task '$TaskName' is registered to run daily at 03:00 AM with Highest Privileges." -ForegroundColor Green

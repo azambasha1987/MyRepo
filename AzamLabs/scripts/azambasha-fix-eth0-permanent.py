@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ==============================================================================
-# PNetLab Permanent eth0 / First-Boot Wizard Fix for Ubuntu 24/26
+# AzamLabs Permanent eth0 / First-Boot Wizard Fix for Ubuntu 24/26
 # Eliminates the "Interface eth0 not found" dialog on restart / login by:
 # 1. Neutralizing auto-execution of ovfconfig.sh in /etc/profile.d/ovf.sh
 # 2. Patching /opt/ovf/ovfconfig.sh to dynamically support ens33/ens160/enp0s3
@@ -62,7 +62,7 @@ print("      -> Cleared legacy firstboot and pending flags")
 print("[3/5] Neutralizing auto-launch in /etc/profile.d/ovf.sh...")
 profile_ovf = "/etc/profile.d/ovf.sh"
 if os.path.exists(profile_ovf):
-    content = """# PNetLab aliases and environment (Setup wizard auto-run disabled on modern Ubuntu)
+    content = """# AzamLabs aliases and environment (Setup wizard auto-run disabled on modern Ubuntu)
 alias unl_wrapper='/opt/unetlab/wrappers/unl_wrapper'
 alias pnet_info='/opt/unetlab/scripts/pnet_info.sh'
 """
@@ -118,7 +118,7 @@ for script in ["/opt/ovf/ovfstartup.sh", "/opt/ovf/pnet-bridges.sh", "/opt/ovf/p
         print(f"      -> Patched {script}")
 
 # Mask firstboot service if present
-subprocess.run(["systemctl", "mask", "pnetlab-netcfg-firstboot.service"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+subprocess.run(["systemctl", "mask", "azamlabs-netcfg-firstboot.service"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 subprocess.run(["systemctl", "daemon-reload"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 print("=" * 60)

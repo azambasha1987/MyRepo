@@ -155,7 +155,7 @@ def color_mem(mb: int) -> str:
 def render_table(procs: list, iteration: int):
     os.system("clear")
     print(f"{CYAN}{'='*84}{RESET}")
-    print(f"{BOLD}  Azam-Pnet Live Lab Performance Profiler — Hot Node Detector  "
+    print(f"{BOLD}  AzamLabs Live Lab Performance Profiler — Hot Node Detector  "
           f"(refresh #{iteration}){RESET}")
     print(f"{CYAN}{'='*84}{RESET}")
 
@@ -246,7 +246,7 @@ def install_symlink():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Azam-Pnet Live Lab Performance Profiler & Hot-Node Detector"
+        description="AzamLabs Live Lab Performance Profiler & Hot-Node Detector"
     )
     parser.add_argument("--interval", "-i", type=int, default=3,
                         help="Refresh interval in seconds (default: 3)")

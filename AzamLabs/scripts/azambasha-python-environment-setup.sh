@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# PNetLab Python 3.14+ Isolated Runtime & Web Console Bridge Engine
+# AzamLabs Python 3.14+ Isolated Runtime & Web Console Bridge Engine
 # Sets up /opt/unetlab/venv with telnetlib3, websockets, and AI MCP bridges,
 # ensuring full compliance with PEP 668 on Ubuntu 26+.
 # ==============================================================================
@@ -34,10 +34,10 @@ pip3 install --break-system-packages telnetlib3 websockets requests urllib3 2>/d
 
 # 4. Ensure Web Console Services Use telnetlib3
 systemctl daemon-reload 2>/dev/null || true
-systemctl enable --now pnet-console-mux.service 2>/dev/null || true
-systemctl restart pnet-console-mux.service 2>/dev/null || true
-systemctl enable --now pnet-guac-lite.service 2>/dev/null || true
-systemctl restart pnet-guac-lite.service 2>/dev/null || true
+systemctl enable --now azam-console-mux.service 2>/dev/null || true
+systemctl restart azam-console-mux.service 2>/dev/null || true
+systemctl enable --now azam-guac-lite.service 2>/dev/null || true
+systemctl restart azam-guac-lite.service 2>/dev/null || true
 
 echo "============================================================"
 echo "    [SUCCESS] Python 3.14+ Runtime & Bridges Configured!    "

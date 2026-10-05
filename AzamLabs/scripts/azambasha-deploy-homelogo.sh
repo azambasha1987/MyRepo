@@ -15,7 +15,7 @@
 #   • /opt/unetlab/html/images/favicon.png
 #   • /opt/unetlab/html/themes/default/images/favicon.ico
 #   • /opt/unetlab/html/favicon.ico
-#   • /usr/share/plymouth/themes/pnetlab/logo*.png  (Boot splash)
+#   • /usr/share/plymouth/themes/azamlabs/logo*.png  (Boot splash)
 # ==============================================================================
 set -Eeuo pipefail
 
@@ -93,7 +93,7 @@ deploy /opt/unetlab/html/favicon.ico
 echo ""
 echo "  [3/3] Plymouth boot splash logo..."
 PLYMOUTH_HIT=0
-for p in /usr/share/plymouth/themes/pnetlab/logo*.png; do
+for p in /usr/share/plymouth/themes/azamlabs/logo*.png; do
     if [ -f "$p" ]; then
         deploy "$p"
         PLYMOUTH_HIT=1

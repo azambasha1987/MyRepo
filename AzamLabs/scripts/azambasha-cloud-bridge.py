@@ -3,7 +3,7 @@
 ==============================================================================
 Azam Basha External Cloud & Real-LAN Transit Bridge Manager (azambasha-cloud-bridge.py)
 ==============================================================================
-Connects PNetLab virtual nodes to:
+Connects AzamLabs virtual nodes to:
   1. Physical LAN (192.168.1.0/24) via pnet0 / eth0 bridging.
   2. Outbound Internet NAT Gateway for package updates and licensing.
   3. WireGuard Cloud Transit VPC tunnels (AWS, Azure, remote office).
@@ -16,7 +16,7 @@ import json
 import argparse
 import subprocess
 
-CONFIG_FILE = "/etc/pnetlab/azambasha-bridge.conf"
+CONFIG_FILE = "/etc/azamlabs/azambasha-bridge.conf"
 
 
 def load_config():
@@ -49,7 +49,7 @@ def load_config():
 def save_config(cfg):
     os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
     with open(CONFIG_FILE, "w") as f:
-        f.write("# Azam-Pnet Transit Bridge Configuration\n")
+        f.write("# AzamLabs Transit Bridge Configuration\n")
         for k, v in cfg.items():
             f.write(f"{k.upper()}={v}\n")
 
@@ -104,7 +104,7 @@ def toggle_wireguard(up=True):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Azam-Pnet Cloud & Real-LAN Transit Manager")
+    parser = argparse.ArgumentParser(description="AzamLabs Cloud & Real-LAN Transit Manager")
     parser.add_argument("--status", action="store_true", help="Display transit bridge status")
     parser.add_argument("--enable-nat", action="store_true", help="Enable outbound Internet NAT gateway")
     parser.add_argument("--disable-nat", action="store_true", help="Disable outbound Internet NAT gateway")
@@ -151,7 +151,7 @@ def main():
         print(json.dumps(res, indent=2))
     else:
         print("================================================================================")
-        print("         Azam-Pnet External Cloud & Real-LAN Transit Bridge")
+        print("         AzamLabs External Cloud & Real-LAN Transit Bridge")
         print("================================================================================")
         print(f"  • WAN Interface:           {res['wan_interface']}")
         print(f"  • Physical LAN Bridge:     {res['lan_bridge']} (Bridged to 192.168.1.0/24)")

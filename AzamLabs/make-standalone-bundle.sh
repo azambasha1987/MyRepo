@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# PNETLab 1-Click Standalone Offline Bundle Packager
+# AzamLabs 1-Click Standalone Offline Bundle Packager
 # ==============================================================================
 set -euo pipefail
 

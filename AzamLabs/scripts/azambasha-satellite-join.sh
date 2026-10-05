@@ -32,11 +32,11 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-CONF_DIR="/etc/pnetlab-satellite"
+CONF_DIR="/etc/azamlabs-satellite"
 CONF_PATH="${CONF_DIR}/satd.conf"
 CERT_PATH="${CONF_DIR}/satd-cert.pem"
 KEY_PATH="${CONF_DIR}/satd-key.pem"
-DB_CONF_DIR="/etc/pnetlab"
+DB_CONF_DIR="/etc/azamlabs"
 DB_CONF_PATH="${DB_CONF_DIR}/cluster-db.conf"
 AUTH_KEYS="/root/.ssh/authorized_keys"
 RRSYNC="/usr/bin/rrsync"
@@ -62,7 +62,7 @@ show_status() {
 
     echo ""
     echo "--- Systemd Services ---"
-    for svc in pnetlab-satd.service pnetlab-brokerd.service pnetlab-docker-image-watcher.service pnetlab-ksm.service; do
+    for svc in azamlabs-satd.service azamlabs-brokerd.service azamlabs-docker-image-watcher.service azamlabs-ksm.service; do
         if systemctl is-active --quiet "$svc" 2>/dev/null; then
             log_ok "$svc: ACTIVE"
         else
@@ -249,7 +249,7 @@ fi
 if [ ! -x "$RRSYNC" ]; then
     cat > "$RRSYNC" << 'EOF'
 #!/usr/bin/env perl
-# Minimal standalone rrsync fallback for PNetLab cluster image sync
+# Minimal standalone rrsync fallback for AzamLabs cluster image sync
 use strict;
 use warnings;
 use Errno qw(EPERM);
@@ -270,7 +270,7 @@ log_ok "Restricted rrsync utility ready at $RRSYNC"
 log_info "[4/7] Generating or validating Satellite TLS certificate..."
 if [ ! -f "$CERT_PATH" ] || [ ! -f "$KEY_PATH" ]; then
     openssl req -x509 -newkey ed25519 -nodes -days 3650 \
-        -subj "/CN=pnetlab-sat${SLOT_ID}" \
+        -subj "/CN=azamlabs-sat${SLOT_ID}" \
         -keyout "$KEY_PATH" -out "$CERT_PATH" >/dev/null 2>&1
     chmod 600 "$KEY_PATH"
     chmod 644 "$CERT_PATH"
@@ -315,11 +315,11 @@ name = "${SAT_NAME}"
 psk = "${CLUSTER_PSK}".strip()
 custom_ip = "${SAT_IP}".strip()
 
-conf_dir = "/etc/pnetlab-satellite"
+conf_dir = "/etc/azamlabs-satellite"
 conf_path = conf_dir + "/satd.conf"
 cert_path = conf_dir + "/satd-cert.pem"
 key_path = conf_dir + "/satd-key.pem"
-db_conf_dir = "/etc/pnetlab"
+db_conf_dir = "/etc/azamlabs"
 db_conf_path = db_conf_dir + "/cluster-db.conf"
 auth_keys = "/root/.ssh/authorized_keys"
 rrsync = "/usr/bin/rrsync"
@@ -340,7 +340,7 @@ cert_fp = "sha256:" + hashlib.sha256(der).hexdigest()
 
 pkg_ver = "6.8.85resolute1"
 found_ver = False
-for v_file in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/pnetlab-version"):
+for v_file in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/azamlabs-version"):
     try:
         if os.path.isfile(v_file):
             with open(v_file, "r", encoding="utf-8") as vf:
@@ -364,7 +364,7 @@ for v_file in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/pnetlab-v
         pass
 
 if not found_ver:
-    for pkg in ("pnetlab-satellite", "pnetlab"):
+    for pkg in ("azamlabs-satellite", "azamlabs"):
         p = subprocess.run(["dpkg-query", "-W", "-f", "${Version}", pkg],
                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         if p.returncode == 0 and p.stdout:
@@ -416,7 +416,7 @@ lines = []
 if os.path.isfile(auth_keys):
     with open(auth_keys, "r") as f:
         lines = f.read().splitlines()
-lines = [l for l in lines if "pnetlab-cluster" not in l]
+lines = [l for l in lines if "azamlabs-cluster" not in l]
 lines.append(entry)
 with open(auth_keys, "w") as f:
     f.write("\n".join(lines) + "\n")
@@ -431,8 +431,8 @@ log_info "[6/7] Validating remote Master MySQL connectivity from Satellite..."
 if [ -f "$DB_CONF_PATH" ]; then
     DB_PASS="$(python3 -c 'import json; print(json.load(open("'"$DB_CONF_PATH"'")).get("pass",""))' 2>/dev/null || true)"
     if [ -n "$DB_PASS" ]; then
-        if mysql -h "$MASTER_IP" -u pnetlab -p"$DB_PASS" pnetlab_db -e "SELECT 'OK' AS status;" >/dev/null 2>&1; then
-            log_ok "Remote MySQL connection to Master pnetlab_db: VERIFIED OK!"
+        if mysql -h "$MASTER_IP" -u azamlabs -p"$DB_PASS" azamlabs_db -e "SELECT 'OK' AS status;" >/dev/null 2>&1; then
+            log_ok "Remote MySQL connection to Master azamlabs_db: VERIFIED OK!"
         else
             log_warn "Remote MySQL query failed. Master may still be applying the user grant or restarting mysqld."
         fi
@@ -442,14 +442,14 @@ fi
 # Step 7: Restart & Verify Systemd Services
 log_info "[7/7] Enabling and refreshing satellite services..."
 systemctl daemon-reload 2>/dev/null || true
-systemctl enable pnetlab-satd.service 2>/dev/null || true
-systemctl restart pnetlab-satd.service 2>/dev/null || true
+systemctl enable azamlabs-satd.service 2>/dev/null || true
+systemctl restart azamlabs-satd.service 2>/dev/null || true
 
 sleep 2
-if systemctl is-active --quiet pnetlab-satd.service; then
-    log_ok "pnetlab-satd.service is RUNNING and listening on port 9050."
+if systemctl is-active --quiet azamlabs-satd.service; then
+    log_ok "azamlabs-satd.service is RUNNING and listening on port 9050."
 else
-    log_err "pnetlab-satd.service failed to start. Inspect with: journalctl -u pnetlab-satd -n 30"
+    log_err "azamlabs-satd.service failed to start. Inspect with: journalctl -u azamlabs-satd -n 30"
     exit 1
 fi
 
@@ -480,7 +480,7 @@ for s_dir in "/opt/unetlab/scripts" "/opt/azambasha/scripts" "$SCRIPT_LOC"; do
         ln -sf "${s_dir}/azambasha-image-doctor.sh" /usr/local/bin/azam-doctor 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-image-doctor.sh" /usr/local/bin/azam-image-doctor 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-bootstorm.py" /usr/local/bin/azam-bootstorm 2>/dev/null || true
-        ln -sf "${s_dir}/azambasha-bootstorm.py" /usr/local/bin/pnet-bootstorm 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-bootstorm.py" /usr/local/bin/azam-bootstorm 2>/dev/null || true
         break
     fi
 done
@@ -491,7 +491,7 @@ echo "  Master Node IP  : $MASTER_IP"
 echo "  Satellite Slot  : Slot $SLOT_ID ($SAT_NAME)"
 echo "  Cluster Config  : $CONF_PATH"
 echo "  Database Config : $DB_CONF_PATH"
-echo "  Service Status  : pnetlab-satd.service (Active, Port 9050)"
+echo "  Service Status  : azamlabs-satd.service (Active, Port 9050)"
 echo ""
 echo "  Check Master Web UI under: System -> Cluster"
 echo "============================================================"

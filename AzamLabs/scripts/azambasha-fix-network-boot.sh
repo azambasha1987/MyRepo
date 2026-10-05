@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# PNetLab Guaranteed Persistent Static IP & Bridge Engine
+# AzamLabs Guaranteed Persistent Static IP & Bridge Engine
 # ==============================================================================
 set -euo pipefail
 
 echo "============================================================"
-echo "    PNetLab Guaranteed Persistent Static IP & Bridge Fix    "
+echo "    AzamLabs Guaranteed Persistent Static IP & Bridge Fix    "
 echo "============================================================"
 
 # 1. Detect Real Uplink NIC (eth0 / ens33 / enp0s3)
@@ -72,7 +72,7 @@ LINKEOF
 
 # Purge any legacy/installer/cloud-init netplan YAMLs that could re-enable DHCP on physical NIC
 for f in /etc/netplan/*.yaml /etc/netplan/*.yml; do
-    [ -f "$f" ] && [ "$(basename "$f")" != "01-pnetlab-netcfg.yaml" ] && rm -f "$f" 2>/dev/null || true
+    [ -f "$f" ] && [ "$(basename "$f")" != "01-azamlabs-netcfg.yaml" ] && rm -f "$f" 2>/dev/null || true
 done
 rm -f /etc/systemd/network/*.network 2>/dev/null || true
 
@@ -80,7 +80,7 @@ rm -f /etc/systemd/network/*.network 2>/dev/null || true
 systemctl mask networking.service plymouth-start.service plymouth-read-write.service plymouth-quit.service plymouth-quit-wait.service 2>/dev/null || true
 
 # Ensure kernel bridge, 8021q, tun, and br_netfilter modules load at early boot
-cat > /etc/modules-load.d/pnetlab.conf << 'EOF'
+cat > /etc/modules-load.d/azamlabs.conf << 'EOF'
 bridge
 stp
 llc
@@ -95,7 +95,7 @@ modprobe tun 2>/dev/null || true
 modprobe br_netfilter 2>/dev/null || true
 
 # Bridge sysctl bypass to ensure ARP and IP traffic on bridges are never dropped by netfilter
-cat > /etc/sysctl.d/99-pnetlab-bridge.conf << 'EOF'
+cat > /etc/sysctl.d/99-azamlabs-bridge.conf << 'EOF'
 net.bridge.bridge-nf-call-iptables = 0
 net.bridge.bridge-nf-call-arptables = 0
 net.bridge.bridge-nf-call-ip6tables = 0
@@ -106,9 +106,9 @@ sysctl --system 2>/dev/null || true
 echo "[2/5] Cloud-init overwrite disabled, netplan purged, and kernel modules registered."
 
 # 3. Create Persistent Standalone Kernel Bridge Script
-cat > /usr/local/bin/pnetlab-boot-network.sh << EOF
+cat > /usr/local/bin/azamlabs-boot-network.sh << EOF
 #!/usr/bin/env bash
-# PNetLab Persistent Network Boot Runner
+# AzamLabs Persistent Network Boot Runner
 modprobe bridge 2>/dev/null || true
 modprobe 8021q 2>/dev/null || true
 modprobe tun 2>/dev/null || true
@@ -171,14 +171,14 @@ echo "nameserver ${DNS1}" > /etc/resolv.conf
 echo "nameserver ${DNS2}" >> /etc/resolv.conf
 exit 0
 EOF
-chmod +x /usr/local/bin/pnetlab-boot-network.sh
-echo "[3/5] Installed /usr/local/bin/pnetlab-boot-network.sh"
+chmod +x /usr/local/bin/azamlabs-boot-network.sh
+echo "[3/5] Installed /usr/local/bin/azamlabs-boot-network.sh"
 
 MAC_LINE=""
 [ -n "$REAL_MAC" ] && MAC_LINE="      macaddress: $REAL_MAC"
 
 # 4. Synchronize Netplan and Clean /etc/network/interfaces
-cat > /etc/netplan/01-pnetlab-netcfg.yaml << EOF
+cat > /etc/netplan/01-azamlabs-netcfg.yaml << EOF
 network:
   version: 2
   renderer: networkd
@@ -203,7 +203,7 @@ $MAC_LINE
         stp: false
         forward-delay: 0
 EOF
-chmod 600 /etc/netplan/01-pnetlab-netcfg.yaml
+chmod 600 /etc/netplan/01-azamlabs-netcfg.yaml
 
 # Synchronize /etc/network/interfaces with pnet0 stanza for Web UI broker compatibility
 mkdir -p /etc/network/interfaces.d
@@ -218,7 +218,7 @@ auto lo
 iface lo inet loopback
 
 # The primary network interface
-# BEGIN pnetlab-netcfg pnet0
+# BEGIN azamlabs-netcfg pnet0
 allow-hotplug pnet0
 iface pnet0 inet static
     address ${IP_ADDR}
@@ -227,35 +227,35 @@ iface pnet0 inet static
     pre-up ip link set dev ${REAL_IFACE} up
     bridge_ports ${REAL_IFACE}
     bridge_stp off
-# END pnetlab-netcfg pnet0
+# END azamlabs-netcfg pnet0
 EOF
 chmod 644 /etc/network/interfaces
 echo "[4/5] Synchronized Netplan and /etc/network/interfaces with pnet0 stanza."
 
 # 5. Install Systemd Service for Boot Persistence
-cat > /etc/systemd/system/pnetlab-boot-network.service << 'EOF'
+cat > /etc/systemd/system/azamlabs-boot-network.service << 'EOF'
 [Unit]
-Description=PNETLab Persistent Boot Network & Bridge Initialization
+Description=AzamLabs Persistent Boot Network & Bridge Initialization
 DefaultDependencies=no
-Before=network-online.target pnetlab-brokerd.service apache2.service systemd-resolved.service
+Before=network-online.target azamlabs-brokerd.service apache2.service systemd-resolved.service
 After=local-fs.target
 Wants=network.target
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/local/bin/pnetlab-boot-network.sh
+ExecStart=/usr/local/bin/azamlabs-boot-network.sh
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload 2>/dev/null || true
-systemctl enable pnetlab-boot-network.service 2>/dev/null || true
+systemctl enable azamlabs-boot-network.service 2>/dev/null || true
 
 # Execute immediately
 echo "[5/5] Executing network initialization..."
-/usr/local/bin/pnetlab-boot-network.sh
+/usr/local/bin/azamlabs-boot-network.sh
 
 sleep 1
 CURRENT_IP=$(ip -o -4 addr show pnet0 2>/dev/null | awk '{print $4}' | head -n1 || ip -o -4 addr show "$REAL_IFACE" 2>/dev/null | awk '{print $4}' | head -n1 || echo "None")

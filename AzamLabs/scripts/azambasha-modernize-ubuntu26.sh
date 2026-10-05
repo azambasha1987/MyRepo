@@ -14,7 +14,7 @@ run_or_fetch() {
     local local_file="${SCRIPT_DIR}/${script_name}"
     local opt_file="/opt/unetlab/scripts/${script_name}"
     local pnet_opt="/opt/azambasha/scripts/${script_name}"
-    local pnet_file="/PNET/pnetlab-v8-ubuntu26-installer/scripts/${script_name}"
+    local pnet_file="/PNET/azamlabs-v8-ubuntu26-installer/scripts/${script_name}"
     
     local target=""
     if [ -f "$local_file" ]; then
@@ -90,7 +90,7 @@ elif grep -m1 -E -qw 'svm' /proc/cpuinfo 2>/dev/null; then
 fi
 
 mkdir -p /etc/modules-load.d /etc/modprobe.d
-cat << 'EOF' > /etc/modules-load.d/pnetlab.conf
+cat << 'EOF' > /etc/modules-load.d/azamlabs.conf
 kvm
 vhost
 vhost_net
@@ -100,7 +100,7 @@ br_netfilter
 8021q
 sch_fq_codel
 EOF
-[ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/pnetlab.conf
+[ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/azamlabs.conf
 
 # Blacklist i2c_piix4 virtual controller to silence unhandled SMBus warning
 echo "blacklist i2c_piix4" > /etc/modprobe.d/blacklist-piix4.conf
@@ -125,11 +125,11 @@ run_or_fetch "azambasha-disable-logout.sh"
 run_or_fetch "azambasha-block-updates.sh"
 
 # Final Service Verification & Reload
-rm -rf /dev/shm/pnet-authfail* /tmp/pnet-authfail* 2>/dev/null || true
+rm -rf /dev/shm/azamlabs-authfail* /tmp/azamlabs-authfail* 2>/dev/null || true
 for svc in $(systemctl list-units --type=service --state=running 2>/dev/null | grep -o 'php[0-9.]*-fpm' | sort -u); do
     systemctl restart "$svc" 2>/dev/null || true
 done
-systemctl restart apache2 pnetlab-brokerd.service 2>/dev/null || true
+systemctl restart apache2 azamlabs-brokerd.service 2>/dev/null || true
 
 echo "============================================================"
 echo "    [COMPLETE] Azam Basha is 100% Fine-Tuned for Ubuntu 26+!  "

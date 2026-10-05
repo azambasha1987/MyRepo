@@ -2,7 +2,7 @@
 # ==============================================================================
 # AzamLabs Automated 3-Months Intelligence & Alert Scheduler Setup
 # ==============================================================================
-# Configures notification credentials (/etc/pnetlab/azambasha-notify.conf)
+# Configures notification credentials (/etc/azamlabs/azambasha-notify.conf)
 # targeting azambasha1987@gmail.com and installs the turnkey azam-audit tool.
 # ==============================================================================
 set -euo pipefail
@@ -34,8 +34,8 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-NOTIFY_CONF="/etc/pnetlab/azambasha-notify.conf"
-mkdir -p /etc/pnetlab
+NOTIFY_CONF="/etc/azamlabs/azambasha-notify.conf"
+mkdir -p /etc/azamlabs
 
 # Store notification configuration
 echo "[*] Storing notification configuration in $NOTIFY_CONF..."

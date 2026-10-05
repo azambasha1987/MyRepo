@@ -58,7 +58,7 @@ def ensure_git_repo():
         run(["git", "clone", GIT_REPO, GIT_WORK])
         # Configure identity
         run(["git", "config", "user.name", "Azam-Topology-Git"], cwd=GIT_WORK)
-        run(["git", "config", "user.email", "azam-topology@pnetlab.local"], cwd=GIT_WORK)
+        run(["git", "config", "user.email", "azam-topology@azamlabs.local"], cwd=GIT_WORK)
         print(f"{GREEN}[✔]{RESET} Topology Git repository initialized at {GIT_REPO}")
     else:
         # Pull latest
@@ -234,7 +234,7 @@ def restore_lab(lab_name: str, commit_sha: str):
         pass
 
     print(f"  {GREEN}[✔ RESTORED]{RESET} {rel} ← commit {commit_sha}")
-    print(f"  {GREEN}[✔]${RESET} Reload PNetLab GUI to see the restored topology.")
+    print(f"  {GREEN}[✔]${RESET} Reload AzamLabs GUI to see the restored topology.")
 
     with open(LOG_FILE, "a") as f:
         f.write(f"{datetime.now().isoformat()} RESTORE {rel} ← {commit_sha}\n")
@@ -269,7 +269,7 @@ def install_hook():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Azam-Pnet Git-Based Lab Topology Version Control"
+        description="AzamLabs Git-Based Lab Topology Version Control"
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--snapshot", action="store_true",

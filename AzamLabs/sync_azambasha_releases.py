@@ -2,7 +2,7 @@
 Azam Basha v8 24-Hour Autonomous Sync & Verification Engine
 ===========================================================
 Automatically checks and fetches new files/releases from:
-- Track 1: https://codeberg.org/netkillui/Pnetlabv8.git
+- Track 1: https://codeberg.org/netkillui/AzamLabsv8.git
 - Track 2: https://codeberg.org/api/v1/packages/netkillui & Debian APT Pool
 
 Features:
@@ -60,7 +60,7 @@ def sync_track_1():
     log("--- Checking Track 1 (Git Repository) ---")
     if not os.path.exists(GIT_DIR):
         log(f"Cloning Track 1 git repository into {GIT_DIR}...")
-        subprocess.run(["git", "clone", "https://codeberg.org/netkillui/Pnetlabv8.git", GIT_DIR], check=True)
+        subprocess.run(["git", "clone", "https://codeberg.org/netkillui/AzamLabsv8.git", GIT_DIR], check=True)
         log("Clone complete.")
     else:
         # Check remote updates
@@ -223,10 +223,10 @@ def sync_track_2():
 
 def generate_report(expected_files):
     report_lines = []
-    report_lines.append("# PNetLab Artifacts & Releases Verification Report\n")
+    report_lines.append("# AzamLabs Artifacts & Releases Verification Report\n")
     report_lines.append(f"Generated at: {time.strftime('%Y-%m-%d %H:%M:%S UTC', time.gmtime())}\n")
     report_lines.append("## Step 1: Git Repository Verification\n")
-    report_lines.append("- **Remote URL**: `https://codeberg.org/netkillui/Pnetlabv8.git`")
+    report_lines.append("- **Remote URL**: `https://codeberg.org/netkillui/AzamLabsv8.git`")
     report_lines.append("- **Local Clone Path**: [`track-1-git/`](track-1-git/)")
     report_lines.append("- **Branch**: `main`\n")
 

@@ -387,8 +387,8 @@ KEEPALIVE_JS="/opt/unetlab/html/themes/default/js/azambasha-keepalive.js"
 mkdir -p "$(dirname "$KEEPALIVE_JS")"
 cat << 'EOF' > "$KEEPALIVE_JS"
 (function() {
-    if (window.__pnetKeepaliveActive) return;
-    window.__pnetKeepaliveActive = true;
+    if (window.__azamKeepaliveActive) return;
+    window.__azamKeepaliveActive = true;
     setInterval(function() {
         fetch('/api/auth', { credentials: 'same-origin' }).catch(function() {});
     }, 180000);

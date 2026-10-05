@@ -3,10 +3,10 @@
 # Azam Basha Soft-RoCE (RXE) & RDMA over Converged Ethernet Engine
 # Ubuntu 26.04+ (Resolute) / Linux Kernel 7.0 Native Architecture
 #
-# Provides high-performance RDMA over Converged Ethernet (RoCEv2) for PNetLab nodes:
+# Provides high-performance RDMA over Converged Ethernet (RoCEv2) for AzamLabs nodes:
 # 1. Verifies/loads rdma_rxe, ib_core, ib_uverbs in-tree kernel modules
 # 2. Configures Soft-RoCE RXE device bindings on physical or bridge interfaces (pnet0..pnet9)
-# 3. Aligns with Azam-Pnet Silicon Dataplane Fast-Path (MTU 9000 jumbo frames)
+# 3. Aligns with AzamLabs Silicon Dataplane Fast-Path (MTU 9000 jumbo frames)
 # 4. Provides non-root diagnostic/status inspection
 # ==============================================================================
 set -euo pipefail

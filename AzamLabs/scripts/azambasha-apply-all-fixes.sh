@@ -3,7 +3,7 @@
 # Azam Basha Master Administration, Fix & Performance Toolkit
 # Unified launcher for all Azam Basha maintenance, optimization, and AI tools.
 #
-# Supports piped execution: curl -fsSL https://.../pnetlab-apply-all-fixes.sh | sudo bash
+# Supports piped execution: curl -fsSL https://.../azamlabs-apply-all-fixes.sh | sudo bash
 # ==============================================================================
 set -euo pipefail
 
@@ -190,9 +190,9 @@ case "$CHOICE" in
     19)
         # Check node role (Master vs Satellite)
         IS_SATELLITE=0
-        if [ -f /etc/pnetlab-role ] && grep -q "satellite" /etc/pnetlab-role 2>/dev/null; then
+        if [ -f /etc/azamlabs-role ] && grep -q "satellite" /etc/azamlabs-role 2>/dev/null; then
             IS_SATELLITE=1
-        elif dpkg -s pnetlab-satellite >/dev/null 2>&1 && ! dpkg -s pnetlab >/dev/null 2>&1; then
+        elif dpkg -s azamlabs-satellite >/dev/null 2>&1 && ! dpkg -s azamlabs >/dev/null 2>&1; then
             IS_SATELLITE=1
         fi
 

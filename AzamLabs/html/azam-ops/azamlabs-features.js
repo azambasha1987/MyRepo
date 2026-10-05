@@ -1,11 +1,11 @@
 /**
- * pnetlab-azam-features.js
+ * azamlabs-features.js
  * ─────────────────────────────────────────────────────────────
- * Injects the "⚡ Azam-Features" entry into the PNetLab left
+ * Injects the "⚡ Azam-Features" entry into the AzamLabs left
  * sidebar (#lab-sidebar) and mounts the full operations
  * dashboard panel when the user clicks it.
  *
- * Follows the same pattern as pnetlab-sidebar-tools.js:
+ * Follows the same pattern as azamlabs-sidebar-tools.js:
  *   - waits for #lab-sidebar to appear (MutationObserver + poll)
  *   - appends a single <li> with id="pnq-azam-features"
  *   - creates the full-screen dashboard modal in-DOM
@@ -71,7 +71,7 @@
     });
     obs.observe(document.body, { childList: true, subtree: true });
 
-    // Fallback poll (some PNetLab builds render sidebar late)
+    // Fallback poll (some AzamLabs builds render sidebar late)
     var attempts = 0;
     var poll = setInterval(function () {
       sidebar = document.getElementById('lab-sidebar');
@@ -699,7 +699,7 @@
             '<input id="az-ssl-ip" style="'+INPUT_STYLE+';margin-bottom:10px" type="text" placeholder="Master IP (default: 192.168.1.23)">' +
             '<button id="az-ssl-gen" style="'+BTN_PRI+'">🔑 Generate</button>' +
             '<div id="az-term-ssl-gen" style="'+TERM_STYLE+'"></div>' +
-            '<div style="font-size:11px;color:#475569;margin-top:10px">After generation, install <code style="color:#06b6d4">/opt/azambasha/azam-pnet-ca.crt</code> into Windows Trusted Root CA.</div>' +
+            '<div style="font-size:11px;color:#475569;margin-top:10px">After generation, install <code style="color:#06b6d4">/opt/azambasha/azamlabs-ca.crt</code> into Windows Trusted Root CA.</div>' +
           '</div>' +
         '</div>' +
       '</div>' +

@@ -30,27 +30,27 @@ fi
 
 # ── Self-Register CLI Commands & APT Post-Invoke Anti-Regression Hook ────────
 ln -sfn "${BASH_SOURCE[0]}" /usr/local/bin/azam-credentials 2>/dev/null || true
-ln -sfn "${BASH_SOURCE[0]}" /usr/local/bin/pnet-credentials 2>/dev/null || true
+ln -sfn "${BASH_SOURCE[0]}" /usr/local/bin/azam-credentials 2>/dev/null || true
 ln -sfn "${BASH_SOURCE[0]}" /usr/local/bin/azambasha-credentials 2>/dev/null || true
 
 # Register APT Post-Invoke hook so any future package upgrade/installation automatically preserves credentials
 if [ -d /etc/apt/apt.conf.d ]; then
-    cat << 'APTEOF' > /etc/apt/apt.conf.d/99pnetlab-credentials 2>/dev/null || true
+    cat << 'APTEOF' > /etc/apt/apt.conf.d/99azamlabs-credentials 2>/dev/null || true
 DPkg::Post-Invoke {"if [ -x /usr/local/bin/azam-credentials ]; then /usr/local/bin/azam-credentials --silent >/dev/null 2>&1 || true; fi";};
 APTEOF
 fi
 
 # Detect Node Role (Master vs Satellite)
 IS_SATELLITE=0
-if [ -f /etc/pnetlab-role ] && grep -qi "satellite" /etc/pnetlab-role 2>/dev/null; then
+if [ -f /etc/azamlabs-role ] && grep -qi "satellite" /etc/azamlabs-role 2>/dev/null; then
     IS_SATELLITE=1
-elif dpkg -s pnetlab-satellite >/dev/null 2>&1 && ! dpkg -s pnetlab >/dev/null 2>&1; then
+elif dpkg -s azamlabs-satellite >/dev/null 2>&1 && ! dpkg -s azamlabs >/dev/null 2>&1; then
     IS_SATELLITE=1
 fi
 
 # ── 1. Clear Brute-Force Rate Limiting Lockouts ───────────────────────────────
-log_info "Clearing shared memory login lockouts (/dev/shm/pnet-authfail)..."
-rm -rf /dev/shm/pnet-authfail* /tmp/pnet-authfail* 2>/dev/null || true
+log_info "Clearing shared memory login lockouts (/dev/shm/azamlabs-authfail)..."
+rm -rf /dev/shm/azamlabs-authfail* /tmp/azamlabs-authfail* 2>/dev/null || true
 
 # ── 2. Master Node Database Credential Restoration ───────────────────────────
 if [ "$IS_SATELLITE" -eq 0 ]; then
@@ -71,10 +71,10 @@ if [ "$IS_SATELLITE" -eq 0 ]; then
 
     # 2. Check for incompatible MySQL 8.0/8.4 configuration directives
     # In MySQL 8.0, 'mysql_native_password=ON' is an unknown variable that causes immediate crash on startup
-    if [ -f /etc/mysql/mysql.conf.d/zz-pnetlab-native-pw.cnf ]; then
+    if [ -f /etc/mysql/mysql.conf.d/zz-azamlabs-native-pw.cnf ]; then
         if mysqld --validate-config 2>&1 | grep -qi "unknown variable 'mysql_native_password"; then
             log_warn "Detected incompatible 'mysql_native_password=ON' in configuration; removing to allow clean startup..."
-            mv -f /etc/mysql/mysql.conf.d/zz-pnetlab-native-pw.cnf /etc/mysql/mysql.conf.d/zz-pnetlab-native-pw.cnf.bak 2>/dev/null || true
+            mv -f /etc/mysql/mysql.conf.d/zz-azamlabs-native-pw.cnf /etc/mysql/mysql.conf.d/zz-azamlabs-native-pw.cnf.bak 2>/dev/null || true
         fi
     fi
 
@@ -110,8 +110,8 @@ if [ "$IS_SATELLITE" -eq 0 ]; then
     if [ "$SOCKET_FOUND" -eq 0 ]; then
         log_warn "Socket not created by systemd service; testing direct mysqld start..."
         # Remove any broken config preventing startup
-        if [ -f /etc/mysql/mysql.conf.d/zz-pnetlab-native-pw.cnf ]; then
-            mv -f /etc/mysql/mysql.conf.d/zz-pnetlab-native-pw.cnf /etc/mysql/mysql.conf.d/zz-pnetlab-native-pw.cnf.bak 2>/dev/null || true
+        if [ -f /etc/mysql/mysql.conf.d/zz-azamlabs-native-pw.cnf ]; then
+            mv -f /etc/mysql/mysql.conf.d/zz-azamlabs-native-pw.cnf /etc/mysql/mysql.conf.d/zz-azamlabs-native-pw.cnf.bak 2>/dev/null || true
             systemctl restart mysql 2>/dev/null || true
         fi
         sleep 2
@@ -121,18 +121,18 @@ if [ "$IS_SATELLITE" -eq 0 ]; then
     CANDIDATES=(
         "mysql"
         "mysql -u root"
-        "mysql -u root -ppnetlab"
+        "mysql -u root -pazam"
         "mysql -u root -pazam"
         "mysql -u root -ppnet"
         "mysql -u root -proot"
         "mysql -u root --password="
-        "mysql -u pnetlab -ppnetlab"
+        "mysql -u azamlabs -pazam"
         "mysql --defaults-file=/etc/mysql/debian.cnf"
         "mysql --defaults-extra-file=/root/.my.cnf"
         "mysql -S /var/run/mysqld/mysqld.sock -u root"
         "mysql -S /run/mysqld/mysqld.sock -u root"
-        "mysql -h 127.0.0.1 -u root -ppnetlab"
-        "mysql -h 127.0.0.1 -u pnetlab -ppnetlab"
+        "mysql -h 127.0.0.1 -u root -pazam"
+        "mysql -h 127.0.0.1 -u azamlabs -pazam"
         "mariadb -u root"
         "mariadb"
     )
@@ -165,27 +165,27 @@ if [ "$IS_SATELLITE" -eq 0 ]; then
     log_ok "Database connected successfully using: $MYSQL_CMD"
 
     # Ensure databases exist
-    $MYSQL_CMD -e "CREATE DATABASE IF NOT EXISTS pnetlab_db CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" || true
+    $MYSQL_CMD -e "CREATE DATABASE IF NOT EXISTS azamlabs_db CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" || true
     $MYSQL_CMD -e "CREATE DATABASE IF NOT EXISTS guacdb CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" || true
 
-    # Check if pnetlab_db tables exist; import schema if missing
-    TBL_COUNT=$($MYSQL_CMD -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pnetlab_db';" 2>/dev/null || echo "0")
+    # Check if azamlabs_db tables exist; import schema if missing
+    TBL_COUNT=$($MYSQL_CMD -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='azamlabs_db';" 2>/dev/null || echo "0")
     if [ "${TBL_COUNT:-0}" -eq 0 ]; then
-        log_info "pnetlab_db is empty; searching for schema files to import..."
+        log_info "azamlabs_db is empty; searching for schema files to import..."
         SCHEMA_IMPORTED=0
         for sf in \
-            "${SCRIPT_DIR}/../schema/pnetlab_db.sql" \
-            "${SCRIPT_DIR}/schema/pnetlab_db.sql" \
-            "/opt/azambasha/schema/pnetlab_db.sql" \
-            "/opt/unetlab/schema/pnetlab_db.sql" \
-            "/opt/unetlab/schema/pnetlab_db-schema.sql"; do
+            "${SCRIPT_DIR}/../schema/azamlabs_db.sql" \
+            "${SCRIPT_DIR}/schema/azamlabs_db.sql" \
+            "/opt/azambasha/schema/azamlabs_db.sql" \
+            "/opt/unetlab/schema/azamlabs_db.sql" \
+            "/opt/unetlab/schema/azamlabs_db-schema.sql"; do
             if [ -f "$sf" ]; then
-                log_info "Importing pnetlab_db schema from: $sf"
-                $MYSQL_CMD pnetlab_db < "$sf" 2>/dev/null && SCHEMA_IMPORTED=1 && break || true
+                log_info "Importing azamlabs_db schema from: $sf"
+                $MYSQL_CMD azamlabs_db < "$sf" 2>/dev/null && SCHEMA_IMPORTED=1 && break || true
             fi
         done
         if [ "$SCHEMA_IMPORTED" -eq 1 ]; then
-            log_ok "pnetlab_db schema successfully imported."
+            log_ok "azamlabs_db schema successfully imported."
         else
             log_warn "Schema file not found on disk; creating essential core tables dynamically..."
         fi
@@ -193,13 +193,13 @@ if [ "$IS_SATELLITE" -eq 0 ]; then
 
     # Ensure essential tables always exist with correct column definitions
     $MYSQL_CMD -e "
-CREATE TABLE IF NOT EXISTS pnetlab_db.control (
+CREATE TABLE IF NOT EXISTS azamlabs_db.control (
   control_name varchar(150) NOT NULL,
   control_value text,
   PRIMARY KEY (control_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS pnetlab_db.users (
+CREATE TABLE IF NOT EXISTS azamlabs_db.users (
   pod int NOT NULL AUTO_INCREMENT,
   username text,
   cookie text,
@@ -233,30 +233,30 @@ CREATE TABLE IF NOT EXISTS pnetlab_db.users (
 " 2>/dev/null || true
 
     # Safe user grants
-    $MYSQL_CMD -e "CREATE USER IF NOT EXISTS 'pnetlab'@'localhost' IDENTIFIED BY 'pnetlab';" 2>/dev/null || true
-    $MYSQL_CMD -e "ALTER USER 'pnetlab'@'localhost' IDENTIFIED BY 'pnetlab';" 2>/dev/null || true
-    $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'localhost';" 2>/dev/null || true
-    $MYSQL_CMD -e "CREATE USER IF NOT EXISTS 'guacuser'@'localhost' IDENTIFIED BY 'pnetlab';" 2>/dev/null || true
-    $MYSQL_CMD -e "ALTER USER 'guacuser'@'localhost' IDENTIFIED BY 'pnetlab';" 2>/dev/null || true
+    $MYSQL_CMD -e "CREATE USER IF NOT EXISTS 'azamlabs'@'localhost' IDENTIFIED BY 'azamlabs';" 2>/dev/null || true
+    $MYSQL_CMD -e "ALTER USER 'azamlabs'@'localhost' IDENTIFIED BY 'azamlabs';" 2>/dev/null || true
+    $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON azamlabs_db.* TO 'azamlabs'@'localhost';" 2>/dev/null || true
+    $MYSQL_CMD -e "CREATE USER IF NOT EXISTS 'guacuser'@'localhost' IDENTIFIED BY 'azamlabs';" 2>/dev/null || true
+    $MYSQL_CMD -e "ALTER USER 'guacuser'@'localhost' IDENTIFIED BY 'azamlabs';" 2>/dev/null || true
     $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON guacdb.* TO 'guacuser'@'localhost';" 2>/dev/null || true
-    $MYSQL_CMD -e "CREATE USER IF NOT EXISTS 'pnetlab'@'127.0.0.1' IDENTIFIED BY 'pnetlab';" 2>/dev/null || true
-    $MYSQL_CMD -e "ALTER USER 'pnetlab'@'127.0.0.1' IDENTIFIED BY 'pnetlab';" 2>/dev/null || true
-    $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'127.0.0.1';" 2>/dev/null || true
-    $MYSQL_CMD -e "CREATE USER IF NOT EXISTS 'pnetlab'@'%' IDENTIFIED BY 'pnetlab';" 2>/dev/null || true
-    $MYSQL_CMD -e "ALTER USER 'pnetlab'@'%' IDENTIFIED BY 'pnetlab';" 2>/dev/null || true
-    $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'%';" 2>/dev/null || true
+    $MYSQL_CMD -e "CREATE USER IF NOT EXISTS 'azamlabs'@'127.0.0.1' IDENTIFIED BY 'azamlabs';" 2>/dev/null || true
+    $MYSQL_CMD -e "ALTER USER 'azamlabs'@'127.0.0.1' IDENTIFIED BY 'azamlabs';" 2>/dev/null || true
+    $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON azamlabs_db.* TO 'azamlabs'@'127.0.0.1';" 2>/dev/null || true
+    $MYSQL_CMD -e "CREATE USER IF NOT EXISTS 'azamlabs'@'%' IDENTIFIED BY 'azamlabs';" 2>/dev/null || true
+    $MYSQL_CMD -e "ALTER USER 'azamlabs'@'%' IDENTIFIED BY 'azamlabs';" 2>/dev/null || true
+    $MYSQL_CMD -e "GRANT ALL PRIVILEGES ON azamlabs_db.* TO 'azamlabs'@'%';" 2>/dev/null || true
     $MYSQL_CMD -e "FLUSH PRIVILEGES;" 2>/dev/null || true
 
     # Guarantee /root/.my.cnf exists with detected credentials for future tools
     if ! [ -f /root/.my.cnf ]; then
-        printf '[client]\nuser=root\npassword=pnetlab\n' >/root/.my.cnf 2>/dev/null || true
+        printf '[client]\nuser=root\npassword=azamlabs\n' >/root/.my.cnf 2>/dev/null || true
         chmod 0600 /root/.my.cnf 2>/dev/null || true
     fi
 
     # Authoritatively Update Admin User Credentials
     # SHA-256 for 'azam': b8a4f0b3e54b6732efca2a73373ad1f3493e98ebf95efee7ecaf3cbfebe1d12d
     $MYSQL_CMD -e "
-USE pnetlab_db;
+USE azamlabs_db;
 
 UPDATE users SET 
   password = SHA2('azam', 256),
@@ -273,11 +273,11 @@ WHERE username = 'admin';
 " 2>/dev/null || true
 
     # If admin row does not exist, insert it cleanly
-    ADMIN_COUNT=$($MYSQL_CMD -N -e "USE pnetlab_db; SELECT COUNT(*) FROM users WHERE username = 'admin';" 2>/dev/null || echo "0")
+    ADMIN_COUNT=$($MYSQL_CMD -N -e "USE azamlabs_db; SELECT COUNT(*) FROM users WHERE username = 'admin';" 2>/dev/null || echo "0")
     if [ "${ADMIN_COUNT:-0}" -eq 0 ]; then
         log_info "Admin record not found, inserting authoritative admin row..."
         $MYSQL_CMD -e "
-USE pnetlab_db;
+USE azamlabs_db;
 INSERT INTO users (
   pod, username, email, name, password, role,
   user_status, active_time, expired_time, access_days,
@@ -292,7 +292,7 @@ INSERT INTO users (
 
     # Guarantee offline control mode settings
     $MYSQL_CMD -e "
-USE pnetlab_db;
+USE azamlabs_db;
 INSERT INTO control (control_name, control_value) VALUES
   ('ctrl_offline_mode', '1'),
   ('ctrl_online_mode', '0'),
@@ -353,7 +353,7 @@ else
     log_info "Detected Satellite Worker Node — Synchronizing system credentials..."
 
     # Ensure systemd rate-limit immunity for Satellite worker services
-    for svc_name in pnetlab-satd pnetlab-brokerd pnetlab-docker-image-watcher docker php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2; do
+    for svc_name in azamlabs-satd azamlabs-brokerd azamlabs-docker-image-watcher docker php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2; do
         mkdir -p "/etc/systemd/system/${svc_name}.service.d" 2>/dev/null || true
         cat << 'EOF_OVERRIDE' > "/etc/systemd/system/${svc_name}.service.d/override.conf"
 [Unit]
@@ -373,15 +373,15 @@ EOF_OVERRIDE
     log_ok "Satellite root credentials confirmed: root / azam"
 
     # Verify cluster-db.conf if joined
-    if [ -f /etc/pnetlab/cluster-db.conf ]; then
-        chmod 0600 /etc/pnetlab/cluster-db.conf 2>/dev/null || true
+    if [ -f /etc/azamlabs/cluster-db.conf ]; then
+        chmod 0600 /etc/azamlabs/cluster-db.conf 2>/dev/null || true
         log_ok "Cluster database configuration permissions secured (0600)."
     fi
 fi
 
 # ── 3. Final Verification Probe ───────────────────────────────────────────────
 if [ "$IS_SATELLITE" -eq 0 ]; then
-    PASS_VERIFIED=$($MYSQL_CMD -N -e "USE pnetlab_db; SELECT COUNT(*) FROM users WHERE username='admin' AND password=SHA2('azam',256) AND role='0' AND user_status=1;" 2>/dev/null || echo "0")
+    PASS_VERIFIED=$($MYSQL_CMD -N -e "USE azamlabs_db; SELECT COUNT(*) FROM users WHERE username='admin' AND password=SHA2('azam',256) AND role='0' AND user_status=1;" 2>/dev/null || echo "0")
     
     # Perform live end-to-end API login check
     API_AUTH_RESP=$(curl -sk -X POST https://127.0.0.1/api/auth -H "Content-Type: application/json" -d '{"username":"admin","password":"azam"}' 2>/dev/null || true)
@@ -406,12 +406,12 @@ if [ "$IS_SATELLITE" -eq 0 ]; then
     else
         log_warn "Admin row was updated, but verification query returned count: ${PASS_VERIFIED}."
         log_info "Testing database direct check:"
-        $MYSQL_CMD -e "USE pnetlab_db; SELECT pod, username, role, user_status, offline, active_time, expired_time FROM users WHERE username='admin';" 2>/dev/null || true
+        $MYSQL_CMD -e "USE azamlabs_db; SELECT pod, username, role, user_status, offline, active_time, expired_time FROM users WHERE username='admin';" 2>/dev/null || true
     fi
 else
     # Satellite Verification Output
-    b_stat="$(systemctl is-active pnetlab-brokerd 2>/dev/null || echo 'inactive')"
-    s_stat="$(systemctl is-active pnetlab-satd 2>/dev/null || echo 'inactive')"
+    b_stat="$(systemctl is-active azamlabs-brokerd 2>/dev/null || echo 'inactive')"
+    s_stat="$(systemctl is-active azamlabs-satd 2>/dev/null || echo 'inactive')"
     if [ "$SILENT" -eq 0 ]; then
         echo ""
         echo "============================================================"

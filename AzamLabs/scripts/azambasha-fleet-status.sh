@@ -21,7 +21,7 @@ fi
 
 # Detect Node Role
 IS_MASTER=true
-if [ -f "/etc/pnetlab/cluster-db.conf" ] && ! systemctl is-active mysql &>/dev/null; then
+if [ -f "/etc/azamlabs/cluster-db.conf" ] && ! systemctl is-active mysql &>/dev/null; then
     IS_MASTER=false
 fi
 
@@ -57,7 +57,7 @@ REPO_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Version
 VERSION_STR="v6.8.85 (6.8.85resolute1)"
-for v_loc in "${REPO_ROOT}/VERSION" "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/opt/azam-pnet/EMULATOR/Azam-Pnet/VERSION" "/etc/pnetlab-version"; do
+for v_loc in "${REPO_ROOT}/VERSION" "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/opt/azamlabs/EMULATOR/AzamLabs/VERSION" "/etc/azamlabs-version"; do
     if [ -f "$v_loc" ]; then
         V_VAL=$(grep -E '^VERSION=' "$v_loc" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)
         P_VAL=$(grep -E '^PACKAGE_VERSION=' "$v_loc" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)
@@ -100,7 +100,7 @@ echo -e " LACP BPDU Mask:    ${BOLD}${BPDU_MASK}${RESET} (0xffff = full hardware
 if [ "$IS_MASTER" = true ] && command -v mysql &>/dev/null; then
     echo -e "${CYAN}--------------------------------------------------------------------------------${RESET}"
     echo -e " ${BOLD}Connected Satellite Worker Nodes:${RESET}"
-    SATS=$(mysql -u pnetlab -ppnetlab -N -e "SELECT host_id, host_name, host_ip, host_status, host_version FROM pnetlab_db.cluster_hosts ORDER BY host_id;" 2>/dev/null || mysql -u root -ppnetlab -N -e "SELECT host_id, host_name, host_ip, host_status, host_version FROM pnetlab_db.cluster_hosts ORDER BY host_id;" 2>/dev/null || true)
+    SATS=$(mysql -u azamlabs -pazam -N -e "SELECT host_id, host_name, host_ip, host_status, host_version FROM azamlabs_db.cluster_hosts ORDER BY host_id;" 2>/dev/null || mysql -u root -pazam -N -e "SELECT host_id, host_name, host_ip, host_status, host_version FROM azamlabs_db.cluster_hosts ORDER BY host_id;" 2>/dev/null || true)
     if [ -n "$SATS" ]; then
         echo "$SATS" | while read -r sat_id sat_name sat_ip sat_status sat_ver; do
             PING_RES=$(ping -c 1 -W 1 "$sat_ip" &>/dev/null && echo -e "${GREEN}ONLINE (Ping OK)${RESET}" || echo -e "${RED}UNREACHABLE${RESET}")

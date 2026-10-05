@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Azam-Pnet Enterprise Operations Manual - PDF Generator
+AzamLabs Enterprise Operations Manual - PDF Generator
 Generates a comprehensive, professional operations manual detailing:
 - Executive Architectural Taxonomy & Feature Placements
 - Master vs. Satellite Dual-Plane Architecture & Alignment Matrix
@@ -60,7 +60,7 @@ class NumberedCanvas(canvas.Canvas):
             self.line(54, 45, 612 - 54, 45)
             self.setFont("Helvetica", 8)
             self.setFillColor(colors.HexColor("#64748B"))
-            self.drawString(54, 32, "Confidential - For Azam-Pnet Infrastructure Administrators Only")
+            self.drawString(54, 32, "Confidential - For AzamLabs Infrastructure Administrators Only")
             page_text = f"Page {self._pageNumber} of {page_count}"
             self.drawRightString(612 - 54, 32, page_text)
         self.restoreState()
@@ -233,7 +233,7 @@ def build_pdf(filename_dest):
     # Metadata Card Table
     meta_data = [
         [
-            Paragraph("<b>Target System:</b> Azam-Pnet / PNETLab Enterprise", table_cell_style),
+            Paragraph("<b>Target System:</b> AzamLabs / AzamLabs Enterprise", table_cell_style),
             Paragraph("<b>Document Version:</b> 2.6.0-LTS Enterprise Edition", table_cell_style)
         ],
         [
@@ -261,7 +261,7 @@ def build_pdf(filename_dest):
     # ==================== SECTION 1: ARCHITECTURAL OVERVIEW ====================
     story.append(Paragraph("1. Executive Architectural Taxonomy & Feature Placements", section_heading))
     story.append(Paragraph(
-        "Azam-Pnet organizes all enterprise capabilities across three deliberate user and runtime environments: "
+        "AzamLabs organizes all enterprise capabilities across three deliberate user and runtime environments: "
         "<b>Outside-the-Lab Canvas</b> (global hypervisor diagnostics, template repository marketplace, multi-cloud and offline air-gapped backups, capacity planning, golden image auditing, idle scheduler, client toolkit generator, and SSL automation accessed from the main administrative dashboard), "
         "<b>Inside-the-Lab Canvas</b> (in-workbench workflow tools, live traffic bandwidth heatmaps, WAN QoS link impairment, multi-node snapshots, RESTCONF sandbox, Chaos Monkey link flaps, NetDevOps inventory export, CFS vCPU throttling, AI copilot drawer, anti-bootstorm staggered startup with console ready-state probing, Git version control, and live Wireshark packet capture available right inside the active topology view), and "
         "<b>Autonomous Kernel & Background Daemons</b> (24/7 self-healing watchdogs, Soft-RoCE RXE MTU 9000 kernel engines, MySQL socket auto-healers, and nightly SSD TRIM cron jobs running continuously in the host background).",
@@ -336,7 +336,7 @@ def build_pdf(filename_dest):
     # ==================== SECTION 2: MASTER VS SATELLITE DUAL-PLANE ARCHITECTURE ====================
     story.append(Paragraph("2. Master vs. Satellite Dual-Plane Architecture & Alignment Matrix", section_heading))
     story.append(Paragraph(
-        "A foundational design principle of the Azam-Pnet Enterprise distribution is strict <b>architectural role separation</b> between "
+        "A foundational design principle of the AzamLabs Enterprise distribution is strict <b>architectural role separation</b> between "
         "the <b>Master Management Node</b> (the control plane) and <b>Satellite Compute Nodes</b> (the data and execution plane). "
         "Understanding this dual plane is critical for multi-hypervisor cluster deployments.",
         body_style
@@ -561,7 +561,7 @@ def build_pdf(filename_dest):
     f4_bg = [
         "<b>Step 1:</b> Request <code>POST /azam-ops/api/airgap-pack</code> or <code>POST /api/azam/backups/local</code> dispatches the bundler.",
         "<b>Step 2:</b> For Airgap packs, <code>azambasha-airgap-pack.sh</code> creates an offline archive containing Debian package archives, pip wheels, schemas, scripts, and web UI components.",
-        "<b>Step 3:</b> Moves generated tarball to <code>/opt/unetlab/data/Exports/azam-pnet-airgap-bundle-latest.tar.gz</code> with read permissions.",
+        "<b>Step 3:</b> Moves generated tarball to <code>/opt/unetlab/data/Exports/azamlabs-airgap-bundle-latest.tar.gz</code> with read permissions.",
         "<b>Step 4:</b> For cloud backups, <code>azambasha-cloud-backup.sh</code> executes <code>rclone sync</code> with AES-256 encryption and validates SHA-256 checksums."
     ]
     for el in render_feature("4", "Local, Multi-Cloud & 100% Air-Gapped Bundler", True,
@@ -572,7 +572,7 @@ def build_pdf(filename_dest):
     # Feature 5: Fleet Multi-Node Cluster Monitor
     f5_how = [
         "<b>Step 1:</b> Go to <b>Azam Features</b> &gt; <b>Cluster Fleet Monitor</b> tab.",
-        "<b>Step 2:</b> View all connected PNETLab satellite worker nodes, CPU/RAM utilization, and cluster health.",
+        "<b>Step 2:</b> View all connected AzamLabs satellite worker nodes, CPU/RAM utilization, and cluster health.",
         "<b>Step 3:</b> Click <b>Add Satellite Node</b> and enter worker IP, SSH Port, and Shared Token.",
         "<b>Step 4:</b> Click <b>Balance Workload</b> to redistribute virtual nodes across cluster hypervisors."
     ]
@@ -597,7 +597,7 @@ def build_pdf(filename_dest):
     f6_bg = [
         "<b>Step 1:</b> Calculator computes total theoretical footprint against actual available host hardware queried via <code>/proc/meminfo</code>.",
         "<b>Step 2:</b> Checks KSM (Kernel Samepage Merging) deduplication metrics via <code>/sys/kernel/mm/ksm/pages_sharing</code>.",
-        "<b>Step 3:</b> Enforces safe limits by writing updated swap thresholds into <code>/etc/sysctl.d/99-pnetlab-perf.conf</code>.",
+        "<b>Step 3:</b> Enforces safe limits by writing updated swap thresholds into <code>/etc/sysctl.d/99-azamlabs-perf.conf</code>.",
         "<b>Step 4:</b> Notifies administrator if requested deployment exceeds safe memory thresholds (over 85% host RAM)."
     ]
     for el in render_feature("6", "Lab Capacity & Hardware Sizing Planner", True,
@@ -652,7 +652,7 @@ def build_pdf(filename_dest):
         "<b>Step 1:</b> SSL process runs <code>certbot certonly --standalone -d domain.com</code>, binding temporarily to port 80.",
         "<b>Step 2:</b> Automatically updates Nginx configuration in <code>/etc/nginx/sites-available/default</code> with TLS certificates and HTTP/2.",
         "<b>Step 3:</b> Reloads Nginx and sets up automatic certbot renewal cron job in <code>/etc/cron.d/certbot</code>.",
-        "<b>Step 4:</b> WhatsApp service stores encrypted credentials in <code>/etc/pnetlab/alerts.conf</code> and transmits JSON payload via Twilio REST API."
+        "<b>Step 4:</b> WhatsApp service stores encrypted credentials in <code>/etc/azamlabs/alerts.conf</code> and transmits JSON payload via Twilio REST API."
     ]
     for el in render_feature("9", "Automated SSL & WhatsApp Alerts", True,
                              "Main Dashboard Navigation &gt; <b>Azam Features</b> &gt; <b>Alerts & SSL</b> (<code>#pane-alerts</code>)",
@@ -708,7 +708,7 @@ def build_pdf(filename_dest):
     ]
     f12_bg = [
         "<b>Step 1:</b> Client dispatches <code>POST /azam-ops/api/scheduler/config</code> containing JSON payload of idle timeout, max nodes, and curfew hours.",
-        "<b>Step 2:</b> API server writes policy definitions to <code>/etc/pnetlab/scheduler_policy.json</code> with <code>0644</code> permissions.",
+        "<b>Step 2:</b> API server writes policy definitions to <code>/etc/azamlabs/scheduler_policy.json</code> with <code>0644</code> permissions.",
         "<b>Step 3:</b> Background worker daemon evaluates last active user session timestamp from Guacamole and MariaDB lab access records.",
         "<b>Step 4:</b> If a lab topology has had zero terminal or canvas interactions exceeding the configured threshold, dispatches safe node shutdown sequence.",
         "<b>Step 5:</b> Enforces maximum concurrent node limit by rejecting new node spawn requests when tenant quota is saturated."
@@ -721,7 +721,7 @@ def build_pdf(filename_dest):
     # Feature 13: Cross-Platform Desktop Client Toolkit Auto-Packager
     f13_how = [
         "<b>Step 1:</b> In the top navigation header of the main dashboard, locate and click the <b>Client Toolkit</b> button.",
-        "<b>Step 2:</b> A modal window opens titled <b>Azam-Pnet Cross-Platform Desktop Client Toolkit</b>.",
+        "<b>Step 2:</b> A modal window opens titled <b>AzamLabs Cross-Platform Desktop Client Toolkit</b>.",
         "<b>Step 3:</b> Select your desired operating system client: <b>Windows Batch / CLI Helper (.bat)</b>, <b>Windows PowerShell Helper (.ps1)</b>, <b>Linux / macOS Shell Client (.sh)</b>, or <b>Python Automation SDK (.py)</b>.",
         "<b>Step 4:</b> Click the blue <b>Download Script</b> button next to the desired toolkit.",
         "<b>Step 5:</b> Run the downloaded script on your desktop to automatically connect, open native terminal sessions (SecureCRT, Putty, Tabby), and automate API requests."
@@ -756,7 +756,7 @@ def build_pdf(filename_dest):
 
     # Feature 14: Anti-Bootstorm + Console Probing
     f14_how = [
-        "<b>Step 1:</b> Open any lab topology inside the PNETLab canvas workspace.",
+        "<b>Step 1:</b> Open any lab topology inside the AzamLabs canvas workspace.",
         "<b>Step 2:</b> In the top workbench navigation toolbar, locate the purple button labeled <b>Anti-Bootstorm</b> (icon: lightning bolt).",
         "<b>Step 3:</b> In the modal, check the box <b>Boost with KSM Memory Deduplication</b>.",
         "<b>Step 4:</b> Check the new advanced option: <b>Probe Console Ready-State (Wait for TCP Socket Before Next Node)</b>.",
@@ -962,7 +962,7 @@ def build_pdf(filename_dest):
     f24_bg = [
         "<b>Step 1:</b> Frontend calls <code>POST /azam-ops/api/cgroups/limit</code> with node PID and CPU percentage quota.",
         "<b>Step 2:</b> Backend locates QEMU host PID associated with the target node in <code>/opt/unetlab/tmp/</code>.",
-        "<b>Step 3:</b> Creates or updates cgroups v2 control group in <code>/sys/fs/cgroup/pnetlab_nodes/node_{pid}/</code>.",
+        "<b>Step 3:</b> Creates or updates cgroups v2 control group in <code>/sys/fs/cgroup/azamlabs_nodes/node_{pid}/</code>.",
         "<b>Step 4:</b> Writes quota to <code>cpu.max</code> (e.g. <code>50000 100000</code> for 50% CPU ceiling in a 100ms CFS period).",
         "<b>Step 5:</b> Linux Completely Fair Scheduler (CFS) enforces strict bandwidth ceilings on host CPU cycles, protecting adjacent lab nodes from noisy-neighbor starvation."
     ]
@@ -1100,7 +1100,7 @@ def build_pdf(filename_dest):
     ]
     f31_bg = [
         "<b>Step 1:</b> Checks if MariaDB unix socket exists at <code>/var/run/mysqld/mysqld.sock</code>; if missing, creates symlink.",
-        "<b>Step 2:</b> Connects to database and verifies <code>pnetlab</code> user credentials match <code>/opt/unetlab/html/includes/config.php</code>.",
+        "<b>Step 2:</b> Connects to database and verifies <code>azamlabs</code> user credentials match <code>/opt/unetlab/html/includes/config.php</code>.",
         "<b>Step 3:</b> Synchronizes Guacamole database credentials in <code>/etc/guacamole/guacamole.properties</code>.",
         "<b>Step 4:</b> Flushes MariaDB privileges (<code>FLUSH PRIVILEGES;</code>) and verifies read/write integrity."
     ]
@@ -1150,7 +1150,7 @@ def build_pdf(filename_dest):
     # ==================== SECTION 6: CLI QUICK REFERENCE ====================
     story.append(Paragraph("6. Enterprise CLI Command-Line Reference & Distribution", section_heading))
     story.append(Paragraph(
-        "All twenty-six Azam-Pnet enterprise utilities are symlinked globally in <code>/usr/local/bin/</code> across both Master and Satellite nodes. "
+        "All twenty-six AzamLabs enterprise utilities are symlinked globally in <code>/usr/local/bin/</code> across both Master and Satellite nodes. "
         "This ensures that infrastructure engineers possess identical troubleshooting capabilities from SSH terminals regardless of node type.",
         body_style
     ))
@@ -1194,7 +1194,7 @@ def build_pdf(filename_dest):
     # ==================== SECTION 7: FUTURE VM PROVISIONING ====================
     story.append(Paragraph("7. Future VM Automated Provisioning & Verification Guide", section_heading))
     story.append(Paragraph(
-        "To guarantee 100% feature alignment on every future virtual machine, the installer scripts in the Azam-Pnet repository have been "
+        "To guarantee 100% feature alignment on every future virtual machine, the installer scripts in the AzamLabs repository have been "
         "standardized into two automated workflows:",
         body_style
     ))
@@ -1232,7 +1232,7 @@ def build_pdf(filename_dest):
     # Summary Box
     summary_text = [
         [Paragraph("<b>Documentation Summary & Compliance Note:</b><br/>"
-                   "This manual encompasses all enterprise features, NetDevOps exporters, and AIOps platform enhancements integrated into the Azam-Pnet platform. "
+                   "This manual encompasses all enterprise features, NetDevOps exporters, and AIOps platform enhancements integrated into the AzamLabs platform. "
                    "All API endpoints, UI placements, and background scripts adhere to the platform's non-destructive "
                    "design architecture. Stale websockets, hypervisor memory thresholds, and disk structures are guarded "
                    "by automated checks to guarantee continuous lab uptime across both Master and Satellite compute nodes.", body_style)]

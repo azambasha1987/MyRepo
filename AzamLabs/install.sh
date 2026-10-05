@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# PNetLab v8 Unified Installer for Ubuntu 26.04 LTS ("Resolute")
+# AzamLabs v8 Unified Installer for Ubuntu 26.04 LTS ("Resolute")
 # 
 # Supports:
 # 1. Local Offline Install (Folder Upload): Installs directly from local debian/ packages.
@@ -28,11 +28,11 @@ fi
 
 # Resolve the real script directory.
 # When piped via curl|bash, BASH_SOURCE[0] is /dev/stdin — dirname gives /dev.
-# In that case we self-clone the repo into /opt/azam-pnet and use that instead.
+# In that case we self-clone the repo into /opt/azamlabs and use that instead.
 _RAW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "")"
 if [ -z "$_RAW_DIR" ] || [ "$_RAW_DIR" = "/dev" ] || [ ! -f "${_RAW_DIR}/install.sh" ]; then
-    echo "[*] Running via curl|bash — cloning repo to /opt/azam-pnet for local pool access..."
-    MYREPO_DIR="/opt/azam-pnet"
+    echo "[*] Running via curl|bash — cloning repo to /opt/azamlabs for local pool access..."
+    MYREPO_DIR="/opt/azamlabs"
     if [ ! -d "${MYREPO_DIR}/.git" ]; then
         git clone --depth 1 https://github.com/azambasha1987/MyRepo.git "$MYREPO_DIR" 2>/dev/null \
             || { echo "[ERROR] Failed to self-clone repo. Check internet/GitHub access."; exit 1; }
@@ -48,8 +48,8 @@ fi
 LOG_FILE="/var/log/azambasha-install.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
-mkdir -p /opt/pnetlab /opt/azambasha 2>/dev/null || true
-ln -sfn "$SCRIPT_DIR" /opt/pnetlab 2>/dev/null || true
+mkdir -p /opt/azamlabs /opt/azambasha 2>/dev/null || true
+ln -sfn "$SCRIPT_DIR" /opt/azamlabs 2>/dev/null || true
 ln -sfn "$SCRIPT_DIR" /opt/azambasha 2>/dev/null || true
 
 # Parse Command-Line Options for Unattended or Static IP Installation
@@ -180,7 +180,7 @@ if [ -n "$REAL_IFACE" ]; then
     fi
 
     mkdir -p /etc/modules-load.d /etc/sysctl.d /etc/systemd/system/networking.service.d /etc/systemd/network /etc/modprobe.d
-    cat > /etc/modules-load.d/pnetlab.conf << 'MODEOF'
+    cat > /etc/modules-load.d/azamlabs.conf << 'MODEOF'
 bridge
 stp
 llc
@@ -192,7 +192,7 @@ veth
 sch_fq_codel
 kvm
 MODEOF
-    [ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/pnetlab.conf
+    [ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/azamlabs.conf
 
     # Blacklist i2c_piix4 virtual controller to silence unhandled SMBus warning
     echo "blacklist i2c_piix4" > /etc/modprobe.d/blacklist-piix4.conf
@@ -223,7 +223,7 @@ MODEOF
     [ -n "$KVM_MOD" ] && modprobe "$KVM_MOD" 2>/dev/null || true
 
     # Bridge sysctl bypass to ensure ARP and IP traffic on bridges are never dropped by netfilter
-    cat > /etc/sysctl.d/99-pnetlab-bridge.conf << 'EOF'
+    cat > /etc/sysctl.d/99-azamlabs-bridge.conf << 'EOF'
 net.bridge.bridge-nf-call-iptables = 0
 net.bridge.bridge-nf-call-arptables = 0
 net.bridge.bridge-nf-call-ip6tables = 0
@@ -246,7 +246,7 @@ LINKEOF
     # Purge conflicting Netplan and systemd-networkd files
     mkdir -p /etc/netplan
     for f in /etc/netplan/*.yaml /etc/netplan/*.yml; do
-        [ -f "$f" ] && [ "$(basename "$f")" != "01-pnetlab-netcfg.yaml" ] && rm -f "$f" 2>/dev/null || true
+        [ -f "$f" ] && [ "$(basename "$f")" != "01-azamlabs-netcfg.yaml" ] && rm -f "$f" 2>/dev/null || true
     done
     rm -f /etc/systemd/network/*.network 2>/dev/null || true
 
@@ -261,7 +261,7 @@ LINKEOF
         GW_LINE=""
         [ -n "$STATIC_GW" ] && GW_LINE="      routes:\n        - to: default\n          via: ${STATIC_GW}"
         
-        cat << NETEOF > /etc/netplan/01-pnetlab-netcfg.yaml
+        cat << NETEOF > /etc/netplan/01-azamlabs-netcfg.yaml
 network:
   version: 2
   renderer: networkd
@@ -285,7 +285,7 @@ $(echo -e "$GW_LINE")
         forward-delay: 0
 NETEOF
     else
-        cat << NETEOF > /etc/netplan/01-pnetlab-netcfg.yaml
+        cat << NETEOF > /etc/netplan/01-azamlabs-netcfg.yaml
 network:
   version: 2
   renderer: networkd
@@ -306,7 +306,7 @@ $MAC_LINE
         forward-delay: 0
 NETEOF
     fi
-    chmod 600 /etc/netplan/01-pnetlab-netcfg.yaml
+    chmod 600 /etc/netplan/01-azamlabs-netcfg.yaml
 
     # Synchronize /etc/network/interfaces with pnet0 stanza for Web UI Network management & broker compatibility
     mkdir -p /etc/network /etc/network/interfaces.d
@@ -322,7 +322,7 @@ source /etc/network/interfaces.d/*
 auto lo
 iface lo inet loopback
 
-# BEGIN pnetlab-netcfg pnet0
+# BEGIN azamlabs-netcfg pnet0
 allow-hotplug pnet0
 iface pnet0 inet static
     address $IP_ONLY
@@ -331,7 +331,7 @@ iface pnet0 inet static
     pre-up ip link set dev $REAL_IFACE up
     bridge_ports $REAL_IFACE
     bridge_stp off
-# END pnetlab-netcfg pnet0
+# END azamlabs-netcfg pnet0
 INTEOF
     else
         cat << INTEOF > /etc/network/interfaces
@@ -344,13 +344,13 @@ source /etc/network/interfaces.d/*
 auto lo
 iface lo inet loopback
 
-# BEGIN pnetlab-netcfg pnet0
+# BEGIN azamlabs-netcfg pnet0
 allow-hotplug pnet0
 iface pnet0 inet dhcp
     pre-up ip link set dev $REAL_IFACE up
     bridge_ports $REAL_IFACE
     bridge_stp off
-# END pnetlab-netcfg pnet0
+# END azamlabs-netcfg pnet0
 INTEOF
     fi
     chmod 644 /etc/network/interfaces
@@ -502,8 +502,8 @@ if [ -d "$LOCAL_POOL_CANDIDATE" ] && compgen -G "${LOCAL_POOL_CANDIDATE}/*.deb" 
     echo "      -> Local Debian pool found at $LOCAL_POOL_CANDIDATE — using it directly."
     DEB_POOL_DIR="$LOCAL_POOL_CANDIDATE"
 else
-    # Fallback: clone MyRepo (contains the .deb pool) into /opt/azam-pnet
-    MYREPO_FALLBACK="/opt/azam-pnet"
+    # Fallback: clone MyRepo (contains the .deb pool) into /opt/azamlabs
+    MYREPO_FALLBACK="/opt/azamlabs"
     echo "      -> Local pool not found. Cloning MyRepo to $MYREPO_FALLBACK for package pool..."
     if [ ! -d "${MYREPO_FALLBACK}/.git" ]; then
         git clone --depth 1 https://github.com/azambasha1987/MyRepo.git "$MYREPO_FALLBACK" 2>/dev/null \
@@ -529,17 +529,17 @@ if [ -n "$DEB_POOL_DIR" ]; then
 
     # Priority dependency order for clean master server installation
     PKG_PREFIXES=(
-        "pnetlab-schema"
-        "pnetlab-guacd"
-        "pnetlab-qemu"
-        "pnetlab-vpcs"
-        "pnetlab-bridge-dkms"
-        "pnetlab-docker"
-        "pnetlab"
+        "azamlabs-schema"
+        "azamlabs-guacd"
+        "azamlabs-qemu"
+        "azamlabs-vpcs"
+        "azamlabs-bridge-dkms"
+        "azamlabs-docker"
+        "azamlabs"
     )
 
     for prefix in "${PKG_PREFIXES[@]}"; do
-        deb_path=$(find "$DEB_POOL_DIR" -maxdepth 1 -name "${prefix}_*.deb" ! -name "pnetlab-satellite*" | sort -V | tail -n1 || true)
+        deb_path=$(find "$DEB_POOL_DIR" -maxdepth 1 -name "${prefix}_*.deb" ! -name "azamlabs-satellite*" | sort -V | tail -n1 || true)
         if [ -n "$deb_path" ] && [ -f "$deb_path" ]; then
             echo "      -> Installing $(basename "$deb_path")..."
             dpkg-deb -x "$deb_path" / 2>/dev/null || true
@@ -569,8 +569,8 @@ fi
 # --- Step 4: Configure Database & Schemas ---
 echo "[4/8] Configuring MySQL database, schemas, and admin credentials..."
 mkdir -p /etc/mysql/mysql.conf.d
-cat > /etc/mysql/mysql.conf.d/zz-pnetlab-cluster.cnf << 'EOF'
-# Azam Basha & PNetLab Cluster: Satellites connect to Master DB
+cat > /etc/mysql/mysql.conf.d/zz-azamlabs-cluster.cnf << 'EOF'
+# Azam Basha & AzamLabs Cluster: Satellites connect to Master DB
 [mysqld]
 bind-address = 0.0.0.0
 mysqlx-bind-address = 127.0.0.1
@@ -603,22 +603,22 @@ if [ -f "${SCRIPT_DIR}/scripts/azambasha-fix-database-schema.sh" ]; then
     bash "${SCRIPT_DIR}/scripts/azambasha-fix-database-schema.sh" || true
 else
     _DB_INIT_SQL="$(cat <<'EOF'
-CREATE DATABASE IF NOT EXISTS pnetlab_db CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+CREATE DATABASE IF NOT EXISTS azamlabs_db CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 CREATE DATABASE IF NOT EXISTS guacdb CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
-CREATE USER IF NOT EXISTS 'pnetlab'@'localhost' IDENTIFIED BY 'pnetlab';
-CREATE USER IF NOT EXISTS 'pnetlab'@'127.0.0.1' IDENTIFIED BY 'pnetlab';
-CREATE USER IF NOT EXISTS 'pnetlab'@'%' IDENTIFIED BY 'pnetlab';
-CREATE USER IF NOT EXISTS 'guacuser'@'localhost' IDENTIFIED BY 'pnetlab';
+CREATE USER IF NOT EXISTS 'azamlabs'@'localhost' IDENTIFIED BY 'azamlabs';
+CREATE USER IF NOT EXISTS 'azamlabs'@'127.0.0.1' IDENTIFIED BY 'azamlabs';
+CREATE USER IF NOT EXISTS 'azamlabs'@'%' IDENTIFIED BY 'azamlabs';
+CREATE USER IF NOT EXISTS 'guacuser'@'localhost' IDENTIFIED BY 'azamlabs';
 
-ALTER USER 'pnetlab'@'localhost' IDENTIFIED BY 'pnetlab';
-ALTER USER 'pnetlab'@'127.0.0.1' IDENTIFIED BY 'pnetlab';
-ALTER USER 'pnetlab'@'%' IDENTIFIED BY 'pnetlab';
-ALTER USER 'guacuser'@'localhost' IDENTIFIED BY 'pnetlab';
+ALTER USER 'azamlabs'@'localhost' IDENTIFIED BY 'azamlabs';
+ALTER USER 'azamlabs'@'127.0.0.1' IDENTIFIED BY 'azamlabs';
+ALTER USER 'azamlabs'@'%' IDENTIFIED BY 'azamlabs';
+ALTER USER 'guacuser'@'localhost' IDENTIFIED BY 'azamlabs';
 
-GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'localhost';
-GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'127.0.0.1';
-GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'%';
+GRANT ALL PRIVILEGES ON azamlabs_db.* TO 'azamlabs'@'localhost';
+GRANT ALL PRIVILEGES ON azamlabs_db.* TO 'azamlabs'@'127.0.0.1';
+GRANT ALL PRIVILEGES ON azamlabs_db.* TO 'azamlabs'@'%';
 GRANT ALL PRIVILEGES ON guacdb.* TO 'guacuser'@'localhost';
 FLUSH PRIVILEGES;
 EOF
@@ -627,9 +627,9 @@ EOF
     _run_db_sql() {
         local sql="$1"
         mysql --defaults-file=/etc/mysql/debian.cnf -e "$sql" 2>/dev/null \
-            || mysql -u root -ppnetlab -e "$sql" 2>/dev/null \
             || mysql -u root -pazam -e "$sql" 2>/dev/null \
-            || mysql -u pnetlab -ppnetlab -e "$sql" 2>/dev/null \
+            || mysql -u root -pazam -e "$sql" 2>/dev/null \
+            || mysql -u azamlabs -pazam -e "$sql" 2>/dev/null \
             || mysql -e "$sql" 2>/dev/null \
             || mysql -u root -e "$sql" 2>/dev/null \
             || true
@@ -637,23 +637,23 @@ EOF
 
     _run_db_sql "$_DB_INIT_SQL"
 
-    if [ -f "${SCRIPT_DIR}/schema/pnetlab_db.sql" ]; then
-        mysql --defaults-file=/etc/mysql/debian.cnf pnetlab_db < "${SCRIPT_DIR}/schema/pnetlab_db.sql" 2>/dev/null \
-            || mysql -u root -ppnetlab pnetlab_db < "${SCRIPT_DIR}/schema/pnetlab_db.sql" 2>/dev/null \
-            || mysql -u pnetlab -ppnetlab pnetlab_db < "${SCRIPT_DIR}/schema/pnetlab_db.sql" 2>/dev/null \
-            || mysql pnetlab_db < "${SCRIPT_DIR}/schema/pnetlab_db.sql" 2>/dev/null \
+    if [ -f "${SCRIPT_DIR}/schema/azamlabs_db.sql" ]; then
+        mysql --defaults-file=/etc/mysql/debian.cnf azamlabs_db < "${SCRIPT_DIR}/schema/azamlabs_db.sql" 2>/dev/null \
+            || mysql -u root -pazam azamlabs_db < "${SCRIPT_DIR}/schema/azamlabs_db.sql" 2>/dev/null \
+            || mysql -u azamlabs -pazam azamlabs_db < "${SCRIPT_DIR}/schema/azamlabs_db.sql" 2>/dev/null \
+            || mysql azamlabs_db < "${SCRIPT_DIR}/schema/azamlabs_db.sql" 2>/dev/null \
             || true
     fi
     if [ -f "${SCRIPT_DIR}/schema/guacdb.sql" ]; then
         mysql --defaults-file=/etc/mysql/debian.cnf guacdb < "${SCRIPT_DIR}/schema/guacdb.sql" 2>/dev/null \
-            || mysql -u root -ppnetlab guacdb < "${SCRIPT_DIR}/schema/guacdb.sql" 2>/dev/null \
-            || mysql -u guacuser -ppnetlab guacdb < "${SCRIPT_DIR}/schema/guacdb.sql" 2>/dev/null \
+            || mysql -u root -pazam guacdb < "${SCRIPT_DIR}/schema/guacdb.sql" 2>/dev/null \
+            || mysql -u guacuser -pazam guacdb < "${SCRIPT_DIR}/schema/guacdb.sql" 2>/dev/null \
             || mysql guacdb < "${SCRIPT_DIR}/schema/guacdb.sql" 2>/dev/null \
             || true
     fi
 
     _CRED_SQL="$(cat <<'EOF'
-USE pnetlab_db;
+USE azamlabs_db;
 
 INSERT INTO control (control_name, control_value) VALUES
   ('ctrl_offline_mode','1'), ('ctrl_online_mode','0'),
@@ -690,7 +690,7 @@ EOF
 fi
 
 # Clear any login rate-limit lockouts
-rm -rf /dev/shm/pnet-authfail* /tmp/pnet-authfail* 2>/dev/null || true
+rm -rf /dev/shm/azamlabs-authfail* /tmp/azamlabs-authfail* 2>/dev/null || true
 
 # --- Step 5: Configure Apache & PHP-FPM ---
 echo "[5/8] Configuring Apache2 Web Server, SSL and PHP-FPM..."
@@ -707,18 +707,18 @@ if ! dpkg -s "php${PHP_VER}-fpm" >/dev/null 2>&1 && ! dpkg -s php-fpm >/dev/null
 fi
 
 # 2-Tier Enterprise Root CA & Multi-IP Server Certificate Generation
-CA_CERT="/etc/ssl/certs/pnetlab-ca.crt"
-CA_KEY="/etc/ssl/private/pnetlab-ca.key"
-SSL_CERT="/etc/ssl/certs/pnetlab-selfsigned.crt"
-SSL_KEY="/etc/ssl/private/pnetlab-selfsigned.key"
+CA_CERT="/etc/ssl/certs/azamlabs-ca.crt"
+CA_KEY="/etc/ssl/private/azamlabs-ca.key"
+SSL_CERT="/etc/ssl/certs/azamlabs-selfsigned.crt"
+SSL_KEY="/etc/ssl/private/azamlabs-selfsigned.key"
 mkdir -p /etc/ssl/certs /etc/ssl/private
 
-# 1. Generate PNETLab Internal Root CA (20-Year Validity)
+# 1. Generate AzamLabs Internal Root CA (20-Year Validity)
 if [ ! -f "$CA_CERT" ] || [ ! -f "$CA_KEY" ]; then
     openssl req -x509 -new -nodes -newkey rsa:2048 -days 7300 \
         -keyout "$CA_KEY" \
         -out "$CA_CERT" \
-        -subj '/CN=PNETLab Enterprise Root CA/O=PNETLab Virtual Appliance/OU=Security' \
+        -subj '/CN=AzamLabs Enterprise Root CA/O=AzamLabs Virtual Appliance/OU=Security' \
         -addext 'basicConstraints=critical,CA:TRUE' \
         -addext 'keyUsage=critical,keyCertSign,cRLSign' 2>/dev/null || true
     chmod 0600 "$CA_KEY"
@@ -735,21 +735,21 @@ if [ ! -f "$SSL_CERT" ] || [ ! -f "$SSL_KEY" ]; then
         fi
     done
 
-    CSR_FILE="/tmp/pnetlab_server.csr"
-    EXT_FILE="/tmp/pnetlab_san.ext"
+    CSR_FILE="/tmp/azamlabs_server.csr"
+    EXT_FILE="/tmp/azamlabs_san.ext"
 
     cat << EOF > "$EXT_FILE"
 authorityKeyIdentifier=keyid,issuer
 basicConstraints=CA:FALSE
 keyUsage=digitalSignature,nonRepudiation,keyEncipherment,dataEncipherment
 extendedKeyUsage=serverAuth
-subjectAltName=DNS:pnetlab,DNS:pnetlab.local,DNS:localhost,${IP_SAN}
+subjectAltName=DNS:azamlabs,DNS:azamlabs.local,DNS:localhost,${IP_SAN}
 EOF
 
     openssl req -new -nodes -newkey rsa:2048 \
         -keyout "$SSL_KEY" \
         -out "$CSR_FILE" \
-        -subj '/CN=pnetlab.local/O=PNETLab Virtual Appliance/OU=Web Engine' 2>/dev/null || true
+        -subj '/CN=azamlabs.local/O=AzamLabs Virtual Appliance/OU=Web Engine' 2>/dev/null || true
 
     openssl x509 -req -in "$CSR_FILE" \
         -CA "$CA_CERT" -CAkey "$CA_KEY" -CAcreateserial \
@@ -764,9 +764,9 @@ fi
 
 # 3. Publish Root CA to web download endpoints for 1-click client trust
 mkdir -p /opt/unetlab/html
-cp -f "$CA_CERT" /opt/unetlab/html/pnetlab-ca.crt 2>/dev/null || true
+cp -f "$CA_CERT" /opt/unetlab/html/azamlabs-ca.crt 2>/dev/null || true
 cp -f "$CA_CERT" /opt/unetlab/html/ca.crt 2>/dev/null || true
-chmod 0644 /opt/unetlab/html/pnetlab-ca.crt /opt/unetlab/html/ca.crt 2>/dev/null || true
+chmod 0644 /opt/unetlab/html/azamlabs-ca.crt /opt/unetlab/html/ca.crt 2>/dev/null || true
 
 cp -f "$SSL_CERT" /etc/ssl/certs/apache-selfsigned.crt 2>/dev/null || true
 cp -f "$SSL_KEY" /etc/ssl/private/apache-selfsigned.key 2>/dev/null || true
@@ -828,7 +828,7 @@ EOF
 chmod +x /opt/unetlab/scripts/remove_uuid.sh /opt/unetlab/scripts/* 2>/dev/null || true
 
 # Configure Apache VirtualHosts
-cat > /etc/apache2/sites-available/pnetlab.conf << 'EOF'
+cat > /etc/apache2/sites-available/azamlabs.conf << 'EOF'
 <VirtualHost *:80>
     DocumentRoot /opt/unetlab/html
     Alias /legacy /opt/unetlab/html/themes/default
@@ -871,7 +871,7 @@ cat > /etc/apache2/sites-available/pnetlab.conf << 'EOF'
 </VirtualHost>
 EOF
 
-cat > /etc/apache2/sites-available/pnetlab-ssl.conf << 'EOF'
+cat > /etc/apache2/sites-available/azamlabs-ssl.conf << 'EOF'
 <IfModule mod_ssl.c>
 <VirtualHost *:443>
     DocumentRoot /opt/unetlab/html
@@ -899,8 +899,8 @@ cat > /etc/apache2/sites-available/pnetlab-ssl.conf << 'EOF'
         Require all granted
     </Directory>
     SSLEngine on
-    SSLCertificateFile /etc/ssl/certs/pnetlab-selfsigned.crt
-    SSLCertificateKeyFile /etc/ssl/private/pnetlab-selfsigned.key
+    SSLCertificateFile /etc/ssl/certs/azamlabs-selfsigned.crt
+    SSLCertificateKeyFile /etc/ssl/private/azamlabs-selfsigned.key
     ProxyPass /telnet/ ws://127.0.0.1:8022/ upgrade=websocket
     ProxyPassReverse /telnet/ ws://127.0.0.1:8022/
     ProxyPass /vnc/ ws://127.0.0.1:6080/ upgrade=websocket
@@ -924,8 +924,8 @@ if [ -x /opt/unetlab/scripts/enable-php-fpm.sh ]; then
     bash /opt/unetlab/scripts/enable-php-fpm.sh 2>/dev/null || true
 fi
 a2enconf "php${PHP_VER}-fpm" 2>/dev/null || a2enconf php-fpm 2>/dev/null || true
-a2dissite 000-default default-ssl pnetlabs 2>/dev/null || true
-a2ensite pnetlab pnetlab-ssl 2>/dev/null || true
+a2dissite 000-default default-ssl azamlabs 2>/dev/null || true
+a2ensite azamlabs azamlabs-ssl 2>/dev/null || true
 
 # Patch Cookie Compatibility in api.php for HTTP & HTTPS
 sed -i 's/"secure" *=> *true/"secure" => (!empty($_SERVER["HTTPS"]) \&\& $_SERVER["HTTPS"] !== "off")/g' /opt/unetlab/html/api.php 2>/dev/null || true
@@ -938,14 +938,14 @@ systemctl restart apache2 2>/dev/null || true
 
 # --- Step 6: Configure Guacamole, Telnet & Web Console ---
 echo "[6/8] Configuring Guacamole daemon and Python console bridges..."
-mkdir -p /etc/pnet-webconsole
-GUAC_ENV="/etc/pnet-webconsole/guac.env"
+mkdir -p /etc/azam-webconsole
+GUAC_ENV="/etc/azam-webconsole/guac.env"
 if [ ! -f "$GUAC_ENV" ]; then
     RANDOM_KEY="$(head -c 24 /dev/urandom | base64 | tr -d '\n')"
     printf "GUAC_CRYPT_KEY=%s\n" "$RANDOM_KEY" > "$GUAC_ENV"
     chmod 0600 "$GUAC_ENV"
     
-    CONSOLE_CONF="/etc/pnet-webconsole/console_config.php"
+    CONSOLE_CONF="/etc/azam-webconsole/console_config.php"
     if [ -f "$CONSOLE_CONF" ]; then
         sed -i "s|define('GUAC_CRYPT_KEY', '[^']*');|define('GUAC_CRYPT_KEY', '$RANDOM_KEY');|" "$CONSOLE_CONF"
     fi
@@ -955,19 +955,19 @@ fi
 pip3 install --break-system-packages telnetlib3 2>/dev/null || true
 
 systemctl enable --now guacd.service 2>/dev/null || true
-systemctl enable --now pnet-guac-lite.service 2>/dev/null || true
-systemctl enable --now pnet-console-mux.service 2>/dev/null || true
+systemctl enable --now azam-guac-lite.service 2>/dev/null || true
+systemctl enable --now azam-console-mux.service 2>/dev/null || true
 
-# Enable PNetLab Privilege Broker Daemon
-cat > /etc/systemd/system/pnetlab-brokerd.service << 'EOF'
+# Enable AzamLabs Privilege Broker Daemon
+cat > /etc/systemd/system/azamlabs-brokerd.service << 'EOF'
 [Unit]
-Description=PNetLab privilege broker (allowlisted root verbs for the engine)
+Description=AzamLabs privilege broker (allowlisted root verbs for the engine)
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /opt/unetlab/scripts/pnetlab-brokerd.py
-RuntimeDirectory=pnetlab
+ExecStart=/usr/bin/python3 /opt/unetlab/scripts/azamlabs-brokerd.py
+RuntimeDirectory=azamlabs
 RuntimeDirectoryMode=0755
 User=root
 Group=root
@@ -978,7 +978,7 @@ RestartSec=2
 WantedBy=multi-user.target
 EOF
 systemctl daemon-reload 2>/dev/null || true
-systemctl enable --now pnetlab-brokerd.service 2>/dev/null || true
+systemctl enable --now azamlabs-brokerd.service 2>/dev/null || true
 
 # --- Step 7: Fix Permissions, Addon Scaffolding & Cisco IOL License ---
 echo "[7/8] Scaffolding addon directories and generating Cisco IOL license..."
@@ -1015,12 +1015,12 @@ chmod 777 /tmp/netio* 2>/dev/null || true
 
 # Systemd tmpfiles rule for IOL AF_UNIX socket directories
 mkdir -p /etc/tmpfiles.d
-cat > /etc/tmpfiles.d/pnetlab-iol.conf << 'EOF'
+cat > /etc/tmpfiles.d/azamlabs-iol.conf << 'EOF'
 d /tmp/netio* 1777 root unl -
 EOF
 
 # Ensure /opt/unetlab is world-traversable so www-data can reach /opt/unetlab/html.
-# The pnetlab deb sets /opt/unetlab to 700 (root-only) which causes Apache 403.
+# The azamlabs deb sets /opt/unetlab to 700 (root-only) which causes Apache 403.
 chmod 755 /opt/unetlab 2>/dev/null || true
 chown -R www-data:www-data /opt/unetlab/html 2>/dev/null || true
 
@@ -1048,7 +1048,7 @@ systemctl start fix-unetlab-perms.service 2>/dev/null || true
 # Enable IPv4 Forwarding
 sysctl -w net.ipv4.ip_forward=1 >/dev/null
 if ! grep -q "^net.ipv4.ip_forward=1" /etc/sysctl.conf /etc/sysctl.d/* 2>/dev/null; then
-    echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-pnetlab-forwarding.conf
+    echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-azamlabs-forwarding.conf
 fi
 
 # --- Step 8: Apply Modernization Suite & Essential Fixes ---
@@ -1177,23 +1177,23 @@ if [ -d "/opt/azambasha/scripts" ]; then
     ln -sfn /opt/azambasha/scripts/azambasha-bootstorm.py /usr/local/bin/azam-bootstorm 2>/dev/null || true
 fi
 
-ln -sfn /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/pnet-menu 2>/dev/null || true
-ln -sfn /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/pnet-fix 2>/dev/null || true
-ln -sfn /opt/unetlab/scripts/azambasha-fix-cluster.sh /usr/local/bin/pnet-cluster 2>/dev/null || true
-ln -sfn /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/pnet-satellite-join 2>/dev/null || true
-ln -sfn /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/pnet-health 2>/dev/null || true
-ln -sfn /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/pnet-doctor 2>/dev/null || true
-ln -sfn /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/pnet-images 2>/dev/null || true
-ln -sfn /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/pnet-bootstorm 2>/dev/null || true
-ln -sfn /opt/unetlab/scripts/azambasha-fix-network-boot.sh /usr/local/bin/pnet-network 2>/dev/null || true
-ln -sfn /opt/unetlab/scripts/azambasha-backup-restore.sh /usr/local/bin/pnet-backup 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/azam-menu 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-apply-all-fixes.sh /usr/local/bin/azam-fix 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-fix-cluster.sh /usr/local/bin/azam-cluster 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/azam-health 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/azam-doctor 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-images 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/azam-bootstorm 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-fix-network-boot.sh /usr/local/bin/azam-network 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-backup-restore.sh /usr/local/bin/azam-backup 2>/dev/null || true
 
 ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/azambasha-credentials 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/azam-credentials 2>/dev/null || true
-ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/pnet-credentials 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/azam-credentials 2>/dev/null || true
 
 # Final Service Refresh & Lockout Reset
-rm -rf /dev/shm/pnet-authfail* /tmp/pnet-authfail* 2>/dev/null || true
+rm -rf /dev/shm/azamlabs-authfail* /tmp/azamlabs-authfail* 2>/dev/null || true
 
 # ── Guaranteed Admin Credential Enforcement ────────────────────────────────
 # This block runs last, after all packages, schemas and branding scripts.
@@ -1206,7 +1206,7 @@ elif [ -f "/opt/unetlab/scripts/azambasha-fix-web-credentials.sh" ]; then
 fi
 
 ADMIN_SQL_BODY="$(cat <<'ADMIN_SQL'
-USE pnetlab_db;
+USE azamlabs_db;
 
 UPDATE users SET 
   password = SHA2('azam', 256),
@@ -1243,9 +1243,9 @@ ADMIN_SQL
 )"
 
 mysql --defaults-file=/etc/mysql/debian.cnf -e "$ADMIN_SQL_BODY" 2>/dev/null \
-    || mysql -u root -ppnetlab -e "$ADMIN_SQL_BODY" 2>/dev/null \
     || mysql -u root -pazam -e "$ADMIN_SQL_BODY" 2>/dev/null \
-    || mysql -u pnetlab -ppnetlab -e "$ADMIN_SQL_BODY" 2>/dev/null \
+    || mysql -u root -pazam -e "$ADMIN_SQL_BODY" 2>/dev/null \
+    || mysql -u azamlabs -pazam -e "$ADMIN_SQL_BODY" 2>/dev/null \
     || mysql -e "$ADMIN_SQL_BODY" 2>/dev/null \
     || mysql -u root -e "$ADMIN_SQL_BODY" 2>/dev/null \
     || true
@@ -1279,7 +1279,7 @@ fi
 
 # Install dynamic banner updater — regenerates /etc/issue with the LIVE IP on every boot
 # so the VM console header always shows the correct address after reboots or IP changes.
-echo "master" > /etc/pnetlab-role
+echo "master" > /etc/azamlabs-role
 BANNER_SCRIPT="/usr/local/bin/azambasha-update-banner.sh"
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-update-banner.sh" ]; then
     cp -f "${SCRIPT_DIR}/scripts/azambasha-update-banner.sh" "$BANNER_SCRIPT"
@@ -1356,7 +1356,7 @@ if [ -d "${SCRIPT_DIR}/html/azam-ops" ]; then
 fi
 if [ -f "${SCRIPT_DIR}/VERSION" ]; then
     cp -f "${SCRIPT_DIR}/VERSION" /opt/unetlab/VERSION 2>/dev/null || true
-    cp -f "${SCRIPT_DIR}/VERSION" /etc/pnetlab-version 2>/dev/null || true
+    cp -f "${SCRIPT_DIR}/VERSION" /etc/azamlabs-version 2>/dev/null || true
 fi
 chmod +x /opt/unetlab/scripts/*.sh /opt/unetlab/scripts/*.py /usr/local/bin/apply-heavy-node-optimizer.sh 2>/dev/null || true
 ln -sf /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-optimizer 2>/dev/null || true
@@ -1409,7 +1409,7 @@ else
 fi
 
 # Test 2: Database Schema
-DB_CHECK="$(mysql -u pnetlab -ppnetlab pnetlab_db -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pnetlab_db';" 2>/dev/null || echo "0")"
+DB_CHECK="$(mysql -u azamlabs -pazam azamlabs_db -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='azamlabs_db';" 2>/dev/null || echo "0")"
 if [ "$DB_CHECK" -ge 16 ]; then
     echo "  [✔ PASS] MySQL Database Schema        : OK ($DB_CHECK core tables active)"
 else
@@ -1431,7 +1431,7 @@ else
 fi
 
 # Test 5: Update Freeze Barrier
-if apt-mark showhold 2>/dev/null | grep -q "pnetlab"; then
+if apt-mark showhold 2>/dev/null | grep -q "azamlabs"; then
     echo "  [✔ PASS] Offline Update Freeze Lock   : OK (APT Hold & Pin -1 active)"
 else
     echo "  [✖ WARN] Offline Update Freeze Lock   : Not held"

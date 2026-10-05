@@ -2,8 +2,8 @@
 # ==============================================================================
 # azambasha-install-azam-features.sh
 # Deploys the Azam-Features GUI tab into:
-#   1. PNetLab Main Dashboard (/main/) as a primary navigation tab
-#   2. PNetLab Lab Canvas (/themes/default/) as a quick-access sidebar entry
+#   1. AzamLabs Main Dashboard (/main/) as a primary navigation tab
+#   2. AzamLabs Lab Canvas (/themes/default/) as a quick-access sidebar entry
 # Run once on Master (192.168.1.23) as root.
 # ==============================================================================
 set -euo pipefail
@@ -35,8 +35,8 @@ if [ -n "$INSTALL_ROOT" ] && [ -d "${INSTALL_ROOT}/html" ]; then
     AZAM_DIR="$INSTALL_ROOT"
 elif [ -d "/opt/azambasha/html" ]; then
     AZAM_DIR="/opt/azambasha"
-elif [ -d "/opt/azam-pnet/AzamLabs/html" ]; then
-    AZAM_DIR="/opt/azam-pnet/AzamLabs"
+elif [ -d "/opt/azamlabs/AzamLabs/html" ]; then
+    AZAM_DIR="/opt/azamlabs/AzamLabs"
 else
     AZAM_DIR="/opt/unetlab"
 fi
@@ -110,7 +110,7 @@ ln -sf "${SCRIPTS}/azambasha-quarterly-audit.sh"   /usr/local/bin/azam-audit
 ln -sf "${SCRIPTS}/azambasha-apply-all-fixes.sh"    /usr/local/bin/azam-menu
 ln -sf "${SCRIPTS}/azambasha-apply-all-fixes.sh"    /usr/local/bin/azam-fix
 ln -sf "${SCRIPTS}/azambasha-satellite-join.sh"     /usr/local/bin/azam-satellite-join
-ln -sf "${SCRIPTS}/azambasha-satellite-join.sh"     /usr/local/bin/pnet-satellite-join
+ln -sf "${SCRIPTS}/azambasha-satellite-join.sh"     /usr/local/bin/azam-satellite-join
 ln -sf "${SCRIPTS}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-optimizer
 ln -sf "${SCRIPTS}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-heavy-optimizer
 ln -sf "${SCRIPTS}/apply-heavy-node-optimizer.sh"    /usr/local/bin/apply-heavy-node-optimizer
@@ -132,7 +132,7 @@ fi
 
 # Deploy Nightly SSD TRIM & Maintenance Cron (Master & Satellite)
 cat << 'TRIMEOF' > /etc/cron.d/azambasha-maintenance
-# Azam-Pnet Scheduled Maintenance & Storage TRIM
+# AzamLabs Scheduled Maintenance & Storage TRIM
 0 3 * * * root /sbin/fstrim -av > /var/log/azambasha-trim.log 2>&1
 TRIMEOF
 chmod 0644 /etc/cron.d/azambasha-maintenance 2>/dev/null || true
@@ -163,7 +163,7 @@ fi
 echo -e "${CYAN}[2/7]${RESET} Configuring Apache reverse proxy for Azam-Ops API…"
 APACHE_CONF="/etc/apache2/conf-available/azam-ops-api.conf"
 cat > "${APACHE_CONF}" << 'APACHEEOF'
-# Azam-Pnet Operations Dashboard API proxy
+# AzamLabs Operations Dashboard API proxy
 # Backend: python3 azambasha-ops-api.py running on 127.0.0.1:8889
 
 <Location /azam-ops/api>
@@ -213,17 +213,17 @@ fi
 
 # ── 5. Install Lab Canvas Sidebar Script ────────────────────────────────────
 echo -e "${CYAN}[5/7]${RESET} Installing Lab Canvas sidebar integration…"
-CANVAS_SRC="${AZAM_DIR}/html/azam-ops/pnetlab-azam-features.js"
+CANVAS_SRC="${AZAM_DIR}/html/azam-ops/azamlabs-features.js"
 if [ -f "${CANVAS_SRC}" ]; then
-    cp "${CANVAS_SRC}" "${THEME_JS}/pnetlab-azam-features.js"
-    echo -e "  ${GREEN}[✔]${RESET} Copied pnetlab-azam-features.js → ${THEME_JS}/"
+    cp "${CANVAS_SRC}" "${THEME_JS}/azamlabs-features.js"
+    echo -e "  ${GREEN}[✔]${RESET} Copied azamlabs-features.js → ${THEME_JS}/"
 fi
 
-if grep -q "pnetlab-azam-features.js" "${THEME_INDEX}"; then
+if grep -q "azamlabs-features.js" "${THEME_INDEX}"; then
     echo -e "  ${YELLOW}[!]${RESET} Lab Canvas script tag already present."
 else
     cp "${THEME_INDEX}" "${THEME_INDEX}.bak"
-    sed -i 's|</body>|<script src="/themes/default/js/pnetlab-azam-features.js" defer></script>\n</body>|' "${THEME_INDEX}"
+    sed -i 's|</body>|<script src="/themes/default/js/azamlabs-features.js" defer></script>\n</body>|' "${THEME_INDEX}"
     echo -e "  ${GREEN}[✔]${RESET} Successfully injected script into Lab Canvas."
 fi
 
@@ -257,7 +257,7 @@ echo -e "${CYAN}================================================================
 echo -e "  ${BOLD}Where to find it:${RESET}"
 HOST_IP="$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7}' | head -n1)"
 [ -z "$HOST_IP" ] && HOST_IP="$(hostname -I 2>/dev/null | awk '{print $1}' || echo "127.0.0.1")"
-echo -e "   1. ${CYAN}Main PNetLab GUI:${RESET} Navigate to ${BOLD}https://${HOST_IP}/main/#/azam-features${RESET}"
+echo -e "   1. ${CYAN}Main AzamLabs GUI:${RESET} Navigate to ${BOLD}https://${HOST_IP}/main/#/azam-features${RESET}"
 echo -e "      (Click the new ${YELLOW}⚡ Azam-Features${RESET} tab in the main sidebar)"
 echo -e "   2. ${CYAN}Lab Canvas GUI:${RESET} Inside any active lab, click ${YELLOW}⚡ Azam-Features${RESET} in the left toolbar."
 echo -e "${CYAN}================================================================${RESET}"

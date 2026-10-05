@@ -410,7 +410,7 @@ class HeavyNodeGovernor:
                     except Exception:
                         pass
 
-                # Check 3: Any QEMU node running under PNETLab (/opt/unetlab/tmp)
+                # Check 3: Any QEMU node running under AzamLabs (/opt/unetlab/tmp)
                 if not is_target and ('/opt/unetlab' in cmdline or '/opt/qemu' in cmdline):
                     is_target = True
                     matched_type = "pnet-router"
@@ -929,9 +929,9 @@ sync_files = [
 satellites = []
 try:
     import pymysql
-    for db_pass in ['pnetlab', 'pnetlab_password', '']:
+    for db_pass in ['azamlabs', 'azam', '']:
         try:
-            conn = pymysql.connect(host='localhost', user='pnetlab', password=db_pass, database='pnetlab_db')
+            conn = pymysql.connect(host='localhost', user='azamlabs', password=db_pass, database='azamlabs_db')
             with conn.cursor() as cur:
                 try:
                     cur.execute("SELECT host_ip FROM cluster_hosts WHERE host_ip != '127.0.0.1'")

@@ -3,7 +3,7 @@
 ==============================================================================
 Azam Basha Automated Config Diff & Version Rollback (azambasha-config-diff.py)
 ==============================================================================
-Pulls active running configurations from PNetLab virtual nodes, tracks
+Pulls active running configurations from AzamLabs virtual nodes, tracks
 revisions in timestamped snapshots, computes side-by-side visual diffs,
 and pushes rollbacks to devices via console/management sessions.
 ==============================================================================
@@ -26,7 +26,7 @@ def ensure_dir(path):
 
 
 def get_active_nodes():
-    """Discover running QEMU and IOL nodes from process table or PNetLab."""
+    """Discover running QEMU and IOL nodes from process table or AzamLabs."""
     nodes = []
     try:
         r = subprocess.run(["pgrep", "-a", "-f", "qemu-system"], capture_output=True, text=True)
@@ -198,7 +198,7 @@ def rollback(lab_id, node_name, revision_filename):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Azam-Pnet Config Diff & Rollback Engine")
+    parser = argparse.ArgumentParser(description="AzamLabs Config Diff & Rollback Engine")
     parser.add_argument("--snapshot", action="store_true", help="Take config snapshot of active nodes")
     parser.add_argument("--lab", type=str, default="default_lab", help="Lab identifier")
     parser.add_argument("--node", type=str, help="Target node name")

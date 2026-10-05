@@ -67,7 +67,7 @@ if [ -d "$LOGIN_SRC" ]; then
         cp -f "$AVATAR_SRC" /opt/unetlab/html/favicon.ico 2>/dev/null || true
 
         # Plymouth boot splash logo
-        for p in /usr/share/plymouth/themes/pnetlab/logo*.png; do
+        for p in /usr/share/plymouth/themes/azamlabs/logo*.png; do
             [ -f "$p" ] && cp -f "$AVATAR_SRC" "$p" 2>/dev/null || true
         done
 
@@ -97,7 +97,7 @@ fi
 # 3. Update Database Admin Password to 'azam' and Synchronize Version
 AZAM_HASH="aec7a491c6e8d1433b213e694f086222fe6fde75a17c379b7fc22472539ff8e1"
 SQL_UPDATE="UPDATE users SET password = '${AZAM_HASH}' WHERE username = 'admin';"
-mysql -u pnetlab -ppnetlab pnetlab_db -e "$SQL_UPDATE" 2>/dev/null || mysql pnetlab_db -e "$SQL_UPDATE" 2>/dev/null || true
+mysql -u azamlabs -pazam azamlabs_db -e "$SQL_UPDATE" 2>/dev/null || mysql azamlabs_db -e "$SQL_UPDATE" 2>/dev/null || true
 if [ -f "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" ]; then
     bash "${SCRIPT_DIR}/azambasha-sync-gui-version.sh" auto 2>/dev/null || true
 fi
@@ -110,7 +110,7 @@ id -u pnet >/dev/null 2>&1 && echo "pnet:azam" | chpasswd 2>/dev/null || true
 echo "  [✔] System SSH root/pnet password updated to 'azam'"
 
 # 5. Clear any lingering login rate-limit / lockout tokens
-rm -rf /dev/shm/pnet-authfail* /tmp/pnet-authfail* 2>/dev/null || true
+rm -rf /dev/shm/azamlabs-authfail* /tmp/azamlabs-authfail* 2>/dev/null || true
 
 # 6. Ensure Branding Data Directory & Configuration
 mkdir -p "$BRAND_DIR"
@@ -145,13 +145,13 @@ fi
 mkdir -p /opt/unetlab/html/assets-common/img \
          /opt/unetlab/html/images \
          /opt/unetlab/html/themes/default/images \
-         /usr/share/plymouth/themes/pnetlab 2>/dev/null || true
+         /usr/share/plymouth/themes/azamlabs 2>/dev/null || true
 
 if [ -n "$LOGO_MASTER" ]; then
     cp -f "$LOGO_MASTER" /opt/unetlab/html/assets-common/img/logo.png 2>/dev/null || true
     cp -f "$LOGO_MASTER" /opt/unetlab/html/images/logo.png 2>/dev/null || true
     cp -f "$LOGO_MASTER" /opt/unetlab/html/themes/default/images/logo.png 2>/dev/null || true
-    for p in /usr/share/plymouth/themes/pnetlab/logo*.png; do
+    for p in /usr/share/plymouth/themes/azamlabs/logo*.png; do
         [ -f "$p" ] && cp -f "$LOGO_MASTER" "$p" 2>/dev/null || true
     done
 fi

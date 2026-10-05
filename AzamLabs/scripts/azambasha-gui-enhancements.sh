@@ -27,7 +27,7 @@ mkdir -p "$THEMES_JS" "$THEMES_CSS"
 
 # --- 1. Smart Node Alignment & Auto-Layout Toolbar ---
 echo "[1/4] Installing Smart Alignment & Auto-Layout Engine..."
-cat << 'JSEOF' > "${THEMES_JS}/pnetlab-smart-align.js"
+cat << 'JSEOF' > "${THEMES_JS}/azamlabs-smart-align.js"
 /**
  * Azam Basha Smart Node Alignment & Auto-Layout Engine
  * Figma-style precision alignment, distribution, grid snapping, and auto-layout.
@@ -258,7 +258,7 @@ JSEOF
 
 # --- 2. Spotlight Command Palette ---
 echo "[2/4] Installing Spotlight Command Palette (Ctrl+K)..."
-cat << 'JSEOF' > "${THEMES_JS}/pnetlab-spotlight.js"
+cat << 'JSEOF' > "${THEMES_JS}/azamlabs-spotlight.js"
 /**
  * Azam Basha Spotlight Command Palette (Ctrl+K / Cmd+K / /)
  * Instant device fuzzy-finder and global action runner.
@@ -489,7 +489,7 @@ JSEOF
 
 # --- 3. Floating Radar Mini-Map ---
 echo "[3/4] Installing Floating Radar Mini-Map Viewport Navigator..."
-cat << 'JSEOF' > "${THEMES_JS}/pnetlab-minimap.js"
+cat << 'JSEOF' > "${THEMES_JS}/azamlabs-minimap.js"
 /**
  * Azam Basha Radar Mini-Map Viewport Navigator
  * Live interactive topology thumbnail with draggable viewport radar.
@@ -671,7 +671,7 @@ fi
 # Inject scripts into index.html
 INDEX_HTML="${HTML_DIR}/themes/default/index.html"
 if [ -f "$INDEX_HTML" ]; then
-    for js in pnetlab-smart-align.js pnetlab-spotlight.js pnetlab-minimap.js; do
+    for js in azamlabs-smart-align.js azamlabs-spotlight.js azamlabs-minimap.js; do
         if ! grep -q "$js" "$INDEX_HTML"; then
             sed -i "/<\/body>/i <script src=\"/themes/default/js/$js\"></script>" "$INDEX_HTML"
         fi

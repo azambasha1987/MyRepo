@@ -7,13 +7,13 @@
 # login isn't root) in the Cluster page. This worker (import/worker.sh
 # credential pattern: jobs/<job>.req 0600, shredded once read; passwords only
 # ever in env/stdin, never argv):
-#   1. sanity-checks the target (Ubuntu 26.04, not already a PNetLab master)
+#   1. sanity-checks the target (Ubuntu 26.04, not already a AzamLabs master)
 #   2. rsyncs the satellite bundle from $PNET_SAT_BUNDLE
 #      (default /opt/unetlab/cluster-bundle) to the target's /tmp
 #   3. runs install-resolute-satellite.sh --no-reboot there (sudo -A when needed)
 #   4. ensures the cluster PSK exists, then runs pnet-satellite-join on the
 #      target (PSK over stdin via --psk -)
-#   5. cleans up and reboots the satellite into the PNetLab kernel
+#   5. cleans up and reboots the satellite into the AzamLabs kernel
 # Progress lands in html/cluster/jobs/<job>.json (same poll as image sync);
 # the full remote install log in jobs/<job>.log.
 set -o pipefail
@@ -24,10 +24,10 @@ ST="$BASE/jobs/${JOB}.json"
 REQ="$BASE/jobs/${JOB}.req"
 LOG="$BASE/jobs/${JOB}.log"
 BUNDLE="${PNET_SAT_BUNDLE:-/opt/unetlab/cluster-bundle}"
-PSK_FILE="/etc/pnetlab/cluster/psk"
-ASSET_CACHE_ROOT="${PNETLAB_CLUSTER_ASSET_CACHE_ROOT:-/var/cache/pnetlab/cluster-assets}"
+PSK_FILE="/etc/azamlabs/cluster/psk"
+ASSET_CACHE_ROOT="${AZAMLABS_CLUSTER_ASSET_CACHE_ROOT:-/var/cache/azamlabs/cluster-assets}"
 MASTER_RELEASE=''
-readonly -a SATELLITE_HARD_PACKAGES=(pnetlab-docker pnetlab-qemu pnetlab-satellite pnetlab-vpcs)
+readonly -a SATELLITE_HARD_PACKAGES=(azamlabs-docker azamlabs-qemu azamlabs-satellite azamlabs-vpcs)
 readonly -a SATELLITE_ZOO_VERSIONS=(2.4.0 2.12.0 4.1.0 5.2.0)
 
 upd() {
@@ -80,12 +80,12 @@ qq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 
 # Tri-Tier Password Fallback Engine (Issue #33 Remediation):
 # Automatically recovers from upstream satellite postinst scripts resetting root password to "pnet"
-# by trying: 1) Active $SSHPASS, 2) Azam-Pnet standard "azam", 3) Upstream default "pnet".
+# by trying: 1) Active $SSHPASS, 2) AzamLabs standard "azam", 3) Upstream default "pnet".
 run_remote() {   # plain command as the login user
     if sshpass -e ssh "${SSH_ARGS[@]}" -- "${SUSER}@${IP}" "$@" </dev/null; then
         return 0
     fi
-    # Fallback 1: Test Azam-Pnet default password "azam"
+    # Fallback 1: Test AzamLabs default password "azam"
     if SSHPASS="azam" sshpass -e ssh "${SSH_ARGS[@]}" -- "${SUSER}@${IP}" "$@" </dev/null; then
         export SSHPASS="azam"
         return 0
@@ -107,16 +107,16 @@ run_root() {     # command as root; non-root wrapper consumes the password line
         else
             local remote_cmd="set -eu
 umask 077
-d=\$(mktemp -d /dev/shm/.pnetlab-sudo-askpass.XXXXXX)
+d=\$(mktemp -d /dev/shm/.azamlabs-sudo-askpass.XXXXXX)
 cleanup() {
     rm -f -- \"\$d/askpass\"
     rmdir -- \"\$d\" 2>/dev/null || true
 }
 trap cleanup EXIT
-IFS= read -r PNETLAB_SUDO_PASS
-export PNETLAB_SUDO_PASS
+IFS= read -r AZAMLABS_SUDO_PASS
+export AZAMLABS_SUDO_PASS
 printf '%s\n' '#!/bin/sh' \
-    'printf \"%s\" \"\$PNETLAB_SUDO_PASS\"' > \"\$d/askpass\"
+    'printf \"%s\" \"\$AZAMLABS_SUDO_PASS\"' > \"\$d/askpass\"
 chmod 700 \"\$d/askpass\"
 SUDO_ASKPASS=\"\$d/askpass\" sudo -A -p '' bash -c $(qq "$cmd")"
 
@@ -129,7 +129,7 @@ SUDO_ASKPASS=\"\$d/askpass\" sudo -A -p '' bash -c $(qq "$cmd")"
     if _exec_root_with_pass "${SSHPASS:-azam}"; then
         return 0
     fi
-    # Attempt 2: Azam-Pnet standard credential "azam"
+    # Attempt 2: AzamLabs standard credential "azam"
     if _exec_root_with_pass "azam"; then
         export SSHPASS="azam"
         return 0
@@ -147,10 +147,10 @@ upd "running" 2 "checking $IP"
 run_remote 'true' || fail "cannot SSH to $IP as $SUSER (wrong password / host down?)"
 REL=$(run_remote 'lsb_release -r -s 2>/dev/null' | tr -d '\r\n ')
 [ "$REL" = "26.04" ] || fail "satellite must run Ubuntu 26.04 (found '${REL:-unknown}')"
-if run_remote 'dpkg -s pnetlab >/dev/null 2>&1'; then
-    fail "$IP already runs a PNetLab MASTER — a host is master OR satellite"
+if run_remote 'dpkg -s azamlabs >/dev/null 2>&1'; then
+    fail "$IP already runs a AzamLabs MASTER — a host is master OR satellite"
 fi
-MASTER_RELEASE="$(dpkg-query -W -f='${Version}' pnetlab 2>/dev/null || true)"
+MASTER_RELEASE="$(dpkg-query -W -f='${Version}' azamlabs 2>/dev/null || true)"
 [[ "$MASTER_RELEASE" =~ ^6\.8\.[0-9]+resolute1$ ]] || fail "could not determine the installed master release"
 if [ "$SUSER" != "root" ]; then
     run_root 'true' </dev/null || fail "sudo failed for $SUSER (wrong sudo password?)"
@@ -169,7 +169,7 @@ import sys
 
 root = pathlib.Path(sys.argv[1])
 release = sys.argv[2]
-hard = ['pnetlab-docker', 'pnetlab-qemu', 'pnetlab-satellite', 'pnetlab-vpcs']
+hard = ['azamlabs-docker', 'azamlabs-qemu', 'azamlabs-satellite', 'azamlabs-vpcs']
 zoo = ['qemu-zoo-2.4.0-net.tgz', 'qemu-zoo-2.12.0-net.tgz',
        'qemu-zoo-4.1.0-net.tgz', 'qemu-zoo-5.2.0-net.tgz']
 
@@ -229,7 +229,7 @@ if set(values) != required_keys or values['format'] != '1' or values['release'] 
 expected_packages = ','.join([package + '=' + release for package in hard])
 if values['packages'] != expected_packages:
     reject('COMPLETE hard package inventory is incomplete or stale')
-if values['optional_packages'] not in ('', 'pnetlab-bridge-dkms=' + release):
+if values['optional_packages'] not in ('', 'azamlabs-bridge-dkms=' + release):
     reject('COMPLETE optional package inventory is invalid')
 if values['assets'] != ','.join(['qemu-compat-libs.tgz'] + zoo):
     reject('COMPLETE asset inventory is incomplete')
@@ -272,7 +272,7 @@ for row in asset_rows[1:]:
 if set(asset_parsed) != set(expected_assets):
     reject('asset inventory is incomplete')
 
-deb_dir = release_dir / 'pnetlab-debs'
+deb_dir = release_dir / 'azamlabs-debs'
 owned_mode(deb_dir, 0o755, 'satellite deb directory')
 rows = list(csv.reader(inventory.open(newline=''), delimiter='\t'))
 if not rows or rows[0] != ['package', 'architecture', 'version', 'sha256', 'size', 'filename']:
@@ -298,7 +298,7 @@ if set(actual_debs) != {row[5] for row in rows[1:]}:
     reject('package inventory does not match the staged deb set')
 expected_inventory = set(hard)
 if values['optional_packages']:
-    expected_inventory.add('pnetlab-bridge-dkms')
+    expected_inventory.add('azamlabs-bridge-dkms')
 if set(parsed) != expected_inventory:
     reject('package inventory does not match the COMPLETE package inventory')
 if any(package not in parsed for package in hard):
@@ -311,7 +311,7 @@ for package, (arch, version, digest, size, filename) in parsed.items():
     # comparison below compare "Package: <name>" against the bare <name>,
     # which can never match. Query each field separately so the values stay
     # bare, exactly like every other dpkg-deb -f call site in this codebase
-    # (install-resolute-satellite.sh, network-install-pnetlab-27H1.sh) already does.
+    # (install-resolute-satellite.sh, network-install-azamlabs-27H1.sh) already does.
     actual_package = subprocess.check_output(
         ['dpkg-deb', '-f', str(deb), 'Package'], text=True).strip()
     actual_version = subprocess.check_output(
@@ -431,17 +431,17 @@ reap_satellite_tombstones() {
 # usual drop spots, and copy the satellite-relevant subset into $BUNDLE.
 stage_bundle() {
     local src="" d tgz tmp=""
-    for d in /root/pnetlab-27H1-v8.2-resolute /home/*/pnetlab-27H1-v8.2-resolute /opt/pnetlab-27H1-v8.2-resolute \
-             /root/pnetlab-27H1-v8.1.2-resolute /home/*/pnetlab-27H1-v8.1.2-resolute /opt/pnetlab-27H1-v8.1.2-resolute \
-             /root/pnetlab-26H2-noble /home/*/pnetlab-26H2-noble /opt/pnetlab-26H2-noble \
+    for d in /root/azamlabs-27H1-v8.2-resolute /home/*/azamlabs-27H1-v8.2-resolute /opt/azamlabs-27H1-v8.2-resolute \
+             /root/azamlabs-27H1-v8.1.2-resolute /home/*/azamlabs-27H1-v8.1.2-resolute /opt/azamlabs-27H1-v8.1.2-resolute \
+             /root/azamlabs-26H2-noble /home/*/azamlabs-26H2-noble /opt/azamlabs-26H2-noble \
              /root/noble-test-bundle /home/*/noble-test-bundle /opt/noble-test-bundle; do
         [ -f "$d/install-resolute-satellite.sh" ] && { src="$d"; break; }
     done
     if [ -z "$src" ]; then
-        tgz=$(ls -t /root/pnetlab-27H1-*.tgz /home/*/pnetlab-27H1-*.tgz /root/pnetlab-26H2-noble*.tgz /home/*/pnetlab-26H2-noble*.tgz /root/pnetlab-noble-*.tgz /home/*/pnetlab-noble-*.tgz 2>/dev/null | head -1)
+        tgz=$(ls -t /root/azamlabs-27H1-*.tgz /home/*/azamlabs-27H1-*.tgz /root/azamlabs-26H2-noble*.tgz /home/*/azamlabs-26H2-noble*.tgz /root/azamlabs-noble-*.tgz /home/*/azamlabs-noble-*.tgz 2>/dev/null | head -1)
         if [ -n "$tgz" ]; then
             tmp=$(mktemp -d) || return 1
-            tar xzf "$tgz" -C "$tmp" 2>/dev/null && src=$(ls -d "$tmp"/pnetlab-27H1-v8.2-resolute "$tmp"/pnetlab-27H1-v8.1.2-resolute "$tmp"/pnetlab-26H2-noble "$tmp"/noble-test-bundle 2>/dev/null | head -1)
+            tar xzf "$tgz" -C "$tmp" 2>/dev/null && src=$(ls -d "$tmp"/azamlabs-27H1-v8.2-resolute "$tmp"/azamlabs-27H1-v8.1.2-resolute "$tmp"/azamlabs-26H2-noble "$tmp"/noble-test-bundle 2>/dev/null | head -1)
         fi
     fi
     if [ -z "$src" ] || [ ! -f "$src/install-resolute-satellite.sh" ]; then
@@ -461,7 +461,7 @@ stage_bundle() {
         return 1
     fi
     cp -a "$src/install-resolute-satellite.sh" "$staging/install-resolute-satellite.sh" || { [ -n "$tmp" ] && rm -rf "$tmp"; rm -rf -- "$staging"; return 1; }
-    for d in pnetlab-debs deps qemu-zoo; do
+    for d in azamlabs-debs deps qemu-zoo; do
         if [ ! -d "$src/$d" ]; then
             log "satellite stage source has no $d directory; skipping it"
             continue
@@ -469,18 +469,18 @@ stage_bundle() {
         rm -rf -- "$staging/$d" || { [ -n "$tmp" ] && rm -rf "$tmp"; rm -rf -- "$staging"; return 1; }
         cp -a "$src/$d" "$staging/" || { [ -n "$tmp" ] && rm -rf "$tmp"; rm -rf -- "$staging"; return 1; }
     done
-    if [ -d "$staging/pnetlab-debs" ]; then
-        find "$staging/pnetlab-debs" -maxdepth 1 -type f -name '*.deb' -print0 |
+    if [ -d "$staging/azamlabs-debs" ]; then
+        find "$staging/azamlabs-debs" -maxdepth 1 -type f -name '*.deb' -print0 |
             while IFS= read -r -d '' deb; do
                 package=$(dpkg-deb -f "$deb" Package 2>/dev/null || true)
                 case "$package" in
-                    pnetlab-docker|pnetlab-qemu|pnetlab-satellite|pnetlab-vpcs|pnetlab-bridge-dkms) : ;;
+                    azamlabs-docker|azamlabs-qemu|azamlabs-satellite|azamlabs-vpcs|azamlabs-bridge-dkms) : ;;
                     *) rm -f -- "$deb" ;;
                 esac
             done
     fi
     for package in "${SATELLITE_HARD_PACKAGES[@]}"; do
-        deb=$(find "$staging/pnetlab-debs" -maxdepth 1 -type f -name "${package}_*.deb" -print -quit 2>/dev/null || true)
+        deb=$(find "$staging/azamlabs-debs" -maxdepth 1 -type f -name "${package}_*.deb" -print -quit 2>/dev/null || true)
         if [ -z "$deb" ] || [ "$(dpkg-deb -f "$deb" Package 2>/dev/null)" != "$package" ] \
             || [ "$(dpkg-deb -f "$deb" Version 2>/dev/null)" != "$MASTER_RELEASE" ]; then
             log "satellite stage source has no complete $package payload; skipping repair"
@@ -573,15 +573,15 @@ stage_bundle() {
             fi
         done
     fi
-    package_list="pnetlab-docker=$MASTER_RELEASE,pnetlab-qemu=$MASTER_RELEASE,pnetlab-satellite=$MASTER_RELEASE,pnetlab-vpcs=$MASTER_RELEASE"
+    package_list="azamlabs-docker=$MASTER_RELEASE,azamlabs-qemu=$MASTER_RELEASE,azamlabs-satellite=$MASTER_RELEASE,azamlabs-vpcs=$MASTER_RELEASE"
     optional_list=''
-    optional_deb=$(find "$staging/pnetlab-debs" -maxdepth 1 -type f -name 'pnetlab-bridge-dkms_*.deb' -print -quit 2>/dev/null || true)
+    optional_deb=$(find "$staging/azamlabs-debs" -maxdepth 1 -type f -name 'azamlabs-bridge-dkms_*.deb' -print -quit 2>/dev/null || true)
     if [ -n "$optional_deb" ] && [ "$(dpkg-deb -f "$optional_deb" Version 2>/dev/null)" = "$MASTER_RELEASE" ]; then
-        optional_list="pnetlab-bridge-dkms=$MASTER_RELEASE"
+        optional_list="azamlabs-bridge-dkms=$MASTER_RELEASE"
     fi
     {
         printf 'package\tarchitecture\tversion\tsha256\tsize\tfilename\n'
-        mapfile -t staged_debs < <(find "$staging/pnetlab-debs" -maxdepth 1 -type f -name '*.deb' -printf '%p\n' | sort)
+        mapfile -t staged_debs < <(find "$staging/azamlabs-debs" -maxdepth 1 -type f -name '*.deb' -printf '%p\n' | sort)
         for deb in "${staged_debs[@]}"; do
             package=$(dpkg-deb -f "$deb" Package); arch=$(dpkg-deb -f "$deb" Architecture); version=$(dpkg-deb -f "$deb" Version)
             sha=$(sha256sum "$deb" | awk '{print $1}'); size=$(stat -c '%s' "$deb"); filename=$(basename "$deb")
@@ -604,7 +604,7 @@ stage_bundle() {
         rm -rf -- "$staging"
         return 1
     fi
-    # Shared with network-install-pnetlab-27H1.sh: only one publisher may
+    # Shared with network-install-azamlabs-27H1.sh: only one publisher may
     # mutate this release tree or reap its rollback tombstones at a time.
     publish_lock_file="$releases/.publish.lock"
     if ! exec 7>"$publish_lock_file"; then
@@ -684,7 +684,7 @@ RC="${PIPESTATUS[0]}"
 [ "$RC" = "0" ] || fail "bundle copy failed (rsync rc $RC)"
 
 # ── 3. install (60–88 %) ──────────────────────────────────────────────────────
-upd "running" 62 "installing pnetlab-satellite on $IP (several minutes)"
+upd "running" 62 "installing azamlabs-satellite on $IP (several minutes)"
 run_root 'bash /tmp/pnet-satellite-bundle/install-resolute-satellite.sh --no-reboot' \
     </dev/null >> "$LOG" 2>&1 \
     || fail "satellite installer failed — see cluster/jobs/${JOB}.log on the master"
@@ -692,19 +692,19 @@ chmod 644 "$LOG" 2>/dev/null
 
 # Authoritative password realignment to "azam" (Issue #33 Remediation):
 # Guarantees that even if install-resolute-satellite.sh or satellite deb postinst reset root:pnet,
-# the satellite is immediately restored to Azam-Pnet standard credentials ("azam") before post-checks.
+# the satellite is immediately restored to AzamLabs standard credentials ("azam") before post-checks.
 run_root 'echo "root:azam" | chpasswd 2>/dev/null || true' </dev/null >> "$LOG" 2>&1 || true
 export SSHPASS="azam"
 
-# Synchronize Azam-Pnet optimization suite to satellite worker
+# Synchronize AzamLabs optimization suite to satellite worker
 if [ -d "/opt/unetlab/scripts" ]; then
-    upd "running" 85 "syncing Azam-Pnet optimization stack to $IP"
+    upd "running" 85 "syncing AzamLabs optimization stack to $IP"
     sshpass -e scp "${SSH_ARGS[@]}" /opt/unetlab/scripts/azambasha-* "${SUSER}@${IP}:/opt/unetlab/scripts/" 2>/dev/null || true
     run_root 'chmod +x /opt/unetlab/scripts/azambasha-*.sh /opt/unetlab/scripts/azambasha-*.py 2>/dev/null || true' </dev/null >> "$LOG" 2>&1 || true
     run_root 'for s in azambasha-os-prerequisites.sh azambasha-system-and-console-fix.sh azambasha-dataplane-engine.sh azambasha-speed-optimizer.sh azambasha-cgroups-v2-engine.sh azambasha-roce-engine.sh azambasha-fix-node-startup.sh azambasha-fix-permissions.sh; do [ -f "/opt/unetlab/scripts/$s" ] && bash "/opt/unetlab/scripts/$s" 2>/dev/null || true; done' </dev/null >> "$LOG" 2>&1 || true
 fi
 
-run_root 'set -e; dpkg --configure -a; audit=$(dpkg --audit); [ -z "$audit" ]; apt-get check; for p in pnetlab-satellite pnetlab-qemu pnetlab-vpcs; do status="$(dpkg-query -W -f="\${db:Status-Abbrev}" "$p" 2>/dev/null)"; case "$status" in ii\ |hi\ ) ;; *) exit 1 ;; esac; done; systemctl is-active --quiet pnetlab-brokerd.service' \
+run_root 'set -e; dpkg --configure -a; audit=$(dpkg --audit); [ -z "$audit" ]; apt-get check; for p in azamlabs-satellite azamlabs-qemu azamlabs-vpcs; do status="$(dpkg-query -W -f="\${db:Status-Abbrev}" "$p" 2>/dev/null)"; case "$status" in ii\ |hi\ ) ;; *) exit 1 ;; esac; done; systemctl is-active --quiet azamlabs-brokerd.service' \
     </dev/null >> "$LOG" 2>&1 \
     || fail "satellite package or broker checks failed; refusing to join"
 
@@ -720,14 +720,14 @@ MASTER_IP=$(run_remote 'echo "$SSH_CONNECTION"' | awk '{print $1}' | tr -d '\r')
 [ -n "$MASTER_IP" ] || fail "could not determine the master IP from the satellite"
 printf '%s\n' "$PSK" | run_root "pnet-satellite-join --master $MASTER_IP --id $SLOT --name $(qq "$NAME") --psk -" \
     >> "$LOG" 2>&1 || fail "join failed — see cluster/jobs/${JOB}.log on the master"
-run_root 'systemctl enable --now pnetlab-satd.service && systemctl is-active --quiet pnetlab-satd.service' \
+run_root 'systemctl enable --now azamlabs-satd.service && systemctl is-active --quiet azamlabs-satd.service' \
     </dev/null >> "$LOG" 2>&1 || fail "satellite service failed after join — see cluster/jobs/${JOB}.log on the master"
 
-# ── 5. cleanup + reboot into the PNetLab kernel ───────────────────────────────
+# ── 5. cleanup + reboot into the AzamLabs kernel ───────────────────────────────
 upd "running" 97 "rebooting $IP"
 run_root 'rm -rf /tmp/pnet-satellite-bundle' </dev/null >> "$LOG" 2>&1
 run_root 'systemctl reboot' </dev/null >> "$LOG" 2>&1 || true   # ssh drop is expected
 unset SSHPASS
 
-upd "done" 100 "$NAME deployed — rebooting into the PNetLab kernel"
+upd "done" 100 "$NAME deployed — rebooting into the AzamLabs kernel"
 exit 0

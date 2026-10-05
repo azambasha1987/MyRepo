@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# PNETLab Version Freeze & Update Blocker Utility
+# AzamLabs Version Freeze & Update Blocker Utility
 #
 # Multi-Layer Protection:
-# 1. APT Package Hold: Sets 'apt-mark hold' on all PNetLab core & satellite packages.
+# 1. APT Package Hold: Sets 'apt-mark hold' on all AzamLabs core & satellite packages.
 # 2. APT Pinning Barrier: Sets Pin-Priority: -1 in /etc/apt/preferences.d/ to prevent
 #    accidental 'apt upgrade' or 'apt dist-upgrade' candidate selection.
-# 3. Repository Neutralization: Disables external PNetLab APT source repositories.
-# 4. Binary Lockdown: Replaces /usr/bin/pnetlab-update with a safety barrier and
+# 3. Repository Neutralization: Disables external AzamLabs APT source repositories.
+# 4. Binary Lockdown: Replaces /usr/bin/azamlabs-update with a safety barrier and
 #    applies immutable file attributes (chattr +i).
 # 5. Systemd Masking: Permanently masks any update timers and services.
-# 6. Database Enforcement: Locks PNetLab into 'offline' mode in MySQL control table.
+# 6. Database Enforcement: Locks AzamLabs into 'offline' mode in MySQL control table.
 # 7. DNS Blackhole: Directs update and phone-home endpoints to loopback in /etc/hosts.
 #
 # Usage:
@@ -21,25 +21,25 @@
 set -euo pipefail
 
 PNET_PACKAGES=(
-    "pnetlab"
-    "pnetlab-satellite"
-    "pnetlab-qemu"
-    "pnetlab-guacd"
-    "pnetlab-vpcs"
-    "pnetlab-docker"
-    "pnetlab-schema"
-    "pnetlab-bridge-dkms"
+    "azamlabs"
+    "azamlabs-satellite"
+    "azamlabs-qemu"
+    "azamlabs-guacd"
+    "azamlabs-vpcs"
+    "azamlabs-docker"
+    "azamlabs-schema"
+    "azamlabs-bridge-dkms"
 )
 
-PREF_FILE="/etc/apt/preferences.d/99-pnetlab-block-updates.pref"
-UPDATE_BIN="/usr/bin/pnetlab-update"
-UPDATE_BIN_BAK="/usr/bin/pnetlab-update.orig"
-HOSTS_MARKER="# --- PNETLAB UPDATE BLOCKER ---"
+PREF_FILE="/etc/apt/preferences.d/99-azamlabs-block-updates.pref"
+UPDATE_BIN="/usr/bin/azamlabs-update"
+UPDATE_BIN_BAK="/usr/bin/azamlabs-update.orig"
+HOSTS_MARKER="# --- AZAMLABS UPDATE BLOCKER ---"
 
 # --- 1. Diagnostic / Status Mode ---
 if [[ "${1:-}" =~ ^(--check|--status)$ ]]; then
     echo "============================================================"
-    echo "       PNETLab Update Lock & Freeze Diagnostic Check        "
+    echo "       AzamLabs Update Lock & Freeze Diagnostic Check        "
     echo "============================================================"
     
     echo -n "[*] APT Package Hold Status: "
@@ -74,7 +74,7 @@ if [[ "${1:-}" =~ ^(--check|--status)$ ]]; then
     fi
 
     echo -n "[*] Systemd Services/Timers: "
-    if systemctl is-enabled pnetlab-update.service 2>/dev/null | grep -q "masked" || [ ! -f /etc/systemd/system/pnetlab-update.service ]; then
+    if systemctl is-enabled azamlabs-update.service 2>/dev/null | grep -q "masked" || [ ! -f /etc/systemd/system/azamlabs-update.service ]; then
         echo "MASKED / INACTIVE"
     else
         echo "UNMASKED / ACTIVE"
@@ -89,7 +89,7 @@ if [[ "${1:-}" =~ ^(--check|--status)$ ]]; then
 
     echo -n "[*] Database Offline Mode: "
     if command -v mysql &>/dev/null; then
-        DB_MODE=$(mysql -u pnetlab -ppnetlab -N -e "SELECT control_value FROM control WHERE control_name='ctrl_default_mode';" pnetlab_db 2>/dev/null || echo "unknown")
+        DB_MODE=$(mysql -u azamlabs -pazam -N -e "SELECT control_value FROM control WHERE control_name='ctrl_default_mode';" azamlabs_db 2>/dev/null || echo "unknown")
         if [ "$DB_MODE" = "offline" ]; then
             echo "LOCKED (offline mode)"
         else
@@ -111,7 +111,7 @@ fi
 # --- 2. Unblock / Restore Mode ---
 if [[ "${1:-}" =~ ^(--unblock|--restore|--enable-updates)$ ]]; then
     echo "============================================================"
-    echo "          Restoring PNETLab Update Capabilities             "
+    echo "          Restoring AzamLabs Update Capabilities             "
     echo "============================================================"
     
     echo "[1/6] Unholding APT packages..."
@@ -122,7 +122,7 @@ if [[ "${1:-}" =~ ^(--unblock|--restore|--enable-updates)$ ]]; then
     echo "[2/6] Removing APT pinning preference barrier..."
     rm -f "$PREF_FILE"
 
-    echo "[3/6] Restoring pnetlab-update binary..."
+    echo "[3/6] Restoring azamlabs-update binary..."
     if [ -f "$UPDATE_BIN" ]; then
         chattr -i "$UPDATE_BIN" 2>/dev/null || true
         if [ -f "$UPDATE_BIN_BAK" ]; then
@@ -134,31 +134,31 @@ if [[ "${1:-}" =~ ^(--unblock|--restore|--enable-updates)$ ]]; then
     fi
 
     echo "[4/6] Unmasking systemd update services..."
-    systemctl unmask pnetlab-update.service 2>/dev/null || true
-    systemctl unmask pnetlab-update.timer 2>/dev/null || true
+    systemctl unmask azamlabs-update.service 2>/dev/null || true
+    systemctl unmask azamlabs-update.timer 2>/dev/null || true
 
     echo "[5/6] Cleaning up DNS blackholes from /etc/hosts..."
     if grep -q "$HOSTS_MARKER" /etc/hosts; then
-        sed -i "/$HOSTS_MARKER/,/# --- END PNETLAB UPDATE BLOCKER ---/d" /etc/hosts
+        sed -i "/$HOSTS_MARKER/,/# --- END AZAMLABS UPDATE BLOCKER ---/d" /etc/hosts
     fi
 
     echo "[6/6] Updating APT cache..."
     apt-get update -y 2>/dev/null || true
 
     echo "============================================================"
-    echo "  [SUCCESS] PNETLab updates have been restored!             "
+    echo "  [SUCCESS] AzamLabs updates have been restored!             "
     echo "============================================================"
     exit 0
 fi
 
 # --- 3. Lock & Block Mode ---
 echo "============================================================"
-echo "      PNETLab Version Freeze & Update Blocker Utility       "
+echo "      AzamLabs Version Freeze & Update Blocker Utility       "
 echo "============================================================"
 echo "Applying multi-layer freeze to protect current installation..."
 
 # Step 1: APT Package Hold
-echo "[1/7] Marking all PNetLab packages on 'apt-mark hold'..."
+echo "[1/7] Marking all AzamLabs packages on 'apt-mark hold'..."
 for pkg in "${PNET_PACKAGES[@]}"; do
     if dpkg -l "$pkg" 2>/dev/null | grep -q "^ii"; then
         apt-mark hold "$pkg" 2>/dev/null || true
@@ -172,56 +172,56 @@ done
 echo "[2/7] Writing strict APT Pin-Priority barrier (/etc/apt/preferences.d/)..."
 mkdir -p /etc/apt/preferences.d
 cat > "$PREF_FILE" <<'EOF'
-# Freeze all PNetLab packages from being updated or replaced by any repository
-Package: pnetlab*
+# Freeze all AzamLabs packages from being updated or replaced by any repository
+Package: azamlabs*
 Pin: release *
 Pin-Priority: -1
 
-Package: pnetlab
+Package: azamlabs
 Pin: release *
 Pin-Priority: -1
 
-Package: pnetlab-satellite
+Package: azamlabs-satellite
 Pin: release *
 Pin-Priority: -1
 
-Package: pnetlab-qemu
+Package: azamlabs-qemu
 Pin: release *
 Pin-Priority: -1
 
-Package: pnetlab-guacd
+Package: azamlabs-guacd
 Pin: release *
 Pin-Priority: -1
 
-Package: pnetlab-vpcs
+Package: azamlabs-vpcs
 Pin: release *
 Pin-Priority: -1
 
-Package: pnetlab-docker
+Package: azamlabs-docker
 Pin: release *
 Pin-Priority: -1
 
-Package: pnetlab-schema
+Package: azamlabs-schema
 Pin: release *
 Pin-Priority: -1
 
-Package: pnetlab-bridge-dkms
+Package: azamlabs-bridge-dkms
 Pin: release *
 Pin-Priority: -1
 EOF
 chmod 644 "$PREF_FILE"
 
-# Step 3: Disable external PNetLab APT repositories
-echo "[3/7] Disabling external PNetLab repo list files..."
-for list_file in /etc/apt/sources.list.d/pnetlab*.list /etc/apt/sources.list.d/*codeberg*.list; do
+# Step 3: Disable external AzamLabs APT repositories
+echo "[3/7] Disabling external AzamLabs repo list files..."
+for list_file in /etc/apt/sources.list.d/azamlabs*.list /etc/apt/sources.list.d/*codeberg*.list; do
     if [ -f "$list_file" ]; then
         echo "      -> Neutralizing $list_file"
         mv "$list_file" "${list_file}.disabled" 2>/dev/null || true
     fi
 done
 
-# Step 4: Neutralize pnetlab-update CLI tool
-echo "[4/7] Neutralizing /usr/bin/pnetlab-update CLI tool..."
+# Step 4: Neutralize azamlabs-update CLI tool
+echo "[4/7] Neutralizing /usr/bin/azamlabs-update CLI tool..."
 if [ -f "$UPDATE_BIN" ]; then
     chattr -i "$UPDATE_BIN" 2>/dev/null || true
     if [ ! -f "$UPDATE_BIN_BAK" ]; then
@@ -233,7 +233,7 @@ cat > "$UPDATE_BIN" <<'EOF'
 #!/usr/bin/env bash
 # UPDATE_LOCKED
 echo "============================================================"
-echo " [SECURITY BARRIER] PNETLab Updates Are Permanently Blocked!"
+echo " [SECURITY BARRIER] AzamLabs Updates Are Permanently Blocked!"
 echo "============================================================"
 echo " This system has been configured to lock the current stable "
 echo " version to prevent breaking changes, database conflicts,  "
@@ -249,13 +249,13 @@ chattr +i "$UPDATE_BIN" 2>/dev/null || true
 
 # Step 5: Mask systemd update timers and services
 echo "[5/7] Masking systemd update timers and background services..."
-systemctl stop pnetlab-update.service pnetlab-update.timer 2>/dev/null || true
-systemctl mask pnetlab-update.service pnetlab-update.timer 2>/dev/null || true
+systemctl stop azamlabs-update.service azamlabs-update.timer 2>/dev/null || true
+systemctl mask azamlabs-update.service azamlabs-update.timer 2>/dev/null || true
 
 # Step 6: Enforce Offline Mode in Database
-echo "[6/7] Enforcing Offline Mode in PNetLab database..."
+echo "[6/7] Enforcing Offline Mode in AzamLabs database..."
 if command -v mysql &>/dev/null; then
-    mysql -u pnetlab -ppnetlab pnetlab_db 2>/dev/null <<'EOF' || true
+    mysql -u azamlabs -pazam azamlabs_db 2>/dev/null <<'EOF' || true
 UPDATE control SET control_value='1' WHERE control_name='ctrl_offline_mode';
 UPDATE control SET control_value='0' WHERE control_name='ctrl_online_mode';
 UPDATE control SET control_value='offline' WHERE control_name='ctrl_default_mode';
@@ -268,15 +268,15 @@ if ! grep -q "$HOSTS_MARKER" /etc/hosts; then
     cat >> /etc/hosts <<EOF
 
 $HOSTS_MARKER
-127.0.0.1 update.pnetlab.com
-127.0.0.1 api.pnetlab.com
-127.0.0.1 repository.pnetlab.com
-127.0.0.1 repo.pnetlab.com
-::1 update.pnetlab.com
-::1 api.pnetlab.com
-::1 repository.pnetlab.com
-::1 repo.pnetlab.com
-# --- END PNETLAB UPDATE BLOCKER ---
+127.0.0.1 update.azamlabs.com
+127.0.0.1 api.azamlabs.com
+127.0.0.1 repository.azamlabs.com
+127.0.0.1 repo.azamlabs.com
+::1 update.azamlabs.com
+::1 api.azamlabs.com
+::1 repository.azamlabs.com
+::1 repo.azamlabs.com
+# --- END AZAMLABS UPDATE BLOCKER ---
 EOF
 fi
 
@@ -286,7 +286,7 @@ echo "    [SUCCESS] Azam Basha Version Successfully Frozen!       "
 echo "============================================================"
 echo "  - APT Package Hold        : ENABLED (All packages locked)"
 echo "  - APT Pin-Priority -1     : ENABLED (/etc/apt/preferences.d)"
-echo "  - CLI Updater Barrier     : LOCKED (/usr/bin/pnetlab-update)"
+echo "  - CLI Updater Barrier     : LOCKED (/usr/bin/azamlabs-update)"
 echo "  - Systemd Services        : MASKED"
 echo "  - Offline Mode Database   : ENFORCED"
 echo "  - Telemetry / DNS Blackhole: CONFIGURED"

@@ -101,7 +101,7 @@ def classify_node(node: dict) -> tuple:
 
 
 def create_session(host, username, password):
-    """Login to PNetLab API and return an authenticated session cookie jar, context, proto, and opener."""
+    """Login to AzamLabs API and return an authenticated session cookie jar, context, proto, and opener."""
     import ssl
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
@@ -116,7 +116,7 @@ def create_session(host, username, password):
 
     login_data = json.dumps({"username": username, "password": password, "html5": 0}).encode("utf-8")
 
-    # Try endpoints: standard PNetLab is /api/auth, followed by fallbacks
+    # Try endpoints: standard AzamLabs is /api/auth, followed by fallbacks
     endpoints = ["/api/auth", "/api/auth/login"]
     protocols = ["https", "http"] if host in ("127.0.0.1", "localhost") else ["https", "http"]
 
@@ -156,7 +156,7 @@ def create_session(host, username, password):
 
 
 def api_call(host, path, method="GET", data=None, cj=None, ctx=None, proto="https", opener=None):
-    """Make an authenticated API call to PNetLab with robust JSON error unwrapping."""
+    """Make an authenticated API call to AzamLabs with robust JSON error unwrapping."""
     import ssl
     if ctx is None:
         ctx = ssl.create_default_context()
@@ -208,7 +208,7 @@ def resolve_lab_disk_path(lab_path: str) -> str:
     """
     Resolve the authoritative absolute path to the .unl file on disk.
     Searches case-insensitively, follows symlinks, and searches across all known
-    PNetLab lab locations (/opt/unetlab/labs, /root/labs, /opt/azambasha/labs, /opt/unetlab/tmp).
+    AzamLabs lab locations (/opt/unetlab/labs, /root/labs, /opt/azambasha/labs, /opt/unetlab/tmp).
     """
     clean = lab_path.strip("/")
     if clean.startswith("opt/unetlab/labs/"):
@@ -304,8 +304,8 @@ def get_lab_nodes(host, lab_path, tenant, cj, ctx, proto="https", opener=None, l
 
 
 def start_node_broker(node_id, lab_disk_path):
-    """Start node via /run/pnetlab/broker.sock if running locally on PNetLab host."""
-    sock_path = "/run/pnetlab/broker.sock"
+    """Start node via /run/azamlabs/broker.sock if running locally on AzamLabs host."""
+    sock_path = "/run/azamlabs/broker.sock"
     if not os.path.exists(sock_path):
         return False, "Broker socket not found"
     try:
@@ -372,7 +372,7 @@ def start_node(host, lab_path, node_id, tenant, cj, ctx, proto="https", opener=N
     """
     Start a single node using a resilient 3-tier startup pipeline:
       Tier 1: Authenticated REST API (/api/labs/{path}/nodes/{id}/start)
-      Tier 2: Broker Daemon Unix Socket (/run/pnetlab/broker.sock)
+      Tier 2: Broker Daemon Unix Socket (/run/azamlabs/broker.sock)
       Tier 3: Native unl_wrapper CLI (-a start -T 0 -S 1 -D {id} -F {lab_file})
     """
     clean = lab_path.strip("/")
@@ -386,7 +386,7 @@ def start_node(host, lab_path, node_id, tenant, cj, ctx, proto="https", opener=N
 
     api_errors = []
 
-    # ── Tier 1: PNetLab REST API ──────────────────────────────────────────────
+    # ── Tier 1: AzamLabs REST API ──────────────────────────────────────────────
     start_candidates = [
         f"/api/labs/{clean_no_ext}/nodes/{node_id}/start",
         f"/api/labs/{clean_no_ext}/nodes/{node_id}/start/0",
@@ -410,7 +410,7 @@ def start_node(host, lab_path, node_id, tenant, cj, ctx, proto="https", opener=N
         first_err = api_errors[0] if api_errors else "API rejected start"
         return False, first_err
 
-    # ── Tier 2: Broker Daemon Socket (/run/pnetlab/broker.sock) ───────────────
+    # ── Tier 2: Broker Daemon Socket (/run/azamlabs/broker.sock) ───────────────
     ok_broker, msg_broker = start_node_broker(node_id, lab_disk_path)
     if ok_broker:
         return True, "brokerd"
@@ -431,17 +431,17 @@ def run_bootstorm(host, lab_path, username, password,
                   dry_run=False):
     """
     Staggered boot orchestration:
-      1. Authenticate to PNetLab API
+      1. Authenticate to AzamLabs API
       2. Retrieve topology nodes via API or local XML
       3. Classify each node into heavy / medium / light
       4. Start in batches with configurable delays across multi-tier engine
     """
     print("================================================================================")
-    print("        Azam-Pnet Anti-Bootstorm Staggered Node Startup Engine                  ")
+    print("        AzamLabs Anti-Bootstorm Staggered Node Startup Engine                  ")
     print("================================================================================")
     cj, ctx, proto, opener = create_session(host, username, password)
     if not cj:
-        print("[!] Cannot connect to PNetLab API. Check host/credentials.")
+        print("[!] Cannot connect to AzamLabs API. Check host/credentials.")
         sys.exit(1)
 
     print(f"  Target:       {proto}://{host}")
@@ -461,7 +461,7 @@ def run_bootstorm(host, lab_path, username, password,
     if not nodes_data:
         print(f"[!] Could not retrieve nodes from lab: {lab_path}")
         print(f"    Resolved disk path: {lab_disk_path}")
-        print("    Ensure the lab is accessible via PNetLab API or exists under /opt/unetlab/labs/.")
+        print("    Ensure the lab is accessible via AzamLabs API or exists under /opt/unetlab/labs/.")
         sys.exit(1)
 
     # Classify nodes
@@ -556,7 +556,7 @@ def install_symlink():
                         pass
                 os.symlink(source, target)
             # Also create alias pnet-bootstorm
-            pnet_target = "/usr/local/bin/pnet-bootstorm"
+            pnet_target = "/usr/local/bin/azam-bootstorm"
             if not os.path.exists(pnet_target) or os.path.realpath(pnet_target) != source:
                 if os.path.exists(pnet_target) or os.path.islink(pnet_target):
                     try:
@@ -570,17 +570,17 @@ def install_symlink():
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Azam-Pnet Anti-Bootstorm Staggered Node Startup Engine"
+        description="AzamLabs Anti-Bootstorm Staggered Node Startup Engine"
     )
     default_host = os.environ.get("AZAM_HOST", "127.0.0.1")
     parser.add_argument("--host", default=default_host,
-                        help=f"PNetLab master IP or hostname (default: {default_host})")
+                        help=f"AzamLabs master IP or hostname (default: {default_host})")
     parser.add_argument("--lab", required=False, default=None,
                         help="Lab .unl file path (e.g. /Admin/mylab.unl)")
     parser.add_argument("--username", default="admin",
-                        help="PNetLab web-GUI username (default: admin)")
+                        help="AzamLabs web-GUI username (default: admin)")
     parser.add_argument("--password", default="azam",
-                        help="PNetLab web-GUI password (default: azam)")
+                        help="AzamLabs web-GUI password (default: azam)")
     parser.add_argument("--heavy-batch", type=int, default=2,
                         help="Number of heavy nodes to start per batch (default: 2)")
     parser.add_argument("--heavy-delay", type=int, default=18,

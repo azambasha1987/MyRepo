@@ -109,7 +109,7 @@ def get_local_resources():
 
 def print_capacity_report(res):
     print("================================================================================")
-    print("       Azam-Pnet Cluster Capacity & Concurrent Node Density Estimator           ")
+    print("       AzamLabs Cluster Capacity & Concurrent Node Density Estimator           ")
     print("================================================================================")
     print(f" Node:            {res['host']}")
     print(f" Physical RAM:    {res['total_ram_mb'] // 1024} GB ({res['total_ram_mb']} MB)")
@@ -160,7 +160,7 @@ def install_symlink():
             pass
 
 def main():
-    parser = argparse.ArgumentParser(description="Azam-Pnet Cluster Capacity Estimator")
+    parser = argparse.ArgumentParser(description="AzamLabs Cluster Capacity Estimator")
     parser.add_argument("--satellite", help="Satellite Worker IP to query via SSH")
     parser.add_argument("--json", action="store_true", help="Output JSON format")
     args = parser.parse_args()

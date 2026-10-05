@@ -7,7 +7,7 @@
 # 1. Staging the complete satellite installation bundle under /opt/unetlab/cluster-bundle
 #    with exact SHA256 integrity markers (COMPLETE, inventory.tsv, asset-inventory.tsv)
 # 2. Master MySQL remote listen configuration (bind-address = 0.0.0.0, port 3306)
-# 3. Master cluster SSH keypair generation (/etc/pnetlab/cluster/id_ed25519)
+# 3. Master cluster SSH keypair generation (/etc/azamlabs/cluster/id_ed25519)
 # 4. Cluster PSK initialization and permission hardening
 # 5. Master pnet-satdeploy automation dependencies (sshpass, rsync)
 # ==============================================================================
@@ -38,7 +38,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 MASTER_RELEASE="6.8.85resolute1"
-for v_candidate in "${REPO_ROOT}/VERSION" "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/etc/pnetlab-version"; do
+for v_candidate in "${REPO_ROOT}/VERSION" "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/etc/azamlabs-version"; do
     if [ -f "$v_candidate" ]; then
         V_VAL="$(grep -E '^PACKAGE_VERSION=' "$v_candidate" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)"
         if [ -n "$V_VAL" ]; then
@@ -48,7 +48,7 @@ for v_candidate in "${REPO_ROOT}/VERSION" "/opt/unetlab/VERSION" "/opt/azambasha
     fi
 done
 if [ -z "$MASTER_RELEASE" ] && command -v dpkg-query >/dev/null 2>&1; then
-    DETECTED_VER="$(dpkg-query -W -f='${Version}' pnetlab 2>/dev/null || true)"
+    DETECTED_VER="$(dpkg-query -W -f='${Version}' azamlabs 2>/dev/null || true)"
     if [[ "$DETECTED_VER" =~ ^6\.8\.[0-9]+resolute1$ ]]; then
         MASTER_RELEASE="$DETECTED_VER"
     fi
@@ -83,7 +83,7 @@ for candidate in \
     "/opt/azambasha/generic/6.8.74resolute1" \
     "${REPO_ROOT}/generic"/* \
     "/opt/azambasha/generic"/* \
-    "/root/pnetlab-27H1-v8.2-resolute" \
+    "/root/azamlabs-27H1-v8.2-resolute" \
     "/opt/unetlab/cluster-bundle/releases/${MASTER_RELEASE}"; do
     [ -d "$candidate" ] || continue
     [ -f "${candidate}/inventory.tsv" ] || continue
@@ -92,9 +92,9 @@ for candidate in \
     inst=""
     for cand_script in \
         "${candidate}/install-resolute-satellite.sh" \
-        "${candidate}/pnetlab-install-resolute-satellite-${MASTER_RELEASE}.sh" \
-        "${candidate}/pnetlab-install-resolute-satellite-6.8.74resolute1.sh" \
-        "${candidate}"/pnetlab-install-resolute-satellite-*.sh; do
+        "${candidate}/azamlabs-install-resolute-satellite-${MASTER_RELEASE}.sh" \
+        "${candidate}/azamlabs-install-resolute-satellite-6.8.74resolute1.sh" \
+        "${candidate}"/azamlabs-install-resolute-satellite-*.sh; do
         if [ -f "$cand_script" ]; then
             inst="$cand_script"
             break
@@ -138,32 +138,32 @@ for meta in inventory.tsv asset-inventory.tsv COMPLETE provenance; do
     fi
 done
 
-# Ensure deps, qemu-zoo, and pnetlab-debs subdirectories exist
-mkdir -p "${RELEASE_DIR}/pnetlab-debs" "${RELEASE_DIR}/deps" "${RELEASE_DIR}/qemu-zoo"
-chmod 0755 "${RELEASE_DIR}/pnetlab-debs" "${RELEASE_DIR}/deps" "${RELEASE_DIR}/qemu-zoo"
+# Ensure deps, qemu-zoo, and azamlabs-debs subdirectories exist
+mkdir -p "${RELEASE_DIR}/azamlabs-debs" "${RELEASE_DIR}/deps" "${RELEASE_DIR}/qemu-zoo"
+chmod 0755 "${RELEASE_DIR}/azamlabs-debs" "${RELEASE_DIR}/deps" "${RELEASE_DIR}/qemu-zoo"
 
 # Copy deb packages from all known pool directories
 for deb_pool in \
-    "${SRC_DIR}/pnetlab-debs" \
-    "${REPO_ROOT}/generic/${MASTER_RELEASE}/pnetlab-debs" \
-    "${REPO_ROOT}/generic/6.8.74resolute1/pnetlab-debs" \
+    "${SRC_DIR}/azamlabs-debs" \
+    "${REPO_ROOT}/generic/${MASTER_RELEASE}/azamlabs-debs" \
+    "${REPO_ROOT}/generic/6.8.74resolute1/azamlabs-debs" \
     "${REPO_ROOT}/debian/pool/resolute/main" \
     "/opt/azambasha/debian/pool/resolute/main" \
-    "/opt/pnetlab/debian/pool/resolute/main" \
-    "/opt/azambasha/generic/${MASTER_RELEASE}/pnetlab-debs"; do
+    "/opt/azamlabs/debian/pool/resolute/main" \
+    "/opt/azambasha/generic/${MASTER_RELEASE}/azamlabs-debs"; do
     if [ -d "$deb_pool" ]; then
-        for deb in "${deb_pool}"/pnetlab-*.deb; do
+        for deb in "${deb_pool}"/azamlabs-*.deb; do
             [ -f "$deb" ] || continue
             pkgname="$(basename "$deb")"
             case "$pkgname" in
-                pnetlab-satellite_*|pnetlab-qemu_*|pnetlab-docker_*|pnetlab-vpcs_*|pnetlab-bridge-dkms_*)
-                    cp -f "$deb" "${RELEASE_DIR}/pnetlab-debs/" 2>/dev/null || true
+                azamlabs-satellite_*|azamlabs-qemu_*|azamlabs-docker_*|azamlabs-vpcs_*|azamlabs-bridge-dkms_*)
+                    cp -f "$deb" "${RELEASE_DIR}/azamlabs-debs/" 2>/dev/null || true
                     ;;
             esac
         done
     fi
 done
-find "${RELEASE_DIR}/pnetlab-debs" -type f -exec chmod 0644 {} +
+find "${RELEASE_DIR}/azamlabs-debs" -type f -exec chmod 0644 {} +
 
 # Copy optional deps or qemu-zoo if present in source
 for subdir in deps qemu-zoo; do
@@ -175,7 +175,7 @@ for subdir in deps qemu-zoo; do
 done
 
 # Verify all deb packages exist and report count
-DEB_COUNT="$(find "${RELEASE_DIR}/pnetlab-debs" -maxdepth 1 -name '*.deb' | wc -l)"
+DEB_COUNT="$(find "${RELEASE_DIR}/azamlabs-debs" -maxdepth 1 -name '*.deb' | wc -l)"
 log_ok "Staged $DEB_COUNT satellite Debian package(s)."
 
 # Authoritatively create / update symlink: /opt/unetlab/cluster-bundle/current -> releases/<RELEASE>
@@ -212,8 +212,8 @@ PY
 log_info "[4/7] Configuring Master MySQL to accept Satellite connections (0.0.0.0:3306)..."
 mkdir -p /etc/mysql/mysql.conf.d
 
-cat > /etc/mysql/mysql.conf.d/zz-pnetlab-cluster.cnf << 'EOF'
-# Azam Basha & PNetLab Cluster: Satellites connect to Master DB
+cat > /etc/mysql/mysql.conf.d/zz-azamlabs-cluster.cnf << 'EOF'
+# Azam Basha & AzamLabs Cluster: Satellites connect to Master DB
 [mysqld]
 bind-address = 0.0.0.0
 mysqlx-bind-address = 127.0.0.1
@@ -225,11 +225,11 @@ EOF
 
 systemctl restart mysql 2>/dev/null || systemctl restart mariadb 2>/dev/null || true
 
-# Ensure pnetlab database user has global/remote privileges
+# Ensure azamlabs database user has global/remote privileges
 _GRANT_SQL="$(cat <<'EOF'
-CREATE USER IF NOT EXISTS 'pnetlab'@'%' IDENTIFIED BY 'pnetlab';
-ALTER USER 'pnetlab'@'%' IDENTIFIED BY 'pnetlab';
-GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'%';
+CREATE USER IF NOT EXISTS 'azamlabs'@'%' IDENTIFIED BY 'azamlabs';
+ALTER USER 'azamlabs'@'%' IDENTIFIED BY 'azamlabs';
+GRANT ALL PRIVILEGES ON azamlabs_db.* TO 'azamlabs'@'%';
 FLUSH PRIVILEGES;
 EOF
 )"
@@ -291,16 +291,16 @@ run_remote() {   # plain command as the login user
         # the password out of remote command strings/argv and disk.
         remote_cmd="set -eu
 umask 077
-d=\$(mktemp -d /dev/shm/.pnetlab-sudo-askpass.XXXXXX)
+d=\$(mktemp -d /dev/shm/.azamlabs-sudo-askpass.XXXXXX)
 cleanup() {
     rm -f -- \"\$d/askpass\"
     rmdir -- \"\$d\" 2>/dev/null || true
 }
 trap cleanup EXIT
-IFS= read -r PNETLAB_SUDO_PASS
-export PNETLAB_SUDO_PASS
+IFS= read -r AZAMLABS_SUDO_PASS
+export AZAMLABS_SUDO_PASS
 printf '%s\n' '#!/bin/sh' \
-    'printf \"%s\" \"\$PNETLAB_SUDO_PASS\"' > \"\$d/askpass\"
+    'printf \"%s\" \"\$AZAMLABS_SUDO_PASS\"' > \"\$d/askpass\"
 chmod 700 \"\$d/askpass\"
 SUDO_ASKPASS=\"\$d/askpass\" sudo -A -p '' bash -c $(qq "$1")"
 
@@ -318,16 +318,16 @@ SUDO_ASKPASS=\"\$d/askpass\" sudo -A -p '' bash -c $(qq "$1")"
         else
             local remote_cmd="set -eu
 umask 077
-d=\$(mktemp -d /dev/shm/.pnetlab-sudo-askpass.XXXXXX)
+d=\$(mktemp -d /dev/shm/.azamlabs-sudo-askpass.XXXXXX)
 cleanup() {
     rm -f -- \"\$d/askpass\"
     rmdir -- \"\$d\" 2>/dev/null || true
 }
 trap cleanup EXIT
-IFS= read -r PNETLAB_SUDO_PASS
-export PNETLAB_SUDO_PASS
+IFS= read -r AZAMLABS_SUDO_PASS
+export AZAMLABS_SUDO_PASS
 printf '%s\n' '#!/bin/sh' \
-    'printf \"%s\" \"\$PNETLAB_SUDO_PASS\"' > \"\$d/askpass\"
+    'printf \"%s\" \"\$AZAMLABS_SUDO_PASS\"' > \"\$d/askpass\"
 chmod 700 \"\$d/askpass\"
 SUDO_ASKPASS=\"\$d/askpass\" sudo -A -p '' bash -c $(qq "$cmd")"
 
@@ -374,7 +374,7 @@ if [ -d "/opt/unetlab/scripts" ]; then
     if [ -d "/opt/unetlab/html/templates" ]; then
         sshpass -e scp -r "${SSH_ARGS[@]}" /opt/unetlab/html/templates/* "${SUSER}@${IP}:/opt/unetlab/html/templates/" 2>/dev/null || true
     fi
-    run_root 'chmod +x /opt/unetlab/scripts/azambasha-*.sh /opt/unetlab/scripts/azambasha-*.py /opt/unetlab/scripts/apply-heavy-node-optimizer.sh && ln -sf /opt/unetlab/scripts/azambasha-update.sh /usr/local/bin/azam-update && ln -sf /opt/unetlab/scripts/azambasha-quarterly-audit.sh /usr/local/bin/azam-audit && ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/pnet-satellite-join && ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join && ln -sf /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-optimizer && ln -sf /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-heavy-optimizer && ln -sf /opt/unetlab/scripts/apply-heavy-node-optimizer.sh /usr/local/bin/apply-heavy-node-optimizer && ln -sf /opt/unetlab/scripts/azambasha-dry-test.py /usr/local/bin/azam-dry-test && ln -sf /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/azam-health && ln -sf /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-doctor && ln -sf /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-image-doctor && ln -sf /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/azam-bootstorm && ln -sf /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/pnet-bootstorm && bash /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh --satellite && bash /opt/unetlab/scripts/azambasha-fix-node-startup.sh 2>/dev/null || true' </dev/null >> "$LOG" 2>&1 || true
+    run_root 'chmod +x /opt/unetlab/scripts/azambasha-*.sh /opt/unetlab/scripts/azambasha-*.py /opt/unetlab/scripts/apply-heavy-node-optimizer.sh && ln -sf /opt/unetlab/scripts/azambasha-update.sh /usr/local/bin/azam-update && ln -sf /opt/unetlab/scripts/azambasha-quarterly-audit.sh /usr/local/bin/azam-audit && ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join && ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join && ln -sf /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-optimizer && ln -sf /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-heavy-optimizer && ln -sf /opt/unetlab/scripts/apply-heavy-node-optimizer.sh /usr/local/bin/apply-heavy-node-optimizer && ln -sf /opt/unetlab/scripts/azambasha-dry-test.py /usr/local/bin/azam-dry-test && ln -sf /opt/unetlab/scripts/azambasha-health-check.sh /usr/local/bin/azam-health && ln -sf /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-doctor && ln -sf /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-image-doctor && ln -sf /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/azam-bootstorm && ln -sf /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/azam-bootstorm && bash /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh --satellite && bash /opt/unetlab/scripts/azambasha-fix-node-startup.sh 2>/dev/null || true' </dev/null >> "$LOG" 2>&1 || true
 fi
 
 run_root 'set -e; dpkg --configure -a"""
@@ -388,7 +388,7 @@ if set(values) != required_keys or values['format'] != '1' or values['release'] 
 expected_packages = ','.join([package + '=' + release for package in hard])
 if values['packages'] != expected_packages:
     reject('COMPLETE hard package inventory is incomplete or stale')
-if values['optional_packages'] not in ('', 'pnetlab-bridge-dkms=' + release):
+if values['optional_packages'] not in ('', 'azamlabs-bridge-dkms=' + release):
     reject('COMPLETE optional package inventory is invalid')
 if values['assets'] != ','.join(['qemu-compat-libs.tgz'] + zoo):
     reject('COMPLETE asset inventory is incomplete')"""
@@ -402,7 +402,7 @@ if set(values) != required_keys or values['format'] != '1' or values['release'] 
 expected_packages = ','.join([package + '=' + release for package in hard])
 if values['packages'] != expected_packages:
     reject('COMPLETE hard package inventory is incomplete or stale')
-if values['optional_packages'] not in ('', 'pnetlab-bridge-dkms=' + release):
+if values['optional_packages'] not in ('', 'azamlabs-bridge-dkms=' + release):
     reject('COMPLETE optional package inventory is invalid')
 if has_zoo_assets and values['assets'] != ','.join(['qemu-compat-libs.tgz'] + zoo):
     reject('COMPLETE asset inventory is incomplete')"""
@@ -584,13 +584,13 @@ fi
 
 # Step 6: Master Cluster SSH Key & PSK Keypair
 log_info "[6/7] Ensuring Cluster SSH Key and Cluster PSK exist..."
-CLUSTER_DIR="/etc/pnetlab/cluster"
+CLUSTER_DIR="/etc/azamlabs/cluster"
 mkdir -p "$CLUSTER_DIR"
 chmod 700 "$CLUSTER_DIR"
 
 CLUSTER_KEY="${CLUSTER_DIR}/id_ed25519"
 if [ ! -f "$CLUSTER_KEY" ]; then
-    ssh-keygen -t ed25519 -N "" -C "pnetlab-cluster" -f "$CLUSTER_KEY" >/dev/null 2>&1
+    ssh-keygen -t ed25519 -N "" -C "azamlabs-cluster" -f "$CLUSTER_KEY" >/dev/null 2>&1
     chmod 600 "$CLUSTER_KEY"
     chmod 644 "${CLUSTER_KEY}.pub"
     log_ok "Generated new Cluster SSH ed25519 keypair at $CLUSTER_KEY."
@@ -678,7 +678,7 @@ try:
 
     target_mpkg = """    require_once '/opt/unetlab/html/includes/version.php';   // PNET_RELEASE
     $masterPkg = '';
-    exec('dpkg-query -W -f \\'${Version}\\' pnetlab 2>/dev/null', $mvOut, $mvRc);
+    exec('dpkg-query -W -f \\'${Version}\\' azamlabs 2>/dev/null', $mvOut, $mvRc);
     if ($mvRc === 0 && count($mvOut)) {
         $masterPkg = trim($mvOut[0]);
     }"""
@@ -686,7 +686,7 @@ try:
     replacement_mpkg = """    require_once '/opt/unetlab/html/includes/version.php';   // PNET_RELEASE
     $masterPkg = defined('PNET_PACKAGE_VERSION') ? PNET_PACKAGE_VERSION : '';
     if (empty($masterPkg)) {
-        exec('dpkg-query -W -f \\'${Version}\\' pnetlab 2>/dev/null', $mvOut, $mvRc);
+        exec('dpkg-query -W -f \\'${Version}\\' azamlabs 2>/dev/null', $mvOut, $mvRc);
         if ($mvRc === 0 && count($mvOut)) {
             $masterPkg = trim($mvOut[0]);
         }
@@ -701,7 +701,7 @@ try:
         }
         // Fallback: use latest available valid satellite package pair
         foreach ($satellites as $satellite) {
-            if ($debField($satellite, 'Package') !== 'pnetlab-satellite') continue;
+            if ($debField($satellite, 'Package') !== 'azamlabs-satellite') continue;
             $version = $debField($satellite, 'Version');
             $arch = $debField($satellite, 'Architecture');
             if ($version === '' || $arch !== 'amd64' || empty($bridgeByVersion[$version])) continue;
@@ -718,7 +718,7 @@ try:
             f.write(new_content)
 
     # Align local brokerd version resolution if present
-    broker_file = "/opt/unetlab/scripts/pnetlab-brokerd.py"
+    broker_file = "/opt/unetlab/scripts/azamlabs-brokerd.py"
     if os.path.isfile(broker_file):
         try:
             with open(broker_file, "r", encoding="utf-8") as f:
@@ -727,7 +727,7 @@ try:
             replacement_b = '''def _master_version():
     global _MASTER_VERSION
     if _MASTER_VERSION is None:
-        for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/pnetlab-version"):
+        for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/azamlabs-version"):
             try:
                 if os.path.isfile(v_path):
                     with open(v_path, "r", encoding="utf-8") as f:
@@ -746,7 +746,7 @@ try:
                 if new_b != b_code:
                     with open(broker_file, "w", encoding="utf-8") as f:
                         f.write(new_b)
-                    print("Patched pnetlab-brokerd.py for authoritative platform version.")
+                    print("Patched azamlabs-brokerd.py for authoritative platform version.")
         except Exception as be:
             print(f"brokerd patch note: {be}")
 except Exception as e:
@@ -757,14 +757,14 @@ fi
 
 # Step 7: Verify Registered Cluster Satellites
 log_info "[7/7] Inspecting registered cluster satellites..."
-SAT_COUNT="$(mysql -u pnetlab -ppnetlab pnetlab_db -N -e "SELECT COUNT(*) FROM cluster_hosts;" 2>/dev/null || echo "0")"
+SAT_COUNT="$(mysql -u azamlabs -pazam azamlabs_db -N -e "SELECT COUNT(*) FROM cluster_hosts;" 2>/dev/null || echo "0")"
 log_ok "Registered cluster satellites in database: $SAT_COUNT"
 
 if [ "${SAT_COUNT:-0}" -gt 0 ]; then
     # Ensure MySQL cluster_hosts table reflects the latest AzamLabs version for online satellites
-    mysql -u pnetlab -ppnetlab pnetlab_db -e "UPDATE cluster_hosts SET host_version = '${MASTER_RELEASE}' WHERE host_status = 1 AND (host_version = '6.8.74resolute1' OR host_version IS NULL);" 2>/dev/null || true
+    mysql -u azamlabs -pazam azamlabs_db -e "UPDATE cluster_hosts SET host_version = '${MASTER_RELEASE}' WHERE host_status = 1 AND (host_version = '6.8.74resolute1' OR host_version IS NULL);" 2>/dev/null || true
 
-    mysql -u pnetlab -ppnetlab pnetlab_db -N -e "SELECT host_id, host_name, host_ip, host_status, host_version FROM cluster_hosts ORDER BY host_id;" 2>/dev/null | while read -r s_id s_name s_ip s_status s_ver; do
+    mysql -u azamlabs -pazam azamlabs_db -N -e "SELECT host_id, host_name, host_ip, host_status, host_version FROM cluster_hosts ORDER BY host_id;" 2>/dev/null | while read -r s_id s_name s_ip s_status s_ver; do
         PING_OK="UNREACHABLE"
         if ping -c 1 -W 1 "$s_ip" &>/dev/null; then
             PING_OK="REACHABLE"

@@ -69,12 +69,12 @@ echo "============================================================"
 
 # 1. Generate Modern 10-Year IP-SAN SSL Certificate
 echo "[1/4] Generating 10-Year Subject Alternative Name (IP-SAN) SSL Certificate..."
-SSL_DIR="/etc/ssl/pnetlab"
+SSL_DIR="/etc/ssl/azamlabs"
 mkdir -p "$SSL_DIR"
 
 # 1. Generate Azam Basha Internal Root CA (20-Year Validity)
-CA_CERT="/etc/ssl/certs/pnetlab-ca.crt"
-CA_KEY="/etc/ssl/private/pnetlab-ca.key"
+CA_CERT="/etc/ssl/certs/azamlabs-ca.crt"
+CA_KEY="/etc/ssl/private/azamlabs-ca.key"
 mkdir -p /etc/ssl/certs /etc/ssl/private "${SSL_DIR}"
 
 if [ ! -f "$CA_CERT" ] || [ ! -f "$CA_KEY" ]; then
@@ -96,57 +96,57 @@ for ip in $(hostname -I 2>/dev/null || ip -4 addr show | awk '/inet /{print $2}'
     fi
 done
 
-CSR_FILE="/tmp/pnetlab_server.csr"
-EXT_FILE="/tmp/pnetlab_san.ext"
+CSR_FILE="/tmp/azamlabs_server.csr"
+EXT_FILE="/tmp/azamlabs_san.ext"
 
 cat << EOF > "$EXT_FILE"
 authorityKeyIdentifier=keyid,issuer
 basicConstraints=CA:FALSE
 keyUsage=digitalSignature,nonRepudiation,keyEncipherment,dataEncipherment
 extendedKeyUsage=serverAuth
-subjectAltName=DNS:pnetlab,DNS:pnetlab.local,DNS:localhost,${IP_SAN}
+subjectAltName=DNS:azamlabs,DNS:azamlabs.local,DNS:localhost,${IP_SAN}
 EOF
 
 openssl req -new -nodes -newkey rsa:2048 \
-    -keyout "${SSL_DIR}/pnetlab.key" \
+    -keyout "${SSL_DIR}/azamlabs.key" \
     -out "$CSR_FILE" \
-    -subj '/CN=pnetlab.local/O=Azam Basha Virtual Appliance/OU=Web Engine' 2>/dev/null || true
+    -subj '/CN=azamlabs.local/O=Azam Basha Virtual Appliance/OU=Web Engine' 2>/dev/null || true
 
 openssl x509 -req -in "$CSR_FILE" \
     -CA "$CA_CERT" -CAkey "$CA_KEY" -CAcreateserial \
-    -out "${SSL_DIR}/pnetlab.crt" \
+    -out "${SSL_DIR}/azamlabs.crt" \
     -days 3650 \
     -extfile "$EXT_FILE" 2>/dev/null || true
 
 rm -f "$CSR_FILE" "$EXT_FILE" 2>/dev/null || true
-chmod 600 "${SSL_DIR}/pnetlab.key"
-chmod 644 "${SSL_DIR}/pnetlab.crt"
+chmod 600 "${SSL_DIR}/azamlabs.key"
+chmod 644 "${SSL_DIR}/azamlabs.crt"
 
 # Mirror to standard paths expected by Ubuntu Apache configurations
-cp -f "${SSL_DIR}/pnetlab.crt" /etc/ssl/certs/pnetlab-selfsigned.crt 2>/dev/null || true
-cp -f "${SSL_DIR}/pnetlab.crt" /etc/ssl/certs/apache-selfsigned.crt 2>/dev/null || true
-cp -f "${SSL_DIR}/pnetlab.key" /etc/ssl/private/pnetlab-selfsigned.key 2>/dev/null || true
-cp -f "${SSL_DIR}/pnetlab.key" /etc/ssl/private/apache-selfsigned.key 2>/dev/null || true
+cp -f "${SSL_DIR}/azamlabs.crt" /etc/ssl/certs/azamlabs-selfsigned.crt 2>/dev/null || true
+cp -f "${SSL_DIR}/azamlabs.crt" /etc/ssl/certs/apache-selfsigned.crt 2>/dev/null || true
+cp -f "${SSL_DIR}/azamlabs.key" /etc/ssl/private/azamlabs-selfsigned.key 2>/dev/null || true
+cp -f "${SSL_DIR}/azamlabs.key" /etc/ssl/private/apache-selfsigned.key 2>/dev/null || true
 chmod 600 /etc/ssl/private/* 2>/dev/null || true
 
 # Publish Root CA to web download endpoints for 1-click client trust
 mkdir -p /opt/unetlab/html
-cp -f "$CA_CERT" /opt/unetlab/html/pnetlab-ca.crt 2>/dev/null || true
+cp -f "$CA_CERT" /opt/unetlab/html/azamlabs-ca.crt 2>/dev/null || true
 cp -f "$CA_CERT" /opt/unetlab/html/ca.crt 2>/dev/null || true
-chmod 0644 /opt/unetlab/html/pnetlab-ca.crt /opt/unetlab/html/ca.crt 2>/dev/null || true
+chmod 0644 /opt/unetlab/html/azamlabs-ca.crt /opt/unetlab/html/ca.crt 2>/dev/null || true
 
 # Configure Apache SSL Site
 if [ -d /etc/apache2 ]; then
     a2enmod ssl rewrite headers proxy proxy_http proxy_wstunnel mpm_event proxy_fcgi setenvif 2>/dev/null || true
-    a2dissite pnetlabs 000-default default-ssl 2>/dev/null || true
-    a2ensite pnetlab pnetlab-ssl 2>/dev/null || true
-    cat << 'EOF' > /etc/apache2/conf-available/pnetlab-ssl-hardening.conf
-# Modern TLS Hardening for PNETLab
+    a2dissite azamlabs 000-default default-ssl 2>/dev/null || true
+    a2ensite azamlabs azamlabs-ssl 2>/dev/null || true
+    cat << 'EOF' > /etc/apache2/conf-available/azamlabs-ssl-hardening.conf
+# Modern TLS Hardening for AzamLabs
 SSLCipherSuite HIGH:!aNULL:!MD5:!3DES:!CAMELLIA:!AES128
 SSLProtocol all -SSLv3 -TLSv1 -TLSv1.1
 SSLHonorCipherOrder on
 EOF
-    a2enconf pnetlab-ssl-hardening 2>/dev/null || true
+    a2enconf azamlabs-ssl-hardening 2>/dev/null || true
 fi
 echo "  -> 10-Year IP-SAN SSL Certificate installed covering all VM IP addresses and paths."
 
@@ -167,7 +167,7 @@ fi
 
 # 3. Cloud Interfaces (pnet0..pnet9) Promiscuous Mode & DHCP Fix
 echo "[3/4] Enabling Promiscuous Mode on Cloud Bridge Interfaces (pnet0..pnet9)..."
-BRIDGE_SCRIPT="/usr/local/bin/pnetlab-fix-bridges"
+BRIDGE_SCRIPT="/usr/local/bin/azamlabs-fix-bridges"
 cat << 'EOF' > "$BRIDGE_SCRIPT"
 #!/bin/bash
 # Enable promiscuous mode and disable STP forwarding delays on Cloud Bridges
@@ -184,21 +184,21 @@ chmod +x "$BRIDGE_SCRIPT"
 bash "$BRIDGE_SCRIPT" || true
 
 # Persist Bridge Promiscuous Configuration
-cat << 'EOF' > /etc/systemd/system/pnetlab-bridges.service
+cat << 'EOF' > /etc/systemd/system/azamlabs-bridges.service
 [Unit]
-Description=PNETLab Cloud Bridge Promiscuous Initializer
+Description=AzamLabs Cloud Bridge Promiscuous Initializer
 After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/pnetlab-fix-bridges
+ExecStart=/usr/local/bin/azamlabs-fix-bridges
 RemainAfterExit=yes
 
 [Install]
 WantedBy=multi-user.target
 EOF
 systemctl daemon-reload 2>/dev/null || true
-systemctl enable pnetlab-bridges.service 2>/dev/null || true
+systemctl enable azamlabs-bridges.service 2>/dev/null || true
 
 # 4. NTP Time Synchronization & Drift Fix
 echo "[4/5] Configuring NTP Time Synchronization (systemd-timesyncd)..."
@@ -221,7 +221,7 @@ TimeoutStartSec=10sec
 EOF
 
 # Ensure bridge netfilter does not intercept bridge ARP/IP
-cat > /etc/sysctl.d/99-pnetlab-bridge.conf << 'EOF'
+cat > /etc/sysctl.d/99-azamlabs-bridge.conf << 'EOF'
 net.bridge.bridge-nf-call-iptables = 0
 net.bridge.bridge-nf-call-arptables = 0
 net.bridge.bridge-nf-call-ip6tables = 0
@@ -246,11 +246,11 @@ systemctl enable ssh.service 2>/dev/null || true
 systemctl restart ssh.service 2>/dev/null || true
 echo "  -> SSH service enabled and verified active on port 22 (Root credential: azam)."
 
-# Issue #19: Harden /etc/pnet-webconsole/guac.env to prevent pnet-guac-lite restart loops
-if [ -f /etc/pnet-webconsole/guac.env ]; then
-    chown root:www-data /etc/pnet-webconsole/guac.env 2>/dev/null || true
-    chmod 0640 /etc/pnet-webconsole/guac.env 2>/dev/null || true
-    systemctl restart pnet-guac-lite.service 2>/dev/null || true
+# Issue #19: Harden /etc/azam-webconsole/guac.env to prevent pnet-guac-lite restart loops
+if [ -f /etc/azam-webconsole/guac.env ]; then
+    chown root:www-data /etc/azam-webconsole/guac.env 2>/dev/null || true
+    chmod 0640 /etc/azam-webconsole/guac.env 2>/dev/null || true
+    systemctl restart azam-guac-lite.service 2>/dev/null || true
 fi
 
 # Issue #17 Bug 39: Dual Wireshark Capture Permissions (HTML5 Docker + Native Windows SSH/plink)

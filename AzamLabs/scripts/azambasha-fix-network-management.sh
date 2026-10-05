@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# PNetLab Network Management & Broker Daemon Fix for Ubuntu 24/26
+# AzamLabs Network Management & Broker Daemon Fix for Ubuntu 24/26
 # Resolves "unreachable: No such file or directory" by:
 # 1. Installing python3-yaml runtime dependencies
-# 2. Creating /run/pnetlab runtime socket directory with 0755 permissions
-# 3. Patching pnetlab-brokerd.py to auto-bind to real physical interface (ens33/ens160)
-# 4. Enabling and starting pnetlab-brokerd.service
+# 2. Creating /run/azamlabs runtime socket directory with 0755 permissions
+# 3. Patching azamlabs-brokerd.py to auto-bind to real physical interface (ens33/ens160)
+# 4. Enabling and starting azamlabs-brokerd.service
 # 5. Synchronizing /etc/network/interfaces and Netplan
 # ==============================================================================
 set -euo pipefail
 
 echo "============================================================"
-echo "    Applying PNetLab Network Management & Broker Daemon Fix "
+echo "    Applying AzamLabs Network Management & Broker Daemon Fix "
 echo "============================================================"
 
 # 1. Install Runtime Dependencies
@@ -43,12 +43,12 @@ mkdir -p /etc/network/interfaces.d
 mkdir -p /opt/unetlab/data/netcfg-backups
 mkdir -p /etc/systemd/resolved.conf.d
 mkdir -p /etc/netplan
-mkdir -p /run/pnetlab
+mkdir -p /run/azamlabs
 mkdir -p /etc/systemd/system/networking.service.d
 mkdir -p /etc/modules-load.d
 mkdir -p /etc/sysctl.d
-chmod 755 /opt/unetlab/data/netcfg-backups /etc/systemd/resolved.conf.d /run/pnetlab 2>/dev/null || true
-chown root:www-data /run/pnetlab 2>/dev/null || true
+chmod 755 /opt/unetlab/data/netcfg-backups /etc/systemd/resolved.conf.d /run/azamlabs 2>/dev/null || true
+chown root:www-data /run/azamlabs 2>/dev/null || true
 
 mkdir -p /etc/systemd/network
 cat > /etc/systemd/network/98-pnet0-mac.link << 'LINKEOF'
@@ -61,7 +61,7 @@ LINKEOF
 
 # Purge any legacy/installer/cloud-init netplan YAMLs
 for f in /etc/netplan/*.yaml /etc/netplan/*.yml; do
-    [ -f "$f" ] && [ "$(basename "$f")" != "01-pnetlab-netcfg.yaml" ] && rm -f "$f" 2>/dev/null || true
+    [ -f "$f" ] && [ "$(basename "$f")" != "01-azamlabs-netcfg.yaml" ] && rm -f "$f" 2>/dev/null || true
 done
 rm -f /etc/systemd/network/*.network 2>/dev/null || true
 
@@ -72,7 +72,7 @@ TimeoutStartSec=10sec
 EOF
 
 # Kernel Modules & Bridge Netfilter Sysctl Bypass
-cat > /etc/modules-load.d/pnetlab.conf << 'EOF'
+cat > /etc/modules-load.d/azamlabs.conf << 'EOF'
 bridge
 stp
 llc
@@ -86,7 +86,7 @@ modprobe 8021q 2>/dev/null || true
 modprobe tun 2>/dev/null || true
 modprobe br_netfilter 2>/dev/null || true
 
-cat > /etc/sysctl.d/99-pnetlab-bridge.conf << 'EOF'
+cat > /etc/sysctl.d/99-azamlabs-bridge.conf << 'EOF'
 net.bridge.bridge-nf-call-iptables = 0
 net.bridge.bridge-nf-call-arptables = 0
 net.bridge.bridge-nf-call-ip6tables = 0
@@ -108,25 +108,25 @@ auto lo
 iface lo inet loopback
 
 # The primary network interface
-# BEGIN pnetlab-netcfg pnet0
+# BEGIN azamlabs-netcfg pnet0
 allow-hotplug pnet0
 iface pnet0 inet dhcp
     pre-up ip link set dev ${REAL_IFACE} up
     bridge_ports ${REAL_IFACE}
     bridge_stp off
-# END pnetlab-netcfg pnet0
+# END azamlabs-netcfg pnet0
 EOF
     chmod 644 /etc/network/interfaces
 fi
 
-# 5. Patch /opt/unetlab/scripts/pnetlab-brokerd.py
-echo "[5/6] Patching /opt/unetlab/scripts/pnetlab-brokerd.py..."
-BROKER_SCRIPT="/opt/unetlab/scripts/pnetlab-brokerd.py"
+# 5. Patch /opt/unetlab/scripts/azamlabs-brokerd.py
+echo "[5/6] Patching /opt/unetlab/scripts/azamlabs-brokerd.py..."
+BROKER_SCRIPT="/opt/unetlab/scripts/azamlabs-brokerd.py"
 if [ -f "$BROKER_SCRIPT" ]; then
     python3 - << 'PYEOF'
 import sys, os, re, ipaddress, subprocess, time, json, shutil
 
-broker_path = "/opt/unetlab/scripts/pnetlab-brokerd.py"
+broker_path = "/opt/unetlab/scripts/azamlabs-brokerd.py"
 with open(broker_path, "r", encoding="utf-8") as f:
     code = f.read()
 
@@ -138,7 +138,7 @@ end_idx = code.find(end_marker)
 
 if start_idx != -1 and end_idx != -1:
     new_netcfg_section = '''NETCFG_INTERFACES = "/etc/network/interfaces"
-NETCFG_RESOLVED = "/etc/systemd/resolved.conf.d/pnetlab.conf"
+NETCFG_RESOLVED = "/etc/systemd/resolved.conf.d/azamlabs.conf"
 NETCFG_BACKUP_DIR = BASE + "/data/netcfg-backups"
 RE_NETCFG_DOMAIN = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9.-]{0,252}[A-Za-z0-9])?$")
 
@@ -171,13 +171,13 @@ def _ensure_interfaces_file():
             "auto lo\\n"
             "iface lo inet loopback\\n\\n"
             "# The primary network interface\\n"
-            "# BEGIN pnetlab-netcfg pnet0\\n"
+            "# BEGIN azamlabs-netcfg pnet0\\n"
             "allow-hotplug pnet0\\n"
             "iface pnet0 inet dhcp\\n"
             f"    pre-up ip link set dev {real_iface} up\\n"
             f"    bridge_ports {real_iface}\\n"
             "    bridge_stp off\\n"
-            "# END pnetlab-netcfg pnet0\\n"
+            "# END azamlabs-netcfg pnet0\\n"
         )
         try:
             with open(NETCFG_INTERFACES, "w") as f:
@@ -258,7 +258,7 @@ def _netcfg_read_resolved():
 
 def _netcfg_build_pnet0(mode, address, netmask, gateway):
     real_iface = _get_real_iface()
-    out = ["# BEGIN pnetlab-netcfg pnet0",
+    out = ["# BEGIN azamlabs-netcfg pnet0",
            "allow-hotplug pnet0",
            "iface pnet0 inet %s" % mode,
            "    pre-up ip link set dev %s up" % real_iface,
@@ -269,7 +269,7 @@ def _netcfg_build_pnet0(mode, address, netmask, gateway):
         out.append("    netmask %s" % netmask)
         if gateway:
             out.append("    gateway %s" % gateway)
-    out.append("# END pnetlab-netcfg pnet0")
+    out.append("# END azamlabs-netcfg pnet0")
     return out
 
 
@@ -278,11 +278,11 @@ def _netcfg_replace_pnet0(content, new_stanza):
     out, i, n, done = [], 0, len(lines), False
     while i < n:
         line_clean = lines[i].strip()
-        if line_clean in ("# BEGIN pnetlab-netcfg pnet0", "auto pnet0", "allow-hotplug pnet0"):
+        if line_clean in ("# BEGIN azamlabs-netcfg pnet0", "auto pnet0", "allow-hotplug pnet0"):
             out.extend(new_stanza)
             out.append("")
-            if line_clean == "# BEGIN pnetlab-netcfg pnet0":
-                while i < n and lines[i].strip() != "# END pnetlab-netcfg pnet0":
+            if line_clean == "# BEGIN azamlabs-netcfg pnet0":
+                while i < n and lines[i].strip() != "# END azamlabs-netcfg pnet0":
                     i += 1
                 if i < n:
                     i += 1
@@ -427,9 +427,9 @@ def verb_server_netcfg(args):
                 "        stp: false\\n"
                 "        forward-delay: 0\\n"
             )
-        with open("/etc/netplan/01-pnetlab-netcfg.yaml", "w") as nf:
+        with open("/etc/netplan/01-azamlabs-netcfg.yaml", "w") as nf:
             nf.write(netplan_yaml)
-        os.chmod("/etc/netplan/01-pnetlab-netcfg.yaml", 0o600)
+        os.chmod("/etc/netplan/01-azamlabs-netcfg.yaml", 0o600)
     except Exception:
         pass
 
@@ -450,7 +450,7 @@ def verb_server_netcfg(args):
     if iface_changed and apply_net:
         run_quiet([
             "systemd-run", "--no-block", "--collect",
-            "--unit=pnet-netcfg-reboot",
+            "--unit=azamlabs-netcfg-reboot",
             "/bin/sh", "-c", "sleep 3; systemctl reboot",
         ], timeout=15)
         rebooting = True
@@ -472,7 +472,7 @@ def verb_server_netcfg(args):
     srv = Server(SOCK_PATH, Handler)
     os.chmod(SOCK_PATH, 0o660)
     shutil.chown(SOCK_PATH, "root", SOCK_GROUP)
-    log("pnetlab-brokerd listening on %s (%d verbs)" %
+    log("azamlabs-brokerd listening on %s (%d verbs)" %
         (SOCK_PATH, len(VERBS)))
     srv.serve_forever()'''
 
@@ -494,7 +494,7 @@ def verb_server_netcfg(args):
         shutil.chown(SOCK_PATH, "root", SOCK_GROUP)
     except Exception:
         pass
-    log("pnetlab-brokerd listening on %s (%d verbs)" %
+    log("azamlabs-brokerd listening on %s (%d verbs)" %
         (SOCK_PATH, len(VERBS)))
     srv.serve_forever()'''
 
@@ -503,21 +503,21 @@ def verb_server_netcfg(args):
 
     with open(broker_path, "w", encoding="utf-8") as f:
         f.write(patched_code)
-    print("      -> Successfully patched pnetlab-brokerd.py")
+    print("      -> Successfully patched azamlabs-brokerd.py")
 PYEOF
 fi
 
 # 6. Configure Systemd Service & Start Broker
-echo "[6/6] Configuring and starting pnetlab-brokerd.service..."
-cat > /etc/systemd/system/pnetlab-brokerd.service << 'EOF'
+echo "[6/6] Configuring and starting azamlabs-brokerd.service..."
+cat > /etc/systemd/system/azamlabs-brokerd.service << 'EOF'
 [Unit]
-Description=PNetLab privilege broker (allowlisted root verbs for the engine)
+Description=AzamLabs privilege broker (allowlisted root verbs for the engine)
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /opt/unetlab/scripts/pnetlab-brokerd.py
-RuntimeDirectory=pnetlab
+ExecStart=/usr/bin/python3 /opt/unetlab/scripts/azamlabs-brokerd.py
+RuntimeDirectory=azamlabs
 RuntimeDirectoryMode=0755
 User=root
 Group=root
@@ -527,17 +527,17 @@ RestartSec=2
 [Install]
 WantedBy=multi-user.target
 EOF
-chmod 644 /etc/systemd/system/pnetlab-brokerd.service
+chmod 644 /etc/systemd/system/azamlabs-brokerd.service
 
 systemctl daemon-reload
-systemctl enable --now pnetlab-brokerd.service
-systemctl restart pnetlab-brokerd.service
+systemctl enable --now azamlabs-brokerd.service
+systemctl restart azamlabs-brokerd.service
 
 # Give broker a moment to open socket
 sleep 1
-chmod 755 /run/pnetlab 2>/dev/null || true
-chmod 666 /run/pnetlab/broker.sock 2>/dev/null || true
-chown root:www-data /run/pnetlab/broker.sock 2>/dev/null || true
+chmod 755 /run/azamlabs 2>/dev/null || true
+chmod 666 /run/azamlabs/broker.sock 2>/dev/null || true
+chown root:www-data /run/azamlabs/broker.sock 2>/dev/null || true
 
 # Test broker reachability via PHP
 echo "      -> Testing broker reachability via PHP..."

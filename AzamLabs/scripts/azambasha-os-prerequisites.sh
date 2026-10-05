@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Azam-Pnet Complete OS Prerequisites & Kernel Module Provisioner
+# AzamLabs Complete OS Prerequisites & Kernel Module Provisioner
 # Target OS: Ubuntu 26.04-live-server-amd64 and later (Resolute+)
 # Ensures 100% of all kernel modules, system daemons, PHP extensions, Python
 # libraries, 32-bit compatibility binaries, and emulation packages are installed.
@@ -17,7 +17,7 @@ LOG_FILE="/var/log/azambasha-os-prerequisites.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 echo "============================================================"
-echo "    Azam-Pnet OS Prerequisites & Kernel Provisioner        "
+echo "    AzamLabs OS Prerequisites & Kernel Provisioner        "
 echo "    Target Platform: Ubuntu 26.04+ (Live Server & Later)   "
 echo "============================================================"
 echo "[*] Start Time: $(date)"
@@ -28,7 +28,7 @@ echo "============================================================"
 echo "[1/6] Validating OS architecture and configuring APT..."
 ARCH="$(uname -m)"
 if [ "$ARCH" != "x86_64" ]; then
-    echo "[ERROR] Unsupported CPU architecture: $ARCH. Azam-Pnet requires x86_64 (amd64)." >&2
+    echo "[ERROR] Unsupported CPU architecture: $ARCH. AzamLabs requires x86_64 (amd64)." >&2
     exit 1
 fi
 
@@ -36,7 +36,7 @@ UBUNTU_VER="$(lsb_release -rs 2>/dev/null || grep -oP '(?<=VERSION_ID=")[^"]*' /
 echo "      -> Detected Operating System: Ubuntu ${UBUNTU_VER} (${ARCH})"
 
 if ! awk "BEGIN {exit !($UBUNTU_VER >= 26.04)}" 2>/dev/null; then
-    echo "      [WARN] Operating system is Ubuntu ${UBUNTU_VER}. Azam-Pnet is fully optimized for Ubuntu 26.04+ (Resolute and later)."
+    echo "      [WARN] Operating system is Ubuntu ${UBUNTU_VER}. AzamLabs is fully optimized for Ubuntu 26.04+ (Resolute and later)."
 else
     echo "      -> [PASS] Verified Ubuntu ${UBUNTU_VER} is fully compatible (>= 26.04)."
 fi
@@ -97,9 +97,9 @@ KERNEL_MODULES=(
 [ -n "$KVM_MOD" ] && KERNEL_MODULES+=("$KVM_MOD")
 
 mkdir -p /etc/modules-load.d /etc/modprobe.d
-cat << 'EOF' > /etc/modules-load.d/pnetlab.conf
+cat << 'EOF' > /etc/modules-load.d/azamlabs.conf
 # ==============================================================================
-# Azam-Pnet Required Kernel Modules for Ubuntu 26+
+# AzamLabs Required Kernel Modules for Ubuntu 26+
 # ==============================================================================
 kvm
 vhost
@@ -123,7 +123,7 @@ ib_uverbs
 mac80211_hwsim
 cfg80211
 EOF
-[ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/pnetlab.conf
+[ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/azamlabs.conf
 
 # Blacklist i2c_piix4 virtual controller to silence unhandled SMBus warning
 echo "blacklist i2c_piix4" > /etc/modprobe.d/blacklist-piix4.conf
@@ -157,8 +157,8 @@ done
 
 # Bridge Sysctl Bypass & Packet Forwarding
 mkdir -p /etc/sysctl.d
-cat << 'EOF' > /etc/sysctl.d/99-pnetlab-bridge.conf
-# Azam-Pnet Kernel Datapath & Bridge Netfilter Tuning
+cat << 'EOF' > /etc/sysctl.d/99-azamlabs-bridge.conf
+# AzamLabs Kernel Datapath & Bridge Netfilter Tuning
 net.bridge.bridge-nf-call-iptables = 0
 net.bridge.bridge-nf-call-arptables = 0
 net.bridge.bridge-nf-call-ip6tables = 0
@@ -416,4 +416,4 @@ echo "PHP Runtime     : $(php -v 2>/dev/null | head -n1 || echo 'N/A')"
 echo "Web Server      : $(apache2 -v 2>/dev/null | head -n1 || echo 'N/A')"
 echo "Database        : $(mysql --version 2>/dev/null | head -n1 || echo 'N/A')"
 echo "============================================================"
-echo "OS is now fully provisioned and ready for Azam-Pnet software installation."
+echo "OS is now fully provisioned and ready for AzamLabs software installation."

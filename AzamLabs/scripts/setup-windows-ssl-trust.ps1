@@ -1,8 +1,8 @@
 <#
 .SYNOPSIS
-    1-Click PNetLab Root Certificate Authority (CA) Trust Tool for Windows & Firefox
+    1-Click AzamLabs Root Certificate Authority (CA) Trust Tool for Windows & Firefox
 .DESCRIPTION
-    Fetches the PNETLab Enterprise Root CA certificate from the PNetLab appliance, imports it into
+    Fetches the AzamLabs Enterprise Root CA certificate from the AzamLabs appliance, imports it into
     the Windows Trusted Root Certification Authorities store, and automatically enables Windows
     Enterprise Root trust in all Mozilla Firefox profiles.
     
@@ -14,7 +14,7 @@ param (
 )
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "  PNETLab 1-Click Root CA Trust Installer (Windows & Firefox)" -ForegroundColor Cyan
+Write-Host "  AzamLabs 1-Click Root CA Trust Installer (Windows & Firefox)" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
 # 1. Discover or Prompt for VM IP
@@ -27,15 +27,15 @@ if (-not $VmIp) {
         $suggestedIp = "192.168.1.23"
     }
 
-    $inputIp = Read-Host "Enter PNETLab VM IP Address [Default: $suggestedIp]"
+    $inputIp = Read-Host "Enter AzamLabs VM IP Address [Default: $suggestedIp]"
     $VmIp = if ($inputIp) { $inputIp } else { $suggestedIp }
 }
 
-Write-Host "`n[*] Target PNETLab Appliance: https://$VmIp/" -ForegroundColor Yellow
+Write-Host "`n[*] Target AzamLabs Appliance: https://$VmIp/" -ForegroundColor Yellow
 
-# 2. Download PNETLab Root CA Certificate
-$tempCaFile = "$env:TEMP\pnetlab_root_ca.crt"
-Write-Host "[*] Fetching PNETLab Enterprise Root CA from https://$VmIp/pnetlab-ca.crt..." -ForegroundColor DarkGray
+# 2. Download AzamLabs Root CA Certificate
+$tempCaFile = "$env:TEMP\azamlabs_root_ca.crt"
+Write-Host "[*] Fetching AzamLabs Enterprise Root CA from https://$VmIp/azamlabs-ca.crt..." -ForegroundColor DarkGray
 
 $caRetrieved = $false
 try {
@@ -45,7 +45,7 @@ try {
     $client = [System.Net.Http.HttpClient]::new($handler)
     $client.Timeout = [TimeSpan]::FromSeconds(5)
     
-    $caBytes = $client.GetByteArrayAsync("https://$VmIp/pnetlab-ca.crt").GetAwaiter().GetResult()
+    $caBytes = $client.GetByteArrayAsync("https://$VmIp/azamlabs-ca.crt").GetAwaiter().GetResult()
     if ($caBytes -and $caBytes.Length -gt 100) {
         [System.IO.File]::WriteAllBytes($tempCaFile, $caBytes)
         $caCert = [System.Security.Cryptography.X509Certificates.X509Certificate2]::new($tempCaFile)
@@ -131,7 +131,7 @@ if (Test-Path $ffProfilesPath) {
 Remove-Item -Path $tempCaFile -Force -ErrorAction SilentlyContinue
 
 Write-Host "`n============================================================" -ForegroundColor Cyan
-Write-Host " SUCCESS! PNETLab SSL Trust Setup is Complete." -ForegroundColor Green
+Write-Host " SUCCESS! AzamLabs SSL Trust Setup is Complete." -ForegroundColor Green
 Write-Host " You can now browse https://$VmIp/ with clean HTTPS trust." -ForegroundColor Green
 Write-Host " (Please restart Chrome, Edge, or Firefox if currently open)" -ForegroundColor DarkGray
 Write-Host "============================================================`n" -ForegroundColor Cyan

@@ -2,10 +2,10 @@
 # ==============================================================================
 # azambasha-airgap-pack.sh
 # Generates a 100% self-contained, offline air-gapped installation archive
-# for Azam-Pnet / PNETLab Enterprise.
+# for AzamLabs / AzamLabs Enterprise.
 #
 # Bundles:
-# 1. Local Debian package pool (pnetlab, guacd, qemu, dkms, docker, schemas)
+# 1. Local Debian package pool (azamlabs, guacd, qemu, dkms, docker, schemas)
 # 2. Complete administrative scripts and daemons
 # 3. Web UI assets and community templates
 # 4. Core MySQL schemas and offline licenses
@@ -17,10 +17,10 @@ DEST_DIR="/opt/unetlab/data/Exports"
 mkdir -p "$DEST_DIR" 2>/dev/null || DEST_DIR="/tmp"
 
 TIMESTAMP="$(date +%Y%m%d_%H%M%S)"
-OUTPUT_TAR="${DEST_DIR}/azam-pnet-airgap-${TIMESTAMP}.tar.gz"
+OUTPUT_TAR="${DEST_DIR}/azamlabs-airgap-${TIMESTAMP}.tar.gz"
 
 echo "============================================================"
-echo "   Azam-Pnet Offline Air-Gapped Bundle Generator            "
+echo "   AzamLabs Offline Air-Gapped Bundle Generator            "
 echo "============================================================"
 echo "[*] Start Time : $(date)"
 echo "[*] Output Path: $OUTPUT_TAR"
@@ -77,7 +77,7 @@ else
 fi
 
 echo "[4/4] Finalizing bundle and registering latest symlink..."
-ln -sfn "$OUTPUT_TAR" "${DEST_DIR}/azam-pnet-airgap-latest.tar.gz" 2>/dev/null || true
+ln -sfn "$OUTPUT_TAR" "${DEST_DIR}/azamlabs-airgap-latest.tar.gz" 2>/dev/null || true
 
 FILE_SIZE="$(du -h "$OUTPUT_TAR" | cut -f1)"
 

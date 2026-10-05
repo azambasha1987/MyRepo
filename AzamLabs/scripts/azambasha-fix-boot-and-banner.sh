@@ -29,13 +29,13 @@ else
 fi
 
 # --- 2. Sanitize Kernel Modules Configuration ---
-echo "[2/5] Sanitizing /etc/modules-load.d/pnetlab.conf..."
+echo "[2/5] Sanitizing /etc/modules-load.d/azamlabs.conf..."
 mkdir -p /etc/modules-load.d /etc/modprobe.d
 
 # Strip out any invalid cross-vendor modules from all configuration files
-sed -i -E '/kvm_(intel|amd)/d' /etc/modules-load.d/pnetlab.conf /etc/modules /etc/modules-load.d/*.conf 2>/dev/null || true
+sed -i -E '/kvm_(intel|amd)/d' /etc/modules-load.d/azamlabs.conf /etc/modules /etc/modules-load.d/*.conf 2>/dev/null || true
 
-cat > /etc/modules-load.d/pnetlab.conf << 'EOF'
+cat > /etc/modules-load.d/azamlabs.conf << 'EOF'
 bridge
 stp
 llc
@@ -49,9 +49,9 @@ kvm
 EOF
 
 if [ -n "$KVM_MOD" ]; then
-    echo "$KVM_MOD" >> /etc/modules-load.d/pnetlab.conf
+    echo "$KVM_MOD" >> /etc/modules-load.d/azamlabs.conf
     modprobe "$KVM_MOD" 2>/dev/null || true
-    echo "      -> Successfully registered $KVM_MOD in /etc/modules-load.d/pnetlab.conf"
+    echo "      -> Successfully registered $KVM_MOD in /etc/modules-load.d/azamlabs.conf"
 fi
 
 # Restart and verify systemd-modules-load

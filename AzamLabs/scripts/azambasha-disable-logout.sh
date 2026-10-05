@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# PNETLab Never-Logout Script
+# AzamLabs Never-Logout Script
 # Sets infinite/10-year session timeout across PHP, Database, Cookies & Frontend
-# Compatibility: PNETLab v5, v6, v7, v8 (Ubuntu 18.04 / 20.04 / 22.04 / 24.04 / 26.04)
+# Compatibility: AzamLabs v5, v6, v7, v8 (Ubuntu 18.04 / 20.04 / 22.04 / 24.04 / 26.04)
 #
 # Supports piped execution & non-root diagnostic checks.
 # ==============================================================================
@@ -15,7 +15,7 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
 fi
 
 if [[ "${1:-}" =~ ^(--check|--status)$ ]]; then
-    echo "=== PNETLab Session Timeout Diagnostic Check ==="
+    echo "=== AzamLabs Session Timeout Diagnostic Check ==="
     echo -n "[*] config.php SESSION constant: "
     if grep -q "define('SESSION', '315360000')" /opt/unetlab/html/includes/config.php 2>/dev/null; then
         echo "10 YEARS (315360000s)"
@@ -24,16 +24,16 @@ if [[ "${1:-}" =~ ^(--check|--status)$ ]]; then
     fi
 
     echo -n "[*] Database Session Timeout: "
-    if mysql -u pnetlab -ppnetlab pnetlab_db -e "SELECT control_value FROM control WHERE control_name='ctrl_session_timeout';" 2>/dev/null | tail -n1; then
+    if mysql -u azamlabs -pazam azamlabs_db -e "SELECT control_value FROM control WHERE control_name='ctrl_session_timeout';" 2>/dev/null | tail -n1; then
         :
-    elif mysql --defaults-file=/etc/mysql/debian.cnf pnetlab_db -e "SELECT control_value FROM control WHERE control_name='ctrl_session_timeout';" 2>/dev/null | tail -n1; then
+    elif mysql --defaults-file=/etc/mysql/debian.cnf azamlabs_db -e "SELECT control_value FROM control WHERE control_name='ctrl_session_timeout';" 2>/dev/null | tail -n1; then
         :
     else
         echo "Could not query database"
     fi
 
     echo -n "[*] Frontend Keepalive Heartbeat: "
-    if grep -q "pnetlab-keepalive.js" /opt/unetlab/html/main/index.html 2>/dev/null; then
+    if grep -q "azamlabs-keepalive.js" /opt/unetlab/html/main/index.html 2>/dev/null; then
         echo "INSTALLED"
     else
         echo "MISSING"
@@ -49,7 +49,7 @@ fi
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 TIMEOUT_SECONDS=315360000   # 10 years (3650 days)
 
-echo "=== Applying PNETLab Permanent Session Fix ==="
+echo "=== Applying AzamLabs Permanent Session Fix ==="
 
 # 1. Update /opt/unetlab/html/includes/config.php
 echo "[1/7] Updating /opt/unetlab/html/includes/config.php..."
@@ -67,19 +67,19 @@ EOF
 chown www-data:www-data "$CONFIG_FILE" || true
 chmod 644 "$CONFIG_FILE"
 
-# 2. Update MySQL/MariaDB database (pnetlab_db)
-echo "[2/7] Updating database session limits in pnetlab_db..."
+# 2. Update MySQL/MariaDB database (azamlabs_db)
+echo "[2/7] Updating database session limits in azamlabs_db..."
 MYSQL_CMD=""
-if mysql -u pnetlab -ppnetlab -e "USE pnetlab_db;" >/dev/null 2>&1; then
-    MYSQL_CMD="mysql -u pnetlab -ppnetlab pnetlab_db"
-elif [ -f /etc/mysql/debian.cnf ] && mysql --defaults-file=/etc/mysql/debian.cnf -e "USE pnetlab_db;" >/dev/null 2>&1; then
-    MYSQL_CMD="mysql --defaults-file=/etc/mysql/debian.cnf pnetlab_db"
-elif mysql -u root -e "USE pnetlab_db;" >/dev/null 2>&1; then
-    MYSQL_CMD="mysql -u root pnetlab_db"
-elif command -v mariadb &>/dev/null && mariadb -u root -e "USE pnetlab_db;" >/dev/null 2>&1; then
-    MYSQL_CMD="mariadb -u root pnetlab_db"
+if mysql -u azamlabs -pazam -e "USE azamlabs_db;" >/dev/null 2>&1; then
+    MYSQL_CMD="mysql -u azamlabs -pazam azamlabs_db"
+elif [ -f /etc/mysql/debian.cnf ] && mysql --defaults-file=/etc/mysql/debian.cnf -e "USE azamlabs_db;" >/dev/null 2>&1; then
+    MYSQL_CMD="mysql --defaults-file=/etc/mysql/debian.cnf azamlabs_db"
+elif mysql -u root -e "USE azamlabs_db;" >/dev/null 2>&1; then
+    MYSQL_CMD="mysql -u root azamlabs_db"
+elif command -v mariadb &>/dev/null && mariadb -u root -e "USE azamlabs_db;" >/dev/null 2>&1; then
+    MYSQL_CMD="mariadb -u root azamlabs_db"
 else
-    MYSQL_CMD="mysql pnetlab_db"
+    MYSQL_CMD="mysql azamlabs_db"
 fi
 
 $MYSQL_CMD << SQL || true
@@ -137,12 +137,12 @@ done
 
 # 6. Inject background keepalive heartbeat
 echo "[6/7] Installing keepalive heartbeat script..."
-KEEPALIVE_JS="/opt/unetlab/html/themes/default/js/pnetlab-keepalive.js"
+KEEPALIVE_JS="/opt/unetlab/html/themes/default/js/azamlabs-keepalive.js"
 mkdir -p "$(dirname "$KEEPALIVE_JS")"
 cat << 'EOF' > "$KEEPALIVE_JS"
 (function() {
-    if (window.__pnetKeepaliveActive) return;
-    window.__pnetKeepaliveActive = true;
+    if (window.__azamKeepaliveActive) return;
+    window.__azamKeepaliveActive = true;
     setInterval(function() {
         fetch('/api/auth', { credentials: 'same-origin' }).catch(function() {});
     }, 180000);
@@ -152,11 +152,11 @@ chown www-data:www-data "$KEEPALIVE_JS" || true
 chmod 644 "$KEEPALIVE_JS"
 
 MAIN_HTML="/opt/unetlab/html/main/index.html"
-if [ -f "$MAIN_HTML" ] && ! grep -q "pnetlab-keepalive.js" "$MAIN_HTML"; then
+if [ -f "$MAIN_HTML" ] && ! grep -q "azamlabs-keepalive.js" "$MAIN_HTML"; then
     if grep -iq "</body>" "$MAIN_HTML"; then
-        sed -i -E 's|</body>|<script src="/themes/default/js/pnetlab-keepalive.js"></script></body>|I' "$MAIN_HTML"
+        sed -i -E 's|</body>|<script src="/themes/default/js/azamlabs-keepalive.js"></script></body>|I' "$MAIN_HTML"
     else
-        echo '<script src="/themes/default/js/pnetlab-keepalive.js"></script>' >> "$MAIN_HTML"
+        echo '<script src="/themes/default/js/azamlabs-keepalive.js"></script>' >> "$MAIN_HTML"
     fi
 fi
 

@@ -26,7 +26,7 @@ echo -e "${BOLD}${CYAN}=========================================================
 
 # Detect Cluster Role
 IS_SATELLITE=false
-if [ -d /etc/pnetlab-satellite ] || [ -f /etc/pnetlab/cluster-db.conf ] || systemctl is-active pnetlab-satd >/dev/null 2>&1; then
+if [ -d /etc/azamlabs-satellite ] || [ -f /etc/azamlabs/cluster-db.conf ] || systemctl is-active azamlabs-satd >/dev/null 2>&1; then
     IS_SATELLITE=true
 fi
 
@@ -61,7 +61,7 @@ if [ -f /sys/kernel/mm/ksm/run ] && [ "$(cat /sys/kernel/mm/ksm/run 2>/dev/null)
     SAVED_MB=$((PAGES_SHARING * PAGE_SIZE_KB / 1024))
     echo -e "  * KSM Deduplication:${GREEN} ✔ ACTIVE (Saving ~${SAVED_MB} MB RAM across nodes)${NC}"
 else
-    echo -e "  * KSM Deduplication:${YELLOW} ✘ INACTIVE (Run pnetlab-speed-optimizer.sh to enable)${NC}"
+    echo -e "  * KSM Deduplication:${YELLOW} ✘ INACTIVE (Run azamlabs-speed-optimizer.sh to enable)${NC}"
 fi
 
 SWAPPINESS=$(sysctl -n vm.swappiness 2>/dev/null || cat /proc/sys/vm/swappiness 2>/dev/null || echo "Unknown")
@@ -90,17 +90,17 @@ check_service() {
 }
 
 if [ "$IS_SATELLITE" = true ]; then
-    check_service "pnetlab-satd" "Satellite Cluster Agent (Port 9050)"
-    check_service "pnetlab-brokerd" "Local Broker Daemon"
+    check_service "azamlabs-satd" "Satellite Cluster Agent (Port 9050)"
+    check_service "azamlabs-brokerd" "Local Broker Daemon"
     if systemctl is-active "mysql" >/dev/null 2>&1 || systemctl is-active "mariadb" >/dev/null 2>&1; then
         echo -e "  * Local Database:    ${GREEN}✔ RUNNING${NC}"
     fi
     # Check Master DB connection via cluster-db.conf
-    if [ -f /etc/pnetlab/cluster-db.conf ]; then
-        DB_HOST=$(grep -E '^host=' /etc/pnetlab/cluster-db.conf 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || true)
-        DB_USER=$(grep -E '^user=' /etc/pnetlab/cluster-db.conf 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || true)
-        DB_PASS=$(grep -E '^password=' /etc/pnetlab/cluster-db.conf 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || true)
-        if [ -n "$DB_HOST" ] && [ -n "$DB_USER" ] && mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "USE pnetlab_db;" >/dev/null 2>&1; then
+    if [ -f /etc/azamlabs/cluster-db.conf ]; then
+        DB_HOST=$(grep -E '^host=' /etc/azamlabs/cluster-db.conf 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || true)
+        DB_USER=$(grep -E '^user=' /etc/azamlabs/cluster-db.conf 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || true)
+        DB_PASS=$(grep -E '^password=' /etc/azamlabs/cluster-db.conf 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || true)
+        if [ -n "$DB_HOST" ] && [ -n "$DB_USER" ] && mysql -h "$DB_HOST" -u "$DB_USER" -p"$DB_PASS" -e "USE azamlabs_db;" >/dev/null 2>&1; then
             echo -e "  * Master DB Link (${DB_HOST}): ${GREEN}✔ CONNECTED (Synchronized)${NC}"
         elif [ -n "$DB_HOST" ]; then
             echo -e "  * Master DB Link (${DB_HOST}): ${YELLOW}✘ VERIFYING CONNECTION${NC}"
@@ -109,7 +109,7 @@ if [ "$IS_SATELLITE" = true ]; then
 else
     check_service "apache2" "Apache Web Server"
     check_service "mysql" "MySQL Database" 2>/dev/null || check_service "mariadb" "MariaDB Database"
-    check_service "pnetlab-brokerd" "PNETLab Broker Daemon"
+    check_service "azamlabs-brokerd" "AzamLabs Broker Daemon"
 fi
 
 PHP_FPM_ACTIVE=$(systemctl list-units --type=service --state=running 2>/dev/null | grep -o 'php[0-9.]*-fpm' | head -n1 || echo "")
@@ -119,8 +119,8 @@ else
     echo -e "  * PHP-FPM Engine:    ${YELLOW}✔ RUNNING via Apache mod_php${NC}"
 fi
 
-# 5. PNETLab Modules & Optimizations
-echo -e "\n${BOLD}[5] PNETLab Enhancements & AI Integration${NC}"
+# 5. AzamLabs Modules & Optimizations
+echo -e "\n${BOLD}[5] AzamLabs Enhancements & AI Integration${NC}"
 # Session Timeout
 if grep -q "define('SESSION', '315360000')" /opt/unetlab/html/includes/config.php 2>/dev/null; then
     echo -e "  * Session Timeout:   ${GREEN}✔ 10 YEARS (Permanent Session Active)${NC}"
@@ -139,8 +139,8 @@ else
 fi
 
 # AI MCP Daemon
-if systemctl is-active pnetlab-mcp 2>/dev/null | grep -q "active"; then
-    echo -e "  * AI MCP Daemon:     ${GREEN}✔ ACTIVE (pnetlab-mcp.service running on port 5701)${NC}"
+if systemctl is-active azamlabs-mcp 2>/dev/null | grep -q "active"; then
+    echo -e "  * AI MCP Daemon:     ${GREEN}✔ ACTIVE (azamlabs-mcp.service running on port 5701)${NC}"
 else
     echo -e "  * AI MCP Daemon:     ${YELLOW}✘ INACTIVE / NOT CONFIGURED (Optional Integration)${NC}"
 fi
@@ -148,10 +148,10 @@ fi
 # 6. Web UI & Authentication Status
 echo -e "\n${BOLD}[6] Web Dashboard & Authentication Status${NC}"
 if [ "$IS_SATELLITE" = true ]; then
-    if systemctl is-active pnetlab-satd 2>/dev/null | grep -q "active"; then
+    if systemctl is-active azamlabs-satd 2>/dev/null | grep -q "active"; then
         echo -e "  * Cluster Orchestration: ${GREEN}✔ READY (Accepting commands from Master on Port 9050)${NC}"
     else
-        echo -e "  * Cluster Orchestration: ${RED}✘ pnetlab-satd NOT ACTIVE${NC}"
+        echo -e "  * Cluster Orchestration: ${RED}✘ azamlabs-satd NOT ACTIVE${NC}"
     fi
     if curl -s -m 3 http://127.0.0.1/ >/dev/null 2>&1 || curl -k -s -m 3 https://127.0.0.1/ >/dev/null 2>&1; then
         echo -e "  * Satellite HTTP Node:   ${GREEN}✔ ACTIVE (Port 80/443 responding)${NC}"
@@ -182,7 +182,7 @@ fi
 if [ -f /opt/unetlab/addons/iol/bin/iourc ] && grep -q "license" /opt/unetlab/addons/iol/bin/iourc 2>/dev/null; then
     echo -e "  * Cisco IOL License Key:   ${GREEN}✔ INSTALLED (/opt/unetlab/addons/iol/bin/iourc)${NC}"
 else
-    echo -e "  * Cisco IOL License Key:   ${YELLOW}✘ MISSING (Run pnetlab-fix-permissions.sh to generate)${NC}"
+    echo -e "  * Cisco IOL License Key:   ${YELLOW}✘ MISSING (Run azamlabs-fix-permissions.sh to generate)${NC}"
 fi
 
 # 7. Installed Node Images Inventory

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# PNETLab AI Lab Builder & Local Ollama VM Provisioning Script
-# Configures PNETLab v8.72+ to communicate with an external/host Ollama LLM engine
+# AzamLabs AI Lab Builder & Local Ollama VM Provisioning Script
+# Configures AzamLabs v8.72+ to communicate with an external/host Ollama LLM engine
 #
 # Supports piped execution & non-root diagnostic checks.
 # ==============================================================================
@@ -14,9 +14,9 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
 fi
 
 if [[ "${1:-}" =~ ^(--check|--status)$ ]]; then
-    echo "=== PNETLab AI & MCP Daemon Diagnostic Check ==="
+    echo "=== AzamLabs AI & MCP Daemon Diagnostic Check ==="
     echo -n "[*] MCP Daemon Service Status: "
-    systemctl is-active pnetlab-mcp 2>/dev/null || echo "INACTIVE / NOT INSTALLED"
+    systemctl is-active azamlabs-mcp 2>/dev/null || echo "INACTIVE / NOT INSTALLED"
 
     echo -n "[*] AI Config File (/opt/unetlab/data/ai/config.json): "
     if [ -f /opt/unetlab/data/ai/config.json ]; then
@@ -35,7 +35,7 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-echo "=== PNETLab AI Lab Builder (Ollama & Google AI Studio Engine) ==="
+echo "=== AzamLabs AI Lab Builder (Ollama & Google AI Studio Engine) ==="
 
 AI_PROVIDER="ollama"
 GEMINI_KEY="${GEMINI_API_KEY:-}"
@@ -95,10 +95,10 @@ fi
 
 # 1. System Account & Permissions
 echo "[1/5] Setting up system account and permissions..."
-if ! id -u pnetlab-mcp &>/dev/null; then
-    useradd --system --no-create-home --user-group --shell /usr/sbin/nologin pnetlab-mcp
+if ! id -u azamlabs-mcp &>/dev/null; then
+    useradd --system --no-create-home --user-group --shell /usr/sbin/nologin azamlabs-mcp
 fi
-usermod -aG pnetlab-mcp www-data || true
+usermod -aG azamlabs-mcp www-data || true
 
 # 2. Ensure pip3 is available & Install Required Python Dependencies
 echo "[2/5] Installing required Python dependencies..."
@@ -161,7 +161,7 @@ else:
     cfg["provider"]["model"] = "${OLLAMA_MODEL}"
     cfg["provider"]["api_key"] = "ollama"
 
-tok_hash = hashlib.sha256("pnetlab_secret_token".encode()).hexdigest()
+tok_hash = hashlib.sha256("azamlabs_secret_token".encode()).hexdigest()
 if not cfg["mcp"].get("tokens"):
     cfg["mcp"]["tokens"] = [{"name": "default_agent", "hash": tok_hash, "pod": 0, "tenant": 0, "role": "admin"}]
 
@@ -173,27 +173,27 @@ with open(cfg_path, "w") as f:
 PYEOF
 
 chmod 640 /opt/unetlab/data/ai/config.json
-chown root:pnetlab-mcp /opt/unetlab/data/ai/config.json || true
+chown root:azamlabs-mcp /opt/unetlab/data/ai/config.json || true
 chmod 640 /opt/unetlab/data/ai/bridge.secret
 chown root:www-data /opt/unetlab/data/ai/bridge.secret || true
 
 # 5. Enable and Restart Services
-echo "[5/5] Enabling and restarting PNETLab MCP and Apache services..."
-SERVICE_SRC="/opt/unetlab/scripts/mcp/pnetlab-mcp.service"
-SERVICE_DEST="/etc/systemd/system/pnetlab-mcp.service"
+echo "[5/5] Enabling and restarting AzamLabs MCP and Apache services..."
+SERVICE_SRC="/opt/unetlab/scripts/mcp/azamlabs-mcp.service"
+SERVICE_DEST="/etc/systemd/system/azamlabs-mcp.service"
 
 if [ -f "$SERVICE_SRC" ]; then
     cp -f "$SERVICE_SRC" "$SERVICE_DEST"
 elif [ ! -f "$SERVICE_DEST" ]; then
     cat << 'EOF' > "$SERVICE_DEST"
 [Unit]
-Description=PNETLab Model Context Protocol (MCP) Daemon
+Description=AzamLabs Model Context Protocol (MCP) Daemon
 After=network.target
 
 [Service]
 Type=simple
-User=pnetlab-mcp
-Group=pnetlab-mcp
+User=azamlabs-mcp
+Group=azamlabs-mcp
 WorkingDirectory=/opt/unetlab/data/ai
 ExecStart=/usr/bin/python3 -m mcp run /opt/unetlab/data/ai
 Restart=always
@@ -209,10 +209,10 @@ fi
 if [ -f "$SERVICE_DEST" ]; then
     chmod 644 "$SERVICE_DEST"
     systemctl daemon-reload 2>/dev/null || true
-    systemctl enable pnetlab-mcp 2>/dev/null || true
-    systemctl restart pnetlab-mcp 2>/dev/null || true
+    systemctl enable azamlabs-mcp 2>/dev/null || true
+    systemctl restart azamlabs-mcp 2>/dev/null || true
 fi
 systemctl restart apache2 2>/dev/null || service apache2 restart 2>/dev/null || true
 
-echo "=== [SUCCESS] PNETLab Ollama Integration Configured Successfully! ==="
+echo "=== [SUCCESS] AzamLabs Ollama Integration Configured Successfully! ==="
 echo "Verify connectivity with: curl -m 3 http://${HOST_IP}:11434/v1/models"

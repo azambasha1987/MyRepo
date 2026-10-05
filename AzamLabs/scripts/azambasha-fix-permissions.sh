@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# PNETLab Permissions, Lock Cleanup & Node Recovery Utility
+# AzamLabs Permissions, Lock Cleanup & Node Recovery Utility
 # Fixes:
 # 1. File & folder permissions across /opt/unetlab (QEMU, IOL, Dynamips, Labs)
 # 2. Ensures /dev/kvm hardware virtualization access permissions
@@ -24,7 +24,7 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
 fi
 
 if [[ "${1:-}" =~ ^(--check|--status)$ ]]; then
-    echo "=== PNETLab Permissions & Environment Diagnostic Check ==="
+    echo "=== AzamLabs Permissions & Environment Diagnostic Check ==="
     echo -n "[*] Hardware Virtualization (/dev/kvm): "
     if [ -e /dev/kvm ]; then
         if [ -r /dev/kvm ] && [ -w /dev/kvm ]; then
@@ -54,17 +54,17 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 echo "============================================================"
-echo "      PNETLab Permissions Fix & Node Recovery Utility       "
+echo "      AzamLabs Permissions Fix & Node Recovery Utility       "
 echo "============================================================"
 
 # 1. Native unl_wrapper fixpermissions
-echo "[1/5] Executing native PNETLab permission wrapper..."
+echo "[1/5] Executing native AzamLabs permission wrapper..."
 if [ -x /opt/unetlab/wrappers/unl_wrapper ]; then
     /opt/unetlab/wrappers/unl_wrapper -a fixpermissions || true
 fi
 
 # 2. Comprehensive Directory Permissions
-echo "[2/5] Setting granular permissions on PNETLab directory tree..."
+echo "[2/5] Setting granular permissions on AzamLabs directory tree..."
 if [ -d /opt/unetlab ]; then
     # General ownership
     chown -R root:root /opt/unetlab/addons 2>/dev/null || true
@@ -175,4 +175,4 @@ for opt_cand in "/opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh" "/opt/a
 done
 
 echo ""
-echo "=== [SUCCESS] PNETLab permissions, optimizations, and node environment repaired! ==="
+echo "=== [SUCCESS] AzamLabs permissions, optimizations, and node environment repaired! ==="

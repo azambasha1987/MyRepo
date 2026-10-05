@@ -118,8 +118,8 @@ audit_docker_subsystem() {
         if docker info &>/dev/null; then
             docker_status="ACTIVE & RUNNING"
             img_count=$(docker images -q 2>/dev/null | wc -l || echo 0)
-            if docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | grep -Eq 'pnet-capture-web|rspnet/pnet-capture-web'; then
-                capture_web="PRELOADED (pnet-capture-web:1.0)"
+            if docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | grep -Eq 'azam-capture-web|rspnet/azam-capture-web'; then
+                capture_web="PRELOADED (azam-capture-web:1.0)"
             else
                 capture_web="AVAILABLE ON DEMAND"
             fi
@@ -147,8 +147,8 @@ audit_satellite_subsystem() {
     local broker_status="UNKNOWN"
     local ssh_jail_status="SECURE (Unjailed)"
 
-    local satd_file="/opt/unetlab/scripts/pnetlab-satd.py"
-    [ ! -f "$satd_file" ] && [ -f "${SCRIPT_DIR}/pnetlab-satd.py" ] && satd_file="${SCRIPT_DIR}/pnetlab-satd.py"
+    local satd_file="/opt/unetlab/scripts/azamlabs-satd.py"
+    [ ! -f "$satd_file" ] && [ -f "${SCRIPT_DIR}/azamlabs-satd.py" ] && satd_file="${SCRIPT_DIR}/azamlabs-satd.py"
 
     if [ -f "$satd_file" ]; then
         if grep -q "node_validate" "$satd_file" 2>/dev/null && grep -q "AzamLabs authoritative" "$satd_file" 2>/dev/null; then
@@ -160,8 +160,8 @@ audit_satellite_subsystem() {
         fi
     fi
 
-    local broker_file="/opt/unetlab/scripts/pnetlab-brokerd.py"
-    [ ! -f "$broker_file" ] && [ -f "${SCRIPT_DIR}/pnetlab-brokerd.py" ] && broker_file="${SCRIPT_DIR}/pnetlab-brokerd.py"
+    local broker_file="/opt/unetlab/scripts/azamlabs-brokerd.py"
+    [ ! -f "$broker_file" ] && [ -f "${SCRIPT_DIR}/azamlabs-brokerd.py" ] && broker_file="${SCRIPT_DIR}/azamlabs-brokerd.py"
 
     if [ -f "$broker_file" ]; then
         if grep -q "rxe-broker/v1" "$broker_file" 2>/dev/null && grep -q "TC_LOCK" "$broker_file" 2>/dev/null; then
@@ -185,7 +185,7 @@ audit_satellite_subsystem() {
 }
 
 audit_live_upstream_drift() {
-    log_info "Probing Codeberg upstream repository live (netkillui/Pnetlabv8)..." >&2
+    log_info "Probing Codeberg upstream repository live (netkillui/AzamLabsv8)..." >&2
     local py_bin
     py_bin="$(command -v python3 2>/dev/null || command -v python 2>/dev/null || echo python3)"
 
@@ -196,10 +196,10 @@ res = {"version": "UNKNOWN", "issues": 0, "pkg": "UNKNOWN", "sat_pkg": "UNKNOWN"
 ctx = ssl._create_unverified_context()
 headers = {"User-Agent": "Mozilla/5.0"}
 try:
-    req = urllib.request.Request("https://codeberg.org/api/v1/repos/netkillui/Pnetlabv8/raw/README.md", headers=headers)
+    req = urllib.request.Request("https://codeberg.org/api/v1/repos/netkillui/AzamLabsv8/raw/README.md", headers=headers)
     with urllib.request.urlopen(req, timeout=5, context=ctx) as r:
         txt = r.read().decode("utf-8", errors="ignore")
-        m = re.search(r"#\s*PNetLab\s*v8\s*([0-9.]+)", txt)
+        m = re.search(r"#\s*AzamLabs\s*v8\s*([0-9.]+)", txt)
         if m: res["version"] = "v" + m.group(1)
         p = re.search(r"serves\s*[\`\x60]([^\`\x60]+)[\`\x60]", txt)
         if p: res["pkg"] = p.group(1)
@@ -208,7 +208,7 @@ except Exception:
     pass
 
 try:
-    req = urllib.request.Request("https://codeberg.org/api/v1/repos/netkillui/Pnetlabv8/issues?state=all&limit=1", headers=headers)
+    req = urllib.request.Request("https://codeberg.org/api/v1/repos/netkillui/AzamLabsv8/issues?state=all&limit=1", headers=headers)
     with urllib.request.urlopen(req, timeout=5, context=ctx) as r:
         data = json.loads(r.read().decode("utf-8"))
         if data: res["issues"] = data[0].get("number", 0)
@@ -219,7 +219,7 @@ try:
     req = urllib.request.Request("https://codeberg.org/api/packages/netkillui/debian/dists/resolute/main/binary-amd64/Packages", headers=headers)
     with urllib.request.urlopen(req, timeout=5, context=ctx) as r:
         pkg_txt = r.read().decode("utf-8", errors="ignore")
-        m_sat = re.findall(r"Package:\s*pnetlab-satellite\s*Version:\s*([^\n\r]+)", pkg_txt)
+        m_sat = re.findall(r"Package:\s*azamlabs-satellite\s*Version:\s*([^\n\r]+)", pkg_txt)
         if m_sat:
             res["sat_pkg"] = m_sat[-1].strip()
 except Exception:

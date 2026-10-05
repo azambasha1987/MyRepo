@@ -74,6 +74,8 @@ static void __attribute__((constructor)) init_shim(void) {
     mark_memory_mergeable();
 }
 
+static unsigned long g_idle_ticks = 0;
+
 /*
  * Intercept select() - primary loop where IOL burns 100% CPU waiting on socket descriptors
  */
@@ -94,6 +96,11 @@ int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struc
             real_nanosleep(&ts, NULL);
         } else {
             sched_yield();
+        }
+
+        // Periodically rescan newly expanded heap/mmap memory for KSM deduplication
+        if (++g_idle_ticks % 2000 == 0) {
+            mark_memory_mergeable();
         }
     }
 

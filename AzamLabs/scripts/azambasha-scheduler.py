@@ -15,7 +15,7 @@ import time
 import argparse
 import subprocess
 
-CONFIG_FILE = "/etc/pnetlab/azambasha-scheduler.conf"
+CONFIG_FILE = "/etc/azamlabs/azambasha-scheduler.conf"
 STATE_FILE = "/var/run/azam-scheduler-state.json"
 
 
@@ -53,7 +53,7 @@ def load_config():
 def save_config(cfg):
     os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
     with open(CONFIG_FILE, "w") as f:
-        f.write("# Azam-Pnet Scheduler & Quota Configuration\n")
+        f.write("# AzamLabs Scheduler & Quota Configuration\n")
         for k, v in cfg.items():
             f.write(f"{k.upper()}={v}\n")
 
@@ -135,7 +135,7 @@ def install_systemd():
     """Install systemd service and timer for routine scheduling."""
     script_path = os.path.realpath(__file__)
     svc = f"""[Unit]
-Description=Azam-Pnet Idle Lab & Resource Quota Watchdog
+Description=AzamLabs Idle Lab & Resource Quota Watchdog
 After=network.target
 
 [Service]
@@ -145,7 +145,7 @@ StandardOutput=journal
 StandardError=journal
 """
     timer = """[Unit]
-Description=Run Azam-Pnet Scheduler Every 15 Minutes
+Description=Run AzamLabs Scheduler Every 15 Minutes
 
 [Timer]
 OnBootSec=5min
@@ -166,7 +166,7 @@ WantedBy=timers.target
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Azam-Pnet Scheduler & Resource Quota Watchdog")
+    parser = argparse.ArgumentParser(description="AzamLabs Scheduler & Resource Quota Watchdog")
     parser.add_argument("--status", action="store_true", help="Display current scheduler configuration and status")
     parser.add_argument("--check", action="store_true", help="Run scheduled check and audit")
     parser.add_argument("--stop-idle", action="store_true", help="Stop all currently idle labs immediately")
@@ -223,7 +223,7 @@ def main():
         print(json.dumps(res, indent=2))
     else:
         print("================================================================================")
-        print("         Azam-Pnet Scheduler & Resource Quota Policy Engine")
+        print("         AzamLabs Scheduler & Resource Quota Policy Engine")
         print("================================================================================")
         print(f"  • Active Virtual Nodes:       {res['active_nodes']}")
         print(f"  • Idle Auto-Shutdown:         {'ENABLED' if cfg.get('enable_idle_shutdown') else 'DISABLED'} ({cfg.get('idle_timeout_hours')} hrs)")

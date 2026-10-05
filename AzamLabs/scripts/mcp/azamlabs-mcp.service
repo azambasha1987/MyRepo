@@ -1,24 +1,24 @@
 [Unit]
-# PNetLab MCP server (AI Lab Builder tool surface). Shipped as a DATA file under
+# AzamLabs MCP server (AI Lab Builder tool surface). Shipped as a DATA file under
 # /opt/unetlab/scripts/mcp/ — NOT /lib/systemd/system — so the deb's
 # dh_installsystemd never auto-enables it. The broker (mcp_service verb) copies
 # this into /etc/systemd/system on the first dashboard "enable", so the service
 # is genuinely disabled by default and only runs once an admin turns it on.
-Description=PNetLab MCP server (AI Lab Builder tool surface)
+Description=AzamLabs MCP server (AI Lab Builder tool surface)
 After=network.target apache2.service
 Wants=apache2.service
 
 [Service]
 Type=simple
-# Runs as a dedicated UNPRIVILEGED system user (pnetlab-mcp), created by the
+# Runs as a dedicated UNPRIVILEGED system user (azamlabs-mcp), created by the
 # package postinst. The server only READS data/ai/config.json (token hashes +
 # bridge secret + LLM key) and data/ai/usage.json — both re-permed to
-# 0640 root:pnetlab-mcp so this user can read them while they stay unreadable to
+# 0640 root:azamlabs-mcp so this user can read them while they stay unreadable to
 # www-data and the world. It binds the unprivileged port from config.json
 # (default 127.0.0.1:5701), so neither root nor any capability is required.
-User=pnetlab-mcp
-Group=pnetlab-mcp
-ExecStart=/usr/bin/python3 /opt/unetlab/scripts/mcp/pnetlab-mcp.py --http
+User=azamlabs-mcp
+Group=azamlabs-mcp
+ExecStart=/usr/bin/python3 /opt/unetlab/scripts/mcp/azamlabs-mcp.py --http
 Restart=on-failure
 RestartSec=3
 

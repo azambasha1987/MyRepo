@@ -6,7 +6,7 @@
 # Purpose:
 # Provisions a dedicated, headless compute worker node (QEMU, IOL, Dynamips,
 # Docker, and High-Performance Bridging) to scale compute capacity for an
-# Azam – Basha / PNETLab Master server.
+# Azam – Basha / AzamLabs Master server.
 #
 # Usage:
 #   sudo bash install-satellite.sh [OPTIONS]
@@ -51,8 +51,8 @@ fi
 # Resolve script directory safely (handles curl|bash and local git clones)
 _RAW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "")"
 if [ -z "$_RAW_DIR" ] || [ "$_RAW_DIR" = "/dev" ] || [ ! -f "${_RAW_DIR}/install-satellite.sh" ]; then
-    echo "[*] Running via curl|bash — self-cloning repo to /opt/azam-pnet..."
-    MYREPO_DIR="/opt/azam-pnet"
+    echo "[*] Running via curl|bash — self-cloning repo to /opt/azamlabs..."
+    MYREPO_DIR="/opt/azamlabs"
     if [ ! -d "${MYREPO_DIR}/.git" ]; then
         git clone --depth 1 https://github.com/azambasha1987/MyRepo.git "$MYREPO_DIR" 2>/dev/null \
             || { echo "[ERROR] Failed to self-clone repo. Check internet/GitHub access."; exit 1; }
@@ -71,12 +71,12 @@ LOG_FILE="/var/log/azambasha-satellite-install.log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 # Maintain root installation symlinks
-mkdir -p /opt/pnetlab /opt/unetlab 2>/dev/null || true
+mkdir -p /opt/azamlabs /opt/unetlab 2>/dev/null || true
 if [ "$SCRIPT_DIR" != "/opt/azambasha" ]; then
     rm -rf /opt/azambasha 2>/dev/null || true
     ln -sfn "$SCRIPT_DIR" /opt/azambasha 2>/dev/null || true
 fi
-ln -sfn /opt/azambasha /opt/pnetlab 2>/dev/null || true
+ln -sfn /opt/azambasha /opt/azamlabs 2>/dev/null || true
 
 # Parse command-line flags
 FORCE=0
@@ -136,11 +136,11 @@ if [ "$ARCH" != "x86_64" ]; then
     exit 1
 fi
 
-if dpkg -s pnetlab >/dev/null 2>&1; then
+if dpkg -s azamlabs >/dev/null 2>&1; then
     if [ "$FORCE" = "1" ]; then
-        echo "       [WARNING] 'pnetlab' (Master) is installed — continuing in --force mode." >&2
+        echo "       [WARNING] 'azamlabs' (Master) is installed — continuing in --force mode." >&2
     else
-        echo "[ERROR] 'pnetlab' (Master) is already installed on this machine." >&2
+        echo "[ERROR] 'azamlabs' (Master) is already installed on this machine." >&2
         echo "A host must be Master OR Satellite, not both. Override: bash $0 --force" >&2
         exit 1
     fi
@@ -245,7 +245,7 @@ LINKEOF
 # Clean conflicting netplan configs
 mkdir -p /etc/netplan
 for f in /etc/netplan/*.yaml /etc/netplan/*.yml; do
-    [ -f "$f" ] && [ "$(basename "$f")" != "01-pnetlab-netcfg.yaml" ] && rm -f "$f" 2>/dev/null || true
+    [ -f "$f" ] && [ "$(basename "$f")" != "01-azamlabs-netcfg.yaml" ] && rm -f "$f" 2>/dev/null || true
 done
 rm -f /etc/systemd/network/*.network 2>/dev/null || true
 
@@ -259,7 +259,7 @@ if [ -n "$STATIC_IP" ]; then
     [[ "$IP_NET" != *"/"* ]] && IP_NET="${IP_NET}/24"
     GW_LINE=""
     [ -n "$STATIC_GW" ] && GW_LINE="      routes:\n        - to: default\n          via: ${STATIC_GW}"
-    cat << NETEOF > /etc/netplan/01-pnetlab-netcfg.yaml
+    cat << NETEOF > /etc/netplan/01-azamlabs-netcfg.yaml
 network:
   version: 2
   renderer: networkd
@@ -283,7 +283,7 @@ $(echo -e "$GW_LINE")
         forward-delay: 0
 NETEOF
 else
-    cat << NETEOF > /etc/netplan/01-pnetlab-netcfg.yaml
+    cat << NETEOF > /etc/netplan/01-azamlabs-netcfg.yaml
 network:
   version: 2
   renderer: networkd
@@ -304,7 +304,7 @@ $MAC_LINE
         forward-delay: 0
 NETEOF
 fi
-chmod 600 /etc/netplan/01-pnetlab-netcfg.yaml
+chmod 600 /etc/netplan/01-azamlabs-netcfg.yaml
 
 # Synchronize /etc/network/interfaces for unl_wrapper & broker compatibility
 mkdir -p /etc/network /etc/network/interfaces.d
@@ -397,7 +397,7 @@ KERNEL_MODULES=(
 [ -n "$KVM_MOD" ] && KERNEL_MODULES+=("$KVM_MOD")
 
 mkdir -p /etc/modules-load.d /etc/modprobe.d
-cat << 'EOF_MODS' > /etc/modules-load.d/pnetlab.conf
+cat << 'EOF_MODS' > /etc/modules-load.d/azamlabs.conf
 kvm
 vhost
 vhost_net
@@ -414,7 +414,7 @@ ip_tables
 iptable_filter
 iptable_nat
 EOF_MODS
-[ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/pnetlab.conf
+[ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/azamlabs.conf
 
 # Blacklist i2c_piix4 virtual controller to silence unhandled SMBus warning
 echo "blacklist i2c_piix4" > /etc/modprobe.d/blacklist-piix4.conf
@@ -449,7 +449,7 @@ done
 
 # Bridge netfilter bypass & IPv4 routing
 mkdir -p /etc/sysctl.d
-cat << 'EOF_SYS' > /etc/sysctl.d/99-pnetlab-bridge.conf
+cat << 'EOF_SYS' > /etc/sysctl.d/99-azamlabs-bridge.conf
 net.bridge.bridge-nf-call-iptables = 0
 net.bridge.bridge-nf-call-arptables = 0
 net.bridge.bridge-nf-call-ip6tables = 0
@@ -573,7 +573,7 @@ if ! command -v docker >/dev/null 2>&1; then
     }
 fi
 
-# Resolve pnetlab-docker's strict 'Pre-Depends: docker-engine | docker-ce'
+# Resolve azamlabs-docker's strict 'Pre-Depends: docker-engine | docker-ce'
 if ! dpkg -s docker-ce >/dev/null 2>&1 && ! dpkg -s docker-engine >/dev/null 2>&1; then
     echo "       -> Creating and installing docker-ce compatibility bridge..."
     DUMMY_DIR="/tmp/docker-ce-dummy"
@@ -586,8 +586,8 @@ Priority: optional
 Architecture: all
 Provides: docker-ce, docker-engine
 Depends: docker.io | docker-ce
-Maintainer: Azam-Basha <admin@azam-pnet.local>
-Description: Compatibility bridge providing docker-ce virtual package for pnetlab-docker
+Maintainer: Azam-Basha <admin@azamlabs.local>
+Description: Compatibility bridge providing docker-ce virtual package for azamlabs-docker
 EOF_DUMMY
     dpkg-deb --build "$DUMMY_DIR" /tmp/docker-ce-dummy.deb 2>/dev/null || true
     dpkg -i --force-depends /tmp/docker-ce-dummy.deb 2>/dev/null || true
@@ -625,18 +625,18 @@ echo "[7/10] Resolving and installing Satellite Debian packages..."
 
 POOL_SEARCH_DIRS=(
     "${SCRIPT_DIR}/debian/pool/resolute/main"
-    "${SCRIPT_DIR}/generic/6.8.74resolute1/pnetlab-debs"
+    "${SCRIPT_DIR}/generic/6.8.74resolute1/azamlabs-debs"
     "/opt/azambasha/debian/pool/resolute/main"
-    "/opt/pnetlab/debian/pool/resolute/main"
-    "/opt/azam-pnet/AzamLabs/debian/pool/resolute/main"
-    "/opt/unetlab/cluster-bundle/current/pnetlab-debs"
-    "/tmp/pnet-satellite-bundle/pnetlab-debs"
-    "/opt/azambasha/generic/6.8.74resolute1/pnetlab-debs"
+    "/opt/azamlabs/debian/pool/resolute/main"
+    "/opt/azamlabs/AzamLabs/debian/pool/resolute/main"
+    "/opt/unetlab/cluster-bundle/current/azamlabs-debs"
+    "/tmp/pnet-satellite-bundle/azamlabs-debs"
+    "/opt/azambasha/generic/6.8.74resolute1/azamlabs-debs"
 )
 
 DEB_POOL_DIR=""
 for d in "${POOL_SEARCH_DIRS[@]}"; do
-    if [ -d "$d" ] && compgen -G "${d}/pnetlab-satellite_*.deb" >/dev/null 2>&1; then
+    if [ -d "$d" ] && compgen -G "${d}/azamlabs-satellite_*.deb" >/dev/null 2>&1; then
         DEB_POOL_DIR="$d"
         break
     fi
@@ -646,11 +646,11 @@ if [ -n "$DEB_POOL_DIR" ]; then
     echo "       -> Located package pool at: $DEB_POOL_DIR"
     
     PKG_ORDER=(
-        "pnetlab-qemu"
-        "pnetlab-vpcs"
-        "pnetlab-bridge-dkms"
-        "pnetlab-docker"
-        "pnetlab-satellite"
+        "azamlabs-qemu"
+        "azamlabs-vpcs"
+        "azamlabs-bridge-dkms"
+        "azamlabs-docker"
+        "azamlabs-satellite"
     )
 
     for prefix in "${PKG_ORDER[@]}"; do
@@ -667,7 +667,7 @@ if [ -n "$DEB_POOL_DIR" ]; then
     # Unhold and re-hold to lock versions
     apt-get --fix-broken install -y 2>/dev/null || true
     dpkg --configure -a 2>/dev/null || true
-    apt-mark hold pnetlab-qemu pnetlab-vpcs pnetlab-bridge-dkms pnetlab-docker pnetlab-satellite 2>/dev/null || true
+    apt-mark hold azamlabs-qemu azamlabs-vpcs azamlabs-bridge-dkms azamlabs-docker azamlabs-satellite 2>/dev/null || true
 else
     echo "       [WARNING] Local debian package pool not found — skipping deb installs."
 fi
@@ -676,10 +676,10 @@ fi
 echo "[8/10] Deploying and guaranteeing all satellite systemd service units..."
 
 UNITS=(
-    "pnetlab-brokerd.service"
-    "pnetlab-docker-image-watcher.service"
-    "pnetlab-ksm.service"
-    "pnetlab-satd.service"
+    "azamlabs-brokerd.service"
+    "azamlabs-docker-image-watcher.service"
+    "azamlabs-ksm.service"
+    "azamlabs-satd.service"
 )
 
 # Ensure unit files exist in both /usr/lib/systemd/system and /etc/systemd/system
@@ -697,16 +697,16 @@ for u in "${UNITS[@]}"; do
     if [ "$found" -eq 0 ]; then
         echo "       [INFO] Creating standard definition for ${u}..."
         case "$u" in
-            pnetlab-brokerd.service)
+            azamlabs-brokerd.service)
                 cat << 'EOF_UBROKER' > "/etc/systemd/system/${u}"
 [Unit]
-Description=PNetLab privilege broker (allowlisted root verbs for the engine)
+Description=AzamLabs privilege broker (allowlisted root verbs for the engine)
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /opt/unetlab/scripts/pnetlab-brokerd.py
-RuntimeDirectory=pnetlab
+ExecStart=/usr/bin/python3 /opt/unetlab/scripts/azamlabs-brokerd.py
+RuntimeDirectory=azamlabs
 Restart=on-failure
 RestartSec=2
 
@@ -714,17 +714,17 @@ RestartSec=2
 WantedBy=multi-user.target
 EOF_UBROKER
                 ;;
-            pnetlab-satd.service)
+            azamlabs-satd.service)
                 cat << 'EOF_USATD' > "/etc/systemd/system/${u}"
 [Unit]
-Description=PNetLab satellite cluster agent (TLS, PSK-authenticated)
-After=network.target pnetlab-brokerd.service
-Wants=pnetlab-brokerd.service
-ConditionPathExists=/etc/pnetlab-satellite/satd.conf
+Description=AzamLabs satellite cluster agent (TLS, PSK-authenticated)
+After=network.target azamlabs-brokerd.service
+Wants=azamlabs-brokerd.service
+ConditionPathExists=/etc/azamlabs-satellite/satd.conf
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /opt/unetlab/scripts/pnetlab-satd.py
+ExecStart=/usr/bin/python3 /opt/unetlab/scripts/azamlabs-satd.py
 Restart=on-failure
 RestartSec=2
 
@@ -732,10 +732,10 @@ RestartSec=2
 WantedBy=multi-user.target
 EOF_USATD
                 ;;
-            pnetlab-docker-image-watcher.service)
+            azamlabs-docker-image-watcher.service)
                 cat << 'EOF_UWATCH' > "/etc/systemd/system/${u}"
 [Unit]
-Description=PNetLab docker image auto-loader (watches /opt/unetlab/addons/docker)
+Description=AzamLabs docker image auto-loader (watches /opt/unetlab/addons/docker)
 After=docker.service
 Wants=docker.service
 
@@ -749,18 +749,18 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF_UWATCH
                 ;;
-            pnetlab-ksm.service)
+            azamlabs-ksm.service)
                 cat << 'EOF_UKSM' > "/etc/systemd/system/${u}"
 [Unit]
-Description=PNetLab KSM advisor/merge tuning
+Description=AzamLabs KSM advisor/merge tuning
 After=local-fs.target
 ConditionPathIsDirectory=/sys/kernel/mm/ksm
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-EnvironmentFile=-/etc/default/pnetlab-ksm
-ExecStart=/opt/unetlab/scripts/pnetlab-ksm-tune.sh
+EnvironmentFile=-/etc/default/azamlabs-ksm
+ExecStart=/opt/unetlab/scripts/azamlabs-ksm-tune.sh
 
 [Install]
 WantedBy=multi-user.target
@@ -788,7 +788,7 @@ sed -i 's/.*PermitRootLogin .*/PermitRootLogin yes/' /etc/ssh/sshd_config 2>/dev
 systemctl restart ssh 2>/dev/null || true
 
 # Ensure systemd rate-limit immunity for all core daemon and worker services
-for svc_name in pnetlab-satd pnetlab-brokerd pnetlab-docker-image-watcher docker php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2; do
+for svc_name in azamlabs-satd azamlabs-brokerd azamlabs-docker-image-watcher docker php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2; do
     mkdir -p "/etc/systemd/system/${svc_name}.service.d" 2>/dev/null || true
     cat << 'EOF_OVERRIDE' > "/etc/systemd/system/${svc_name}.service.d/override.conf"
 [Unit]
@@ -804,23 +804,23 @@ done
 # Reload systemd and start daemons
 systemctl daemon-reload 2>/dev/null || true
 systemctl reset-failed 2>/dev/null || true
-systemctl enable --now pnetlab-brokerd.service 2>/dev/null || true
-systemctl enable --now pnetlab-docker-image-watcher.service 2>/dev/null || true
-systemctl enable --now pnetlab-ksm.service 2>/dev/null || true
-systemctl enable pnetlab-satd.service 2>/dev/null || true
+systemctl enable --now azamlabs-brokerd.service 2>/dev/null || true
+systemctl enable --now azamlabs-docker-image-watcher.service 2>/dev/null || true
+systemctl enable --now azamlabs-ksm.service 2>/dev/null || true
+systemctl enable azamlabs-satd.service 2>/dev/null || true
 
 # Headless satellite nodes do not run the web GUI and must not create persistent unused cloud bridges (pnet0-9, nat0)
-systemctl stop pnetlab-pnet-bridges.service 2>/dev/null || true
-systemctl disable pnetlab-pnet-bridges.service 2>/dev/null || true
-rm -f /etc/systemd/system/pnetlab-pnet-bridges.service 2>/dev/null || true
+systemctl stop azamlabs-pnet-bridges.service 2>/dev/null || true
+systemctl disable azamlabs-pnet-bridges.service 2>/dev/null || true
+rm -f /etc/systemd/system/azamlabs-pnet-bridges.service 2>/dev/null || true
 systemctl daemon-reload 2>/dev/null || true
-systemctl mask pnetlab-pnet-bridges.service 2>/dev/null || true
+systemctl mask azamlabs-pnet-bridges.service 2>/dev/null || true
 
 # Neutralize /opt/ovf/pnet-bridges.sh so it is a no-op on satellites
 if [ -d /opt/ovf ]; then
     cat << 'EOF_NOBRIDGES' > /opt/ovf/pnet-bridges.sh
 #!/bin/bash
-# Disabled on PNetLab satellite nodes — bridges are created dynamically by unl_wrapper as needed
+# Disabled on AzamLabs satellite nodes — bridges are created dynamically by unl_wrapper as needed
 exit 0
 EOF_NOBRIDGES
     chmod 0755 /opt/ovf/pnet-bridges.sh 2>/dev/null || true
@@ -839,9 +839,9 @@ fi
 
 # Hardware virtualization and permissions
 mkdir -p /opt/unetlab/addons/{qemu,iol/bin,dynamips,docker}
-mkdir -p /opt/unetlab/labs /opt/unetlab/data/Logs /opt/unetlab/tmp /etc/pnetlab-satellite /etc/pnetlab /etc/tmpfiles.d
+mkdir -p /opt/unetlab/labs /opt/unetlab/data/Logs /opt/unetlab/tmp /etc/azamlabs-satellite /etc/azamlabs /etc/tmpfiles.d
 ln -sfn /opt/unetlab/labs /root/labs 2>/dev/null || true
-chmod 700 /etc/pnetlab-satellite 2>/dev/null || true
+chmod 700 /etc/azamlabs-satellite 2>/dev/null || true
 groupadd -g 32768 -f unl 2>/dev/null || true
 chown -R root:unl /opt/unetlab/tmp 2>/dev/null || true
 chmod 2777 /opt/unetlab/tmp 2>/dev/null || true
@@ -852,7 +852,7 @@ chmod 0644 /opt/unetlab/addons/iol/bin/iourc* 2>/dev/null || true
 chmod 4755 /opt/unetlab/wrappers/iol_wrapper 2>/dev/null || true
 chmod 777 /tmp/netio* 2>/dev/null || true
 rm -f /tmp/netio*/*.lck 2>/dev/null || true
-cat > /etc/tmpfiles.d/pnetlab-iol.conf << 'EOF'
+cat > /etc/tmpfiles.d/azamlabs-iol.conf << 'EOF'
 d /tmp/netio* 1777 root unl -
 EOF
 
@@ -909,7 +909,7 @@ elif [ -f "/opt/unetlab/scripts/azambasha-fix-web-credentials.sh" ]; then
 fi
 
 # ── Dynamic Console Banner & Live IP Hook for Satellite Worker ───────────────
-echo "satellite" > /etc/pnetlab-role
+echo "satellite" > /etc/azamlabs-role
 BANNER_SCRIPT="/usr/local/bin/azambasha-update-banner.sh"
 if [ -f "${SCRIPT_DIR}/scripts/azambasha-update-banner.sh" ]; then
     cp -f "${SCRIPT_DIR}/scripts/azambasha-update-banner.sh" "$BANNER_SCRIPT"
@@ -962,15 +962,15 @@ cp -rf "${SCRIPT_DIR}"/scripts/. /opt/unetlab/scripts/ 2>/dev/null || true
 cp -f "${SCRIPT_DIR}"/scripts/apply-heavy-node-optimizer.sh /usr/local/bin/ 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/azambasha-credentials 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/azam-credentials 2>/dev/null || true
-ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/pnet-credentials 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-fix-web-credentials.sh /usr/local/bin/azam-credentials 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join 2>/dev/null || true
-ln -sfn /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/pnet-satellite-join 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-optimizer 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-doctor 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-image-doctor 2>/dev/null || true
 ln -sfn /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/azam-bootstorm 2>/dev/null || true
-ln -sfn /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/pnet-bootstorm 2>/dev/null || true
+ln -sfn /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/azam-bootstorm 2>/dev/null || true
 chmod +x /opt/unetlab/scripts/*.sh /opt/unetlab/scripts/*.py /usr/local/bin/apply-heavy-node-optimizer.sh 2>/dev/null || true
 
 if [ -d "${SCRIPT_DIR}/html/templates" ]; then
@@ -1008,22 +1008,22 @@ fi
 if [ -f "${SCRIPT_DIR}/VERSION" ]; then
     mkdir -p /opt/unetlab 2>/dev/null || true
     cp -f "${SCRIPT_DIR}/VERSION" /opt/unetlab/VERSION 2>/dev/null || true
-    cp -f "${SCRIPT_DIR}/VERSION" /etc/pnetlab-version 2>/dev/null || true
+    cp -f "${SCRIPT_DIR}/VERSION" /etc/azamlabs-version 2>/dev/null || true
 fi
 
 # Align daemon versions with authoritative AzamLabs platform version
 python3 - << 'PY_DAEMON_ALIGN' 2>/dev/null || true
 import re, os
 
-satd_file = "/opt/unetlab/scripts/pnetlab-satd.py"
+satd_file = "/opt/unetlab/scripts/azamlabs-satd.py"
 if os.path.isfile(satd_file):
     try:
         with open(satd_file, "r", encoding="utf-8") as f:
             code = f.read()
-        target_pattern = r'def pkg_version\(\):\s+for pkg in \("pnetlab-satellite", "pnetlab"\):'
+        target_pattern = r'def pkg_version\(\):\s+for pkg in \("azamlabs-satellite", "azamlabs"\):'
         replacement = '''def pkg_version():
     # AzamLabs authoritative version resolution
-    for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/pnetlab-version"):
+    for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/azamlabs-version"):
         try:
             if os.path.isfile(v_path):
                 with open(v_path, "r", encoding="utf-8") as f:
@@ -1035,17 +1035,17 @@ if os.path.isfile(satd_file):
                             return line.split("=", 1)[1].strip()
         except Exception:
             pass
-    for pkg in ("pnetlab-satellite", "pnetlab"):'''
+    for pkg in ("azamlabs-satellite", "azamlabs"):'''
         if "AzamLabs authoritative version resolution" not in code:
             new_code = re.sub(target_pattern, replacement, code, count=1)
             if new_code != code:
                 with open(satd_file, "w", encoding="utf-8") as f:
                     f.write(new_code)
-                print("Patched pnetlab-satd.py to report authoritative AzamLabs platform version.")
+                print("Patched azamlabs-satd.py to report authoritative AzamLabs platform version.")
     except Exception as e:
-        print(f"pnetlab-satd patch note: {e}")
+        print(f"azamlabs-satd patch note: {e}")
 
-broker_file = "/opt/unetlab/scripts/pnetlab-brokerd.py"
+broker_file = "/opt/unetlab/scripts/azamlabs-brokerd.py"
 if os.path.isfile(broker_file):
     try:
         with open(broker_file, "r", encoding="utf-8") as f:
@@ -1055,7 +1055,7 @@ if os.path.isfile(broker_file):
     global _MASTER_VERSION
     if _MASTER_VERSION is None:
         # AzamLabs authoritative version resolution
-        for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/pnetlab-version"):
+        for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/azamlabs-version"):
             try:
                 if os.path.isfile(v_path):
                     with open(v_path, "r", encoding="utf-8") as f:
@@ -1074,13 +1074,13 @@ if os.path.isfile(broker_file):
             if new_code != code:
                 with open(broker_file, "w", encoding="utf-8") as f:
                     f.write(new_code)
-                print("Patched pnetlab-brokerd.py to report authoritative AzamLabs platform version.")
+                print("Patched azamlabs-brokerd.py to report authoritative AzamLabs platform version.")
     except Exception as e:
-        print(f"pnetlab-brokerd patch note: {e}")
+        print(f"azamlabs-brokerd patch note: {e}")
 PY_DAEMON_ALIGN
-systemctl restart pnetlab-brokerd 2>/dev/null || true
-if [ -f /etc/pnetlab-satellite/satd.conf ] || [ -f /opt/unetlab/scripts/pnetlab-satd.py ]; then
-    systemctl restart pnetlab-satd 2>/dev/null || true
+systemctl restart azamlabs-brokerd 2>/dev/null || true
+if [ -f /etc/azamlabs-satellite/satd.conf ] || [ -f /opt/unetlab/scripts/azamlabs-satd.py ]; then
+    systemctl restart azamlabs-satd 2>/dev/null || true
 fi
 
 # Synchronize QEMU templates and AzamLabs optimization suite
@@ -1117,13 +1117,13 @@ for s_dir in "/opt/unetlab/scripts" "${SCRIPT_DIR}/scripts" "/opt/azambasha/scri
         ln -sfn "${s_dir}/azambasha-fleet-status.sh" /usr/local/bin/azam-fleet 2>/dev/null || true
         ln -sfn "${s_dir}/azambasha-cluster-capacity.py" /usr/local/bin/azam-capacity 2>/dev/null || true
         ln -sfn "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/azam-satellite-join 2>/dev/null || true
-        ln -sfn "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/pnet-satellite-join 2>/dev/null || true
+        ln -sfn "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/azam-satellite-join 2>/dev/null || true
         ln -sfn "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-optimizer 2>/dev/null || true
         ln -sfn "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
         ln -sfn "${s_dir}/azambasha-dry-test.py" /usr/local/bin/azam-dry-test 2>/dev/null || true
         ln -sfn "${s_dir}/azambasha-health-check.sh" /usr/local/bin/azam-health 2>/dev/null || true
         ln -sfn "${s_dir}/azambasha-bootstorm.py" /usr/local/bin/azam-bootstorm 2>/dev/null || true
-        ln -sfn "${s_dir}/azambasha-bootstorm.py" /usr/local/bin/pnet-bootstorm 2>/dev/null || true
+        ln -sfn "${s_dir}/azambasha-bootstorm.py" /usr/local/bin/azam-bootstorm 2>/dev/null || true
         break
     fi
 done
@@ -1146,9 +1146,9 @@ echo "============================================================"
 echo " [SUCCESS] Azam – Basha Cluster Satellite Installed!        "
 echo "============================================================"
 echo "Satellite Status:"
-echo " • Broker Daemon   : $(systemctl is-active pnetlab-brokerd 2>/dev/null || echo 'inactive')"
+echo " • Broker Daemon   : $(systemctl is-active azamlabs-brokerd 2>/dev/null || echo 'inactive')"
 echo " • Docker Engine   : $(systemctl is-active docker 2>/dev/null || echo 'inactive')"
-echo " • Satellite Daemon: $(systemctl is-active pnetlab-satd 2>/dev/null || echo 'ready (awaits join)')"
+echo " • Satellite Daemon: $(systemctl is-active azamlabs-satd 2>/dev/null || echo 'ready (awaits join)')"
 echo " • KVM Acceleration: $([ -c /dev/kvm ] && echo 'Enabled (/dev/kvm)' || echo 'Emulation only')"
 echo " • Network Bridge  : $(ip addr show pnet0 2>/dev/null | grep -o 'inet [0-9.]*' | head -n1 || echo 'pnet0 active')"
 echo ""

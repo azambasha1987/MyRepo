@@ -636,7 +636,7 @@ KSM_EXEC_SRC="$SCRIPT_DIR/ksm_merge_exec.c"
 if [ "$DRY_RUN" -eq 1 ]; then
     echo "  [DRY-RUN] Would compile /opt/unetlab/wrappers/ksm_merge_exec from $KSM_EXEC_SRC"
 elif [ -f "$KSM_EXEC_SRC" ] && command -v gcc >/dev/null 2>&1; then
-    gcc -O2 -Wall "$KSM_EXEC_SRC" -o /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
+    gcc -O3 -Wall "$KSM_EXEC_SRC" -o /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
     chmod 755 /opt/unetlab/wrappers/ksm_merge_exec 2>/dev/null || true
     echo "  [✔] Compiled /opt/unetlab/wrappers/ksm_merge_exec"
 fi
@@ -649,9 +649,9 @@ SHIM_SRC="$SCRIPT_DIR/azam-iol-shim.c"
 if [ "$DRY_RUN" -eq 1 ]; then
     echo "  [DRY-RUN] Would compile multiarch azam-iol-shim (64-bit and 32-bit)"
 elif [ -f "$SHIM_SRC" ] && command -v gcc >/dev/null 2>&1; then
-    gcc -O2 -shared -fPIC -Wall -Wextra "$SHIM_SRC" -o /opt/unetlab/wrappers/azam-iol-shim64.so -ldl 2>/dev/null || true
+    gcc -O3 -shared -fPIC -Wall -Wextra "$SHIM_SRC" -o /opt/unetlab/wrappers/azam-iol-shim64.so -ldl 2>/dev/null || true
     cp -f /opt/unetlab/wrappers/azam-iol-shim64.so /opt/unetlab/wrappers/azam-iol-shim.so 2>/dev/null || true
-    gcc -m32 -O2 -shared -fPIC -Wall -Wextra "$SHIM_SRC" -o /opt/unetlab/wrappers/azam-iol-shim32.so -ldl 2>/dev/null || true
+    gcc -m32 -O3 -shared -fPIC -Wall -Wextra "$SHIM_SRC" -o /opt/unetlab/wrappers/azam-iol-shim32.so -ldl 2>/dev/null || true
     chmod 755 /opt/unetlab/wrappers/azam-iol-shim*.so 2>/dev/null || true
     echo "  [✔] Compiled azam-iol-shim.so (64-bit and 32-bit multiarch)"
 fi
@@ -696,7 +696,7 @@ EOF_LAUNCHER
     for b_cand in /opt/unetlab/scripts/azambasha-bootstorm.py /opt/azambasha/scripts/azambasha-bootstorm.py "$SCRIPT_DIR/azambasha-bootstorm.py"; do
         if [ -f "$b_cand" ]; then
             ln -sf "$b_cand" /usr/local/bin/azam-bootstorm 2>/dev/null || true
-            ln -sf "$b_cand" /usr/local/bin/pnet-bootstorm 2>/dev/null || true
+            ln -sf "$b_cand" /usr/local/bin/azam-bootstorm 2>/dev/null || true
             chmod +x "$b_cand" 2>/dev/null || true
             break
         fi
@@ -801,9 +801,9 @@ sync_files = [
 satellites = []
 try:
     import pymysql
-    for db_pass in ['pnetlab', 'pnetlab_password', '']:
+    for db_pass in ['azamlabs', 'azam', '']:
         try:
-            conn = pymysql.connect(host='localhost', user='pnetlab', password=db_pass, database='pnetlab_db')
+            conn = pymysql.connect(host='localhost', user='azamlabs', password=db_pass, database='azamlabs_db')
             with conn.cursor() as cur:
                 try:
                     cur.execute("SELECT host_ip FROM cluster_hosts WHERE host_ip != '127.0.0.1'")

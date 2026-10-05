@@ -59,7 +59,7 @@ def generate_mermaid(topo):
 
 def generate_drawio_xml(topo):
     """Generate valid Draw.io mxGraphModel XML."""
-    root = ET.Element("mxfile", host="Electron", agent="Azam-Pnet Topology Exporter", type="device")
+    root = ET.Element("mxfile", host="Electron", agent="AzamLabs Topology Exporter", type="device")
     diagram = ET.SubElement(root, "diagram", id="topo-1", name=topo["lab_name"])
     model = ET.SubElement(diagram, "mxGraphModel", dx="1000", dy="700", grid="1", gridSize="10", guides="1", tooltips="1", connect="1", arrows="1")
     root_cell = ET.SubElement(model, "root")
@@ -106,7 +106,7 @@ def generate_cabling_matrix(topo):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Azam-Pnet Automatic Topology Documenter")
+    parser = argparse.ArgumentParser(description="AzamLabs Automatic Topology Documenter")
     parser.add_argument("--lab", type=str, default="default_lab", help="Target Lab ID or name")
     parser.add_argument("--format", type=str, choices=["mermaid", "drawio", "matrix", "all"], default="all", help="Export format")
     parser.add_argument("--json", action="store_true", help="JSON output format")
@@ -140,7 +140,7 @@ def main():
         print(json.dumps(res, indent=2))
     else:
         print("================================================================================")
-        print(f"         Azam-Pnet Topology Documentation: {topo['lab_name']}")
+        print(f"         AzamLabs Topology Documentation: {topo['lab_name']}")
         print("================================================================================")
         print("\n--- [1] Cable Patch & IP Allocation Matrix ---")
         print(generate_cabling_matrix(topo))

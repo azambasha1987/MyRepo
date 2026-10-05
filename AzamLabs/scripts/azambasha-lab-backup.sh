@@ -5,7 +5,7 @@
 # Backs up and restores:
 #   1. All .unl topology files (/opt/unetlab/labs/)
 #   2. All saved node startup & running configs (/opt/unetlab/data/Labs/)
-#   3. MySQL pnetlab_db lab hierarchy, folders, and node metadata
+#   3. MySQL azamlabs_db lab hierarchy, folders, and node metadata
 # ==============================================================================
 set -euo pipefail
 
@@ -76,7 +76,7 @@ mkdir -p "$BACKUP_DIR"
 
 if [ "$MODE" = "list" ]; then
     echo "================================================================================"
-    echo "                   Azam-Pnet Existing Lab Backup Bundles                        "
+    echo "                   AzamLabs Existing Lab Backup Bundles                        "
     echo "================================================================================"
     if [ ! -d "$BACKUP_DIR" ] || [ -z "$(ls -A "$BACKUP_DIR" 2>/dev/null)" ]; then
         echo "  (No backups found in $BACKUP_DIR)"
@@ -95,7 +95,7 @@ if [ "$MODE" = "restore" ]; then
     fi
 
     echo "================================================================================"
-    echo "          Azam-Pnet Lab Restore Engine - Processing Archive                     "
+    echo "          AzamLabs Lab Restore Engine - Processing Archive                     "
     echo "================================================================================"
     echo "[*] Target Archive: $RESTORE_FILE"
 
@@ -120,9 +120,9 @@ if [ "$MODE" = "restore" ]; then
     fi
 
     # 3. Restore Database metadata
-    if [ -f "$TEMP_EXTRACT/pnetlab_db.sql" ] && command -v mysql &>/dev/null; then
+    if [ -f "$TEMP_EXTRACT/azamlabs_db.sql" ] && command -v mysql &>/dev/null; then
         echo "[*] Restoring database lab hierarchy and tables..."
-        mysql -u root -pazam pnetlab_db < "$TEMP_EXTRACT/pnetlab_db.sql" 2>/dev/null || true
+        mysql -u root -pazam azamlabs_db < "$TEMP_EXTRACT/azamlabs_db.sql" 2>/dev/null || true
     fi
 
     # 4. Repair Permissions
@@ -147,7 +147,7 @@ TEMP_STAGING=$(mktemp -d /tmp/azam-backup.XXXXXX)
 trap 'rm -rf "$TEMP_STAGING"' EXIT
 
 echo "================================================================================"
-echo "          Azam-Pnet Lab Topology & Config Auto-Backup Engine                     "
+echo "          AzamLabs Lab Topology & Config Auto-Backup Engine                     "
 echo "================================================================================"
 echo "[*] Starting backup snapshot at $(date)..."
 
@@ -167,8 +167,8 @@ fi
 
 # 3. Stage Database Dump
 if command -v mysqldump &>/dev/null; then
-    echo "[*] Exporting pnetlab_db database structure and records..."
-    mysqldump -u root -pazam --single-transaction --quick pnetlab_db > "$TEMP_STAGING/pnetlab_db.sql" 2>/dev/null || true
+    echo "[*] Exporting azamlabs_db database structure and records..."
+    mysqldump -u root -pazam --single-transaction --quick azamlabs_db > "$TEMP_STAGING/azamlabs_db.sql" 2>/dev/null || true
 fi
 
 # 4. Create Compressed Tarball

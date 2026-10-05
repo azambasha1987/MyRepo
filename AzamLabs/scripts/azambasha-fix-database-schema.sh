@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# PNetLab Database Schema Repair & Topology Workbench Fix
+# AzamLabs Database Schema Repair & Topology Workbench Fix
 # Resolves: 
 # 1. Missing database tables (wiresharks, lab_sessions, node_sessions, etc.)
 # 2. Lab open routing (/legacy/topology -> /themes/default/index.html)
@@ -8,7 +8,7 @@
 set -euo pipefail
 
 echo "============================================================"
-echo "    Applying PNetLab Database Schema & Workbench Repair     "
+echo "    Applying AzamLabs Database Schema & Workbench Repair     "
 echo "============================================================"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -20,22 +20,22 @@ systemctl start mysql 2>/dev/null || systemctl start mariadb 2>/dev/null || true
 # 1. Create databases and grant permissions
 INIT_SQL=$(mktemp --suffix=_init.sql)
 cat > "$INIT_SQL" << 'EOF'
-CREATE DATABASE IF NOT EXISTS pnetlab_db CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+CREATE DATABASE IF NOT EXISTS azamlabs_db CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 CREATE DATABASE IF NOT EXISTS guacdb CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 
-CREATE USER IF NOT EXISTS 'pnetlab'@'localhost' IDENTIFIED BY 'pnetlab';
-CREATE USER IF NOT EXISTS 'pnetlab'@'127.0.0.1' IDENTIFIED BY 'pnetlab';
-CREATE USER IF NOT EXISTS 'pnetlab'@'%' IDENTIFIED BY 'pnetlab';
-CREATE USER IF NOT EXISTS 'guacuser'@'localhost' IDENTIFIED BY 'pnetlab';
+CREATE USER IF NOT EXISTS 'azamlabs'@'localhost' IDENTIFIED BY 'azamlabs';
+CREATE USER IF NOT EXISTS 'azamlabs'@'127.0.0.1' IDENTIFIED BY 'azamlabs';
+CREATE USER IF NOT EXISTS 'azamlabs'@'%' IDENTIFIED BY 'azamlabs';
+CREATE USER IF NOT EXISTS 'guacuser'@'localhost' IDENTIFIED BY 'azamlabs';
 
-ALTER USER 'pnetlab'@'localhost' IDENTIFIED BY 'pnetlab';
-ALTER USER 'pnetlab'@'127.0.0.1' IDENTIFIED BY 'pnetlab';
-ALTER USER 'pnetlab'@'%' IDENTIFIED BY 'pnetlab';
-ALTER USER 'guacuser'@'localhost' IDENTIFIED BY 'pnetlab';
+ALTER USER 'azamlabs'@'localhost' IDENTIFIED BY 'azamlabs';
+ALTER USER 'azamlabs'@'127.0.0.1' IDENTIFIED BY 'azamlabs';
+ALTER USER 'azamlabs'@'%' IDENTIFIED BY 'azamlabs';
+ALTER USER 'guacuser'@'localhost' IDENTIFIED BY 'azamlabs';
 
-GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'localhost';
-GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'127.0.0.1';
-GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'%';
+GRANT ALL PRIVILEGES ON azamlabs_db.* TO 'azamlabs'@'localhost';
+GRANT ALL PRIVILEGES ON azamlabs_db.* TO 'azamlabs'@'127.0.0.1';
+GRANT ALL PRIVILEGES ON azamlabs_db.* TO 'azamlabs'@'%';
 GRANT ALL PRIVILEGES ON guacdb.* TO 'guacuser'@'localhost';
 FLUSH PRIVILEGES;
 EOF
@@ -46,16 +46,16 @@ rm -f "$INIT_SQL"
 # 2. Locate and import full schema files if present
 for path in \
     "${PARENT_DIR}/schema/azambasha_db.sql" \
-    "${PARENT_DIR}/schema/pnetlab_db.sql" \
+    "${PARENT_DIR}/schema/azamlabs_db.sql" \
     "${SCRIPT_DIR}/schema/azambasha_db.sql" \
-    "${SCRIPT_DIR}/schema/pnetlab_db.sql" \
+    "${SCRIPT_DIR}/schema/azamlabs_db.sql" \
     "/opt/azambasha/schema/azambasha_db.sql" \
-    "/opt/azambasha/schema/pnetlab_db.sql" \
+    "/opt/azambasha/schema/azamlabs_db.sql" \
     "/opt/unetlab/schema/azambasha_db.sql" \
-    "/opt/unetlab/schema/pnetlab_db.sql"; do
+    "/opt/unetlab/schema/azamlabs_db.sql"; do
     if [ -f "$path" ]; then
         echo "[1/4] Importing Azam Basha schema from ${path}..."
-        mysql -u pnetlab -ppnetlab pnetlab_db < "$path" 2>/dev/null || mysql pnetlab_db < "$path" 2>/dev/null || true
+        mysql -u azamlabs -pazam azamlabs_db < "$path" 2>/dev/null || mysql azamlabs_db < "$path" 2>/dev/null || true
         break
     fi
 done
@@ -67,16 +67,16 @@ for path in \
     "/opt/unetlab/schema/guacdb.sql"; do
     if [ -f "$path" ]; then
         echo "[2/4] Importing Guacamole schema from ${path}..."
-        mysql -u guacuser -ppnetlab guacdb < "$path" 2>/dev/null || mysql guacdb < "$path" 2>/dev/null || true
+        mysql -u guacuser -pazam guacdb < "$path" 2>/dev/null || mysql guacdb < "$path" 2>/dev/null || true
         break
     fi
 done
 
-# 3. Apply authoritative definitions for all core PNetLab tables to guarantee schema integrity
-echo "[3/4] Ensuring all 16 core PNetLab database tables exist..."
+# 3. Apply authoritative definitions for all core AzamLabs tables to guarantee schema integrity
+echo "[3/4] Ensuring all 16 core AzamLabs database tables exist..."
 FULL_SQL=$(mktemp --suffix=_full_schema.sql)
 cat > "$FULL_SQL" << 'EOF'
-USE pnetlab_db;
+USE azamlabs_db;
 
 CREATE TABLE IF NOT EXISTS `control` (
   `control_name` varchar(150) NOT NULL,
@@ -336,7 +336,7 @@ INSERT INTO users (
 );
 EOF
 
-mysql -u pnetlab -ppnetlab pnetlab_db < "$FULL_SQL" 2>/dev/null || mysql pnetlab_db < "$FULL_SQL" 2>/dev/null || true
+mysql -u azamlabs -pazam azamlabs_db < "$FULL_SQL" 2>/dev/null || mysql azamlabs_db < "$FULL_SQL" 2>/dev/null || true
 rm -f "$FULL_SQL"
 
 # 4. Fix Apache .htaccess and /legacy/ Topology Workbench Routing
@@ -363,7 +363,7 @@ chown www-data:www-data /opt/unetlab/html/.htaccess 2>/dev/null || true
 chmod 644 /opt/unetlab/html/.htaccess 2>/dev/null || true
 
 # Add Alias /legacy to Apache virtualhosts if not already present
-for conf in /etc/apache2/sites-available/pnetlab.conf /etc/apache2/sites-available/pnetlab-ssl.conf; do
+for conf in /etc/apache2/sites-available/azamlabs.conf /etc/apache2/sites-available/azamlabs-ssl.conf; do
     if [ -f "$conf" ] && ! grep -q "Alias /legacy" "$conf"; then
         sed -i '/DocumentRoot/a \    Alias /legacy /opt/unetlab/html/themes/default\n    Alias /themes /opt/unetlab/html/themes' "$conf" 2>/dev/null || true
     fi

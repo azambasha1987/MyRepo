@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# PNETLab Lab Export & APT Sources Fix Script
+# AzamLabs Lab Export & APT Sources Fix Script
 # Fixes:
 # 1. Conflicting repository list in /etc/apt/sources.list.d/
 # 2. Missing zip / unzip utilities required for lab import/export
@@ -18,9 +18,9 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
 fi
 
 if [[ "${1:-}" =~ ^(--check|--status)$ ]]; then
-    echo "=== PNETLab Export & APT Diagnostic Check ==="
+    echo "=== AzamLabs Export & APT Diagnostic Check ==="
     echo -n "[*] Conflicting codeberg.list: "
-    if [ -f /etc/apt/sources.list.d/pnetlab-netinstall-codeberg.list ]; then
+    if [ -f /etc/apt/sources.list.d/azamlabs-netinstall-codeberg.list ]; then
         echo "PRESENT (Needs removal)"
     else
         echo "CLEAN (None found)"
@@ -49,11 +49,11 @@ fi
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
-echo "=== Applying PNETLab Export & APT Sources Fix ==="
+echo "=== Applying AzamLabs Export & APT Sources Fix ==="
 
 # 1. Remove duplicate/conflicting installer repo entry
 echo "[1/5] Removing duplicate/conflicting installer repository entry..."
-rm -f /etc/apt/sources.list.d/pnetlab-netinstall-codeberg.list
+rm -f /etc/apt/sources.list.d/azamlabs-netinstall-codeberg.list
 
 # 2. Update APT and install zip / unzip if missing
 echo "[2/5] Ensuring zip & unzip utilities are present..."
@@ -127,18 +127,18 @@ if [ -f "$LABS_JS" ]; then
     echo "  [✔] Export dialog natural sort patched in labs.js"
 fi
 
-# 6. Issue #31: Fix pnetlab-update Manifest Semantics Failed on 6.8.79+
-echo "[6/7] Patching /usr/sbin/pnetlab-update manifest semantics (Issue #31 Remediation)..."
-UPDATER_BIN="/usr/sbin/pnetlab-update"
+# 6. Issue #31: Fix azamlabs-update Manifest Semantics Failed on 6.8.79+
+echo "[6/7] Patching /usr/sbin/azamlabs-update manifest semantics (Issue #31 Remediation)..."
+UPDATER_BIN="/usr/sbin/azamlabs-update"
 if [ -f "$UPDATER_BIN" ]; then
     cp -p "$UPDATER_BIN" "${UPDATER_BIN}.bak.${TIMESTAMP}" 2>/dev/null || true
     # Change strict set equality check to subset check so added upstream manifest keys don't break updates
     sed -i 's/set(manifest) != required/not required.issubset(set(manifest))/' "$UPDATER_BIN" 2>/dev/null || true
-    echo "  [✔] Manifest semantics patched in /usr/sbin/pnetlab-update"
+    echo "  [✔] Manifest semantics patched in /usr/sbin/azamlabs-update"
 fi
 
 # Issue #7 & #18: Configure APT to allow held package changes during updates and simulations
-cat << 'EOF' > /etc/apt/apt.conf.d/99pnetlab-held
+cat << 'EOF' > /etc/apt/apt.conf.d/99azamlabs-held
 DPkg::options { "--force-confdef"; "--force-confold"; };
 APT::Get::allow-change-held-packages "true";
 EOF

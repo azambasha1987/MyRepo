@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# PNetLab Modern Netplan & Bridge Datapath Engine for Ubuntu 26+ (Resolute)
+# AzamLabs Modern Netplan & Bridge Datapath Engine for Ubuntu 26+ (Resolute)
 # Ensures dynamic interface discovery, dual Netplan/ifupdown synchronization,
 # and kernel-native sysfs packet forwarding (group_fwd_mask 65535).
 # ==============================================================================
@@ -81,7 +81,7 @@ LINKEOF
 
 # Purge any legacy/installer/cloud-init netplan YAMLs
 for f in /etc/netplan/*.yaml /etc/netplan/*.yml; do
-    [ -f "$f" ] && [ "$(basename "$f")" != "01-pnetlab-netcfg.yaml" ] && rm -f "$f" 2>/dev/null || true
+    [ -f "$f" ] && [ "$(basename "$f")" != "01-azamlabs-netcfg.yaml" ] && rm -f "$f" 2>/dev/null || true
 done
 rm -f /etc/systemd/network/*.network 2>/dev/null || true
 
@@ -100,7 +100,7 @@ elif grep -m1 -E -qw 'svm' /proc/cpuinfo 2>/dev/null; then
 fi
 
 mkdir -p /etc/modules-load.d /etc/modprobe.d
-cat > /etc/modules-load.d/pnetlab.conf << 'EOF'
+cat > /etc/modules-load.d/azamlabs.conf << 'EOF'
 bridge
 stp
 llc
@@ -112,7 +112,7 @@ veth
 sch_fq_codel
 kvm
 EOF
-[ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/pnetlab.conf
+[ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/azamlabs.conf
 
 # Blacklist i2c_piix4 virtual controller to silence unhandled SMBus warning
 echo "blacklist i2c_piix4" > /etc/modprobe.d/blacklist-piix4.conf
@@ -124,7 +124,7 @@ modprobe br_netfilter 2>/dev/null || true
 modprobe kvm 2>/dev/null || true
 [ -n "$KVM_MOD" ] && modprobe "$KVM_MOD" 2>/dev/null || true
 
-cat > /etc/sysctl.d/99-pnetlab-bridge.conf << 'EOF'
+cat > /etc/sysctl.d/99-azamlabs-bridge.conf << 'EOF'
 net.bridge.bridge-nf-call-iptables = 0
 net.bridge.bridge-nf-call-arptables = 0
 net.bridge.bridge-nf-call-ip6tables = 0
@@ -144,13 +144,13 @@ auto lo
 iface lo inet loopback
 
 # The primary network interface
-# BEGIN pnetlab-netcfg pnet0
+# BEGIN azamlabs-netcfg pnet0
 allow-hotplug pnet0
 iface pnet0 inet dhcp
     pre-up ip link set dev ${REAL_IFACE} up
     bridge_ports ${REAL_IFACE}
     bridge_stp off
-# END pnetlab-netcfg pnet0
+# END azamlabs-netcfg pnet0
 EOF
 chmod 644 /etc/network/interfaces
 echo "      -> Sanitized /etc/network/interfaces with pnet0 stanza"
@@ -159,9 +159,9 @@ echo "      -> Sanitized /etc/network/interfaces with pnet0 stanza"
 MAC_LINE=""
 [ -n "$REAL_MAC" ] && MAC_LINE="      macaddress: $REAL_MAC"
 
-# 6. Create /etc/netplan/01-pnetlab-netcfg.yaml for Native Ubuntu 26 Support
-if [ ! -f /etc/netplan/01-pnetlab-netcfg.yaml ]; then
-    cat > /etc/netplan/01-pnetlab-netcfg.yaml << EOF
+# 6. Create /etc/netplan/01-azamlabs-netcfg.yaml for Native Ubuntu 26 Support
+if [ ! -f /etc/netplan/01-azamlabs-netcfg.yaml ]; then
+    cat > /etc/netplan/01-azamlabs-netcfg.yaml << EOF
 network:
   version: 2
   renderer: networkd
@@ -181,14 +181,14 @@ $MAC_LINE
         stp: false
         forward-delay: 0
 EOF
-    chmod 600 /etc/netplan/01-pnetlab-netcfg.yaml
-    echo "      -> Synchronized /etc/netplan/01-pnetlab-netcfg.yaml"
+    chmod 600 /etc/netplan/01-azamlabs-netcfg.yaml
+    echo "      -> Synchronized /etc/netplan/01-azamlabs-netcfg.yaml"
 fi
 
 # 7. Enable Kernel-Native Sysfs Frame Forwarding for all Bridges (LACP, LLDP, STP)
-cat > /etc/systemd/system/pnetlab-bridge-fwd.service << 'EOF'
+cat > /etc/systemd/system/azamlabs-bridge-fwd.service << 'EOF'
 [Unit]
-Description=PNETLab Kernel Bridge Control Frame Forwarding (group_fwd_mask 65535)
+Description=AzamLabs Kernel Bridge Control Frame Forwarding (group_fwd_mask 65535)
 After=network.target network-online.target systemd-networkd.service
 Wants=network.target
 
@@ -202,7 +202,7 @@ WantedBy=multi-user.target
 EOF
 
 systemctl daemon-reload 2>/dev/null || true
-systemctl enable --now pnetlab-bridge-fwd.service 2>/dev/null || true
+systemctl enable --now azamlabs-bridge-fwd.service 2>/dev/null || true
 
 # Apply immediately to existing bridges
 for b in /sys/class/net/pnet*/bridge/group_fwd_mask; do

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# PNetLab PHP 8.4 / 8.5 Runtime & API Modernizer for Ubuntu 26+ (Resolute)
+# AzamLabs PHP 8.4 / 8.5 Runtime & API Modernizer for Ubuntu 26+ (Resolute)
 # Injects #[AllowDynamicProperties] into core UNetLab and Slim framework classes,
 # tunes PHP-FPM OPcache/memory limits, and stabilizes HTTP/HTTPS session cookies.
 # ==============================================================================
@@ -19,7 +19,7 @@ echo "      -> Patching PHP classes with #[AllowDynamicProperties]..."
 python3 - << 'PYEOF'
 import os, re
 
-# The pnetlab .deb ships PHP files with #[\AllowDynamicProperties] (note the backslash).
+# The azamlabs .deb ships PHP files with #[\AllowDynamicProperties] (note the backslash).
 # PHP 8.2+ treats this as a PHP attribute identical to #[AllowDynamicProperties].
 # PHP 8.5 fatal-errors if the attribute appears more than once on the same class.
 # We must use exact string matching (not regex) because the backslash confuses patterns.

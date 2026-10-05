@@ -21,7 +21,7 @@ import shutil
 import argparse
 import subprocess
 
-CONFIG_FILE = "/etc/pnetlab/azambasha-cloud-backup.conf"
+CONFIG_FILE = "/etc/azamlabs/azambasha-cloud-backup.conf"
 LOCAL_BACKUP_DIR = "/opt/azambasha/backups"
 
 
@@ -32,7 +32,7 @@ def load_config():
         "sftp_host": "",
         "sftp_port": 22,
         "sftp_user": "backupuser",
-        "sftp_remote_dir": "/var/backups/pnetlab",
+        "sftp_remote_dir": "/var/backups/azamlabs",
         "s3_bucket": "",
         "s3_endpoint": "",
         "s3_access_key": "",
@@ -53,7 +53,7 @@ def load_config():
 def save_config(cfg):
     os.makedirs(os.path.dirname(CONFIG_FILE), exist_ok=True)
     with open(CONFIG_FILE, "w") as f:
-        f.write("# Azam-Pnet Cloud Backup Configuration\n")
+        f.write("# AzamLabs Cloud Backup Configuration\n")
         for k, v in cfg.items():
             f.write(f"{k.upper()}={v}\n")
 
@@ -97,9 +97,9 @@ def sync_backups():
     elif target_type == "sftp":
         host = cfg.get("sftp_host")
         if not host:
-            return False, "SFTP host not configured. Update in GUI or /etc/pnetlab/azambasha-cloud-backup.conf"
+            return False, "SFTP host not configured. Update in GUI or /etc/azamlabs/azambasha-cloud-backup.conf"
         user = cfg.get("sftp_user", "root")
-        rdir = cfg.get("sftp_remote_dir", "/var/backups/pnetlab")
+        rdir = cfg.get("sftp_remote_dir", "/var/backups/azamlabs")
         print(f"  -> Uploading via SCP/SFTP to {user}@{host}:{rdir}...")
         # Execute scp of newest backup
         latest = local_files[0]
@@ -164,7 +164,7 @@ def restore_from_remote(filename):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Azam-Pnet Offsite Cloud & NAS Backup Engine")
+    parser = argparse.ArgumentParser(description="AzamLabs Offsite Cloud & NAS Backup Engine")
     parser.add_argument("--sync", action="store_true", help="Sync local snapshots to offsite target")
     parser.add_argument("--list-remote", action="store_true", help="List archives available on offsite storage")
     parser.add_argument("--restore-remote", type=str, metavar="FILENAME", help="Restore backup from offsite storage")
@@ -224,7 +224,7 @@ def main():
         print(json.dumps(res, indent=2))
     else:
         print("================================================================================")
-        print("         Azam-Pnet Offsite Cloud & NAS Disaster Recovery Sync")
+        print("         AzamLabs Offsite Cloud & NAS Disaster Recovery Sync")
         print("================================================================================")
         print(f"  • Local Snapshots:       {local_count} archives (/opt/azambasha/backups)")
         print(f"  • Target Storage:        {cfg.get('target_type', 'nas').upper()}")

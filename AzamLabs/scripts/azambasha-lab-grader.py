@@ -5,7 +5,7 @@ Azam Basha Automated Lab Grading & Validation Engine (azambasha-lab-grader.py)
 ==============================================================================
 Validates student and engineer network lab topologies against customizable
 certification exam checkpoints (CCNA, CCNP, CCIE) or dynamically against
-any selected lab from the PNetLab Labs library. Outputs instant scores,
+any selected lab from the AzamLabs Labs library. Outputs instant scores,
 pass/fail metrics, and remediation hints.
 ==============================================================================
 """
@@ -42,7 +42,7 @@ QUIZ_CATALOG = {
                 "check_type": "ping",
                 "target": "192.168.1.1",
                 "expected": "online",
-                "hint": "Check 'ip route 0.0.0.0 0.0.0.0' pointing to the PNetLab gateway."
+                "hint": "Check 'ip route 0.0.0.0 0.0.0.0' pointing to the AzamLabs gateway."
             },
             {
                 "id": "task_3",
@@ -343,7 +343,7 @@ def run_grading(quiz_id=None, lab_id="default_lab"):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Azam-Pnet Automated Lab Grader")
+    parser = argparse.ArgumentParser(description="AzamLabs Automated Lab Grader")
     parser.add_argument("--grade", action="store_true", help="Execute lab grading check")
     parser.add_argument("--quiz", type=str, default="", help="Quiz ID to run (optional)")
     parser.add_argument("--lab", type=str, default="", help="Target Lab Path or ID")
@@ -366,7 +366,7 @@ def main():
         print(json.dumps(report, indent=2))
     else:
         print("================================================================================")
-        print(f"         Azam-Pnet Exam Grader: {report['title']}")
+        print(f"         AzamLabs Exam Grader: {report['title']}")
         print("================================================================================")
         if report.get("unl_file"):
             print(f"  • Target File:        {report['unl_file']}")

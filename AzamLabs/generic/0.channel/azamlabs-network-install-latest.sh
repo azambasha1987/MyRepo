@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# PNetLab 27H1 network-install bootstrap.
+# AzamLabs 27H1 network-install bootstrap.
 #
-# Fresh-installs PNetLab from a signed release manifest (see
+# Fresh-installs AzamLabs from a signed release manifest (see
 # docs/release-manifest-schema.md) instead of a hardcoded version pin. The
 # initial download of this script is unsigned (plain HTTPS + checksum only);
 # the embedded manifest fingerprint below is the trust anchor for every
@@ -23,22 +23,22 @@ readonly PROGRAM="${0##*/}"
 # subkey -- gpg VALIDSIG reports the primary key even when a subkey signed, so
 # pinning the primary lets the subkey rotate without republishing every
 # already-shipped bootstrap. Never overridable by any flag or env var.
-readonly PNETLAB_BOOTSTRAP_VERSION='2026.08.26'
-readonly PNETLAB_MANIFEST_FPR='158D99DF8D57040AA8E0EDA58F353DF9007A2BB4'
+readonly AZAMLABS_BOOTSTRAP_VERSION='2026.08.26'
+readonly AZAMLABS_MANIFEST_FPR='158D99DF8D57040AA8E0EDA58F353DF9007A2BB4'
 readonly MIN_MANIFEST_SEQUENCE=1
-readonly MANIFEST_KEYRING='/usr/share/keyrings/pnetlab-release-manifest.gpg'
+readonly MANIFEST_KEYRING='/usr/share/keyrings/azamlabs-release-manifest.gpg'
 readonly DEFAULT_GENERIC_OWNER='netkillui'
-readonly DEFAULT_GENERIC_PACKAGE='pnetlab-core-assets'
+readonly DEFAULT_GENERIC_PACKAGE='azamlabs-core-assets'
 readonly DEFAULT_POINTER_VERSION='0.channel'
 # --- DISTRIBUTION HOST (Phase 1 / R2 track) -------------------------------
 # The single place the default distribution host is chosen. Flipping the
-# default to R2 is an edit of PNETLAB_DEFAULT_GENERIC_API_BASE alone; the
+# default to R2 is an edit of AZAMLABS_DEFAULT_GENERIC_API_BASE alone; the
 # Codeberg value below stays valid as the documented env-var fallback:
-#   PNETLAB_GENERIC_API_BASE=https://codeberg.org/api/packages
-readonly PNETLAB_DEFAULT_GENERIC_API_BASE='https://codeberg.org/api/packages'
+#   AZAMLABS_GENERIC_API_BASE=https://codeberg.org/api/packages
+readonly AZAMLABS_DEFAULT_GENERIC_API_BASE='https://codeberg.org/api/packages'
 # --------------------------------------------------------------------------
-readonly POINTER_NAME='pnetlab-latest.json'
-readonly PNETLAB_MANIFEST_PUBKEY="$(cat <<'ARMOR'
+readonly POINTER_NAME='azamlabs-latest.json'
+readonly AZAMLABS_MANIFEST_PUBKEY="$(cat <<'ARMOR'
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 
 mQINBGqKUBgBEAC56Gd8JpGuNhxAqPleJDGNNhzyH+doBPJXloz6xHCk4b7ozLWv
@@ -110,22 +110,22 @@ ARMOR
 # expected key travel with the signed manifest, not with this script.
 CODEBERG_REPOSITORY=''
 CODEBERG_KEY_URL=''
-readonly CODEBERG_KEYRING='/usr/share/keyrings/pnetlab-netinstall-codeberg.gpg'
-readonly CODEBERG_SOURCE='/etc/apt/sources.list.d/pnetlab-netinstall-codeberg.list'
+readonly CODEBERG_KEYRING='/usr/share/keyrings/azamlabs-netinstall-codeberg.gpg'
+readonly CODEBERG_SOURCE='/etc/apt/sources.list.d/azamlabs-netinstall-codeberg.list'
 readonly DOCKER_KEY_URL='https://download.docker.com/linux/ubuntu/gpg'
 readonly DOCKER_KEYRING='/etc/apt/keyrings/docker.gpg'
 readonly DOCKER_SOURCE='/etc/apt/sources.list.d/docker.list'
-readonly LOG='/var/log/pnetlab-network-install.log'
+readonly LOG='/var/log/azamlabs-network-install.log'
 readonly HTML='/opt/unetlab/html'
 readonly ROOT_PASSWORD='pnet'
-readonly MYSQL_ROOT_PASSWORD='pnetlab'
-readonly PNETLAB_DEB_CACHE_ROOT="${PNETLAB_DEB_CACHE_ROOT:-/var/cache/pnetlab/debs}"
-readonly PNETLAB_DEB_CACHE_LOCK="$PNETLAB_DEB_CACHE_ROOT/.lock"
-readonly PNETLAB_DEB_CACHE_LOCK_FD=8   # FD 9 is reserved by pnetlab-update's whole-process lock
+readonly MYSQL_ROOT_PASSWORD='azamlabs'
+readonly AZAMLABS_DEB_CACHE_ROOT="${AZAMLABS_DEB_CACHE_ROOT:-/var/cache/azamlabs/debs}"
+readonly AZAMLABS_DEB_CACHE_LOCK="$AZAMLABS_DEB_CACHE_ROOT/.lock"
+readonly AZAMLABS_DEB_CACHE_LOCK_FD=8   # FD 9 is reserved by azamlabs-update's whole-process lock
 readonly APT_CACHE=/var/cache/apt/archives
-readonly PNETLAB_CLUSTER_ASSET_CACHE_ROOT="${PNETLAB_CLUSTER_ASSET_CACHE_ROOT:-/var/cache/pnetlab/cluster-assets}"
+readonly AZAMLABS_CLUSTER_ASSET_CACHE_ROOT="${AZAMLABS_CLUSTER_ASSET_CACHE_ROOT:-/var/cache/azamlabs/cluster-assets}"
 readonly -a SATELLITE_ZOO_VERSIONS=(2.4.0 2.12.0 4.1.0 5.2.0)
-readonly -a SATELLITE_HARD_PACKAGES=(pnetlab-docker pnetlab-qemu pnetlab-satellite pnetlab-vpcs)
+readonly -a SATELLITE_HARD_PACKAGES=(azamlabs-docker azamlabs-qemu azamlabs-satellite azamlabs-vpcs)
 
 readonly -a DOCKER_PACKAGES=(
     docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
@@ -134,7 +134,7 @@ readonly -a BASE_PACKAGES=(
     ca-certificates curl gnupg iproute2 mysql-server openssl php8.5-fpm python3-pip uml-utilities
     # inotify-tools: docker_image_watcher.sh (config_scripts) shells out to
     # `inotifywait`, stderr-suppressed, so a missing binary makes
-    # pnetlab-docker-image-watcher.service exit clean and silently do nothing
+    # azamlabs-docker-image-watcher.service exit clean and silently do nothing
     # rather than fail loudly. The offline bundle installer already pulls this
     # in as part of its own base dependency list; netinstall never did.
     inotify-tools
@@ -200,9 +200,9 @@ P2_ROLLING_BACK=0
 P2_RECORD_NUMBER=0
 P2_PROVISIONED=0
 P2_INTERRUPT=0
-P2_ROOT="${PNETLAB_PASS2_ROOT:-}"
-P2_SYSFS_ROOT="${PNETLAB_SYSFS_ROOT:-/sys}"
-P2_PROC_ROOT="${PNETLAB_PROC_ROOT:-/proc}"
+P2_ROOT="${AZAMLABS_PASS2_ROOT:-}"
+P2_SYSFS_ROOT="${AZAMLABS_SYSFS_ROOT:-/sys}"
+P2_PROC_ROOT="${AZAMLABS_PROC_ROOT:-/proc}"
 declare -A P2_RECORDED=()
 
 mkdir -p "${LOG%/*}"
@@ -250,7 +250,7 @@ trap 'P2_INTERRUPT=1; exit 143' TERM
 
 usage() {
     cat <<'EOF'
-Usage: network-install-pnetlab-27H1.sh --yes [--manifest URL|FILE] [--release VERSION]
+Usage: network-install-azamlabs-27H1.sh --yes [--manifest URL|FILE] [--release VERSION]
                                         [--profile master|satellite] [--no-docker]
                                         [--no-deb-cache] [--no-cloud-uplink]
                                         [--uplink-nic NAME] [--uplink-mode dhcp|static]
@@ -268,7 +268,7 @@ Options:
                 the signed 0.channel pointer. Ignored if --manifest is given.
   --profile master|satellite  Install profile selected from the manifest's
                 install_profiles (default: master).
-  --no-docker   Skip Docker repository and pnetlab-docker enrollment/install,
+  --no-docker   Skip Docker repository and azamlabs-docker enrollment/install,
                 use --no-install-recommends, and assert docker-ce is absent.
   --no-deb-cache  Opt out of the default local rollback deb cache; this host
                   then has no local rollback material for this release.
@@ -321,7 +321,7 @@ run_logged() {
 }
 
 apt_update_checked() {
-    UPDATE_TMP=$(mktemp /tmp/pnetlab-netinstall-apt-update.XXXXXX)
+    UPDATE_TMP=$(mktemp /tmp/azamlabs-netinstall-apt-update.XXXXXX)
     log '+ apt-get update (Codeberg and Docker signatures required)'
     if ! apt-get update 2>&1 | tee -a "$LOG" "$UPDATE_TMP"; then
         die 'apt-get update failed'
@@ -335,7 +335,7 @@ apt_update_checked() {
 
 validate_existing_keyring() {
     local keyring="$1" home
-    home=$(mktemp -d /tmp/pnetlab-netinstall-gpg.XXXXXX)
+    home=$(mktemp -d /tmp/azamlabs-netinstall-gpg.XXXXXX)
     if ! GNUPGHOME="$home" gpg --batch --no-options --show-keys "$keyring" >/dev/null 2>&1; then
         rm -rf "$home"
         die "existing keyring is not valid OpenPGP data: $keyring"
@@ -353,9 +353,9 @@ enroll_keyring() {
         return 0
     fi
 
-    raw=$(mktemp /tmp/pnetlab-netinstall-key.XXXXXX)
-    converted=$(mktemp /tmp/pnetlab-netinstall-keyring.XXXXXX)
-    home=$(mktemp -d /tmp/pnetlab-netinstall-gpg.XXXXXX)
+    raw=$(mktemp /tmp/azamlabs-netinstall-key.XXXXXX)
+    converted=$(mktemp /tmp/azamlabs-netinstall-keyring.XXXXXX)
+    home=$(mktemp -d /tmp/azamlabs-netinstall-gpg.XXXXXX)
     log "fetching TOFU repository key: $url"
     if ! curl --fail --show-error --silent --location --proto '=https' --tlsv1.2 \
         --output "$raw" "$url" >>"$LOG" 2>&1; then
@@ -377,7 +377,7 @@ enroll_keyring() {
 
 enroll_source() {
     local source_file="$1" source_line="$2" temporary
-    temporary=$(mktemp /tmp/pnetlab-netinstall-source.XXXXXX)
+    temporary=$(mktemp /tmp/azamlabs-netinstall-source.XXXXXX)
     printf '%s\n' "$source_line" >"$temporary"
     chmod 0644 "$temporary"
     mv -f "$temporary" "$source_file"
@@ -401,16 +401,16 @@ gpg_primary_fingerprint() {
 provision_manifest_keyring() {
     local dearmored count fpr
     log '=== provisioning the embedded maintainer manifest keyring ==='
-    dearmored=$(mktemp /tmp/pnetlab-netinstall-mkeyring.XXXXXX)
-    if ! printf '%s\n' "$PNETLAB_MANIFEST_PUBKEY" | gpg --batch --yes --dearmor >"$dearmored" 2>>"$LOG"; then
+    dearmored=$(mktemp /tmp/azamlabs-netinstall-mkeyring.XXXXXX)
+    if ! printf '%s\n' "$AZAMLABS_MANIFEST_PUBKEY" | gpg --batch --yes --dearmor >"$dearmored" 2>>"$LOG"; then
         rm -f "$dearmored"
         die 'embedded maintainer public key is not valid OpenPGP data'
     fi
     count=$(gpg_key_count "$dearmored")
     [ "$count" = 1 ] || { rm -f "$dearmored"; die "embedded maintainer keyring must contain exactly one public key (found ${count:-0})"; }
     fpr=$(gpg_primary_fingerprint "$dearmored")
-    [ "$fpr" = "$PNETLAB_MANIFEST_FPR" ] \
-        || { rm -f "$dearmored"; die "embedded maintainer key fingerprint mismatch: expected $PNETLAB_MANIFEST_FPR, got ${fpr:-none}"; }
+    [ "$fpr" = "$AZAMLABS_MANIFEST_FPR" ] \
+        || { rm -f "$dearmored"; die "embedded maintainer key fingerprint mismatch: expected $AZAMLABS_MANIFEST_FPR, got ${fpr:-none}"; }
     install -d -m 0755 "${MANIFEST_KEYRING%/*}"
     chmod 0644 "$dearmored"
     mv -f "$dearmored" "$MANIFEST_KEYRING"
@@ -425,7 +425,7 @@ fetch_manifest() {
     # mktemp name, or that check fails on every real invocation.
     local source="$1" work_dir base
     log "=== fetching release manifest: $source ==="
-    work_dir=$(mktemp -d /tmp/pnetlab-netinstall-manifest.XXXXXX)
+    work_dir=$(mktemp -d /tmp/azamlabs-netinstall-manifest.XXXXXX)
     if [[ "$source" == http://* || "$source" == https://* ]]; then
         [[ "$source" == *.json ]] || die 'manifest URL must end in .json'
         base="${source##*/}"
@@ -453,7 +453,7 @@ assert_detached_signature() { # file signature keyring expected_fpr label
     key_count=$(gpg_key_count "$keyring")
     [ "$key_count" = 1 ] \
         || die "$label keyring must contain exactly one public key (found ${key_count:-0})"
-    gpg_error=$(mktemp /tmp/pnetlab-netinstall-gpgerr.XXXXXX)
+    gpg_error=$(mktemp /tmp/azamlabs-netinstall-gpgerr.XXXXXX)
     if ! gpg_status=$(gpg --batch --no-auto-key-retrieve --status-fd 1 --no-default-keyring --keyring "$keyring" \
             --verify "$signature" "$file" 2>"$gpg_error"); then
         cat "$gpg_error" >>"$LOG"
@@ -475,10 +475,10 @@ assert_detached_signature() { # file signature keyring expected_fpr label
 resolve_latest_release() {
     local api_base pointer_base source base suffix checksum_value checksum_name checksum_extra
     local pointer_json pointer_sha pointer_sig
-    api_base="${PNETLAB_GENERIC_API_BASE:-$PNETLAB_DEFAULT_GENERIC_API_BASE}"
+    api_base="${AZAMLABS_GENERIC_API_BASE:-$AZAMLABS_DEFAULT_GENERIC_API_BASE}"
     api_base="${api_base%/}"
     pointer_base="$api_base/$DEFAULT_GENERIC_OWNER/generic/$DEFAULT_GENERIC_PACKAGE/$DEFAULT_POINTER_VERSION"
-    POINTER_TMP_DIR=$(mktemp -d /tmp/pnetlab-netinstall-pointer.XXXXXX)
+    POINTER_TMP_DIR=$(mktemp -d /tmp/azamlabs-netinstall-pointer.XXXXXX)
     pointer_json="$POINTER_TMP_DIR/$POINTER_NAME"
     log "=== resolving signed channel pointer: $pointer_base/$POINTER_NAME ==="
     for suffix in '' .sha256 .sig; do
@@ -493,8 +493,8 @@ resolve_latest_release() {
         || die 'channel pointer checksum file is malformed'
     (cd "$POINTER_TMP_DIR" && sha256sum --check --status -- "$POINTER_NAME.sha256") \
         || die 'channel pointer sha256 verification failed'
-    assert_detached_signature "$pointer_json" "$pointer_json.sig" "$MANIFEST_KEYRING" "$PNETLAB_MANIFEST_FPR" 'channel pointer'
-    read -r POINTER_RELEASE POINTER_SEQUENCE < <(python3 - "$pointer_json" "$PNETLAB_BOOTSTRAP_VERSION" "$MIN_MANIFEST_SEQUENCE" <<'PY'
+    assert_detached_signature "$pointer_json" "$pointer_json.sig" "$MANIFEST_KEYRING" "$AZAMLABS_MANIFEST_FPR" 'channel pointer'
+    read -r POINTER_RELEASE POINTER_SEQUENCE < <(python3 - "$pointer_json" "$AZAMLABS_BOOTSTRAP_VERSION" "$MIN_MANIFEST_SEQUENCE" <<'PY'
 import datetime as dt
 import json
 import re
@@ -511,7 +511,7 @@ except Exception as exc:
 required = {"generated_utc", "min_bootstrap_version", "not_valid_after", "release", "schema", "sequence", "type"}
 if not isinstance(pointer, dict) or set(pointer) != required:
     reject("top-level keys differ from the channel-pointer schema")
-if pointer["schema"] != 1 or pointer["type"] != "pnetlab-channel-pointer":
+if pointer["schema"] != 1 or pointer["type"] != "azamlabs-channel-pointer":
     reject("unknown schema or type")
 if not isinstance(pointer["release"], str) or not re.fullmatch(r"6\.8\.[0-9]+resolute1", pointer["release"]):
     reject("invalid release")
@@ -534,7 +534,7 @@ PY
     [ -n "$POINTER_RELEASE" ] && [ -n "$POINTER_SEQUENCE" ] || die 'channel pointer did not yield release and sequence'
     POINTER_USED=1
     RELEASE_HINT="$POINTER_RELEASE"
-    MANIFEST_SOURCE="$api_base/$DEFAULT_GENERIC_OWNER/generic/$DEFAULT_GENERIC_PACKAGE/$POINTER_RELEASE/pnetlab-$POINTER_RELEASE-manifest.json"
+    MANIFEST_SOURCE="$api_base/$DEFAULT_GENERIC_OWNER/generic/$DEFAULT_GENERIC_PACKAGE/$POINTER_RELEASE/azamlabs-$POINTER_RELEASE-manifest.json"
     log "channel pointer resolved: release=$POINTER_RELEASE sequence=$POINTER_SEQUENCE"
 }
 
@@ -550,7 +550,7 @@ verify_manifest_signature() {
         || die 'manifest checksum file is malformed'
     ( cd -- "$dir" && sha256sum --check --status -- "$name.sha256" ) || die 'manifest sha256 verification failed'
 
-    assert_detached_signature "$MANIFEST_FILE" "$MANIFEST_FILE.sig" "$MANIFEST_KEYRING" "$PNETLAB_MANIFEST_FPR" 'manifest'
+    assert_detached_signature "$MANIFEST_FILE" "$MANIFEST_FILE.sig" "$MANIFEST_KEYRING" "$AZAMLABS_MANIFEST_FPR" 'manifest'
 }
 
 # Strict schema-1 semantic validation, mirroring debs/verify-release-manifest.sh
@@ -558,7 +558,7 @@ verify_manifest_signature() {
 # being present on a fresh host, so the check is duplicated deliberately).
 verify_manifest_semantics() {
     log '=== validating manifest schema, freshness, and profile structure ==='
-    python3 - "$MANIFEST_FILE" "$PNETLAB_BOOTSTRAP_VERSION" "$MIN_MANIFEST_SEQUENCE" "$PROFILE" <<'PY' >>"$LOG" 2>&1 \
+    python3 - "$MANIFEST_FILE" "$AZAMLABS_BOOTSTRAP_VERSION" "$MIN_MANIFEST_SEQUENCE" "$PROFILE" <<'PY' >>"$LOG" 2>&1 \
         || die 'manifest semantic validation failed (see log)'
 import datetime as dt
 import json
@@ -616,8 +616,8 @@ for map_name in ("debs", "best_effort_debs"):
         reject(f"{map_name} must be a non-empty object")
     if any(not isinstance(k, str) or v != manifest["release"] for k, v in package_map.items()):
         reject(f"{map_name} contains invalid package/version")
-if set(manifest["best_effort_debs"]) != {"pnetlab-bridge-dkms"}:
-    reject("best_effort_debs must contain only pnetlab-bridge-dkms")
+if set(manifest["best_effort_debs"]) != {"azamlabs-bridge-dkms"}:
+    reject("best_effort_debs must contain only azamlabs-bridge-dkms")
 
 profiles = manifest["install_profiles"]
 if not isinstance(profiles, dict) or set(profiles) != {"master", "satellite"}:
@@ -636,7 +636,7 @@ for name, prof in profiles.items():
             reject(f"{name}.{field} names package absent from flat map")
     covered_debs.update(prof["debs"])
     covered_best.update(prof["best_effort_debs"])
-if "pnetlab" in profiles["satellite"]["debs"] or "pnetlab-satellite" in profiles["master"]["debs"]:
+if "azamlabs" in profiles["satellite"]["debs"] or "azamlabs-satellite" in profiles["master"]["debs"]:
     reject("conflicting marker package in opposite profile")
 if covered_debs != set(manifest["debs"]) or covered_best != set(manifest["best_effort_debs"]):
     reject("profile union does not cover flat package maps")
@@ -766,11 +766,11 @@ fetch_core_assets() {
     url=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["core_assets"]["url"])' "$MANIFEST_FILE" | tr -d '\r')
     sha=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["core_assets"]["sha256"])' "$MANIFEST_FILE" | tr -d '\r')
     archive_name=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["core_assets"]["archive"])' "$MANIFEST_FILE" | tr -d '\r')
-    work=$(mktemp -d /tmp/pnetlab-netinstall-coreassets.XXXXXX)
+    work=$(mktemp -d /tmp/azamlabs-netinstall-coreassets.XXXXXX)
     if [ "$PROFILE" = master ] && [ "${PNET_NO_CLUSTER_BUNDLE:-0}" != 1 ]; then
-        if ! install -d -o root -g root -m 0755 "$PNETLAB_CLUSTER_ASSET_CACHE_ROOT"; then
+        if ! install -d -o root -g root -m 0755 "$AZAMLABS_CLUSTER_ASSET_CACHE_ROOT"; then
             warn 'could not create the root-only satellite asset cache; continuing without bundle staging'
-        elif ! cluster_stage=$(mktemp -d "$PNETLAB_CLUSTER_ASSET_CACHE_ROOT/$MANIFEST_RELEASE.staging.XXXXXX"); then
+        elif ! cluster_stage=$(mktemp -d "$AZAMLABS_CLUSTER_ASSET_CACHE_ROOT/$MANIFEST_RELEASE.staging.XXXXXX"); then
             warn 'could not create a release-scoped satellite asset cache; continuing without bundle staging'
         elif ! chown root:root "$cluster_stage" || ! chmod 0700 "$cluster_stage"; then
             warn 'could not secure the release-scoped satellite asset cache; continuing without bundle staging'
@@ -807,7 +807,7 @@ fetch_core_assets() {
         tar xzf "$work/$file" -C "$extract_to" || { rm -rf "$work"; die "core-assets extraction failed for $id -> $extract_to"; }
         log "core-assets extracted: $id -> $extract_to"
         if [ "$id" = qemu-compat-libs ]; then
-            printf '%s\n' "$extract_to" >/etc/ld.so.conf.d/pnetlab-qemu-compat.conf
+            printf '%s\n' "$extract_to" >/etc/ld.so.conf.d/azamlabs-qemu-compat.conf
             ldconfig || { rm -rf "$work"; die 'ldconfig failed after qemu-compat-libs extraction'; }
         fi
         if [ -n "$cluster_stage" ]; then
@@ -848,7 +848,7 @@ PY
         [ -f "$cluster_stage/deps/qemu-compat-libs.tgz" ] || cluster_cache_ok=0
         [ -f "$cluster_stage/asset-inventory.tsv" ] || cluster_cache_ok=0
         if [ "$cluster_cache_ok" -eq 1 ]; then
-            cluster_cache="$PNETLAB_CLUSTER_ASSET_CACHE_ROOT/$MANIFEST_RELEASE"
+            cluster_cache="$AZAMLABS_CLUSTER_ASSET_CACHE_ROOT/$MANIFEST_RELEASE"
             if ! rm -rf -- "$cluster_cache"; then
                 warn "could not replace release-scoped satellite asset cache $cluster_cache"
                 rm -rf -- "$cluster_stage" || true
@@ -911,9 +911,9 @@ stage_satellite_bundle() {
     local api_base script_name work deb_dir staging releases destination current pointer_tmp tombstone publish_lock_file publish_status
     local script_sha inventory_sha asset_inventory_sha package_list optional_list optional_deb satellite_deb bridge_deb deb package arch version sha size filename
     local -a staged_debs=()
-    api_base="${PNETLAB_GENERIC_API_BASE:-$PNETLAB_DEFAULT_GENERIC_API_BASE}"
+    api_base="${AZAMLABS_GENERIC_API_BASE:-$AZAMLABS_DEFAULT_GENERIC_API_BASE}"
     api_base="${api_base%/}"
-    script_name="pnetlab-install-resolute-satellite-$MANIFEST_RELEASE.sh"
+    script_name="azamlabs-install-resolute-satellite-$MANIFEST_RELEASE.sh"
     releases=/opt/unetlab/cluster-bundle/releases
     destination="$releases/$MANIFEST_RELEASE"
     current=/opt/unetlab/cluster-bundle/current
@@ -955,7 +955,7 @@ stage_satellite_bundle() {
         rm -rf -- "$staging"
         return 0
     fi
-    deb_dir="$staging/pnetlab-debs"
+    deb_dir="$staging/azamlabs-debs"
     if ! install -d -m 0755 "$deb_dir"; then
         warn 'could not create the satellite deb staging directory; leaving current bundle unchanged'
         rm -rf -- "$staging"
@@ -1135,8 +1135,8 @@ stage_satellite_bundle() {
         done
     fi
     reap_satellite_tombstones "$releases"
-    satellite_deb=$(find "$destination/pnetlab-debs" -maxdepth 1 -type f -name 'pnetlab-satellite_*.deb' -print -quit || true)
-    bridge_deb=$(find "$destination/pnetlab-debs" -maxdepth 1 -type f -name 'pnetlab-bridge-dkms_*.deb' -print -quit || true)
+    satellite_deb=$(find "$destination/azamlabs-debs" -maxdepth 1 -type f -name 'azamlabs-satellite_*.deb' -print -quit || true)
+    bridge_deb=$(find "$destination/azamlabs-debs" -maxdepth 1 -type f -name 'azamlabs-bridge-dkms_*.deb' -print -quit || true)
     if [ -z "$satellite_deb" ] \
         || ! install -d -o root -g root -m 0755 /opt/unetlab/data/satellite \
         || ! install -m 0644 "$satellite_deb" /opt/unetlab/data/satellite/; then
@@ -1151,9 +1151,9 @@ stage_satellite_bundle() {
              "$(dpkg-deb -f "$satellite_deb" Version 2>/dev/null || true)" ] \
         && install -d -o root -g root -m 0755 /opt/unetlab/data/satellite \
         && install -m 0644 "$bridge_deb" /opt/unetlab/data/satellite/; then
-        log 'matching pnetlab-bridge-dkms deb staged for Sync Satellite'
+        log 'matching azamlabs-bridge-dkms deb staged for Sync Satellite'
     else
-        warn 'matching pnetlab-bridge-dkms deb unavailable; Sync Satellite will remain disabled until it is staged'
+        warn 'matching azamlabs-bridge-dkms deb unavailable; Sync Satellite will remain disabled until it is staged'
     fi
     log "satellite bundle published atomically: $destination (current -> $MANIFEST_RELEASE)"
     ); then
@@ -1224,7 +1224,7 @@ p2_check_interfaces_a() {
         return 0
     fi
     [ ! -L "$interfaces" ] || die 'preflight Check A refuses a symlinked /etc/network/interfaces; use --no-cloud-uplink'
-    P2_INTERFACES_SNAPSHOT=$(mktemp /tmp/pnetlab-pass2-interfaces.XXXXXX)
+    P2_INTERFACES_SNAPSHOT=$(mktemp /tmp/azamlabs-pass2-interfaces.XXXXXX)
     cp -a -- "$interfaces" "$P2_INTERFACES_SNAPSHOT"
     if [ ! -s "$interfaces" ]; then
         P2_INTERFACES_PRE_KIND=empty
@@ -1232,11 +1232,11 @@ p2_check_interfaces_a() {
         return 0
     fi
     # Accept either a pristine pre-install file (empty / lo-only -- the state
-    # on a genuinely fresh host before pnetlab is ever installed) OR the
+    # on a genuinely fresh host before azamlabs is ever installed) OR the
     # EXACT postinst-authored natmac/nat0 baseline that Check B (below, run
     # after package installation) already recognizes. The second shape is
-    # not "administrator content": it is pnetlab.postinst's own
-    # unconditional nat0 bridge stanza (build-stage.sh / pnetlab.postinst
+    # not "administrator content": it is azamlabs.postinst's own
+    # unconditional nat0 bridge stanza (build-stage.sh / azamlabs.postinst
     # "nat0 bridge in /etc/network/interfaces"), written during package
     # configuration -- which happens BEFORE Pass 2 discovery on a host that
     # is resuming after a prior run installed packages but never reached the
@@ -1302,7 +1302,7 @@ p2_check_interfaces_b() {
     local interfaces
     interfaces="$(p2_path /etc/network/interfaces)"
     [ -f "$interfaces" ] || die 'Pass 2 Check B: ifupdown did not create /etc/network/interfaces'
-    P2_BASELINE_TMP=$(mktemp /tmp/pnetlab-pass2-baseline.XXXXXX)
+    P2_BASELINE_TMP=$(mktemp /tmp/azamlabs-pass2-baseline.XXXXXX)
     if ! python3 - "$interfaces" "$(p2_path /etc/network/interfaces.d)" >"$P2_BASELINE_TMP" <<'PY'
 import os
 import re
@@ -1376,7 +1376,7 @@ p2_nic_is_already_provisioned() {
     pnet0="$P2_SYSFS_ROOT/class/net/pnet0"
     brif="$pnet0/brif"
     [ -f "$interfaces" ] || return 1
-    grep -Fq '# BEGIN pnetlab-netcfg pnet0' "$interfaces" || return 1
+    grep -Fq '# BEGIN azamlabs-netcfg pnet0' "$interfaces" || return 1
     [ -d "$pnet0" ] || return 1
     shopt -s nullglob
     local ports=("$brif"/*)
@@ -1572,7 +1572,7 @@ detect_uplink_nic() {
         # the identical skip path, with nothing else in main() short-circuited.
         P2_ALREADY_PROVISIONED=1
         P2_NO_CLOUD_UPLINK=1
-        log 'Pass 2: existing pnetlab-netcfg pnet0 with bridge ports detected; skipping Pass 2 (install continues)'
+        log 'Pass 2: existing azamlabs-netcfg pnet0 with bridge ports detected; skipping Pass 2 (install continues)'
         return 0
     fi
     p2_check_interfaces_a
@@ -1613,11 +1613,11 @@ detect_uplink_nic() {
     [ "${#eligible[@]}" -ge 1 ] || \
         die 'uplink discovery found no eligible physical Ethernet NIC; use --no-cloud-uplink'
 
-    # PNetLab/EVE-NG's long-standing multi-NIC convention: the first physical
+    # AzamLabs/EVE-NG's long-standing multi-NIC convention: the first physical
     # NIC is the management/uplink interface (and, per D-existing behavior,
     # doubles as pnet0's bridge port); any additional NICs are left completely
     # untouched here for the operator to map to pnet1..9 via the normal
-    # PNetLab bridge-port tooling, outside Pass 2's scope. "First" is ordered
+    # AzamLabs bridge-port tooling, outside Pass 2's scope. "First" is ordered
     # by PCI bus/device/function address (stable across reboots, independent
     # of whichever interface-naming scheme is active at detection time), not
     # by interface name -- refusing outright on 2+ NICs (the pre-2026-08-25
@@ -1728,13 +1728,13 @@ detect_uplink_nic() {
 
 p2_recover_pending_transactions() {
     local parent txn state helper
-    parent="$(p2_path /var/lib/pnetlab-pass2)"
+    parent="$(p2_path /var/lib/azamlabs-pass2)"
     [ -d "$parent" ] || return 0
     # The deb-shipped recovery unit handles power-loss recovery before normal
     # boot. Re-run the same recovery before discovery as a guard for a manual
     # installer invocation that races the unit or follows a crashed install.
     [ -z "$P2_ROOT" ] || return 0
-    helper=/opt/ovf/pnetlab-pass2-recover.sh
+    helper=/opt/ovf/azamlabs-pass2-recover.sh
     shopt -s nullglob
     local -a pending=("$parent"/txn.*/state)
     shopt -u nullglob
@@ -1743,7 +1743,7 @@ p2_recover_pending_transactions() {
         case "$state" in
             armed|verified)
                 [ -x "$helper" ] || die "abandoned Pass 2 transaction found but recovery helper is missing: $helper"
-                PNETLAB_PASS2_RECOVERY_LOG="$LOG" "$helper" || \
+                AZAMLABS_PASS2_RECOVERY_LOG="$LOG" "$helper" || \
                     die "abandoned Pass 2 transaction could not be recovered: ${txn%/state}"
                 ;;
         esac
@@ -1815,7 +1815,7 @@ build_transaction() {
     TRANSACTION+=("${BASE_PACKAGES[@]}")
     local package
     for package in "${CODEBERG_PACKAGES[@]}"; do
-        [ "$NO_DOCKER" -eq 1 ] && [[ "$package" == pnetlab-docker=* ]] && continue
+        [ "$NO_DOCKER" -eq 1 ] && [[ "$package" == azamlabs-docker=* ]] && continue
         TRANSACTION+=("$package")
         CACHE_PACKAGES+=("$package")
     done
@@ -1899,7 +1899,7 @@ satellite_bundle_complete_for_release() {
     local bundle="$1" release="$2" marker_packages marker_optional marker_assets inventory_sha asset_inventory_sha
     local asset expected_sha expected_size asset_path actual_sha actual_size package version deb
     local -a expected_asset_names=(qemu-compat-libs.tgz)
-    local expected_packages="pnetlab-docker=$release,pnetlab-qemu=$release,pnetlab-satellite=$release,pnetlab-vpcs=$release"
+    local expected_packages="azamlabs-docker=$release,azamlabs-qemu=$release,azamlabs-satellite=$release,azamlabs-vpcs=$release"
     local expected_assets='qemu-compat-libs.tgz,qemu-zoo-2.4.0-net.tgz,qemu-zoo-2.12.0-net.tgz,qemu-zoo-4.1.0-net.tgz,qemu-zoo-5.2.0-net.tgz'
     for version in "${SATELLITE_ZOO_VERSIONS[@]}"; do
         expected_asset_names+=("qemu-zoo-$version-net.tgz")
@@ -1913,7 +1913,7 @@ satellite_bundle_complete_for_release() {
     [ "$(complete_marker_value format "$bundle/COMPLETE")" = 1 ] || return 1
     [ "$(complete_marker_value release "$bundle/COMPLETE")" = "$release" ] || return 1
     [ "$marker_packages" = "$expected_packages" ] || return 1
-    [ -z "$marker_optional" ] || [ "$marker_optional" = "pnetlab-bridge-dkms=$release" ] || return 1
+    [ -z "$marker_optional" ] || [ "$marker_optional" = "azamlabs-bridge-dkms=$release" ] || return 1
     [ "$marker_assets" = "$expected_assets" ] || return 1
     [ -f "$bundle/inventory.tsv" ] || return 1
     inventory_sha=$(complete_marker_value inventory_sha256 "$bundle/COMPLETE")
@@ -1927,7 +1927,7 @@ satellite_bundle_complete_for_release() {
     [ -x "$bundle/install-resolute-satellite.sh" ] || return 1
     [ "$(stat -c '%U:%G %a' "$bundle/install-resolute-satellite.sh" 2>/dev/null)" = 'root:root 755' ] || return 1
     for package in "${SATELLITE_HARD_PACKAGES[@]}"; do
-        deb=$(find "$bundle/pnetlab-debs" -maxdepth 1 -type f -name "${package}_*.deb" -print -quit 2>/dev/null || true)
+        deb=$(find "$bundle/azamlabs-debs" -maxdepth 1 -type f -name "${package}_*.deb" -print -quit 2>/dev/null || true)
         [ -n "$deb" ] || return 1
         [ "$(dpkg-deb -f "$deb" Package 2>/dev/null)" = "$package" ] || return 1
         [ "$(dpkg-deb -f "$deb" Version 2>/dev/null)" = "$release" ] || return 1
@@ -1957,9 +1957,9 @@ satellite_bundle_complete_for_release() {
 cache_reap_staging() {
     local dir
     shopt -s nullglob
-    for dir in "$PNETLAB_DEB_CACHE_ROOT"/.staging-*; do
+    for dir in "$AZAMLABS_DEB_CACHE_ROOT"/.staging-*; do
         case "$dir" in
-            "$PNETLAB_DEB_CACHE_ROOT"/.staging-*) rm -rf --one-file-system -- "$dir" ;;
+            "$AZAMLABS_DEB_CACHE_ROOT"/.staging-*) rm -rf --one-file-system -- "$dir" ;;
             *) die "refusing to reap unexpected cache path: $dir" ;;
         esac
     done
@@ -2000,7 +2000,7 @@ def state(directory):
         fields = line.split("\t")
         if len(fields) != 6: raise ValueError(f"{directory}: invalid cache.tsv line {number}")
         package, arch, version, sha, size, filename = fields
-        if not re.fullmatch(r"pnetlab(?:-[a-z0-9][a-z0-9+.-]*)?", package) or arch not in ("amd64", "all") or not re.fullmatch(r"[A-Za-z0-9.+:~_-]+", version) or not re.fullmatch(r"[0-9a-f]{64}", sha) or not re.fullmatch(r"[0-9]+", size) or "/" in filename or not filename.endswith(".deb") or filename in rows:
+        if not re.fullmatch(r"azamlabs(?:-[a-z0-9][a-z0-9+.-]*)?", package) or arch not in ("amd64", "all") or not re.fullmatch(r"[A-Za-z0-9.+:~_-]+", version) or not re.fullmatch(r"[0-9a-f]{64}", sha) or not re.fullmatch(r"[0-9]+", size) or "/" in filename or not filename.endswith(".deb") or filename in rows:
             raise ValueError(f"{directory}: invalid cache.tsv line {number}")
         rows[filename] = (package, arch, version, sha, int(size), filename)
     actual = {p.name for p in directory.iterdir() if p.name.endswith(".deb")}
@@ -2035,11 +2035,11 @@ stage_deb_cache() {
     [ "$(id -u)" -eq 0 ] || die 'deb-cache staging must run as root'
     [ "${#CACHE_PACKAGES[@]}" -gt 0 ] || die 'deb-cache staging received an empty Codeberg package set'
     release="$MANIFEST_RELEASE"
-    install -d -m 0755 "$PNETLAB_DEB_CACHE_ROOT"
-    exec 8>"$PNETLAB_DEB_CACHE_LOCK"
-    flock -w 600 8 || die 'another process holds the pnetlab deb-cache lock'
+    install -d -m 0755 "$AZAMLABS_DEB_CACHE_ROOT"
+    exec 8>"$AZAMLABS_DEB_CACHE_LOCK"
+    flock -w 600 8 || die 'another process holds the azamlabs deb-cache lock'
     cache_reap_staging
-    staging="$(mktemp -d "$PNETLAB_DEB_CACHE_ROOT/.staging-$$-XXXXXX")"
+    staging="$(mktemp -d "$AZAMLABS_DEB_CACHE_ROOT/.staging-$$-XXXXXX")"
     chmod 0755 "$staging"
     apt-get install -y --download-only --allow-change-held-packages "${CACHE_PACKAGES[@]}" >>"$LOG" 2>&1 || die 'deb-cache download preflight failed; no package mutation was attempted'
     printf 'package\tarchitecture\tversion\tsha256\tsize\tfilename\n' >"$staging/cache.tsv"
@@ -2073,7 +2073,7 @@ stage_deb_cache() {
     printf 'format=1\ncommitted_utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >"$staging/COMPLETE"
     find "$staging" -maxdepth 1 -type f -exec sync -f {} \; 2>/dev/null || sync
     sync -f "$staging" 2>/dev/null || sync
-    destination="$PNETLAB_DEB_CACHE_ROOT/$release"
+    destination="$AZAMLABS_DEB_CACHE_ROOT/$release"
     if [ -e "$destination" ]; then
         if cache_compare_committed "$destination" "$staging" "$release"; then
             rm -rf --one-file-system -- "$staging"
@@ -2089,7 +2089,7 @@ stage_deb_cache() {
     else
         mv -T -- "$staging" "$destination" || die "could not commit cache directory: $destination"
     fi
-    sync -f "$PNETLAB_DEB_CACHE_ROOT" 2>/dev/null || sync
+    sync -f "$AZAMLABS_DEB_CACHE_ROOT" 2>/dev/null || sync
     exec 8>&-
     log "local deb cache committed: $destination"
 }
@@ -2108,7 +2108,7 @@ simulate_exact_transaction() {
 
 confirm_mutation() {
     [ "$YES" -eq 1 ] && return 0
-    printf 'The preflight passed. Install PNetLab and Docker now? [y/N] ' >&2
+    printf 'The preflight passed. Install AzamLabs and Docker now? [y/N] ' >&2
     local answer=''
     read -r answer
     case "$answer" in
@@ -2150,7 +2150,7 @@ configure_database() {
     plugin_status=$("${mysql_admin[@]}" -N -e "SELECT plugin_status FROM information_schema.plugins WHERE plugin_name='mysql_native_password';" 2>/dev/null || true)
     if ! printf '%s\n' "$plugin_status" | grep -qi '^ACTIVE$'; then
         log '[14 minimal] enabling MySQL 8.4 mysql_native_password compatibility'
-        printf '[mysqld]\nmysql_native_password=ON\n' >/etc/mysql/mysql.conf.d/zz-pnetlab-native-pw.cnf
+        printf '[mysqld]\nmysql_native_password=ON\n' >/etc/mysql/mysql.conf.d/zz-azamlabs-native-pw.cnf
         systemctl restart mysql >>"$LOG" 2>&1 || die 'could not restart MySQL after enabling mysql_native_password'
         for _ in $(seq 1 60); do
             "${mysql_admin[@]}" -N -e 'SELECT 1' >/dev/null 2>&1 && break
@@ -2164,23 +2164,23 @@ configure_database() {
     chmod 0600 /root/.my.cnf
 
     "${mysql_admin[@]}" >>"$LOG" 2>&1 <<'SQL_USERS'
-CREATE DATABASE IF NOT EXISTS pnetlab_db CHARACTER SET utf8 COLLATE utf8_general_ci;
+CREATE DATABASE IF NOT EXISTS azamlabs_db CHARACTER SET utf8 COLLATE utf8_general_ci;
 CREATE DATABASE IF NOT EXISTS guacdb CHARACTER SET utf8 COLLATE utf8_general_ci;
-CREATE USER IF NOT EXISTS 'pnetlab'@'localhost' IDENTIFIED WITH mysql_native_password BY 'pnetlab';
-CREATE USER IF NOT EXISTS 'guacuser'@'localhost' IDENTIFIED WITH mysql_native_password BY 'pnetlab';
-ALTER USER 'pnetlab'@'localhost' IDENTIFIED WITH mysql_native_password BY 'pnetlab';
-ALTER USER 'guacuser'@'localhost' IDENTIFIED WITH mysql_native_password BY 'pnetlab';
-GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'localhost';
+CREATE USER IF NOT EXISTS 'azamlabs'@'localhost' IDENTIFIED WITH mysql_native_password BY 'azamlabs';
+CREATE USER IF NOT EXISTS 'guacuser'@'localhost' IDENTIFIED WITH mysql_native_password BY 'azamlabs';
+ALTER USER 'azamlabs'@'localhost' IDENTIFIED WITH mysql_native_password BY 'azamlabs';
+ALTER USER 'guacuser'@'localhost' IDENTIFIED WITH mysql_native_password BY 'azamlabs';
+GRANT ALL PRIVILEGES ON azamlabs_db.* TO 'azamlabs'@'localhost';
 GRANT ALL PRIVILEGES ON guacdb.* TO 'guacuser'@'localhost';
 FLUSH PRIVILEGES;
 SQL_USERS
 
-    tables=$("${mysql[@]}" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pnetlab_db';")
-    schema='/opt/unetlab/schema/pnetlab_db-schema.sql'
-    [ -f "$schema" ] || schema='/opt/unetlab/schema/pnetlab_db.sql'
-    [ -f "$schema" ] || die 'pnetlab schema payload is missing'
+    tables=$("${mysql[@]}" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='azamlabs_db';")
+    schema='/opt/unetlab/schema/azamlabs_db-schema.sql'
+    [ -f "$schema" ] || schema='/opt/unetlab/schema/azamlabs_db.sql'
+    [ -f "$schema" ] || die 'azamlabs schema payload is missing'
     if [ "${tables:-0}" -eq 0 ]; then
-        "${mysql[@]}" pnetlab_db <"$schema" >>"$LOG" 2>&1 || die 'pnetlab schema import failed'
+        "${mysql[@]}" azamlabs_db <"$schema" >>"$LOG" 2>&1 || die 'azamlabs schema import failed'
     fi
 
     guac_tables=$("${mysql[@]}" -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='guacdb';")
@@ -2191,7 +2191,7 @@ SQL_USERS
     fi
 
     password_hash=$(printf '%s' azam | sha256sum | awk '{print $1}')
-    "${mysql[@]}" pnetlab_db >>"$LOG" 2>&1 <<SQL_ADMIN
+    "${mysql[@]}" azamlabs_db >>"$LOG" 2>&1 <<SQL_ADMIN
 INSERT INTO control (control_name, control_value) VALUES
   ('ctrl_offline_mode','1'), ('ctrl_online_mode','0'),
   ('ctrl_default_mode','offline'), ('ctrl_captcha','0'),
@@ -2212,7 +2212,7 @@ SQL_ADMIN
 configure_apache() {
     log '[11/14 minimal] writing Apache HTTP/HTTPS vhosts and reverse-proxy routes'
     install -d -m 0755 /etc/apache2/sites-available /etc/apache2/sites-enabled
-    cat >/etc/apache2/sites-available/pnetlab.conf <<'APACHE_HTTP'
+    cat >/etc/apache2/sites-available/azamlabs.conf <<'APACHE_HTTP'
 <VirtualHost *:80>
     DocumentRoot /opt/unetlab/html
     RewriteEngine On
@@ -2245,15 +2245,15 @@ configure_apache() {
 </VirtualHost>
 APACHE_HTTP
 
-    if [ ! -f /etc/ssl/certs/pnetlab-selfsigned.crt ] || [ ! -f /etc/ssl/private/pnetlab-selfsigned.key ]; then
+    if [ ! -f /etc/ssl/certs/azamlabs-selfsigned.crt ] || [ ! -f /etc/ssl/private/azamlabs-selfsigned.key ]; then
         openssl req -x509 -nodes -newkey rsa:2048 -days 3650 \
-            -keyout /etc/ssl/private/pnetlab-selfsigned.key \
-            -out /etc/ssl/certs/pnetlab-selfsigned.crt \
-            -subj '/CN=pnetlab' \
-            -addext 'subjectAltName=DNS:pnetlab,DNS:localhost,IP:127.0.0.1' >>"$LOG" 2>&1 || die 'self-signed HTTPS certificate generation failed'
-        chmod 0600 /etc/ssl/private/pnetlab-selfsigned.key
+            -keyout /etc/ssl/private/azamlabs-selfsigned.key \
+            -out /etc/ssl/certs/azamlabs-selfsigned.crt \
+            -subj '/CN=azamlabs' \
+            -addext 'subjectAltName=DNS:azamlabs,DNS:localhost,IP:127.0.0.1' >>"$LOG" 2>&1 || die 'self-signed HTTPS certificate generation failed'
+        chmod 0600 /etc/ssl/private/azamlabs-selfsigned.key
     fi
-    cat >/etc/apache2/sites-available/pnetlab-ssl.conf <<'APACHE_SSL'
+    cat >/etc/apache2/sites-available/azamlabs-ssl.conf <<'APACHE_SSL'
 <IfModule mod_ssl.c>
 <VirtualHost *:443>
     DocumentRoot /opt/unetlab/html
@@ -2269,8 +2269,8 @@ APACHE_HTTP
         Require all granted
     </Directory>
     SSLEngine on
-    SSLCertificateFile /etc/ssl/certs/pnetlab-selfsigned.crt
-    SSLCertificateKeyFile /etc/ssl/private/pnetlab-selfsigned.key
+    SSLCertificateFile /etc/ssl/certs/azamlabs-selfsigned.crt
+    SSLCertificateKeyFile /etc/ssl/private/azamlabs-selfsigned.key
     ProxyPass /telnet/ ws://127.0.0.1:8022/ upgrade=websocket
     ProxyPassReverse /telnet/ ws://127.0.0.1:8022/
     ProxyPass /vnc/ ws://127.0.0.1:6080/ upgrade=websocket
@@ -2288,8 +2288,8 @@ APACHE_HTTP
 APACHE_SSL
 
     a2enmod rewrite ssl proxy_http proxy_wstunnel headers http2 >>"$LOG" 2>&1 || die 'Apache module enablement failed'
-    a2dissite 000-default default-ssl pnetlabs >>"$LOG" 2>&1 || true
-    a2ensite pnetlab pnetlab-ssl >>"$LOG" 2>&1 || die 'Apache vhost enablement failed'
+    a2dissite 000-default default-ssl azamlabs >>"$LOG" 2>&1 || true
+    a2ensite azamlabs azamlabs-ssl >>"$LOG" 2>&1 || die 'Apache vhost enablement failed'
     sed -i '/^PrivateTmp[[:space:]]*=/d' /lib/systemd/system/apache2.service 2>/dev/null || true
 }
 
@@ -2297,7 +2297,7 @@ configure_php_fpm() {
     log '[11e minimal] wiring Apache to php8.5-fpm'
     for service_name in apache2 php8.5-fpm; do
         install -d -m 0755 "/etc/systemd/system/${service_name}.service.d"
-        cat >"/etc/systemd/system/${service_name}.service.d/zz-pnetlab-procnet.conf" <<'PROCNET'
+        cat >"/etc/systemd/system/${service_name}.service.d/zz-azamlabs-procnet.conf" <<'PROCNET'
 [Service]
 ProtectProc=default
 ProcSubset=all
@@ -2323,9 +2323,9 @@ configure_web_hardening() {
 }
 
 configure_guac_key() {
-    local env_file=/etc/pnet-webconsole/guac.env config_file=/etc/pnet-webconsole/console_config.php key
+    local env_file=/etc/azam-webconsole/guac.env config_file=/etc/azam-webconsole/console_config.php key
     log '[11d minimal] creating per-install GUAC_CRYPT_KEY'
-    install -d -m 0755 /etc/pnet-webconsole
+    install -d -m 0755 /etc/azam-webconsole
     key=''
     [ -f "$env_file" ] && key=$(sed -n 's/^GUAC_CRYPT_KEY=//p' "$env_file" | head -n1)
     [ "${#key}" -eq 32 ] || key=$(head -c 24 /dev/urandom | base64 | tr -d '\n')
@@ -2336,7 +2336,7 @@ configure_guac_key() {
     [ -f "$config_file" ] || die 'packaged console_config.php is missing'
     sed -i "s|define('GUAC_CRYPT_KEY', '[^']*');|define('GUAC_CRYPT_KEY', '$key');|" "$config_file"
     systemctl enable --now guacd.service >>"$LOG" 2>&1 || die 'guacd did not start after GUAC_CRYPT_KEY setup'
-    systemctl enable --now pnet-guac-lite.service >>"$LOG" 2>&1 || die 'pnet-guac-lite did not start after guac.env setup'
+    systemctl enable --now azam-guac-lite.service >>"$LOG" 2>&1 || die 'pnet-guac-lite did not start after guac.env setup'
 }
 
 install_telnetlib3() {
@@ -2345,10 +2345,10 @@ install_telnetlib3() {
     pip3 install --break-system-packages telnetlib3 >>"$LOG" 2>&1 || die 'telnetlib3 installation failed'
     python3 -c 'import telnetlib3' >>"$LOG" 2>&1 || die 'telnetlib3 import verification failed'
     log '[11c minimal] retrying the postinst-owned console mux after its dependency is present'
-    systemctl unmask pnet-console-mux.service >>"$LOG" 2>&1 || die 'could not unmask pnet-console-mux.service'
+    systemctl unmask azam-console-mux.service >>"$LOG" 2>&1 || die 'could not unmask azam-console-mux.service'
     systemctl daemon-reload >>"$LOG" 2>&1 || die 'systemd reload failed before console mux cutover'
     systemctl stop pnet-telnet-bridge.service pnet-websockify.service >>"$LOG" 2>&1 || true
-    if systemctl enable --now pnet-console-mux.service >>"$LOG" 2>&1; then
+    if systemctl enable --now azam-console-mux.service >>"$LOG" 2>&1; then
         systemctl disable pnet-telnet-bridge.service pnet-websockify.service >>"$LOG" 2>&1 || true
     else
         systemctl restart pnet-telnet-bridge.service pnet-websockify.service >>"$LOG" 2>&1 || true
@@ -2358,15 +2358,15 @@ install_telnetlib3() {
 
 verify_postinst_permissions() {
     log '[12/14 + 13/14] verifying postinst-owned sudoers cleanup and fixpermissions result'
-    [ ! -e /etc/sudoers.d/unetlab ] || die 'pnetlab.postinst left the retired www-data sudoers grant in place'
-    [ -x /opt/unetlab/wrappers/unl_wrapper ] || die 'unl_wrapper is missing from the pnetlab payload'
-    [ -d /opt/unetlab/tmp ] || die 'pnetlab.postinst/payload did not create /opt/unetlab/tmp'
-    getent group unl >/dev/null 2>&1 || die 'pnetlab.postinst did not create group unl'
+    [ ! -e /etc/sudoers.d/unetlab ] || die 'azamlabs.postinst left the retired www-data sudoers grant in place'
+    [ -x /opt/unetlab/wrappers/unl_wrapper ] || die 'unl_wrapper is missing from the azamlabs payload'
+    [ -d /opt/unetlab/tmp ] || die 'azamlabs.postinst/payload did not create /opt/unetlab/tmp'
+    getent group unl >/dev/null 2>&1 || die 'azamlabs.postinst did not create group unl'
     [ "$(stat -c '%G' /opt/unetlab/tmp 2>/dev/null)" = 'unl' ] || die '/opt/unetlab/tmp is not group-owned by unl'
-    [ -d /opt/unetlab/data/Exports ] || die 'pnetlab.postinst did not create data/Exports'
-    [ -d /opt/unetlab/data/Logs ] || die 'pnetlab.postinst did not create data/Logs'
-    sudo -u www-data php -r 'require "/etc/pnet-webconsole/console_config.php";' >>"$LOG" 2>&1 || \
-        die 'www-data cannot read /etc/pnet-webconsole/console_config.php'
+    [ -d /opt/unetlab/data/Exports ] || die 'azamlabs.postinst did not create data/Exports'
+    [ -d /opt/unetlab/data/Logs ] || die 'azamlabs.postinst did not create data/Logs'
+    sudo -u www-data php -r 'require "/etc/azam-webconsole/console_config.php";' >>"$LOG" 2>&1 || \
+        die 'www-data cannot read /etc/azam-webconsole/console_config.php'
 }
 
 verify_no_retired_console_units() {
@@ -2374,7 +2374,7 @@ verify_no_retired_console_units() {
     local dead
     for dead in pnet-websockify pnet-telnet-bridge; do
         [ ! -e "${PNET_SYSROOT}/lib/systemd/system/${dead}.service" ] || \
-            die "retired unit shipped by the pnetlab deb: /lib/systemd/system/${dead}.service (stale builder input; see debs/pnetlab/build-stage.sh allowlist)"
+            die "retired unit shipped by the azamlabs deb: /lib/systemd/system/${dead}.service (stale builder input; see debs/azamlabs/build-stage.sh allowlist)"
         [ ! -e "${PNET_SYSROOT}/etc/systemd/system/${dead}.service" ] || \
             warn "stale ${dead}.service left in /etc from a pre-6.8.67 install; remove it"
     done
@@ -2385,20 +2385,20 @@ verify_no_retired_console_units() {
 verify_cloud_bridges() {
     local i state=''
     log '=== verifying the cloud bridge devices (pnet0-9 + nat0) ==='
-    [ "$(systemctl is-enabled pnetlab-pnet-bridges.service 2>/dev/null)" = 'enabled' ] || \
-        die 'pnetlab-pnet-bridges.service is not enabled (deb did not ship/enable it)'
+    [ "$(systemctl is-enabled azamlabs-pnet-bridges.service 2>/dev/null)" = 'enabled' ] || \
+        die 'azamlabs-pnet-bridges.service is not enabled (deb did not ship/enable it)'
     # oneshot + RemainAfterExit: poll, do not sample once -- dpkg may still be
     # mid-transaction when this runs.
     for _ in $(seq 1 15); do
-        state="$(systemctl is-active pnetlab-pnet-bridges.service 2>/dev/null || true)"
+        state="$(systemctl is-active azamlabs-pnet-bridges.service 2>/dev/null || true)"
         [ "$state" = 'active' ] && break
         [ "$state" = 'failed' ] && break
         sleep 1
     done
     if [ "$state" != 'active' ]; then
-        systemctl status pnetlab-pnet-bridges.service >>"$LOG" 2>&1 || true
-        journalctl -u pnetlab-pnet-bridges.service -n 40 --no-pager >>"$LOG" 2>&1 || true
-        die "pnetlab-pnet-bridges.service did not become active (state=${state:-unknown})"
+        systemctl status azamlabs-pnet-bridges.service >>"$LOG" 2>&1 || true
+        journalctl -u azamlabs-pnet-bridges.service -n 40 --no-pager >>"$LOG" 2>&1 || true
+        die "azamlabs-pnet-bridges.service did not become active (state=${state:-unknown})"
     fi
     for i in 0 1 2 3 4 5 6 7 8 9; do
         ip link show "pnet$i" >/dev/null 2>&1 || die "cloud bridge device missing: pnet$i"
@@ -2415,8 +2415,8 @@ verify_cloud_bridges() {
 
 p2_fail_at() {
     local step="$1"
-    [ "${PNETLAB_PASS2_FAIL_AT:-}" = "$step" ] || return 0
-    die "PNETLAB_PASS2_FAIL_AT requested failure after $step"
+    [ "${AZAMLABS_PASS2_FAIL_AT:-}" = "$step" ] || return 0
+    die "AZAMLABS_PASS2_FAIL_AT requested failure after $step"
 }
 
 p2_state() {
@@ -2617,7 +2617,7 @@ p2_rollback() {
 
 p2_prune_committed() {
     local parent txn state txn_id stash_dir
-    parent="${P2_TXN_PARENT:-$(p2_path /var/lib/pnetlab-pass2)}"
+    parent="${P2_TXN_PARENT:-$(p2_path /var/lib/azamlabs-pass2)}"
     [ -d "$parent" ] || return 0
     shopt -s nullglob
     local -a old_txns=("$parent"/txn.*)
@@ -2636,7 +2636,7 @@ p2_prune_committed() {
 p2_begin_transaction() {
     local parent
     p2_check_interfaces_b
-    P2_TXN_PARENT="$(p2_path /var/lib/pnetlab-pass2)"
+    P2_TXN_PARENT="$(p2_path /var/lib/azamlabs-pass2)"
     if [ ! -d "$P2_TXN_PARENT" ]; then
         install -d -m 0700 -o root -g root -- "$P2_TXN_PARENT"
     else
@@ -2665,8 +2665,8 @@ p2_fault_boundary() {
 p2_build_pnet0_stanza() {
     if [ "$P2_UPLINK_MODE" = dhcp ]; then
         cat <<STANZA
-# BEGIN pnetlab-netcfg pnet0
-# Managed by pnetlab-netcfg. Mode: DHCP (stock non-blocking design).
+# BEGIN azamlabs-netcfg pnet0
+# Managed by azamlabs-netcfg. Mode: DHCP (stock non-blocking design).
 # \`inet manual\` + a BACKGROUNDED dhcpcd (NOT \`inet dhcp\`, which blocks ifup and
 # stretches boot to ~1m41s). allow-hotplug (NOT auto) lets the pnet0 bridge come
 # up via the udev hotplug event without ifup -a blocking on it -> ~10s boot.
@@ -2677,14 +2677,14 @@ iface pnet0 inet manual
     pre-up ip link set dev eth0 up
     bridge_ports eth0
     bridge_stp off
-# END pnetlab-netcfg pnet0
+# END azamlabs-netcfg pnet0
 STANZA
     else
         cat <<STANZA
-# BEGIN pnetlab-netcfg pnet0
-# Managed by pnetlab-netcfg. Mode: STATIC. Kept under allow-hotplug (NOT auto) so
+# BEGIN azamlabs-netcfg pnet0
+# Managed by azamlabs-netcfg. Mode: STATIC. Kept under allow-hotplug (NOT auto) so
 # udev applies \`inet static\` non-blocking, preserving the ~10s boot. Change with:
-#   pnetlab-netcfg           (interactive)   or   pnetlab-netcfg dhcp
+#   azamlabs-netcfg           (interactive)   or   azamlabs-netcfg dhcp
 allow-hotplug pnet0
 iface pnet0 inet static
     address $P2_UPLINK_ADDRESS
@@ -2692,7 +2692,7 @@ iface pnet0 inet static
     pre-up ip link set dev eth0 up
     bridge_ports eth0
     bridge_stp off
-# END pnetlab-netcfg pnet0
+# END azamlabs-netcfg pnet0
 STANZA
     fi
 }
@@ -2756,7 +2756,7 @@ p2_selfcheck_script() {
 #!/bin/bash
 set -u
 
-LOG=/var/log/pnetlab-network-install.log
+LOG=/var/log/azamlabs-network-install.log
 PENDING=/opt/unetlab/.uplink-selfcheck-pending
 RESULT=/opt/unetlab/.uplink-selfcheck-result
 MODE=${P2_EXPECTED_MODE:-dhcp}
@@ -2783,10 +2783,10 @@ while :; do
     ss -lunp 2>/dev/null | grep -Eq '(^|[[:space:]])[^[:space:]]*:67[[:space:]]' || mark_failure 'udhcpd is not listening on UDP port 67'
     [ "$(cat /proc/sys/net/ipv4/ip_forward 2>/dev/null || true)" = 1 ] || mark_failure 'net.ipv4.ip_forward is not 1'
     masq_count="$(iptables -t nat -S POSTROUTING 2>/dev/null | awk '$0 == "-A POSTROUTING -s 10.0.137.0/24 -o pnet0 -j MASQUERADE" {n++} END {print n+0}')"
-    [ "$masq_count" = 1 ] || mark_failure "expected one PNetLab MASQUERADE rule, found ${masq_count:-0}"
-    fwd_rules="$(iptables -S PNETLAB-FWD 2>/dev/null || true)"
-    grep -Fqx -- '-A PNETLAB-FWD -s 10.0.137.0/24 -o pnet0 -j ACCEPT' <<<"$fwd_rules" || mark_failure 'PNETLAB-FWD source rule is missing'
-    grep -Fqx -- '-A PNETLAB-FWD -d 10.0.137.0/24 -i pnet0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT' <<<"$fwd_rules" || mark_failure 'PNETLAB-FWD return rule is missing'
+    [ "$masq_count" = 1 ] || mark_failure "expected one AzamLabs MASQUERADE rule, found ${masq_count:-0}"
+    fwd_rules="$(iptables -S AZAMLABS-FWD 2>/dev/null || true)"
+    grep -Fqx -- '-A AZAMLABS-FWD -s 10.0.137.0/24 -o pnet0 -j ACCEPT' <<<"$fwd_rules" || mark_failure 'AZAMLABS-FWD source rule is missing'
+    grep -Fqx -- '-A AZAMLABS-FWD -d 10.0.137.0/24 -i pnet0 -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT' <<<"$fwd_rules" || mark_failure 'AZAMLABS-FWD return rule is missing'
 
     [ -z "$first_failure" ] && break
     [ "$(date +%s)" -ge "$deadline" ] && break
@@ -2804,7 +2804,7 @@ status=PASS
     printf 'udp listeners:\n%s\n' "$(ss -lunp 2>/dev/null || true)"
     printf 'ip_forward=%s\n' "$(cat /proc/sys/net/ipv4/ip_forward 2>/dev/null || true)"
     printf 'POSTROUTING:\n%s\n' "$(iptables -t nat -S POSTROUTING 2>/dev/null || true)"
-    printf 'PNETLAB-FWD:\n%s\n' "$(iptables -S PNETLAB-FWD 2>/dev/null || true)"
+    printf 'AZAMLABS-FWD:\n%s\n' "$(iptables -S AZAMLABS-FWD 2>/dev/null || true)"
 } | tee -a "$LOG" >"$RESULT"
 rm -f -- "$PENDING"
 [ "$status" = PASS ]
@@ -2815,9 +2815,9 @@ p2_write_service_units() {
     local selfcheck="$1"
     cat <<UNIT
 [Unit]
-Description=PNetLab cloud-uplink post-reboot self-check
+Description=AzamLabs cloud-uplink post-reboot self-check
 ConditionPathExists=/opt/unetlab/.uplink-selfcheck-pending
-After=pnetlab-ovfstartup.service network-online.target
+After=azamlabs-ovfstartup.service network-online.target
 
 [Service]
 Type=oneshot
@@ -2906,7 +2906,7 @@ LINK
     # systemd-networkd-resolve-hook.socket independently trigger the service
     # and are untouched by masking .socket/.service alone. Leaving them
     # active caused a real, reproduced systemd job-queue deadlock during
-    # pnetlab-pass2-recover.sh's restart of systemd-networkd.service after an
+    # azamlabs-pass2-recover.sh's restart of systemd-networkd.service after an
     # abandoned transaction (2026-08-24 gate, step 19). Sockets are masked
     # before the service they trigger, matching systemd's own warning order.
     systemctl disable systemd-networkd.socket systemd-networkd-varlink.socket systemd-networkd-resolve-hook.socket systemd-networkd.service >>"$LOG" 2>&1 || die 'Pass 2 could not disable systemd-networkd'
@@ -2925,8 +2925,8 @@ LINK
 
     # P2-f: the unit is package-owned in Slice 2. Enabling an absent unit
     # would create a false success that fails only after the reboot.
-    p2_unit_is_present pnetlab-ovfstartup.service || \
-        die 'this build predates the deb-shipped ovfstartup unit; install the Slice 2 pnetlab deb before Pass 2'
+    p2_unit_is_present azamlabs-ovfstartup.service || \
+        die 'this build predates the deb-shipped ovfstartup unit; install the Slice 2 azamlabs deb before Pass 2'
     ovf_conf="$(p2_path /opt/ovf/ovfstartup.conf)"
     p2_ensure_dir "$(dirname -- "$ovf_conf")" 0755
     p2_record_path "$ovf_conf"
@@ -2937,8 +2937,8 @@ OVFSTARTUP_LVM_AUTOEXTEND=0
 OVFSTARTUP_EBTABLES_FLUSH=0
 OVFSTARTUP_FORWARD_POLICY_ACCEPT=0
 CONF
-    p2_record_unit pnetlab-ovfstartup.service
-    systemctl enable pnetlab-ovfstartup.service >>"$LOG" 2>&1 || die 'Pass 2 could not enable the deb-shipped pnetlab-ovfstartup.service'
+    p2_record_unit azamlabs-ovfstartup.service
+    systemctl enable azamlabs-ovfstartup.service >>"$LOG" 2>&1 || die 'Pass 2 could not enable the deb-shipped azamlabs-ovfstartup.service'
     configured="$(p2_path /opt/ovf/.configured)"
     p2_record_path "$configured"
     if command -v dmidecode >/dev/null 2>&1; then
@@ -2954,14 +2954,14 @@ CONF
         resolv="$(p2_path /etc/resolv.conf)"
         p2_record_path "$resolv"
         {
-            echo '# Written by pnetlab-netcfg (static mode). Edit with: pnetlab-netcfg'
+            echo '# Written by azamlabs-netcfg (static mode). Edit with: azamlabs-netcfg'
             IFS=',' read -ra _dns_servers <<<"$P2_UPLINK_DNS"
             for _dns in "${_dns_servers[@]}"; do
                 _dns="${_dns// /}"
                 [ -n "$_dns" ] && printf 'nameserver %s\n' "$_dns"
             done
         } | p2_atomic_write "$resolv" 0644
-        _dist_host="${PNETLAB_GENERIC_API_BASE:-$PNETLAB_DEFAULT_GENERIC_API_BASE}"
+        _dist_host="${AZAMLABS_GENERIC_API_BASE:-$AZAMLABS_DEFAULT_GENERIC_API_BASE}"
         _dist_host="${_dist_host#https://}"
         _dist_host="${_dist_host#http://}"
         _dist_host="${_dist_host%%/*}"
@@ -2971,18 +2971,18 @@ CONF
 
     # P2-h: the helper waits for all eight boot-time signals; only enablement
     # is performed now.
-    selfcheck="$(p2_path /opt/ovf/pnetlab-uplink-selfcheck.sh)"
+    selfcheck="$(p2_path /opt/ovf/azamlabs-uplink-selfcheck.sh)"
     p2_ensure_dir "$(dirname -- "$selfcheck")" 0755
     p2_record_path "$selfcheck"
     p2_selfcheck_script | p2_atomic_write "$selfcheck" 0755
-    selfcheck_unit="$(p2_path /etc/systemd/system/pnetlab-uplink-selfcheck.service)"
+    selfcheck_unit="$(p2_path /etc/systemd/system/azamlabs-uplink-selfcheck.service)"
     p2_ensure_dir "$(dirname -- "$selfcheck_unit")" 0755
     p2_record_path "$selfcheck_unit"
     p2_write_service_units "$selfcheck" | p2_atomic_write "$selfcheck_unit" 0644
     p2_record_path "$(p2_path /opt/unetlab/.uplink-selfcheck-pending)"
     printf '\n' | p2_atomic_write "$(p2_path /opt/unetlab/.uplink-selfcheck-pending)" 0644
-    p2_record_unit pnetlab-uplink-selfcheck.service
-    systemctl enable pnetlab-uplink-selfcheck.service >>"$LOG" 2>&1 || die 'Pass 2 could not enable the uplink self-check unit'
+    p2_record_unit azamlabs-uplink-selfcheck.service
+    systemctl enable azamlabs-uplink-selfcheck.service >>"$LOG" 2>&1 || die 'Pass 2 could not enable the uplink self-check unit'
     p2_fault_boundary P2-h
 
     # P2-i: refresh systemd's view after all unit and drop-in writes.
@@ -2993,22 +2993,22 @@ CONF
 p2_extract_marker_block() {
     local file="$1" output="$2"
     awk '
-        /# BEGIN pnetlab-netcfg pnet0/ {inside=1}
+        /# BEGIN azamlabs-netcfg pnet0/ {inside=1}
         inside {print}
-        /# END pnetlab-netcfg pnet0/ {exit}
+        /# END azamlabs-netcfg pnet0/ {exit}
     ' "$file" >"$output"
 }
 
 p2_verify_interfaces_structure() {
     local interfaces expected marker
     interfaces="$(p2_path /etc/network/interfaces)"
-    expected="$(mktemp /tmp/pnetlab-pass2-expected-stanza.XXXXXX)"
-    marker="$(mktemp /tmp/pnetlab-pass2-actual-stanza.XXXXXX)"
+    expected="$(mktemp /tmp/azamlabs-pass2-expected-stanza.XXXXXX)"
+    marker="$(mktemp /tmp/azamlabs-pass2-actual-stanza.XXXXXX)"
     p2_build_pnet0_stanza >"$expected"
     p2_extract_marker_block "$interfaces" "$marker"
     cmp -s "$expected" "$marker" || {
         rm -f "$expected" "$marker"
-        die 'Pass 2 verification: pnet0 marker stanza is not byte-identical to the pnetlab-netcfg builder'
+        die 'Pass 2 verification: pnet0 marker stanza is not byte-identical to the azamlabs-netcfg builder'
     }
     rm -f "$expected" "$marker"
     python3 - "$interfaces" "$(p2_path /etc/network/interfaces.d)" "$P2_SOURCE_DIRECTIVE" <<'PY'
@@ -3104,8 +3104,8 @@ verify_cloud_uplink_config() {
     local -a yaml_files=($(p2_path /etc/netplan)/*.yaml)
     shopt -u nullglob
     [ "${#yaml_files[@]}" -eq 0 ] || die 'Pass 2 verification: netplan YAML remains active'
-    [ "$(systemctl is-enabled pnetlab-ovfstartup.service 2>/dev/null || true)" = enabled ] || \
-        die 'Pass 2 verification: pnetlab-ovfstartup.service is not enabled'
+    [ "$(systemctl is-enabled azamlabs-ovfstartup.service 2>/dev/null || true)" = enabled ] || \
+        die 'Pass 2 verification: azamlabs-ovfstartup.service is not enabled'
     [ "$(systemctl is-enabled ovfstartup.service 2>/dev/null || true)" = masked ] || \
         die 'Pass 2 verification: legacy ovfstartup.service is not masked'
     [ "$(systemctl is-enabled networking.service 2>/dev/null || true)" = enabled ] || \
@@ -3145,11 +3145,11 @@ with open(sys.argv[1], encoding="utf-8") as source:
 if values != expected:
     raise SystemExit("ovfstartup toggles are not exactly the five zero values")
 PY
-    # MASQUERADE and PNETLAB-FWD rule checks deliberately do NOT belong here.
+    # MASQUERADE and AZAMLABS-FWD rule checks deliberately do NOT belong here.
     # Both only exist once ovfstartup.sh has actually run, which never happens
-    # in this install-time session by design (D2: pnetlab-ovfstartup.service is
+    # in this install-time session by design (D2: azamlabs-ovfstartup.service is
     # `enable`d, never `--now`-started, at install/package time). The identical
-    # assertions already run post-boot in pnetlab-uplink-selfcheck.sh (see
+    # assertions already run post-boot in azamlabs-uplink-selfcheck.sh (see
     # p2_selfcheck_script()), whose PASS/FAIL result gate step 3 of
     # docs/pass2-design/03-revised-plan.md already checks. Asserting them here
     # guaranteed rollback on every fresh install; see the 2026-08-24 gate run.
@@ -3157,7 +3157,7 @@ PY
         [ "$(systemctl is-enabled "$unit" 2>/dev/null || true)" = masked ] || \
             die "Pass 2 verification: $unit is not masked"
     done
-    apt_conf="$(p2_path /etc/apt/apt.conf.d/99pnetlab-no-auto-upgrade)"
+    apt_conf="$(p2_path /etc/apt/apt.conf.d/99azamlabs-no-auto-upgrade)"
     for line in \
         'APT::Periodic::Update-Package-Lists "0";' \
         'APT::Periodic::Unattended-Upgrade "0";' \
@@ -3169,14 +3169,14 @@ PY
 }
 
 ensure_runtime_tmp() {
-    log '[13 minimal] creating the engine runtime tmp directory omitted by pnetlab.postinst'
+    log '[13 minimal] creating the engine runtime tmp directory omitted by azamlabs.postinst'
     getent group unl >/dev/null 2>&1 || die 'unl group is missing before runtime tmp setup'
     install -d -o root -g unl -m 2777 /opt/unetlab/tmp
 }
 
 recover_dkms() {
     local dkms_status journal_status purge_status configure_status check_status
-    warn 'pnetlab-bridge-dkms failed; starting mandatory recovery'
+    warn 'azamlabs-bridge-dkms failed; starting mandatory recovery'
     {
         echo '--- dkms status ---'
         dkms status || true
@@ -3186,7 +3186,7 @@ recover_dkms() {
         dpkg --audit || true
     } >>"$LOG" 2>&1
     set +e
-    apt-get purge -y pnetlab-bridge-dkms >>"$LOG" 2>&1
+    apt-get purge -y azamlabs-bridge-dkms >>"$LOG" 2>&1
     purge_status=$?
     dpkg --configure -a >>"$LOG" 2>&1
     configure_status=$?
@@ -3195,15 +3195,15 @@ recover_dkms() {
     set -e
     [ "$configure_status" -eq 0 ] || die 'DKMS recovery dpkg --configure -a failed'
     [ "$check_status" -eq 0 ] || die 'DKMS recovery left apt-get check unclean'
-    warn "pnetlab-bridge-dkms unavailable/failed and was purged (purge rc=$purge_status); continuing without patched bridge module"
+    warn "azamlabs-bridge-dkms unavailable/failed and was purged (purge rc=$purge_status); continuing without patched bridge module"
 }
 
 install_dkms_best_effort() {
-    local version="${PROFILE_BEST_EFFORT[pnetlab-bridge-dkms]:-}"
-    [ -n "$version" ] || { log '[post-step-5] pnetlab-bridge-dkms not in this profile selection; skipping'; return 0; }
-    log "[post-step-5] installing pnetlab-bridge-dkms=$version as isolated best effort"
-    if apt-get install -y "pnetlab-bridge-dkms=${version}" >>"$LOG" 2>&1; then
-        log 'pnetlab-bridge-dkms installed; recording DKMS state'
+    local version="${PROFILE_BEST_EFFORT[azamlabs-bridge-dkms]:-}"
+    [ -n "$version" ] || { log '[post-step-5] azamlabs-bridge-dkms not in this profile selection; skipping'; return 0; }
+    log "[post-step-5] installing azamlabs-bridge-dkms=$version as isolated best effort"
+    if apt-get install -y "azamlabs-bridge-dkms=${version}" >>"$LOG" 2>&1; then
+        log 'azamlabs-bridge-dkms installed; recording DKMS state'
         dkms status >>"$LOG" 2>&1 || true
     else
         recover_dkms
@@ -3233,31 +3233,31 @@ wait_socket() {
 
 verify_services() {
     log '=== socket-level service verification (restart-loop proof) ==='
-    wait_socket 'broker unix socket' '[ -S /run/pnetlab/broker.sock ]' pnetlab-brokerd.service
+    wait_socket 'broker unix socket' '[ -S /run/azamlabs/broker.sock ]' azamlabs-brokerd.service
     wait_socket 'HTTP bridge 127.0.0.1:8025' "ss -ltnH 'sport = :8025' | grep -Eq '127\\.0\\.0\\.1:8025|\\[::1\\]:8025'" pnet-http-bridge.service
-    wait_socket 'console mux telnet :8022 and VNC :6080' "ss -ltnH 'sport = :8022' | grep -Eq '127\\.0\\.0\\.1:8022|\\[::1\\]:8022' && ss -ltnH 'sport = :6080' | grep -Eq '127\\.0\\.0\\.1:6080|\\[::1\\]:6080'" pnet-console-mux.service
+    wait_socket 'console mux telnet :8022 and VNC :6080' "ss -ltnH 'sport = :8022' | grep -Eq '127\\.0\\.0\\.1:8022|\\[::1\\]:8022' && ss -ltnH 'sport = :6080' | grep -Eq '127\\.0\\.0\\.1:6080|\\[::1\\]:6080'" azam-console-mux.service
     wait_socket 'shell bridge :8023' "ss -ltnH 'sport = :8023' | grep -Eq '127\\.0\\.0\\.1:8023|\\[::1\\]:8023'" pnet-shell-bridge.service
-    wait_socket 'guac-lite :8081' "ss -ltnH 'sport = :8081' | grep -Eq '127\\.0\\.0\\.1:8081|\\[::1\\]:8081'" pnet-guac-lite.service
-    wait_socket 'labstated :8024' "ss -ltnH 'sport = :8024' | grep -Eq '127\\.0\\.0\\.1:8024|\\[::1\\]:8024'" pnetlab-labstated.service
+    wait_socket 'guac-lite :8081' "ss -ltnH 'sport = :8081' | grep -Eq '127\\.0\\.0\\.1:8081|\\[::1\\]:8081'" azam-guac-lite.service
+    wait_socket 'labstated :8024' "ss -ltnH 'sport = :8024' | grep -Eq '127\\.0\\.0\\.1:8024|\\[::1\\]:8024'" azamlabs-labstated.service
 }
 
 verify_broker_only() {
     log '=== satellite profile: broker-only socket verification ==='
-    wait_socket 'broker unix socket' '[ -S /run/pnetlab/broker.sock ]' pnetlab-brokerd.service
+    wait_socket 'broker unix socket' '[ -S /run/azamlabs/broker.sock ]' azamlabs-brokerd.service
 }
 
 verify_schema() {
     local query result
     log '=== schema verification against shipped 6.8.64 schema shape ==='
-    query="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='pnetlab_db' AND table_name IN ('control','users','node_sessions');"
+    query="SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='azamlabs_db' AND table_name IN ('control','users','node_sessions');"
     result=$(mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -N -e "$query")
     [ "$result" = '3' ] || die "schema table verification failed: expected 3 core tables, got ${result:-empty}"
     for column in user_max_cpu user_max_ram access_days ext_auth; do
-        query="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='pnetlab_db' AND table_name='users' AND column_name='$column';"
+        query="SELECT COUNT(*) FROM information_schema.columns WHERE table_schema='azamlabs_db' AND table_name='users' AND column_name='$column';"
         result=$(mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -N -e "$query")
         [ "$result" = '1' ] || die "schema column verification failed: users.$column"
     done
-    query="SELECT username FROM pnetlab_db.users WHERE username='admin';"
+    query="SELECT username FROM azamlabs_db.users WHERE username='admin';"
     [ "$(mysql -uroot -p"$MYSQL_ROOT_PASSWORD" -N -e "$query")" = 'admin' ] || die 'admin seed verification failed'
 }
 
@@ -3266,14 +3266,14 @@ verify_web_and_login() {
     log '=== HTTPS login and API login verification ==='
     login_code=$(curl -k -sS -o /dev/null -w '%{http_code}' https://127.0.0.1/login/)
     [ "$login_code" = '200' ] || die "HTTPS login page returned HTTP $login_code"
-    COOKIE_TMP=$(mktemp /tmp/pnetlab-netinstall-cookie.XXXXXX)
-    api_body=$(mktemp /tmp/pnetlab-netinstall-api.XXXXXX)
+    COOKIE_TMP=$(mktemp /tmp/azamlabs-netinstall-cookie.XXXXXX)
+    api_body=$(mktemp /tmp/azamlabs-netinstall-api.XXXXXX)
     api_code=$(curl -k -sS -c "$COOKIE_TMP" -o "$api_body" -w '%{http_code}' \
         -X POST https://127.0.0.1/api/auth \
         -H 'Content-Type: application/json' \
         --data '{"username":"admin","password":"pnet"}')
     [ "$api_code" = '200' ] || { cat "$api_body" >>"$LOG"; die "HTTPS API login returned HTTP $api_code"; }
-    SESSION_TMP=$(mktemp /tmp/pnetlab-netinstall-session.XXXXXX)
+    SESSION_TMP=$(mktemp /tmp/azamlabs-netinstall-session.XXXXXX)
     curl -k -sS -b "$COOKIE_TMP" -o "$SESSION_TMP" https://127.0.0.1/api/auth >>"$LOG" 2>&1 || true
     cat "$SESSION_TMP" >>"$LOG"
     grep -Eiq 'admin|User has been loaded' "$api_body" "$SESSION_TMP" || {
@@ -3290,23 +3290,23 @@ verify_docker() {
         if dpkg-query -W -f='${db:Status-Status}\n' docker-ce 2>/dev/null | grep -qx installed; then
             die '--no-docker postcondition failed: docker-ce is installed'
         fi
-        if dpkg-query -W -f='${db:Status-Status}\n' pnetlab-docker 2>/dev/null | grep -qx installed; then
-            die '--no-docker postcondition failed: pnetlab-docker is installed'
+        if dpkg-query -W -f='${db:Status-Status}\n' azamlabs-docker 2>/dev/null | grep -qx installed; then
+            die '--no-docker postcondition failed: azamlabs-docker is installed'
         fi
-        log 'negative postcondition OK: docker-ce and pnetlab-docker are not installed'
+        log 'negative postcondition OK: docker-ce and azamlabs-docker are not installed'
         return 0
     fi
     log '=== Docker runtime verification ==='
     systemctl enable --now docker >>"$LOG" 2>&1 || die 'Docker service did not start'
     docker info >>"$LOG" 2>&1 || die 'docker info failed'
     docker run --rm hello-world >>"$LOG" 2>&1 || die 'docker run --rm hello-world failed'
-    log '=== required Docker-backed node smoke through the PNetLab broker ==='
+    log '=== required Docker-backed node smoke through the AzamLabs broker ==='
     python3 - <<'PY' >>"$LOG" 2>&1 || die 'brokered Docker node smoke failed'
 import json
 import socket
 import time
 
-SOCK = '/run/pnetlab/broker.sock'
+SOCK = '/run/azamlabs/broker.sock'
 SESSION = 970001
 
 
@@ -3372,20 +3372,20 @@ PY
     log 'Docker apt/runtime smoke and brokered Docker node smoke OK'
 }
 
-# pnet-capture-web:1.0 -- the html5 web packet-capture image the link Capture
+# azam-capture-web:1.0 -- the html5 web packet-capture image the link Capture
 # action invokes. Never bundled offline on any install path (Docker Hub pull
 # only); the ISO installer pre-pulls it during install so it's warm for the
 # first Capture click, this bootstrap did not. Best-effort: a failed pull just
 # means the GUI's own on-demand pull runs on first use instead.
 CAPWEB_PRELOADED=0
 preload_capture_web() {
-    log '=== preloading pnet-capture-web (html5 packet capture) ==='
-    if docker pull rspnet/pnet-capture-web:latest >>"$LOG" 2>&1; then
-        docker tag rspnet/pnet-capture-web:latest pnet-capture-web:1.0 >>"$LOG" 2>&1 || true
-        log 'pulled + tagged pnet-capture-web:1.0 from Docker Hub (rspnet/)'
+    log '=== preloading azam-capture-web (html5 packet capture) ==='
+    if docker pull rspnet/azam-capture-web:latest >>"$LOG" 2>&1; then
+        docker tag rspnet/azam-capture-web:latest azam-capture-web:1.0 >>"$LOG" 2>&1 || true
+        log 'pulled + tagged azam-capture-web:1.0 from Docker Hub (rspnet/)'
         CAPWEB_PRELOADED=1
     else
-        warn 'pnet-capture-web pull failed -- html5 packet capture will pull on first use from Dashboard > Docker Devices'
+        warn 'azam-capture-web pull failed -- html5 packet capture will pull on first use from Dashboard > Docker Devices'
     fi
 }
 
@@ -3405,12 +3405,12 @@ summary() {
     log 'Not available on network installs (offline bundle only): pnet-wireshark, pnet-wifi-spike.'
     if [ "$PROFILE" = master ] && [ "$NO_DOCKER" -eq 0 ]; then
         if [ "$CAPWEB_PRELOADED" -eq 1 ]; then
-            log 'html5 packet capture : pnet-capture-web:1.0 preloaded, ready for the link Capture action.'
+            log 'html5 packet capture : azam-capture-web:1.0 preloaded, ready for the link Capture action.'
         else
-            log 'html5 packet capture : pnet-capture-web NOT preloaded (pull failed) -- will pull on first use from Dashboard > Docker Devices.'
+            log 'html5 packet capture : azam-capture-web NOT preloaded (pull failed) -- will pull on first use from Dashboard > Docker Devices.'
         fi
     fi
-    log 'Pointer only: future update operations remain owned by pnetlab-update; this bootstrap does not invoke it.'
+    log 'Pointer only: future update operations remain owned by azamlabs-update; this bootstrap does not invoke it.'
     log 'cloud bridges     : pnet0-9 + nat0 devices present (GUI cloud list populated)'
     if [ "$PROFILE" = satellite ]; then
         log 'cloud uplink/NAT  : SKIPPED -- satellite profile is Pass 2 master-only.'
@@ -3427,7 +3427,7 @@ summary() {
         log "management NIC    : $P2_UPLINK_NIC (MAC $P2_UPLINK_MAC) becomes eth0 inside pnet0 AT THE NEXT REBOOT."
         log 'IP AFTER REBOOT   : the same address is EXPECTED but NOT GUARANTEED. The DHCP client changes from systemd-networkd to dhcpcd, and a DHCP server keying on DUID/client-id rather than MAC may issue a different lease.'
         log "Find the host after reboot by MAC $P2_UPLINK_MAC."
-        log 'Recovery from console: pnetlab-netcfg'
+        log 'Recovery from console: azamlabs-netcfg'
         log 'REBOOT REQUIRED   : networking is NOT yet handed over.'
         log 'SELF-CHECK        : result will be written to /opt/unetlab/.uplink-selfcheck-result after reboot.'
     fi
@@ -3442,8 +3442,8 @@ main() {
         if [ "$RELEASE_HINT" = latest ]; then
             resolve_latest_release
         else
-            MANIFEST_SOURCE="${PNETLAB_GENERIC_API_BASE:-$PNETLAB_DEFAULT_GENERIC_API_BASE}"
-            MANIFEST_SOURCE="${MANIFEST_SOURCE%/}/${DEFAULT_GENERIC_OWNER}/generic/${DEFAULT_GENERIC_PACKAGE}/${RELEASE_HINT}/pnetlab-${RELEASE_HINT}-manifest.json"
+            MANIFEST_SOURCE="${AZAMLABS_GENERIC_API_BASE:-$AZAMLABS_DEFAULT_GENERIC_API_BASE}"
+            MANIFEST_SOURCE="${MANIFEST_SOURCE%/}/${DEFAULT_GENERIC_OWNER}/generic/${DEFAULT_GENERIC_PACKAGE}/${RELEASE_HINT}/azamlabs-${RELEASE_HINT}-manifest.json"
         fi
     fi
     fetch_manifest "$MANIFEST_SOURCE"
@@ -3476,7 +3476,7 @@ main() {
     log '=== verifying signed apt origins and exact manifest-pinned candidates ==='
     build_transaction
     for package in "${CODEBERG_PACKAGE_NAMES[@]}"; do
-        [ "$NO_DOCKER" -eq 1 ] && [ "$package" = 'pnetlab-docker' ] && continue
+        [ "$NO_DOCKER" -eq 1 ] && [ "$package" = 'azamlabs-docker' ] && continue
         require_codeberg_candidate "$package"
     done
     if [ "$NO_DOCKER" -eq 0 ]; then
@@ -3502,7 +3502,7 @@ main() {
         install_telnetlib3
         systemctl daemon-reload >>"$LOG" 2>&1 || die 'systemd daemon-reload failed'
 
-        # The pnetlab postinst runs this once, but configure_apache() writes the
+        # The azamlabs postinst runs this once, but configure_apache() writes the
         # final netinstall vhosts afterwards. Re-run it only after Apache/PHP are
         # configured so /Exports and the other hardened aliases survive.
         configure_web_hardening

@@ -121,7 +121,7 @@ sudo bash scripts/azambasha-link-impairment.sh clear all
    ```
 2. On your Windows machine, run Wireshark connected to the stream:
    ```cmd
-   ncat <PNETLAB_VM_IP> 19001 | "C:\Program Files\Wireshark\Wireshark.exe" -k -i -
+   ncat <AZAMLABS_VM_IP> 19001 | "C:\Program Files\Wireshark\Wireshark.exe" -k -i -
    ```
 
 ### Method B: Capture to File with BPF Filter

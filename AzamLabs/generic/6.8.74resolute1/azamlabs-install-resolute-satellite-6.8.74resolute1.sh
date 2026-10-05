@@ -1,5 +1,5 @@
 #!/bin/bash
-# install-resolute-satellite.sh — PNetLab 27H1 v8 (Ubuntu 26.04 "resolute") CLUSTER SATELLITE installer.
+# install-resolute-satellite.sh — AzamLabs 27H1 v8 (Ubuntu 26.04 "resolute") CLUSTER SATELLITE installer.
 #
 # Headless node-execution host: engine wrappers + qemu/iol/dynamips/docker
 # runtimes, NO apache/mysql/store/webconsole/guacd. After install, join the
@@ -10,7 +10,7 @@
 # Run on a FRESH Ubuntu 26.04 machine:
 #       sudo bash install-resolute-satellite.sh
 #
-# Uses the release-scoped bundle layout (pnetlab-debs/, deps/qemu-compat-libs.tgz,
+# Uses the release-scoped bundle layout (azamlabs-debs/, deps/qemu-compat-libs.tgz,
 # qemu-zoo/*.tgz, COMPLETE, and inventory.tsv). Idempotent.
 
 set -euo pipefail
@@ -18,24 +18,24 @@ export DEBIAN_FRONTEND=noninteractive
 export LC_ALL=C.UTF-8
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-DEBS_DIR="$SCRIPT_DIR/pnetlab-debs"
+DEBS_DIR="$SCRIPT_DIR/azamlabs-debs"
 DEPS_DIR="$SCRIPT_DIR/deps"
-LOG="/var/log/install-pnetlab-noble-satellite.log"
+LOG="/var/log/install-azamlabs-noble-satellite.log"
 BUNDLE_COMPLETE="$SCRIPT_DIR/COMPLETE"
 EXPECTED_RELEASE=''
 
-# Fallback pool locations searched when pnetlab-debs/ is empty
+# Fallback pool locations searched when azamlabs-debs/ is empty
 POOL_SEARCH_DIRS=(
-    "$SCRIPT_DIR/pnetlab-debs"
+    "$SCRIPT_DIR/azamlabs-debs"
     "$SCRIPT_DIR/../../debian/pool/resolute/main"
     "$SCRIPT_DIR/../../../debian/pool/resolute/main"
-    "/opt/azam-pnet/AzamLabs/debian/pool/resolute/main"
-    "/opt/pnetlab/debian/pool/resolute/main"
+    "/opt/azamlabs/AzamLabs/debian/pool/resolute/main"
+    "/opt/azamlabs/debian/pool/resolute/main"
     "/opt/azambasha/debian/pool/resolute/main"
 )
 
 readonly -a SATELLITE_REQUIRED_PACKAGES=(
-    pnetlab-docker pnetlab-qemu pnetlab-satellite pnetlab-vpcs
+    azamlabs-docker azamlabs-qemu azamlabs-satellite azamlabs-vpcs
 )
 readonly -a SATELLITE_ZOO_VERSIONS=(2.4.0 2.12.0 4.1.0 5.2.0)
 
@@ -52,17 +52,17 @@ die()  { echo "[$(date '+%H:%M:%S')] ERROR: $*" | tee -a "$LOG" >&2; exit 1; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
 : > "$LOG"
-log "=== PNetLab 27H1 v8 SATELLITE Installer (Ubuntu 26.04 resolute, headless) ==="
+log "=== AzamLabs 27H1 v8 SATELLITE Installer (Ubuntu 26.04 resolute, headless) ==="
 log "Log: $LOG ; bundle: $SCRIPT_DIR"
 
 # ── Preflight ─────────────────────────────────────────────────────────────────
 [ "$(id -u)" = "0" ] || die "Must run as root (sudo bash install-resolute-satellite.sh)"
 lsb_release -r -s 2>/dev/null | grep -q '26.04' || \
     die "Requires Ubuntu 26.04. Detected: $(lsb_release -r -s 2>/dev/null || echo unknown)"
-[ -d "$DEBS_DIR" ] || die "pnetlab-debs/ not found in $SCRIPT_DIR"
+[ -d "$DEBS_DIR" ] || die "azamlabs-debs/ not found in $SCRIPT_DIR"
 [ -d "$DEPS_DIR" ] || die "deps/ not found in $SCRIPT_DIR"
-dpkg -s pnetlab >/dev/null 2>&1 && \
-    die "pnetlab (master) is installed on this box — a host is master OR satellite, not both"
+dpkg -s azamlabs >/dev/null 2>&1 && \
+    die "azamlabs (master) is installed on this box — a host is master OR satellite, not both"
 
 marker_value() {
     local key="$1"
@@ -74,7 +74,7 @@ marker_value() {
 EXPECTED_RELEASE="$(marker_value release)"
 [[ "$EXPECTED_RELEASE" =~ ^6\.8\.[0-9]+resolute1$ ]] \
     || die "satellite bundle COMPLETE marker has an invalid release"
-[ "$(marker_value packages)" = "pnetlab-docker=$EXPECTED_RELEASE,pnetlab-qemu=$EXPECTED_RELEASE,pnetlab-satellite=$EXPECTED_RELEASE,pnetlab-vpcs=$EXPECTED_RELEASE" ] \
+[ "$(marker_value packages)" = "azamlabs-docker=$EXPECTED_RELEASE,azamlabs-qemu=$EXPECTED_RELEASE,azamlabs-satellite=$EXPECTED_RELEASE,azamlabs-vpcs=$EXPECTED_RELEASE" ] \
     || die "satellite bundle COMPLETE marker has an incomplete package inventory"
 # assets=none is accepted for repo-based deployments where zoo tarballs are not bundled
 bundle_assets="$(marker_value assets)"
@@ -84,7 +84,7 @@ if [ "$bundle_assets" != 'none' ] && [ -n "$bundle_assets" ]; then
         || warn "satellite bundle COMPLETE marker has a non-standard asset inventory (continuing anyway)"
 fi
 [ -z "$(marker_value optional_packages)" ] \
-    || [ "$(marker_value optional_packages)" = "pnetlab-bridge-dkms=$EXPECTED_RELEASE" ] \
+    || [ "$(marker_value optional_packages)" = "azamlabs-bridge-dkms=$EXPECTED_RELEASE" ] \
     || warn "satellite bundle COMPLETE marker has a non-standard optional package inventory"
 [ -f "$SCRIPT_DIR/inventory.tsv" ] || die "satellite bundle package inventory is missing"
 inventory_sha="$(sha256sum "$SCRIPT_DIR/inventory.tsv" | awk '{print $1}')"
@@ -109,7 +109,7 @@ log "[2/8] Configuring SSH, systemd timeout..."
 sed -i 's/.*PermitRootLogin .*/PermitRootLogin yes/' /etc/ssh/sshd_config 2>/dev/null || true
 sed -i 's/.*DefaultTimeoutStopSec=.*/DefaultTimeoutStopSec=5s/' /etc/systemd/system.conf 2>/dev/null || true
 systemctl restart ssh >> "$LOG" 2>&1 || true
-# Ensure root password defaults to Azam-Pnet standard "azam" (Issue #33 Remediation)
+# Ensure root password defaults to AzamLabs standard "azam" (Issue #33 Remediation)
 SATELLITE_ROOT_PASSWORD="${SATELLITE_ROOT_PASSWORD:-azam}"
 echo "root:$SATELLITE_ROOT_PASSWORD" | chpasswd >> "$LOG" 2>&1 || warn "Could not set root password"
 
@@ -184,7 +184,7 @@ install_docker_and_compat() {
         fi
     fi
 
-    # 2. Bridge the strict 'docker-engine | docker-ce' package dependency requirement of pnetlab-docker
+    # 2. Bridge the strict 'docker-engine | docker-ce' package dependency requirement of azamlabs-docker
     if ! dpkg -s docker-ce >/dev/null 2>&1 && ! dpkg -s docker-engine >/dev/null 2>&1; then
         local dummy_dir="/tmp/docker-ce-dummy"
         rm -rf "$dummy_dir" && mkdir -p "$dummy_dir/DEBIAN"
@@ -196,8 +196,8 @@ Priority: optional
 Architecture: all
 Provides: docker-ce, docker-engine
 Depends: docker.io | docker-ce
-Maintainer: Azam-Basha <admin@azam-pnet.local>
-Description: Compatibility bridge providing docker-ce virtual package for pnetlab-docker
+Maintainer: Azam-Basha <admin@azamlabs.local>
+Description: Compatibility bridge providing docker-ce virtual package for azamlabs-docker
 EOF_DUMMY
         dpkg-deb --build "$dummy_dir" /tmp/docker-ce-dummy.deb >> "$LOG" 2>&1 || true
         dpkg -i --force-depends /tmp/docker-ce-dummy.deb >> "$LOG" 2>&1 || true
@@ -208,8 +208,8 @@ EOF_DUMMY
 }
 install_docker_and_compat
 
-# ── [7/8] PNetLab packages (kernel, runtimes, satellite) ───────────────────────
-log "[7/8] Installing PNetLab packages from local files..."
+# ── [7/8] AzamLabs packages (kernel, runtimes, satellite) ───────────────────────
+log "[7/8] Installing AzamLabs packages from local files..."
 # v8/27H1: no custom kernel — 26.04 stock Linux 7.0 has in-tree KSM (userspace tuning ships in the satellite deb).
 select_deb_path() {
     local package="$1" found dir
@@ -240,12 +240,12 @@ BRIDGE_DEB=''
 bridge_candidate=''
 for _bdir in "${POOL_SEARCH_DIRS[@]}"; do
     [ -d "$_bdir" ] || continue
-    bridge_candidate="$(ls "${_bdir}/pnetlab-bridge-dkms_"*.deb 2>/dev/null | sort -V | tail -1 || true)"
+    bridge_candidate="$(ls "${_bdir}/azamlabs-bridge-dkms_"*.deb 2>/dev/null | sort -V | tail -1 || true)"
     [ -n "$bridge_candidate" ] && [ -f "$bridge_candidate" ] && break
     bridge_candidate=''
 done
 if [ -n "$bridge_candidate" ]; then
-    [ "$(dpkg-deb -f "$bridge_candidate" Package 2>/dev/null)" = pnetlab-bridge-dkms ] \
+    [ "$(dpkg-deb -f "$bridge_candidate" Package 2>/dev/null)" = azamlabs-bridge-dkms ] \
         || die "Optional bridge deb identity mismatch: $bridge_candidate"
     [ "$(dpkg-deb -f "$bridge_candidate" Version 2>/dev/null)" = "$EXPECTED_RELEASE" ] \
         || die "Optional bridge deb version mismatch: $bridge_candidate"
@@ -254,7 +254,7 @@ if [ -n "$bridge_candidate" ]; then
 fi
 
 HOLD_PACKAGES=("${SATELLITE_REQUIRED_PACKAGES[@]}")
-[ -n "$BRIDGE_DEB" ] && HOLD_PACKAGES+=(pnetlab-bridge-dkms)
+[ -n "$BRIDGE_DEB" ] && HOLD_PACKAGES+=(azamlabs-bridge-dkms)
 # On a first deploy the local .debs below are not known to dpkg yet, so apt-mark
 # cannot look them up and would fail the install.  Only packages whose dpkg
 # selection is actually "hold" need clearing: the selection is independent of
@@ -300,7 +300,7 @@ for package in "${SATELLITE_REQUIRED_PACKAGES[@]}"; do
 done
 
 # Deploy and preset all satellite systemd units to both /etc/systemd/system and /usr/lib/systemd/system
-for s_unit in pnetlab-brokerd.service pnetlab-docker-image-watcher.service pnetlab-ksm.service pnetlab-satd.service; do
+for s_unit in azamlabs-brokerd.service azamlabs-docker-image-watcher.service azamlabs-ksm.service azamlabs-satd.service; do
     for cand_dir in /lib/systemd/system /usr/lib/systemd/system /opt/unetlab/scripts; do
         if [ -f "${cand_dir}/${s_unit}" ]; then
             cp -f "${cand_dir}/${s_unit}" "/etc/systemd/system/${s_unit}" 2>/dev/null || true
@@ -323,27 +323,27 @@ if [ ! -x /usr/bin/rrsync ]; then
 fi
 
 systemctl daemon-reload >> "$LOG" 2>&1 || die "systemd daemon-reload failed"
-# pnetlab-docker configures docker.service; the PNetLab package set provides
+# azamlabs-docker configures docker.service; the AzamLabs package set provides
 # the image watcher. Verify both real units after the package transaction.
-for unit in pnetlab-brokerd.service docker.service pnetlab-docker-image-watcher.service; do
+for unit in azamlabs-brokerd.service docker.service azamlabs-docker-image-watcher.service; do
     systemctl enable --now "$unit" >> "$LOG" 2>&1 || die "$unit failed to start"
     systemctl is-active --quiet "$unit" || die "$unit is not active after start"
 done
-systemctl enable pnetlab-satd.service >> "$LOG" 2>&1 || die "pnetlab-satd.service could not be enabled"
+systemctl enable azamlabs-satd.service >> "$LOG" 2>&1 || die "azamlabs-satd.service could not be enabled"
 
 # Headless satellite nodes do not run the web GUI and must not create persistent unused cloud bridges (pnet0-9, nat0)
 log "Disabling persistent cloud bridge daemon and cleaning default interfaces..."
-systemctl stop pnetlab-pnet-bridges.service >> "$LOG" 2>&1 || true
-systemctl disable pnetlab-pnet-bridges.service >> "$LOG" 2>&1 || true
-rm -f /etc/systemd/system/pnetlab-pnet-bridges.service 2>/dev/null || true
+systemctl stop azamlabs-pnet-bridges.service >> "$LOG" 2>&1 || true
+systemctl disable azamlabs-pnet-bridges.service >> "$LOG" 2>&1 || true
+rm -f /etc/systemd/system/azamlabs-pnet-bridges.service 2>/dev/null || true
 systemctl daemon-reload >> "$LOG" 2>&1 || true
-systemctl mask pnetlab-pnet-bridges.service >> "$LOG" 2>&1 || true
+systemctl mask azamlabs-pnet-bridges.service >> "$LOG" 2>&1 || true
 
 # Neutralize /opt/ovf/pnet-bridges.sh so it is a no-op on satellites
 if [ -d /opt/ovf ]; then
     cat << 'EOF_NOBRIDGES' > /opt/ovf/pnet-bridges.sh
 #!/bin/bash
-# Disabled on PNetLab satellite nodes — bridges are created dynamically by unl_wrapper as needed
+# Disabled on AzamLabs satellite nodes — bridges are created dynamically by unl_wrapper as needed
 exit 0
 EOF_NOBRIDGES
     chmod 0755 /opt/ovf/pnet-bridges.sh 2>/dev/null || true
@@ -364,11 +364,11 @@ apt-mark hold "${HOLD_PACKAGES[@]}" >> "$LOG" 2>&1 \
     || die "Could not restore the satellite package holds"
 
 # Verify the LACP bridge hotfix module is active
-if dkms status 2>/dev/null | grep -q "pnetlab-bridge" && modinfo bridge 2>/dev/null | grep -q "2.3.1-pnetlab"; then
-    log "  [ok] pnetlab-bridge-dkms 2.3.1-pnetlab active"
+if dkms status 2>/dev/null | grep -q "azamlabs-bridge" && modinfo bridge 2>/dev/null | grep -q "2.3.1-azamlabs"; then
+    log "  [ok] azamlabs-bridge-dkms 2.3.1-azamlabs active"
 else
-    warn "pnetlab-bridge-dkms NOT active — LACP/multi-chassis LAG will fail." \
-         "Run: dkms install pnetlab-bridge/1.0 --force; modprobe -r bridge; modprobe bridge"
+    warn "azamlabs-bridge-dkms NOT active — LACP/multi-chassis LAG will fail." \
+         "Run: dkms install azamlabs-bridge/1.0 --force; modprobe -r bridge; modprobe bridge"
 fi
 
 # ── [8/8] QEMU 9.2.4 default + legacy compat libs + permissions ────────────────
@@ -389,7 +389,7 @@ if [ -f "$DEPS_DIR/qemu-compat-libs.tgz" ]; then
     mkdir -p /opt/qemu-compat-libs
     tar xzf "$DEPS_DIR/qemu-compat-libs.tgz" -C /opt/qemu-compat-libs >> "$LOG" 2>&1 \
         || warn "qemu compat libs extraction warning (non-fatal)"
-    echo "/opt/qemu-compat-libs" > /etc/ld.so.conf.d/pnetlab-qemu-compat.conf
+    echo "/opt/qemu-compat-libs" > /etc/ld.so.conf.d/azamlabs-qemu-compat.conf
     ldconfig >> "$LOG" 2>&1 || warn "ldconfig warning after qemu-compat-libs"
 else
     warn "qemu-compat-libs.tgz not bundled — legacy QEMU compat layer skipped"
@@ -404,7 +404,7 @@ chmod 0644 /opt/unetlab/addons/iol/bin/iourc* >> "$LOG" 2>&1 || true
 chmod 4755 /opt/unetlab/wrappers/iol_wrapper >> "$LOG" 2>&1 || true
 chmod 777 /tmp/netio* >> "$LOG" 2>&1 || true
 mkdir -p /etc/tmpfiles.d
-echo "d /tmp/netio* 1777 root unl -" > /etc/tmpfiles.d/pnetlab-iol.conf 2>/dev/null || true
+echo "d /tmp/netio* 1777 root unl -" > /etc/tmpfiles.d/azamlabs-iol.conf 2>/dev/null || true
 
 # Patch unl_wrapper so fixpermissions permanently retains iol_wrapper SUID & netio permissions
 if [ -f /opt/unetlab/wrappers/unl_wrapper ] && ! grep -q 'chmod 4755 /opt/unetlab/wrappers/iol_wrapper' /opt/unetlab/wrappers/unl_wrapper; then
@@ -446,14 +446,14 @@ fi
 
 # Configure LACP BPDU forwarding across bridges (Issue #9 Remediation)
 mkdir -p /etc/sysctl.d
-echo "net.bridge.bridge-nf-call-iptables = 0" > /etc/sysctl.d/99-pnetlab-bridge.conf 2>/dev/null || true
+echo "net.bridge.bridge-nf-call-iptables = 0" > /etc/sysctl.d/99-azamlabs-bridge.conf 2>/dev/null || true
 for br_mask in /sys/class/net/*/bridge/group_fwd_mask; do
     [ -f "$br_mask" ] && echo 65535 > "$br_mask" 2>/dev/null || true
 done
 
 # Soft-RoCE (RXE) Kernel Module Auto-load (Issue #20 Remediation)
 mkdir -p /etc/modules-load.d
-echo "rdma_rxe" > /etc/modules-load.d/pnetlab-roce.conf 2>/dev/null || true
+echo "rdma_rxe" > /etc/modules-load.d/azamlabs-roce.conf 2>/dev/null || true
 modprobe rdma_rxe 2>/dev/null || true
 
 # OVMF 4M Symlink Compatibility for UEFI (Issue #14 Remediation)
@@ -490,7 +490,7 @@ for s_dir in /opt/unetlab/scripts /opt/azambasha/scripts; do
     if [ -f "${s_dir}/azambasha-update.sh" ]; then
         ln -sf "${s_dir}/azambasha-update.sh" /usr/local/bin/azam-update 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-quarterly-audit.sh" /usr/local/bin/azam-audit 2>/dev/null || true
-        ln -sf "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/pnet-satellite-join 2>/dev/null || true
+        ln -sf "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/azam-satellite-join 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-satellite-join.sh" /usr/local/bin/azam-satellite-join 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-optimizer 2>/dev/null || true
         ln -sf "${s_dir}/azambasha-heavy-node-optimizer.sh" /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
@@ -504,7 +504,7 @@ log "=== Satellite install complete ==="
 log "Next: on the MASTER, System -> Cluster -> Generate PSK, then run here:"
 log "    pnet-satellite-join --master <master-ip> --id <1|2> --psk <psk>"
 if [ "$DO_REBOOT" = 1 ]; then
-    log "Rebooting into the PNetLab kernel in 5s (Ctrl-C to abort; --no-reboot to skip)..."
+    log "Rebooting into the AzamLabs kernel in 5s (Ctrl-C to abort; --no-reboot to skip)..."
     sleep 5
     reboot
 fi

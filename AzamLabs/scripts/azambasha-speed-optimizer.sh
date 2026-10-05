@@ -52,7 +52,7 @@ if [[ "${1:-}" =~ ^(--check|--status)$ ]]; then
     fi
 
     echo -n "[*] Apache Compression & Caching: "
-    if [ -f /etc/apache2/conf-enabled/azambasha-optimization.conf ] || [ -f /etc/apache2/conf-enabled/pnetlab-optimization.conf ]; then
+    if [ -f /etc/apache2/conf-enabled/azambasha-optimization.conf ] || [ -f /etc/apache2/conf-enabled/azamlabs-optimization.conf ]; then
         echo "ACTIVE"
     else
         echo "DEFAULT / NOT CONFIGURED"
@@ -68,9 +68,9 @@ fi
 # Handle Rollback Mode
 if [[ "${1:-}" == "--rollback" ]]; then
     echo "=== Rolling back Azam Basha Performance Optimizations ==="
-    rm -f /etc/sysctl.d/99-azambasha-performance.conf /etc/sysctl.d/99-pnetlab-performance.conf
+    rm -f /etc/sysctl.d/99-azambasha-performance.conf /etc/sysctl.d/99-azamlabs-performance.conf
     rm -f /etc/apache2/conf-available/azambasha-optimization.conf /etc/apache2/conf-enabled/azambasha-optimization.conf
-    rm -f /etc/systemd/system/ksm-azambasha.service /etc/systemd/system/ksm-pnetlab.service
+    rm -f /etc/systemd/system/ksm-azambasha.service /etc/systemd/system/ksm-azamlabs.service
     rm -f /etc/php/*/mods-available/99-azambasha-opcache.ini
     sysctl -p /etc/sysctl.conf 2>/dev/null || true
     systemctl daemon-reload

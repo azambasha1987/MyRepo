@@ -346,7 +346,7 @@ html, body {
   background-image: radial-gradient(circle, #1a1e2c 1px, transparent 1px) !important;
   background-size: 24px 24px !important;
 }
-.pnq-quickbar, #pnetlab-quickbar {
+.pnq-quickbar, #azamlabs-quickbar {
   background-color: #0a0c10 !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6) !important;

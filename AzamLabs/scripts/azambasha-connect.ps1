@@ -69,12 +69,12 @@ if ($sshPort.TcpTestSucceeded) {
 Write-Host "`n============================================================" -ForegroundColor Cyan
 Write-Host " Select an Action:" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " 1) Open PNETLab Web UI (Direct HTTP - Zero Warnings / Instant)"
-Write-Host " 2) Open PNETLab Web UI (Secure HTTPS)"
+Write-Host " 1) Open AzamLabs Web UI (Direct HTTP - Zero Warnings / Instant)"
+Write-Host " 2) Open AzamLabs Web UI (Secure HTTPS)"
 Write-Host " 3) Scan Active Lab Node Console Ports (Ports 30001-30050)"
 Write-Host " 4) Launch SSH Session (ssh root@$VmIp)"
-Write-Host " 5) Setup 1-Click Wireshark Protocol Handler (pnetlab://)"
-Write-Host " 6) Trust PNETLab Root CA Certificate on Windows & Firefox"
+Write-Host " 5) Setup 1-Click Wireshark Protocol Handler (azamlabs://)"
+Write-Host " 6) Trust AzamLabs Root CA Certificate on Windows & Firefox"
 Write-Host " 7) Exit"
 Write-Host "============================================================" -ForegroundColor Cyan
 

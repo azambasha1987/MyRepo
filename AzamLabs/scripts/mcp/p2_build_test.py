@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# p2_build_test.py — P2 acceptance driver for the PNetLab AI Lab Builder.
+# p2_build_test.py — P2 acceptance driver for the AzamLabs AI Lab Builder.
 #
 # Authenticates to the MCP service with a bearer token (the same way an external
 # MCP client would), then builds a fixed topology entirely through the write

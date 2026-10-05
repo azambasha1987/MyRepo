@@ -31,18 +31,18 @@ fi
 
 HOSTNAME_FQDN=$(hostname -f 2>/dev/null || hostname)
 CERT_DIR="/etc/ssl/azambasha"
-CERT_KEY="${CERT_DIR}/azam-pnet.key"
-CERT_CRT="${CERT_DIR}/azam-pnet.crt"
-CERT_CSR="${CERT_DIR}/azam-pnet.csr"
+CERT_KEY="${CERT_DIR}/azamlabs.key"
+CERT_CRT="${CERT_DIR}/azamlabs.crt"
+CERT_CSR="${CERT_DIR}/azamlabs.csr"
 CA_KEY="${CERT_DIR}/azam-ca.key"
 CA_CRT="${CERT_DIR}/azam-ca.crt"
 SAN_CONF="${CERT_DIR}/san.cnf"
-APACHE_SSL_CONF="/etc/apache2/sites-available/pnetlab-ssl.conf"
-WIN_EXPORT_PATH="/opt/azambasha/azam-pnet-ca.crt"
+APACHE_SSL_CONF="/etc/apache2/sites-available/azamlabs-ssl.conf"
+WIN_EXPORT_PATH="/opt/azambasha/azamlabs-ca.crt"
 VALIDITY_DAYS=1825  # 5 years
 
 echo -e "${CYAN}================================================================================"
-echo -e "     ${BOLD}Azam-Pnet HTTPS Certificate Auto-Renewal & Browser Trust Fixer${RESET}${CYAN}"
+echo -e "     ${BOLD}AzamLabs HTTPS Certificate Auto-Renewal & Browser Trust Fixer${RESET}${CYAN}"
 echo -e "================================================================================${RESET}"
 echo -e " Master IP:   ${BOLD}${MASTER_IP}${RESET}"
 echo -e " Hostname:    ${BOLD}${HOSTNAME_FQDN}${RESET}"
@@ -61,7 +61,7 @@ if [ "$MODE" = "--status" ]; then
         echo -e "  Expires:  ${EXPIRY}"
         echo -e "  SANs:     ${SANS}"
     else
-        echo -e "  ${YELLOW}[!] No Azam-Pnet TLS certificate found at ${CERT_CRT}.${RESET}"
+        echo -e "  ${YELLOW}[!] No AzamLabs TLS certificate found at ${CERT_CRT}.${RESET}"
         echo -e "      Run: ${BOLD}sudo azam-ssl --generate${RESET} to create a 5-year trusted certificate."
     fi
     
@@ -81,10 +81,10 @@ if [ "$MODE" = "--generate" ] || [ "$MODE" = "--renew" ]; then
     chmod 750 "$CERT_DIR"
     echo -e "  ${GREEN}[✔]${RESET} ${CERT_DIR} ready."
 
-    echo -e "\n[2/6] ${BOLD}Generating Private CA (azam-pnet-ca)${RESET}"
+    echo -e "\n[2/6] ${BOLD}Generating Private CA (azamlabs-ca)${RESET}"
     openssl genrsa -out "$CA_KEY" 4096 2>/dev/null
     openssl req -new -x509 -days "$VALIDITY_DAYS" -key "$CA_KEY" -out "$CA_CRT" \
-        -subj "/C=SA/ST=Riyadh/O=Azam-Pnet Lab/OU=Network Engineering/CN=Azam-Pnet-CA" \
+        -subj "/C=SA/ST=Riyadh/O=AzamLabs Lab/OU=Network Engineering/CN=AzamLabs-CA" \
         2>/dev/null
     echo -e "  ${GREEN}[✔]${RESET} Private CA generated (${CA_CRT})."
 
@@ -101,7 +101,7 @@ prompt = no
 [req_distinguished_name]
 C  = SA
 ST = Riyadh
-O  = Azam-Pnet Lab
+O  = AzamLabs Lab
 OU = Network Engineering
 CN = ${MASTER_IP}
 
@@ -114,8 +114,8 @@ subjectAltName = @alt_names
 IP.1  = ${MASTER_IP}
 IP.2  = 127.0.0.1
 DNS.1 = ${HOSTNAME_FQDN}
-DNS.2 = pnetlab.local
-DNS.3 = azam-pnet.local
+DNS.2 = azamlabs.local
+DNS.3 = azamlabs.local
 SANEOF
 
     openssl req -new -key "$CERT_KEY" -out "$CERT_CSR" -config "$SAN_CONF" 2>/dev/null
@@ -137,7 +137,7 @@ SANEOF
         cat > "$APACHE_SSL_CONF" << APACHEEOF
 <VirtualHost *:443>
     ServerName ${MASTER_IP}
-    ServerAlias ${HOSTNAME_FQDN} pnetlab.local
+    ServerAlias ${HOSTNAME_FQDN} azamlabs.local
 
     SSLEngine on
     SSLCertificateFile    ${CERT_CRT}
@@ -147,13 +147,13 @@ SANEOF
     SSLCipherSuite ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384
     SSLHonorCipherOrder on
 
-    # Proxy to PNetLab backend
+    # Proxy to AzamLabs backend
     ProxyPreserveHost On
     ProxyPass / http://127.0.0.1:80/
     ProxyPassReverse / http://127.0.0.1:80/
 </VirtualHost>
 APACHEEOF
-        a2ensite pnetlab-ssl 2>/dev/null || true
+        a2ensite azamlabs-ssl 2>/dev/null || true
         echo -e "  ${GREEN}[✔]${RESET} SSL VirtualHost created and enabled."
     else
         # Update cert paths in existing config
@@ -180,12 +180,12 @@ APACHEEOF
     WIN_BAT="/opt/azambasha/install-azam-ca-windows.bat"
     cat > "$WIN_BAT" << 'BATEOF'
 @echo off
-:: Azam-Pnet CA Trust Installer for Windows
-:: Run as Administrator to install the Azam-Pnet CA into Windows Trusted Root
-echo Installing Azam-Pnet CA certificate...
+:: AzamLabs CA Trust Installer for Windows
+:: Run as Administrator to install the AzamLabs CA into Windows Trusted Root
+echo Installing AzamLabs CA certificate...
 certutil -addstore -f "ROOT" "%~dp0azam-pnet-ca.crt"
 if %ERRORLEVEL% EQU 0 (
-    echo SUCCESS: Azam-Pnet CA is now trusted by all browsers on this PC.
+    echo SUCCESS: AzamLabs CA is now trusted by all browsers on this PC.
     echo You can now browse to https://192.168.1.23 without security warnings.
 ) else (
     echo FAILED: Run this script as Administrator.
@@ -199,7 +199,7 @@ BATEOF
     echo -e ""
     echo -e " ${BOLD}Windows Trust Setup (eliminates ALL browser warnings):${RESET}${CYAN}"
     echo -e "  1. Copy ${WIN_EXPORT_PATH} to your Windows PC"
-    echo -e "  2. Double-click ${BOLD}azam-pnet-ca.crt${RESET}${CYAN} → Install → Local Machine"
+    echo -e "  2. Double-click ${BOLD}azamlabs-ca.crt${RESET}${CYAN} → Install → Local Machine"
     echo -e "     → Place in: Trusted Root Certification Authorities"
     echo -e "  OR run ${WIN_BAT} as Administrator"
     echo -e "================================================================================${RESET}"

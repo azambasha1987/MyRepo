@@ -8,8 +8,8 @@
 # 3. Kernel IP Forwarding (net.ipv4.ip_forward=1) for Docker-to-Router routing
 # 4. Docker bridge iptables FORWARD drop policy & veth promiscuous bridging
 # 5. Docker CE repository enrollment, engine installation & inotify-tools
-# 6. Preload official HTML5 packet capture container (pnet-capture-web:1.0)
-# 7. Provision & activate pnetlab-docker-image-watcher.service
+# 6. Preload official HTML5 packet capture container (azam-capture-web:1.0)
+# 7. Provision & activate azamlabs-docker-image-watcher.service
 # 8. Ensure official Docker node template definitions (intel & amd)
 # ==============================================================================
 set -euo pipefail
@@ -22,7 +22,7 @@ if [[ "${1:-}" =~ ^(-h|--help)$ ]]; then
     echo "  (no args)             Apply 512MB upload boost, Docker networking & container provisioning"
     echo "  --check | --status    Inspect current PHP upload limits, Docker daemon & capture-web status"
     echo "  --install-docker      Enroll official Docker CE repository and install docker-ce packages"
-    echo "  --pull-capture-web    Preload & tag rspnet/pnet-capture-web:latest as pnet-capture-web:1.0"
+    echo "  --pull-capture-web    Preload & tag rspnet/azam-capture-web:latest as azam-capture-web:1.0"
     exit 0
 fi
 
@@ -74,8 +74,8 @@ if [[ "${1:-}" =~ ^(--check|--status)$ ]]; then
 
     echo -n "[*] HTML5 Packet Capture Image: "
     if command -v docker >/dev/null 2>&1; then
-        if docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | grep -Eq 'pnet-capture-web:1.0|rspnet/pnet-capture-web'; then
-            echo "PRELOADED (pnet-capture-web:1.0 ready for link capture)"
+        if docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | grep -Eq 'azam-capture-web:1.0|rspnet/azam-capture-web'; then
+            echo "PRELOADED (azam-capture-web:1.0 ready for link capture)"
         else
             echo "NOT FOUND (Will auto-pull on first capture click or run with sudo bash $0)"
         fi
@@ -84,10 +84,10 @@ if [[ "${1:-}" =~ ^(--check|--status)$ ]]; then
     fi
 
     echo -n "[*] Docker Image Watcher Svc:   "
-    if systemctl is-active pnetlab-docker-image-watcher >/dev/null 2>&1; then
+    if systemctl is-active azamlabs-docker-image-watcher >/dev/null 2>&1; then
         echo "ACTIVE (Auto-loading /opt/unetlab/addons/docker)"
     else
-        if [ -f /etc/systemd/system/pnetlab-docker-image-watcher.service ]; then
+        if [ -f /etc/systemd/system/azamlabs-docker-image-watcher.service ]; then
             echo "INACTIVE (Service unit present)"
         else
             echo "NOT CONFIGURED"
@@ -134,24 +134,24 @@ echo "  -> PHP upload limits scaled to 512MB with 600s execution timeout."
 # 2. Boost Apache Request Body Limit
 echo "[2/8] Configuring Apache LimitRequestBody (512MB)..."
 if [ -d /etc/apache2/conf-available ]; then
-    cat << 'EOF' > /etc/apache2/conf-available/pnetlab-upload-limit.conf
+    cat << 'EOF' > /etc/apache2/conf-available/azamlabs-upload-limit.conf
 # Allow large lab and image uploads up to 512MB
 LimitRequestBody 536870912
 EOF
-    a2enconf pnetlab-upload-limit 2>/dev/null || true
+    a2enconf azamlabs-upload-limit 2>/dev/null || true
 fi
 
 # 3. Kernel IP Forwarding & Routing
 echo "[3/8] Enabling Kernel IPv4 & IPv6 Packet Forwarding & ARP Proxy..."
 mkdir -p /etc/sysctl.d
-cat << 'EOF' > /etc/sysctl.d/97-pnetlab-forwarding.conf
+cat << 'EOF' > /etc/sysctl.d/97-azamlabs-forwarding.conf
 net.ipv4.ip_forward = 1
 net.ipv6.conf.all.forwarding = 1
 net.ipv4.conf.all.proxy_arp = 1
 net.bridge.bridge-nf-call-iptables = 0
 net.bridge.bridge-nf-call-arptables = 0
 EOF
-sysctl -p /etc/sysctl.d/97-pnetlab-forwarding.conf 2>/dev/null || sysctl --system 2>/dev/null || true
+sysctl -p /etc/sysctl.d/97-azamlabs-forwarding.conf 2>/dev/null || sysctl --system 2>/dev/null || true
 
 # 4. Docker FORWARD policy fix
 echo "[4/8] Ensuring Docker bridge forwarding policy (ACCEPT)..."
@@ -232,16 +232,16 @@ if command -v systemctl >/dev/null 2>&1 && [ -f /lib/systemd/system/docker.servi
     systemctl restart docker 2>/dev/null || true
 fi
 
-# 6. Preload Official HTML5 Web Packet Capture Container (pnet-capture-web:1.0)
+# 6. Preload Official HTML5 Web Packet Capture Container (azam-capture-web:1.0)
 echo "[6/8] Preloading HTML5 In-Browser Packet Capture Image..."
 if command -v docker >/dev/null 2>&1; then
-    if docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | grep -Eq 'pnet-capture-web:1.0'; then
-        echo "  -> pnet-capture-web:1.0 is already preloaded."
+    if docker images --format '{{.Repository}}:{{.Tag}}' 2>/dev/null | grep -Eq 'azam-capture-web:1.0'; then
+        echo "  -> azam-capture-web:1.0 is already preloaded."
     else
-        echo "  -> Pulling rspnet/pnet-capture-web:latest from Docker Hub..."
-        if docker pull rspnet/pnet-capture-web:latest 2>/dev/null; then
-            docker tag rspnet/pnet-capture-web:latest pnet-capture-web:1.0 2>/dev/null || true
-            echo "  -> Successfully pulled and tagged pnet-capture-web:1.0"
+        echo "  -> Pulling rspnet/azam-capture-web:latest from Docker Hub..."
+        if docker pull rspnet/azam-capture-web:latest 2>/dev/null; then
+            docker tag rspnet/azam-capture-web:latest azam-capture-web:1.0 2>/dev/null || true
+            echo "  -> Successfully pulled and tagged azam-capture-web:1.0"
         else
             echo "  [WARN] Docker Hub pull skipped or offline. Web capture will auto-pull on first GUI click."
         fi
@@ -250,8 +250,8 @@ else
     echo "  [INFO] Docker engine not active; skipping image pre-pull."
 fi
 
-# 7. Provision & Enable PNetLab Docker Image Watcher Service
-echo "[7/8] Provisioning pnetlab-docker-image-watcher.service..."
+# 7. Provision & Enable AzamLabs Docker Image Watcher Service
+echo "[7/8] Provisioning azamlabs-docker-image-watcher.service..."
 WATCH_DIR="/opt/unetlab/addons/docker"
 CONFIG_DIR="/opt/unetlab/config_scripts"
 mkdir -p "$WATCH_DIR" "$CONFIG_DIR"
@@ -259,7 +259,7 @@ mkdir -p "$WATCH_DIR" "$CONFIG_DIR"
 cat << 'EOF' > "${CONFIG_DIR}/docker_image_watcher.sh"
 #!/usr/bin/env bash
 # ==============================================================================
-# PNetLab Docker Image Auto-Loader & Catalog Watcher
+# AzamLabs Docker Image Auto-Loader & Catalog Watcher
 # ==============================================================================
 WATCH_DIR="/opt/unetlab/addons/docker"
 mkdir -p "$WATCH_DIR"
@@ -292,9 +292,9 @@ fi
 EOF
 chmod +x "${CONFIG_DIR}/docker_image_watcher.sh"
 
-cat << 'EOF' > /etc/systemd/system/pnetlab-docker-image-watcher.service
+cat << 'EOF' > /etc/systemd/system/azamlabs-docker-image-watcher.service
 [Unit]
-Description=PNetLab docker image auto-loader (watches /opt/unetlab/addons/docker)
+Description=AzamLabs docker image auto-loader (watches /opt/unetlab/addons/docker)
 After=docker.service
 Wants=docker.service
 
@@ -310,11 +310,11 @@ EOF
 
 if command -v systemctl >/dev/null 2>&1; then
     systemctl daemon-reload 2>/dev/null || true
-    systemctl enable --now pnetlab-docker-image-watcher.service 2>/dev/null || true
+    systemctl enable --now azamlabs-docker-image-watcher.service 2>/dev/null || true
 fi
 
 # 8. Ensure Official Docker Node Template Definitions (Intel & AMD)
-echo "[8/8] Verifying official Docker node templates in PNetLab..."
+echo "[8/8] Verifying official Docker node templates in AzamLabs..."
 for ARCH in intel amd; do
     TDIR="/opt/unetlab/html/templates/${ARCH}"
     TFILE="${TDIR}/docker.yml"
@@ -348,7 +348,7 @@ echo " [SUCCESS] All Docker Subsystem Components Configured!       "
 echo "  - 512MB Upload Limits & Timeouts: ACTIVE                  "
 echo "  - Kernel IP Forwarding & Bridge Policies: ENABLED         "
 echo "  - Docker CE Engine & APT Repository: CONFIGURED           "
-echo "  - HTML5 Packet Capture (pnet-capture-web:1.0): READY      "
+echo "  - HTML5 Packet Capture (azam-capture-web:1.0): READY      "
 echo "  - Docker Image Watcher Service: ACTIVE                    "
 echo "  - Docker Node Template Definitions: VERIFIED              "
 echo "============================================================"

@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# PNETLab Automated Backup & Restore Utility
+# AzamLabs Automated Backup & Restore Utility
 # Backs up & Restores:
-# 1. PNETLab Labs directory (/opt/unetlab/labs)
-# 2. MySQL database dump (pnetlab_db: users, labs, configs)
+# 1. AzamLabs Labs directory (/opt/unetlab/labs)
+# 2. MySQL database dump (azamlabs_db: users, labs, configs)
 # 3. AI configuration & bridge secrets (/opt/unetlab/data/ai)
 # 4. Custom device templates (/opt/unetlab/html/templates)
 #
@@ -36,19 +36,19 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 case "$COMMAND" in
     backup)
         echo "============================================================"
-        echo "             PNETLab Appliance Backup Utility               "
+        echo "             AzamLabs Appliance Backup Utility               "
         echo "============================================================"
-        BACKUP_FILE="${BACKUP_DIR}/pnetlab_backup_${TIMESTAMP}.tar.gz"
-        TEMP_DIR=$(mktemp -d --suffix=_pnetlab_backup)
+        BACKUP_FILE="${BACKUP_DIR}/azamlabs_backup_${TIMESTAMP}.tar.gz"
+        TEMP_DIR=$(mktemp -d --suffix=_azamlabs_backup)
 
-        echo "[1/4] Dumping PNETLab MySQL database..."
-        DB_DUMP="${TEMP_DIR}/pnetlab_db.sql"
-        if mysql -u pnetlab -ppnetlab -e "USE pnetlab_db;" >/dev/null 2>&1; then
-            mysqldump -u pnetlab -ppnetlab pnetlab_db > "$DB_DUMP" 2>/dev/null || true
-        elif [ -f /etc/mysql/debian.cnf ] && mysql --defaults-file=/etc/mysql/debian.cnf -e "USE pnetlab_db;" >/dev/null 2>&1; then
-            mysqldump --defaults-file=/etc/mysql/debian.cnf pnetlab_db > "$DB_DUMP" 2>/dev/null || true
-        elif mysql -u root -e "USE pnetlab_db;" >/dev/null 2>&1; then
-            mysqldump -u root pnetlab_db > "$DB_DUMP" 2>/dev/null || true
+        echo "[1/4] Dumping AzamLabs MySQL database..."
+        DB_DUMP="${TEMP_DIR}/azamlabs_db.sql"
+        if mysql -u azamlabs -pazam -e "USE azamlabs_db;" >/dev/null 2>&1; then
+            mysqldump -u azamlabs -pazam azamlabs_db > "$DB_DUMP" 2>/dev/null || true
+        elif [ -f /etc/mysql/debian.cnf ] && mysql --defaults-file=/etc/mysql/debian.cnf -e "USE azamlabs_db;" >/dev/null 2>&1; then
+            mysqldump --defaults-file=/etc/mysql/debian.cnf azamlabs_db > "$DB_DUMP" 2>/dev/null || true
+        elif mysql -u root -e "USE azamlabs_db;" >/dev/null 2>&1; then
+            mysqldump -u root azamlabs_db > "$DB_DUMP" 2>/dev/null || true
         else
             echo "Warning: Database dump skipped (could not connect to MySQL)."
         fi
@@ -81,15 +81,15 @@ case "$COMMAND" in
         ARCHIVE="${2:-}"
         if [ -z "$ARCHIVE" ] || [ ! -f "$ARCHIVE" ]; then
             echo "[ERROR] Please specify a valid backup file to restore."
-            echo "Example: sudo bash $0 restore /opt/unetlab/data/Backups/pnetlab_backup_YYYYMMDD_HHMMSS.tar.gz"
+            echo "Example: sudo bash $0 restore /opt/unetlab/data/Backups/azamlabs_backup_YYYYMMDD_HHMMSS.tar.gz"
             exit 1
         fi
 
         echo "============================================================"
-        echo "             PNETLab Appliance Restore Utility              "
+        echo "             AzamLabs Appliance Restore Utility              "
         echo "============================================================"
         echo "[*] Restoring from: $ARCHIVE"
-        TEMP_DIR=$(mktemp -d --suffix=_pnetlab_restore)
+        TEMP_DIR=$(mktemp -d --suffix=_azamlabs_restore)
         tar -xzf "$ARCHIVE" -C "$TEMP_DIR"
 
         echo "[1/3] Restoring lab topologies..."
@@ -108,11 +108,11 @@ case "$COMMAND" in
         fi
 
         echo "[3/3] Restoring database records..."
-        if [ -f "${TEMP_DIR}/pnetlab_db.sql" ]; then
-            if mysql -u pnetlab -ppnetlab -e "USE pnetlab_db;" >/dev/null 2>&1; then
-                mysql -u pnetlab -ppnetlab pnetlab_db < "${TEMP_DIR}/pnetlab_db.sql" 2>/dev/null || true
-            elif [ -f /etc/mysql/debian.cnf ] && mysql --defaults-file=/etc/mysql/debian.cnf -e "USE pnetlab_db;" >/dev/null 2>&1; then
-                mysql --defaults-file=/etc/mysql/debian.cnf pnetlab_db < "${TEMP_DIR}/pnetlab_db.sql" 2>/dev/null || true
+        if [ -f "${TEMP_DIR}/azamlabs_db.sql" ]; then
+            if mysql -u azamlabs -pazam -e "USE azamlabs_db;" >/dev/null 2>&1; then
+                mysql -u azamlabs -pazam azamlabs_db < "${TEMP_DIR}/azamlabs_db.sql" 2>/dev/null || true
+            elif [ -f /etc/mysql/debian.cnf ] && mysql --defaults-file=/etc/mysql/debian.cnf -e "USE azamlabs_db;" >/dev/null 2>&1; then
+                mysql --defaults-file=/etc/mysql/debian.cnf azamlabs_db < "${TEMP_DIR}/azamlabs_db.sql" 2>/dev/null || true
             fi
         fi
 
@@ -123,22 +123,22 @@ case "$COMMAND" in
         ;;
 
     list)
-        echo "=== Existing PNETLab Backups in $BACKUP_DIR ==="
+        echo "=== Existing AzamLabs Backups in $BACKUP_DIR ==="
         ls -lh "$BACKUP_DIR"/*.tar.gz 2>/dev/null || echo "No backups found."
         ;;
 
     schedule|--schedule)
         echo "============================================================"
-        echo "     Configuring Automated Daily PNETLab Backup Cron        "
+        echo "     Configuring Automated Daily AzamLabs Backup Cron        "
         echo "============================================================"
-        CRON_SCRIPT="/etc/cron.daily/pnetlab-backup"
+        CRON_SCRIPT="/etc/cron.daily/azamlabs-backup"
         SCRIPT_PATH="$(readlink -f "$0")"
         cat > "$CRON_SCRIPT" <<EOF
 #!/usr/bin/env bash
-# Automated daily PNETLab backup (retains 7 latest snapshots)
+# Automated daily AzamLabs backup (retains 7 latest snapshots)
 bash "$SCRIPT_PATH" backup >/dev/null 2>&1
 # Purge backups older than 7 days
-find "$BACKUP_DIR" -name "pnetlab_backup_*.tar.gz" -type f -mtime +7 -delete >/dev/null 2>&1
+find "$BACKUP_DIR" -name "azamlabs_backup_*.tar.gz" -type f -mtime +7 -delete >/dev/null 2>&1
 EOF
         chmod 755 "$CRON_SCRIPT"
         echo "  [OK] Daily automated backup job installed: $CRON_SCRIPT"

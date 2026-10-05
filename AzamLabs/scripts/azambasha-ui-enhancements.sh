@@ -98,7 +98,7 @@ PHPEOF
 
 # --- 2. Viewport Spatial Quad-Tree Culling Engine ---
 echo "[2/4] Installing Quad-Tree Spatial Canvas Culling (60 FPS Mode)..."
-cat << 'JSEOF' > "${THEMES_JS}/pnetlab-quadtree-culling.js"
+cat << 'JSEOF' > "${THEMES_JS}/azamlabs-quadtree-culling.js"
 /**
  * Azam Basha Viewport Spatial Quad-Tree Culling & RAF Optimizer
  * Maintains silky smooth 60 FPS on large 200+ node topologies by culling
@@ -192,7 +192,7 @@ JSEOF
 
 # --- 3. Real-Time Telemetry Link Heatmap Overlay ---
 echo "[3/4] Installing Real-Time Telemetry Link Heatmap Overlay..."
-cat << 'JSEOF' > "${THEMES_JS}/pnetlab-telemetry-heatmap.js"
+cat << 'JSEOF' > "${THEMES_JS}/azamlabs-telemetry-heatmap.js"
 /**
  * Azam Basha Real-Time Telemetry Link Heatmap Overlay
  * Live visual traffic monitor dynamically illuminating SVG topology paths:
@@ -315,7 +315,7 @@ JSEOF
 
 # --- 4. In-Browser Live Packet Viewer ---
 echo "[4/4] Installing In-Browser Wireshark Packet Dissector Modal..."
-cat << 'JSEOF' > "${THEMES_JS}/pnetlab-packet-viewer.js"
+cat << 'JSEOF' > "${THEMES_JS}/azamlabs-packet-viewer.js"
 /**
  * Azam Basha In-Browser Web Packet Dissection & Live Capture Viewer
  * Pure dark mode, zero-install live packet inspector.
@@ -558,7 +558,7 @@ fi
 # --- 7. Inject Scripts into index.html ---
 INDEX_HTML="${HTML_DIR}/themes/default/index.html"
 if [ -f "$INDEX_HTML" ]; then
-    for js in pnetlab-quadtree-culling.js pnetlab-telemetry-heatmap.js pnetlab-packet-viewer.js; do
+    for js in azamlabs-quadtree-culling.js azamlabs-telemetry-heatmap.js azamlabs-packet-viewer.js; do
         if ! grep -q "$js" "$INDEX_HTML"; then
             sed -i "/<\/body>/i <script src=\"/themes/default/js/$js\"></script>" "$INDEX_HTML"
         fi

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-# ai_lab_agent.py — in-app multi-provider agent for the PNetLab AI Lab Builder
+# ai_lab_agent.py — in-app multi-provider agent for the AzamLabs AI Lab Builder
 # (Phase P3/P4). Spawned by the broker verb `ai_lab_build` (root); turns a
-# natural-language request into a built lab by driving the SAME PNetLab MCP tool
+# natural-language request into a built lab by driving the SAME AzamLabs MCP tool
 # surface the external clients use — here over a trusted stdio connection bound
 # to the requesting user's pod.
 #
 #   one tool surface, two doors:
-#     - external MCP clients dial pnetlab-mcp.service over authed HTTP (own model)
-#     - THIS agent spawns `pnetlab-mcp.py --stdio --pod <tenant>` and brings the
+#     - external MCP clients dial azamlabs-mcp.service over authed HTTP (own model)
+#     - THIS agent spawns `azamlabs-mcp.py --stdio --pod <tenant>` and brings the
 #       appliance-configured provider (Anthropic OR any OpenAI-compatible/local).
 #
 # Providers (from data/ai/config.json "provider"): keep the Anthropic path on the
@@ -36,7 +36,7 @@ from ai_plans import READ_RESULT_SCHEMA, executable_plan_schema, inline_schema, 
 
 CONFIG_PATH = "/opt/unetlab/data/ai/config.json"
 LEDGER_PATH = "/opt/unetlab/data/ai/usage.json"
-MCP_PY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pnetlab-mcp.py")
+MCP_PY = os.path.join(os.path.dirname(os.path.abspath(__file__)), "azamlabs-mcp.py")
 
 # The broker reserves a per-user allowance and passes the exact ceiling. Count
 # every processed token (including cache reads/writes); currency is separate.
@@ -110,7 +110,7 @@ def tool_result_text(result):
 
 
 SYSTEM_PROMPT = """\
-You are the PNetLab AI Lab Builder. You build network-emulation labs by calling the \
+You are the AzamLabs AI Lab Builder. You build network-emulation labs by calling the \
 provided tools against the user's OPEN lab; build into it by default. Call \
 create_lab ONLY if the user explicitly asks for a new / separate / fresh lab — after \
 create_lab you are bound to the new lab, continue there.
@@ -607,7 +607,7 @@ async def amain(args):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="PNetLab AI Lab Builder agent")
+    ap = argparse.ArgumentParser(description="AzamLabs AI Lab Builder agent")
     ap.add_argument("--pod", type=int, required=True, help="lab owner pod/tenant")
     ap.add_argument("--lab-path", default="", help="lab to build into (rel BASE_LAB)")
     ap.add_argument("--mode", choices=["plan", "apply"], default="apply")

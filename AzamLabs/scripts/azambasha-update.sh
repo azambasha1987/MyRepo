@@ -8,7 +8,7 @@ set -euo pipefail
 # Resolve physical script location across symlinks (e.g. /usr/local/bin/azam-update)
 REAL_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(cd "$(dirname "$REAL_PATH")" 2>/dev/null && pwd || echo "/opt/unetlab/scripts")"
-for cand_dir in "/opt/azam-pnet/AzamLabs/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scripts"; do
+for cand_dir in "/opt/azamlabs/AzamLabs/scripts" "/opt/azambasha/scripts" "/opt/unetlab/scripts"; do
     if [ -f "${cand_dir}/azambasha-apply-all-fixes.sh" ]; then
         SCRIPT_DIR="$cand_dir"
         break
@@ -83,9 +83,9 @@ if [ "$(id -u)" -ne 0 ] && [[ ! "${1:-}" =~ ^(--help|-h|--check|-c|--dry-run|-d)
 fi
 
 detect_role() {
-    if [ -f /etc/pnetlab-role ] && grep -qi "satellite" /etc/pnetlab-role 2>/dev/null; then
+    if [ -f /etc/azamlabs-role ] && grep -qi "satellite" /etc/azamlabs-role 2>/dev/null; then
         echo "satellite"
-    elif dpkg -s pnetlab-satellite >/dev/null 2>&1 && ! dpkg -s pnetlab >/dev/null 2>&1; then
+    elif dpkg -s azamlabs-satellite >/dev/null 2>&1 && ! dpkg -s azamlabs >/dev/null 2>&1; then
         echo "satellite"
     else
         echo "master"
@@ -115,7 +115,7 @@ sync_from_github() {
     local github_url="https://github.com/azambasha1987/MyRepo.git"
     local github_tar_url="https://github.com/azambasha1987/MyRepo/archive/refs/heads/main.tar.gz"
 
-    local myrepo_dir="/opt/azam-pnet"
+    local myrepo_dir="/opt/azamlabs"
     mkdir -p "$myrepo_dir" 2>/dev/null || true
 
     if [ -d "${myrepo_dir}/.git" ]; then
@@ -204,7 +204,7 @@ sync_from_github() {
     fi
 
     if [ -f "${src_repo}/VERSION" ]; then
-        for v_dest in "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/etc/pnetlab-version"; do
+        for v_dest in "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/etc/azamlabs-version"; do
             mkdir -p "$(dirname "$v_dest")" 2>/dev/null || true
             cp -f "${src_repo}/VERSION" "$v_dest" 2>/dev/null || true
             chmod 0644 "$v_dest" 2>/dev/null || true
@@ -220,7 +220,7 @@ sync_from_github() {
     ln -sf /opt/unetlab/scripts/azambasha-fleet-status.sh /usr/local/bin/azam-fleet 2>/dev/null || true
     ln -sf /opt/unetlab/scripts/azambasha-cluster-capacity.py /usr/local/bin/azam-capacity 2>/dev/null || true
     ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join 2>/dev/null || true
-    ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/pnet-satellite-join 2>/dev/null || true
+    ln -sf /opt/unetlab/scripts/azambasha-satellite-join.sh /usr/local/bin/azam-satellite-join 2>/dev/null || true
     ln -sf /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-optimizer 2>/dev/null || true
     ln -sf /opt/unetlab/scripts/azambasha-heavy-node-optimizer.sh /usr/local/bin/azam-heavy-optimizer 2>/dev/null || true
     ln -sf /opt/unetlab/scripts/azambasha-dry-test.py /usr/local/bin/azam-dry-test 2>/dev/null || true
@@ -228,7 +228,7 @@ sync_from_github() {
     ln -sf /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-doctor 2>/dev/null || true
     ln -sf /opt/unetlab/scripts/azambasha-image-doctor.sh /usr/local/bin/azam-image-doctor 2>/dev/null || true
     ln -sf /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/azam-bootstorm 2>/dev/null || true
-    ln -sf /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/pnet-bootstorm 2>/dev/null || true
+    ln -sf /opt/unetlab/scripts/azambasha-bootstorm.py /usr/local/bin/azam-bootstorm 2>/dev/null || true
 
     SCRIPT_DIR="/opt/unetlab/scripts"
 
@@ -268,16 +268,16 @@ align_daemon_versions() {
     python3 - << 'PY_DAEMON_ALIGN' 2>/dev/null || true
 import re, os
 
-# Patch pnetlab-satd.py (Satellite agent)
-satd_file = "/opt/unetlab/scripts/pnetlab-satd.py"
+# Patch azamlabs-satd.py (Satellite agent)
+satd_file = "/opt/unetlab/scripts/azamlabs-satd.py"
 if os.path.isfile(satd_file):
     try:
         with open(satd_file, "r", encoding="utf-8") as f:
             code = f.read()
-        target_pattern = r'def pkg_version\(\):\s+for pkg in \("pnetlab-satellite", "pnetlab"\):'
+        target_pattern = r'def pkg_version\(\):\s+for pkg in \("azamlabs-satellite", "azamlabs"\):'
         replacement = '''def pkg_version():
     # AzamLabs authoritative version resolution
-    for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/pnetlab-version"):
+    for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/azamlabs-version"):
         try:
             if os.path.isfile(v_path):
                 with open(v_path, "r", encoding="utf-8") as f:
@@ -289,18 +289,18 @@ if os.path.isfile(satd_file):
                             return line.split("=", 1)[1].strip()
         except Exception:
             pass
-    for pkg in ("pnetlab-satellite", "pnetlab"):'''
+    for pkg in ("azamlabs-satellite", "azamlabs"):'''
         if "AzamLabs authoritative version resolution" not in code:
             new_code = re.sub(target_pattern, replacement, code, count=1)
             if new_code != code:
                 with open(satd_file, "w", encoding="utf-8") as f:
                     f.write(new_code)
-                print("Patched pnetlab-satd.py to report authoritative AzamLabs platform version.")
+                print("Patched azamlabs-satd.py to report authoritative AzamLabs platform version.")
     except Exception as e:
-        print(f"pnetlab-satd patch note: {e}")
+        print(f"azamlabs-satd patch note: {e}")
 
-# Patch pnetlab-brokerd.py (Privilege broker on Master & Satellite)
-broker_file = "/opt/unetlab/scripts/pnetlab-brokerd.py"
+# Patch azamlabs-brokerd.py (Privilege broker on Master & Satellite)
+broker_file = "/opt/unetlab/scripts/azamlabs-brokerd.py"
 if os.path.isfile(broker_file):
     try:
         with open(broker_file, "r", encoding="utf-8") as f:
@@ -310,7 +310,7 @@ if os.path.isfile(broker_file):
     global _MASTER_VERSION
     if _MASTER_VERSION is None:
         # AzamLabs authoritative version resolution
-        for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/pnetlab-version"):
+        for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/azamlabs-version"):
             try:
                 if os.path.isfile(v_path):
                     with open(v_path, "r", encoding="utf-8") as f:
@@ -329,9 +329,9 @@ if os.path.isfile(broker_file):
             if new_code != code:
                 with open(broker_file, "w", encoding="utf-8") as f:
                     f.write(new_code)
-                print("Patched pnetlab-brokerd.py to report authoritative AzamLabs platform version.")
+                print("Patched azamlabs-brokerd.py to report authoritative AzamLabs platform version.")
     except Exception as e:
-        print(f"pnetlab-brokerd patch note: {e}")
+        print(f"azamlabs-brokerd patch note: {e}")
 PY_DAEMON_ALIGN
 }
 
@@ -340,7 +340,7 @@ verify_and_stabilize_auth() {
 
     # Align daemon version resolution engine
     align_daemon_versions
-    systemctl restart pnetlab-brokerd 2>/dev/null || true
+    systemctl restart azamlabs-brokerd 2>/dev/null || true
 
     # 1. Ensure systemd rate-limit immunity for PHP-FPM and Apache2
     for svc_name in php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2; do
@@ -359,7 +359,7 @@ EOF_OVERRIDE
     systemctl reset-failed 'php*-fpm.service' apache2.service 2>/dev/null || true
 
     # 2. Clean stale lockouts in shared memory
-    rm -rf /dev/shm/pnet-authfail* /tmp/pnet-authfail* 2>/dev/null || true
+    rm -rf /dev/shm/azamlabs-authfail* /tmp/azamlabs-authfail* 2>/dev/null || true
 
     # 3. Clean coordinated restart
     for PHP_FPM in $(systemctl list-unit-files 'php*-fpm.service' --no-legend 2>/dev/null | awk '{print $1}'); do
@@ -369,8 +369,8 @@ EOF_OVERRIDE
 
     # 4. Synchronize database admin password to azam
     if command -v mysql >/dev/null 2>&1; then
-        mysql -u pnetlab -ppnetlab pnetlab_db -e "UPDATE users SET password = SHA2('azam', 256), user_status = 1, offline = 1, session = UNIX_TIMESTAMP() + 315360000 WHERE username = 'admin';" 2>/dev/null \
-            || mysql pnetlab_db -e "UPDATE users SET password = SHA2('azam', 256), user_status = 1, offline = 1, session = UNIX_TIMESTAMP() + 315360000 WHERE username = 'admin';" 2>/dev/null || true
+        mysql -u azamlabs -pazam azamlabs_db -e "UPDATE users SET password = SHA2('azam', 256), user_status = 1, offline = 1, session = UNIX_TIMESTAMP() + 315360000 WHERE username = 'admin';" 2>/dev/null \
+            || mysql azamlabs_db -e "UPDATE users SET password = SHA2('azam', 256), user_status = 1, offline = 1, session = UNIX_TIMESTAMP() + 315360000 WHERE username = 'admin';" 2>/dev/null || true
     fi
 
     # 4b. Ensure Memory & CPU Resource Optimizers are Active
@@ -394,13 +394,13 @@ EOF_OVERRIDE
     # 6. Template Schema Health Probe (Prevent "Could not load template schema" upstream regressions)
     log_info "Probing template schema resolution engine..."
     local tpl_res
-    tpl_res=$(curl -sk -b "token=$(mysql -u pnetlab -ppnetlab pnetlab_db -N -e "SELECT cookie FROM users WHERE username='admin' LIMIT 1;" 2>/dev/null || mysql pnetlab_db -N -e "SELECT cookie FROM users WHERE username='admin' LIMIT 1;" 2>/dev/null)" https://127.0.0.1/api/list/templates/vios 2>/dev/null || true)
+    tpl_res=$(curl -sk -b "token=$(mysql -u azamlabs -pazam azamlabs_db -N -e "SELECT cookie FROM users WHERE username='admin' LIMIT 1;" 2>/dev/null || mysql azamlabs_db -N -e "SELECT cookie FROM users WHERE username='admin' LIMIT 1;" 2>/dev/null)" https://127.0.0.1/api/list/templates/vios 2>/dev/null || true)
     if [[ "$tpl_res" == *"\"status\":\"success\""* ]]; then
         log_ok "Template Schema Engine: ${BOLD}VERIFIED ACTIVE (vios/QEMU schema loaded successfully)${RESET}"
     else
         log_warn "Template schema probe returned non-success; running azambasha-fix-node-startup.sh..."
         bash "${SCRIPT_DIR}/azambasha-fix-node-startup.sh" >/dev/null 2>&1 || true
-        tpl_res=$(curl -sk -b "token=$(mysql -u pnetlab -ppnetlab pnetlab_db -N -e "SELECT cookie FROM users WHERE username='admin' LIMIT 1;" 2>/dev/null || mysql pnetlab_db -N -e "SELECT cookie FROM users WHERE username='admin' LIMIT 1;" 2>/dev/null)" https://127.0.0.1/api/list/templates/vios 2>/dev/null || true)
+        tpl_res=$(curl -sk -b "token=$(mysql -u azamlabs -pazam azamlabs_db -N -e "SELECT cookie FROM users WHERE username='admin' LIMIT 1;" 2>/dev/null || mysql azamlabs_db -N -e "SELECT cookie FROM users WHERE username='admin' LIMIT 1;" 2>/dev/null)" https://127.0.0.1/api/list/templates/vios 2>/dev/null || true)
         if [[ "$tpl_res" == *"\"status\":\"success\""* ]]; then
             log_ok "Template Schema Engine: ${BOLD}REMEDIATED & VERIFIED ACTIVE${RESET}"
         else
@@ -413,7 +413,7 @@ verify_and_stabilize_satellite() {
     log_info "Stabilizing Satellite Worker Services & System Credentials..."
 
     # 1. Ensure systemd rate-limit immunity for Satellite worker services
-    for svc_name in pnetlab-satd pnetlab-brokerd pnetlab-docker-image-watcher docker php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2; do
+    for svc_name in azamlabs-satd azamlabs-brokerd azamlabs-docker-image-watcher docker php8.5-fpm php8.4-fpm php8.3-fpm php8.2-fpm php8.1-fpm php-fpm apache2; do
         mkdir -p "/etc/systemd/system/${svc_name}.service.d" 2>/dev/null || true
         cat << 'EOF_OVERRIDE' > "/etc/systemd/system/${svc_name}.service.d/override.conf"
 [Unit]
@@ -429,21 +429,21 @@ EOF_OVERRIDE
     systemctl reset-failed 2>/dev/null || true
 
     # 2. Clean stale lockouts in shared memory
-    rm -rf /dev/shm/pnet-authfail* /tmp/pnet-authfail* 2>/dev/null || true
+    rm -rf /dev/shm/azamlabs-authfail* /tmp/azamlabs-authfail* 2>/dev/null || true
 
     # 3. Synchronize root password to azam
     echo "root:azam" | chpasswd 2>/dev/null || true
 
     # 3b. Unjail any restricted cluster SSH key to guarantee GUI package sync (Issue #33 Remediation)
     if [ -f /root/.ssh/authorized_keys ]; then
-        if grep -q 'pnetlab-cluster' /root/.ssh/authorized_keys 2>/dev/null; then
+        if grep -q 'azamlabs-cluster' /root/.ssh/authorized_keys 2>/dev/null; then
             sed -i -E 's/^command="[^"]*",restrict\s+//' /root/.ssh/authorized_keys 2>/dev/null || true
             chmod 0600 /root/.ssh/authorized_keys 2>/dev/null || true
             log_ok "Cluster SSH key verified unjailed for GUI package sync."
         fi
     fi
-    if [ -f /etc/pnetlab/cluster-db.conf ]; then
-        chmod 0600 /etc/pnetlab/cluster-db.conf 2>/dev/null || true
+    if [ -f /etc/azamlabs/cluster-db.conf ]; then
+        chmod 0600 /etc/azamlabs/cluster-db.conf 2>/dev/null || true
     fi
 
     # 3c. Align Satellite Daemon & Local Broker with authoritative AzamLabs platform version
@@ -455,10 +455,10 @@ EOF_OVERRIDE
     log_ok "Satellite Lab Directory Sync Link (/opt/unetlab/labs <-> /root/labs): VERIFIED"
 
     # 4. Restart/Reload worker daemons cleanly
-    systemctl restart pnetlab-brokerd 2>/dev/null || true
-    systemctl restart pnetlab-docker-image-watcher 2>/dev/null || true
-    if [ -f /etc/pnetlab-satellite/satd.conf ] || [ -f /opt/unetlab/scripts/pnetlab-satd.py ]; then
-        systemctl restart pnetlab-satd 2>/dev/null || true
+    systemctl restart azamlabs-brokerd 2>/dev/null || true
+    systemctl restart azamlabs-docker-image-watcher 2>/dev/null || true
+    if [ -f /etc/azamlabs-satellite/satd.conf ] || [ -f /opt/unetlab/scripts/azamlabs-satd.py ]; then
+        systemctl restart azamlabs-satd 2>/dev/null || true
     fi
 
     # 4b. Ensure Memory & CPU Resource Optimizers are Active on Satellite
@@ -471,8 +471,8 @@ EOF_OVERRIDE
 
     # 5. Live Satellite Verification Probe
     local b_stat s_stat
-    b_stat="$(systemctl is-active pnetlab-brokerd 2>/dev/null || echo 'inactive')"
-    s_stat="$(systemctl is-active pnetlab-satd 2>/dev/null || echo 'inactive')"
+    b_stat="$(systemctl is-active azamlabs-brokerd 2>/dev/null || echo 'inactive')"
+    s_stat="$(systemctl is-active azamlabs-satd 2>/dev/null || echo 'inactive')"
     log_ok "Satellite Worker Services: ${BOLD}Broker Daemon: $b_stat | Cluster Agent: $s_stat (root/azam confirmed)${RESET}"
 }
 

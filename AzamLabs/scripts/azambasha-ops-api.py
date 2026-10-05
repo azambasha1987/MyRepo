@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 ==============================================================================
-Azam-Pnet Operations Dashboard Backend API (azam-ops-api.py)
+AzamLabs Operations Dashboard Backend API (azam-ops-api.py)
 Runs on port 8889, proxied by Apache at /azam-ops/api/
 Provides secure whitelisted execution of azam-* CLI tools
 and streams real-time output via Server-Sent Events (SSE).
@@ -141,16 +141,16 @@ DEFAULT_TEMPLATES = [
     {"name":"gns3-frr-bgp-mesh","format":"gns3","category":"bgp","desc":"GNS3 Open-Source FRRouting BGP Mesh: Containerized Linux routers running high-speed modern FRR.","nodes":5,"tags":["gns3","frr","bgp","linux","open-source"],"source_url":"https://github.com/danehans/gns3-labs/tree/master/bgp-mesh"},
     {"name":"gns3-spine-leaf","format":"gns3","category":"datacenter","desc":"GNS3 Datacenter Spine-Leaf: Multi-vendor fabric with automated eBGP unnumbered underlay.","nodes":6,"tags":["gns3","spine-leaf","datacenter","ebgp","automation"],"source_url":"https://github.com/danehans/gns3-labs/tree/master/spine-leaf"},
 
-    # Native PNetLab v8 / Hybrid Topologies
-    {"name":"ccna-switching","format":"pnetlab-v8","category":"ccna","desc":"CCNA Switching: 6x IOL L2 with STP, VTP, Inter-VLAN, EtherChannel, and HSRP pre-configured.","nodes":8,"tags":["pnetlab","pnetlab-v8","ccna","switching","stp","vlan","hsrp"],"source_url":"https://github.com/JeremyITLab/CCNA-Labs"},
-    {"name":"ccna-wan","format":"pnetlab-v8","category":"ccna","desc":"CCNA WAN: PPP, HDLC, Frame Relay, DMVPN phase 1 topology with 4 routers.","nodes":4,"tags":["pnetlab","pnetlab-v8","ccna","wan","ppp","dmvpn"],"source_url":"https://github.com/JeremyITLab/CCNA-Labs"},
-    {"name":"bgp-internet-edge","format":"pnetlab-v8","category":"bgp","desc":"Internet edge: 2x ISP routers + 2x CPE with BGP dual-homing, prefix filtering, AS-path prepend.","nodes":4,"tags":["pnetlab","pnetlab-v8","bgp","internet","edge","filtering"],"source_url":"https://github.com/packetpushers/labs"},
-    {"name":"ospf-multi-area","format":"pnetlab-v8","category":"ospf","desc":"OSPF multi-area: Areas 0, 1, 2, stub/NSSA, virtual links, redistribution with 6 IOSv routers.","nodes":6,"tags":["pnetlab","pnetlab-v8","ospf","multiarea","redistribution"],"source_url":"https://github.com/CiscoDevNet/cml-community"},
-    {"name":"mpls-sr","format":"pnetlab-v8","category":"mpls","desc":"Segment Routing: XRv9k or IOSv SR-MPLS with TI-LFA fast reroute, SID allocation, and SR-TE.","nodes":4,"tags":["pnetlab","pnetlab-v8","mpls","segment-routing","sr-te","xrv"],"source_url":"https://github.com/packetpushers/labs"},
-    {"name":"firewall-perimeter","format":"pnetlab-v8","category":"security","desc":"Perimeter security: ASAv + Cisco ISE + 2x edge routers with ZBF, NAT, VPN, and ACLs.","nodes":5,"tags":["pnetlab","pnetlab-v8","security","asa","firewall","nat","vpn"],"source_url":"https://github.com/Shadow578/eve-ng-labs"},
-    {"name":"datacenter-vxlan","format":"pnetlab-v8","category":"datacenter","desc":"VXLAN/EVPN BGP: 2x spine + 4x leaf Nexus 9Kv with L2VNI, L3VNI, and VTEP auto-discovery.","nodes":6,"tags":["pnetlab","pnetlab-v8","vxlan","evpn","bgp","nexus","datacenter"],"source_url":"https://github.com/packetpushers/labs"},
-    {"name":"ccie-rs-lab1","format":"pnetlab-v8","category":"ccie","desc":"CCIE RS mock lab 1: 8-router topology with OSPF, BGP, MPLS, QoS, and redistribution tasks.","nodes":8,"tags":["pnetlab","pnetlab-v8","ccie","advanced","mock-lab"],"source_url":"https://github.com/Shadow578/eve-ng-labs"},
-    {"name":"ipv6-dual-stack","format":"pnetlab-v8","category":"ccna","desc":"IPv6 dual-stack: 4x routers with OSPFv3, BGP4+, RIPng, SLAAC, DHCPv6, and NAT64.","nodes":4,"tags":["pnetlab","pnetlab-v8","ipv6","ospfv3","bgp","dual-stack"],"source_url":"https://github.com/JeremyITLab/CCNA-Labs"}
+    # Native AzamLabs v8 / Hybrid Topologies
+    {"name":"ccna-switching","format":"azamlabs-v8","category":"ccna","desc":"CCNA Switching: 6x IOL L2 with STP, VTP, Inter-VLAN, EtherChannel, and HSRP pre-configured.","nodes":8,"tags":["azamlabs","azamlabs-v8","ccna","switching","stp","vlan","hsrp"],"source_url":"https://github.com/JeremyITLab/CCNA-Labs"},
+    {"name":"ccna-wan","format":"azamlabs-v8","category":"ccna","desc":"CCNA WAN: PPP, HDLC, Frame Relay, DMVPN phase 1 topology with 4 routers.","nodes":4,"tags":["azamlabs","azamlabs-v8","ccna","wan","ppp","dmvpn"],"source_url":"https://github.com/JeremyITLab/CCNA-Labs"},
+    {"name":"bgp-internet-edge","format":"azamlabs-v8","category":"bgp","desc":"Internet edge: 2x ISP routers + 2x CPE with BGP dual-homing, prefix filtering, AS-path prepend.","nodes":4,"tags":["azamlabs","azamlabs-v8","bgp","internet","edge","filtering"],"source_url":"https://github.com/packetpushers/labs"},
+    {"name":"ospf-multi-area","format":"azamlabs-v8","category":"ospf","desc":"OSPF multi-area: Areas 0, 1, 2, stub/NSSA, virtual links, redistribution with 6 IOSv routers.","nodes":6,"tags":["azamlabs","azamlabs-v8","ospf","multiarea","redistribution"],"source_url":"https://github.com/CiscoDevNet/cml-community"},
+    {"name":"mpls-sr","format":"azamlabs-v8","category":"mpls","desc":"Segment Routing: XRv9k or IOSv SR-MPLS with TI-LFA fast reroute, SID allocation, and SR-TE.","nodes":4,"tags":["azamlabs","azamlabs-v8","mpls","segment-routing","sr-te","xrv"],"source_url":"https://github.com/packetpushers/labs"},
+    {"name":"firewall-perimeter","format":"azamlabs-v8","category":"security","desc":"Perimeter security: ASAv + Cisco ISE + 2x edge routers with ZBF, NAT, VPN, and ACLs.","nodes":5,"tags":["azamlabs","azamlabs-v8","security","asa","firewall","nat","vpn"],"source_url":"https://github.com/Shadow578/eve-ng-labs"},
+    {"name":"datacenter-vxlan","format":"azamlabs-v8","category":"datacenter","desc":"VXLAN/EVPN BGP: 2x spine + 4x leaf Nexus 9Kv with L2VNI, L3VNI, and VTEP auto-discovery.","nodes":6,"tags":["azamlabs","azamlabs-v8","vxlan","evpn","bgp","nexus","datacenter"],"source_url":"https://github.com/packetpushers/labs"},
+    {"name":"ccie-rs-lab1","format":"azamlabs-v8","category":"ccie","desc":"CCIE RS mock lab 1: 8-router topology with OSPF, BGP, MPLS, QoS, and redistribution tasks.","nodes":8,"tags":["azamlabs","azamlabs-v8","ccie","advanced","mock-lab"],"source_url":"https://github.com/Shadow578/eve-ng-labs"},
+    {"name":"ipv6-dual-stack","format":"azamlabs-v8","category":"ccna","desc":"IPv6 dual-stack: 4x routers with OSPFv3, BGP4+, RIPng, SLAAC, DHCPv6, and NAT64.","nodes":4,"tags":["azamlabs","azamlabs-v8","ipv6","ospfv3","bgp","dual-stack"],"source_url":"https://github.com/JeremyITLab/CCNA-Labs"}
 ]
 
 def get_cluster_stats():
@@ -188,7 +188,7 @@ def get_cluster_stats():
         stats["watchdog"] = "unknown"
 
     # SSL cert expiry
-    cert = "/etc/ssl/azambasha/azam-pnet.crt"
+    cert = "/etc/ssl/azambasha/azamlabs.crt"
     if os.path.isfile(cert):
         try:
             r = subprocess.run(["openssl", "x509", "-noout", "-enddate", "-in", cert],
@@ -374,7 +374,7 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
                                         meta = json.load(mf)
                                 except Exception:
                                     pass
-                            fmt = meta.get("format", "pnetlab-v8")
+                            fmt = meta.get("format", "azamlabs-v8")
                             nodes = meta.get("nodes", 4)
                             desc = meta.get("desc", f"Imported {fmt.upper()} topology ready for emulation.")
                             source_url = meta.get("source_url", "")
@@ -400,9 +400,9 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
 
         elif parsed.path == "/azam-ops/api/notify-config":
             conf = {}
-            if os.path.isfile("/etc/pnetlab/azambasha-notify.conf"):
+            if os.path.isfile("/etc/azamlabs/azambasha-notify.conf"):
                 try:
-                    with open("/etc/pnetlab/azambasha-notify.conf") as f:
+                    with open("/etc/azamlabs/azambasha-notify.conf") as f:
                         for line in f:
                             if "=" in line and not line.strip().startswith("#"):
                                 k, v = line.strip().split("=", 1)
@@ -602,7 +602,7 @@ class AzamOpsHandler(BaseHTTPRequestHandler):
 
         elif parsed.path == "/azam-ops/api/export/ansible":
             lab = params.get("lab", ["lab"])[0]
-            yaml_content = f"""# Dynamic Ansible Inventory for Azam-Pnet Lab: {lab}
+            yaml_content = f"""# Dynamic Ansible Inventory for AzamLabs Lab: {lab}
 all:
   children:
     routers:
@@ -634,7 +634,7 @@ all:
 
         elif parsed.path == "/azam-ops/api/export/pyats":
             lab = params.get("lab", ["lab"])[0]
-            pyats_content = f"""# Cisco pyATS/Genie Testbed Topology for Azam-Pnet Lab: {lab}
+            pyats_content = f"""# Cisco pyATS/Genie Testbed Topology for AzamLabs Lab: {lab}
 testbed:
   name: {lab}
   credentials:
@@ -675,7 +675,7 @@ devices:
 
         elif parsed.path == "/azam-ops/api/export/drawio":
             lab = params.get("lab", ["Azam-Topology"])[0]
-            drawio_xml = f"""<mxfile host="Electron" agent="Azam-Pnet Draw.io Exporter" type="device">
+            drawio_xml = f"""<mxfile host="Electron" agent="AzamLabs Draw.io Exporter" type="device">
   <diagram id="topo-export" name="{lab}">
     <mxGraphModel dx="1200" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1">
       <root>
@@ -737,32 +737,32 @@ devices:
             else:
                 if script_name.endswith(".bat"):
                     data = """@echo off
-:: Azam-Pnet Windows 10/11 Client Integration Pack
-echo [*] Registering PNETLab custom URI handlers (telnet://, capture://)...
+:: AzamLabs Windows 10/11 Client Integration Pack
+echo [*] Registering AzamLabs custom URI handlers (telnet://, capture://)...
 reg add "HKCR\\telnet\\shell\\open\\command" /ve /d "\\"C:\\Program Files\\PuTTY\\putty.exe\\" %%1" /f >nul 2>&1
 reg add "HKCR\\capture\\shell\\open\\command" /ve /d "\\"C:\\Program Files\\Wireshark\\Wireshark.exe\\" -k -i - %%1" /f >nul 2>&1
 echo [OK] Windows URI schemes registered successfully!
 pause
 """.encode("utf-8")
                 elif script_name.endswith(".ps1"):
-                    data = """# Azam-Pnet Windows PowerShell Helper Pack
-Write-Host "[*] Azam-Pnet PowerShell NetDevOps Client Initialized" -ForegroundColor Cyan
-Write-Host "[OK] Configured remote pipeline proxy for PNETLab enterprise host." -ForegroundColor Green
+                    data = """# AzamLabs Windows PowerShell Helper Pack
+Write-Host "[*] AzamLabs PowerShell NetDevOps Client Initialized" -ForegroundColor Cyan
+Write-Host "[OK] Configured remote pipeline proxy for AzamLabs enterprise host." -ForegroundColor Green
 """.encode("utf-8")
                 elif script_name.endswith(".sh"):
                     data = """#!/usr/bin/env bash
-# Azam-Pnet macOS / Linux Native Client Setup Pack
+# AzamLabs macOS / Linux Native Client Setup Pack
 echo "[*] Setting up Wireshark SSH named pipes and terminal handlers..."
 echo "[OK] Native client configuration complete."
 """.encode("utf-8")
                 elif script_name.endswith(".py"):
                     data = """#!/usr/bin/env python3
-# Azam-Pnet Python NetDevOps API Client SDK
+# AzamLabs Python NetDevOps API Client SDK
 import urllib.request, json
-print("[*] Azam-Pnet Python SDK Loaded.")
+print("[*] AzamLabs Python SDK Loaded.")
 """.encode("utf-8")
                 else:
-                    data = f"# Azam-Pnet Toolkit File: {script_name}\n".encode("utf-8")
+                    data = f"# AzamLabs Toolkit File: {script_name}\n".encode("utf-8")
 
             self.send_response(200)
             self.send_header("Content-Type", "application/octet-stream")
@@ -1104,7 +1104,7 @@ print("[*] Azam-Pnet Python SDK Loaded.")
             self.reply_json({
                 "success": True,
                 "message": "Air-Gapped Offline Bundle creation started in background. The archive will appear in the Local Archives table upon completion.",
-                "target": "/Exports/azam-pnet-airgap-latest.tar.gz"
+                "target": "/Exports/azamlabs-airgap-latest.tar.gz"
             })
 
         elif parsed.path == "/azam-ops/api/topology-autocommit":
@@ -1260,7 +1260,7 @@ print("[*] Azam-Pnet Python SDK Loaded.")
             curfew_on = body.get("nightly_curfew_enabled", False)
             curfew_time = body.get("nightly_curfew_time", "23:00")
             student_max = body.get("max_nodes_per_student", 6)
-            conf_dir = "/etc/pnetlab"
+            conf_dir = "/etc/azamlabs"
             os.makedirs(conf_dir, exist_ok=True)
             with open(os.path.join(conf_dir, "azambasha-scheduler.conf"), "w") as f:
                 f.write(f"IDLE_TIMEOUT_HOURS={idle_hours}\nENABLE_IDLE_SHUTDOWN={str(enable_idle).lower()}\nNIGHTLY_CURFEW_ENABLED={str(curfew_on).lower()}\nNIGHTLY_CURFEW_TIME={curfew_time}\nMAX_NODES_PER_STUDENT={student_max}\n")
@@ -1291,7 +1291,7 @@ def write_pid():
 def install_service():
     script_path = os.path.realpath(__file__)
     svc = f"""[Unit]
-Description=Azam-Pnet Operations Dashboard API Backend
+Description=AzamLabs Operations Dashboard API Backend
 After=network.target apache2.service
 Wants=apache2.service
 

@@ -67,8 +67,8 @@ fi
 # Handle Rollback Mode
 if [[ "${1:-}" == "--rollback" ]]; then
     echo "=== Rolling back Azam Basha Silicon Dataplane Acceleration ==="
-    rm -f /etc/sysctl.d/98-azambasha-dataplane.conf /etc/sysctl.d/98-pnetlab-dataplane.conf
-    rm -f /etc/systemd/system/azambasha-dataplane.service /etc/systemd/system/pnetlab-dataplane.service
+    rm -f /etc/sysctl.d/98-azambasha-dataplane.conf /etc/sysctl.d/98-azamlabs-dataplane.conf
+    rm -f /etc/systemd/system/azambasha-dataplane.service /etc/systemd/system/azamlabs-dataplane.service
     sysctl -w net.bridge.bridge-nf-call-iptables=1 2>/dev/null || true
     sysctl -w net.bridge.bridge-nf-call-ip6tables=1 2>/dev/null || true
     sysctl -w net.bridge.bridge-nf-call-arptables=1 2>/dev/null || true

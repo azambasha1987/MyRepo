@@ -81,13 +81,13 @@ HOST_IP="$(get_ip)"
 
 # 2. Detect Node Role (Master Controller vs Satellite Worker Node)
 ROLE="Master Controller"
-if [ -f "/etc/pnetlab-role" ]; then
-    DETECTED_ROLE="$(cat /etc/pnetlab-role 2>/dev/null || true)"
+if [ -f "/etc/azamlabs-role" ]; then
+    DETECTED_ROLE="$(cat /etc/azamlabs-role 2>/dev/null || true)"
     [ "$DETECTED_ROLE" = "satellite" ] && ROLE="Satellite Worker Node"
     [ "$DETECTED_ROLE" = "master" ] && ROLE="Master Controller"
-elif [ -d "/opt/unetlab/html" ] || [ -f "/etc/apache2/sites-available/pnetlab.conf" ]; then
+elif [ -d "/opt/unetlab/html" ] || [ -f "/etc/apache2/sites-available/azamlabs.conf" ]; then
     ROLE="Master Controller"
-elif systemctl is-active --quiet pnetlab-satd 2>/dev/null || [ -f "/opt/unetlab/data/satellite.json" ]; then
+elif systemctl is-active --quiet azamlabs-satd 2>/dev/null || [ -f "/opt/unetlab/data/satellite.json" ]; then
     ROLE="Satellite Worker Node"
 fi
 

@@ -23,9 +23,9 @@ IOAccounting=yes
 TasksAccounting=yes
 EOF
 
-cat > /etc/systemd/system/pnetlab.slice << 'EOF'
+cat > /etc/systemd/system/azamlabs.slice << 'EOF'
 [Unit]
-Description=PNETLab Lab Node Slices & Resource Controllers
+Description=AzamLabs Lab Node Slices & Resource Controllers
 Before=slices.target
 
 [Slice]

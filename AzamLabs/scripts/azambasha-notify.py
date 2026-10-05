@@ -31,11 +31,11 @@ if sys.stdout and hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-CONFIG_FILE = "/etc/pnetlab/azambasha-notify.conf"
+CONFIG_FILE = "/etc/azamlabs/azambasha-notify.conf"
 DEFAULT_EMAIL_TO = "azambasha1987@gmail.com"
 
 def load_config():
-    """Load configuration from /etc/pnetlab/azambasha-notify.conf or environment."""
+    """Load configuration from /etc/azamlabs/azambasha-notify.conf or environment."""
     config = {
         "whatsapp_phone": os.getenv("WHATSAPP_PHONE", ""),
         "whatsapp_apikey": os.getenv("WHATSAPP_APIKEY", ""),
@@ -318,7 +318,7 @@ def main():
     parser.add_argument("--open-issues", default="10", help="Open issues count")
     parser.add_argument("--commits-count", default="12", help="Commits count")
     parser.add_argument("--new-templates", default="0", help="Newly detected QEMU templates count")
-    parser.add_argument("--save-config", action="store_true", help="Save provided credentials to /etc/pnetlab/azambasha-notify.conf")
+    parser.add_argument("--save-config", action="store_true", help="Save provided credentials to /etc/azamlabs/azambasha-notify.conf")
 
     args = parser.parse_args()
     config = load_config()

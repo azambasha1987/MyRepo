@@ -160,19 +160,19 @@ elif grep -m1 -E -qw 'svm' /proc/cpuinfo 2>/dev/null; then
 fi
 
 mkdir -p /etc/modules-load.d /etc/modprobe.d
-cat << 'EOF' > /etc/modules-load.d/pnetlab.conf
+cat << 'EOF' > /etc/modules-load.d/azamlabs.conf
 kvm
 vhost
 vhost_net
 tun
 loop
 EOF
-[ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/pnetlab.conf
+[ -n "$KVM_MOD" ] && echo "$KVM_MOD" >> /etc/modules-load.d/azamlabs.conf
 
 # Blacklist i2c_piix4 virtual controller to silence unhandled SMBus warning
 echo "blacklist i2c_piix4" > /etc/modprobe.d/blacklist-piix4.conf
 
-cat << 'EOF' > /etc/udev/rules.d/99-pnetlab-kvm.rules
+cat << 'EOF' > /etc/udev/rules.d/99-azamlabs-kvm.rules
 KERNEL=="kvm", GROUP="kvm", MODE="0666"
 KERNEL=="vhost-net", GROUP="kvm", MODE="0666"
 KERNEL=="tun", MODE="0666"
@@ -274,7 +274,7 @@ if os.path.exists(dev_file):
             print("  [✔] Console fallback active in device.php")
 
         # Teardown fix: ensure TAP interfaces are cleanly removed when node is stopped
-        if "Azam-Pnet Teardown Fix" not in code:
+        if "AzamLabs Teardown Fix" not in code:
             target_stop = """        if (isset($this->lock) && $this->lock == 1) {
             return 0;
         }
@@ -285,7 +285,7 @@ if os.path.exists(dev_file):
             return 0;
         }
 
-        // Always clean up node TAP interfaces for this session upon stop (Azam-Pnet Teardown Fix)
+        // Always clean up node TAP interfaces for this session upon stop (AzamLabs Teardown Fix)
         $session = (int) $this->getSession();
         if ($session > 0) {
             $cmd = 'ip -o link show | cut -d: -f2 | tr -d " " | grep -E "^(vunl|ser)' . $session . '_" | while read -r dev; do ip link delete "$dev" 2>/dev/null; done';
@@ -571,7 +571,7 @@ fi
 
 # Issue #29: Node Status Reconciliation (Cleanup orphaned alert badges for stopped nodes)
 if command -v mysql >/dev/null 2>&1; then
-    mysql -u pnetlab -ppnetlab pnetlab_db -e "
+    mysql -u azamlabs -pazam azamlabs_db -e "
         UPDATE lab_nodes SET status = 0 WHERE status = 2 AND id NOT IN (
             SELECT DISTINCT node_id FROM (SELECT 0 as node_id) as t
         );
@@ -843,7 +843,7 @@ chmod 755 /opt/unetlab/wrappers/azam-iol-launcher
 
 # Systemd tmpfiles rule for IOL AF_UNIX socket directories
 mkdir -p /etc/tmpfiles.d
-cat > /etc/tmpfiles.d/pnetlab-iol.conf << 'EOF'
+cat > /etc/tmpfiles.d/azamlabs-iol.conf << 'EOF'
 d /tmp/netio* 1777 root unl -
 EOF
 
@@ -852,7 +852,7 @@ echo "[7/7] Repairing UNetLab wrappers and file permissions..."
 rm -rf /opt/unetlab/tmp/*/*/*/console.sock \
        /opt/unetlab/tmp/*/*/*/wrapper_telnet.txt \
        /tmp/netio*/*.lck \
-       /dev/shm/pnet-authfail* 2>/dev/null || true
+       /dev/shm/azamlabs-authfail* 2>/dev/null || true
 
 # Native wrapper fixpermissions
 if [ -f /opt/unetlab/wrappers/unl_wrapper ]; then
@@ -878,7 +878,7 @@ chown -R www-data:www-data /opt/unetlab/data /opt/unetlab/labs /opt/unetlab/html
 for b_cand in /opt/unetlab/scripts/azambasha-bootstorm.py /opt/azambasha/scripts/azambasha-bootstorm.py "$SCRIPT_DIR/azambasha-bootstorm.py"; do
     if [ -f "$b_cand" ]; then
         ln -sf "$b_cand" /usr/local/bin/azam-bootstorm 2>/dev/null || true
-        ln -sf "$b_cand" /usr/local/bin/pnet-bootstorm 2>/dev/null || true
+        ln -sf "$b_cand" /usr/local/bin/azam-bootstorm 2>/dev/null || true
         chmod +x "$b_cand" 2>/dev/null || true
         break
     fi

@@ -117,7 +117,7 @@ def run_traffic_generator(target_ip, target_port=5001, rate_mbps=10, duration_se
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Azam-Pnet Ping Mesh & Traffic Generator")
+    parser = argparse.ArgumentParser(description="AzamLabs Ping Mesh & Traffic Generator")
     parser.add_argument("--sweep", action="store_true", help="Run full ping mesh reachability sweep")
     parser.add_argument("--traffic-gen", action="store_true", help="Generate synthetic traffic stream")
     parser.add_argument("--target", type=str, help="Target IP for traffic generation")
@@ -149,7 +149,7 @@ def main():
             print(json.dumps({"mesh": mesh}, indent=2))
         else:
             print("================================================================================")
-            print("         Azam-Pnet Cluster & Lab Data Plane Ping Mesh Matrix")
+            print("         AzamLabs Cluster & Lab Data Plane Ping Mesh Matrix")
             print("================================================================================")
             print(f"{'Target Endpoint':<22} | {'IP Address':<16} | {'Status':<10} | {'Latency'}")
             print("--------------------------------------------------------------------------------")

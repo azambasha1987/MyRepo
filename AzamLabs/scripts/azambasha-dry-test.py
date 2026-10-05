@@ -27,7 +27,7 @@ if sys.stdout and hasattr(sys.stdout, "reconfigure"):
 REAL_FILE = os.path.realpath(__file__)
 SCRIPT_DIR = os.path.dirname(REAL_FILE)
 if not os.path.isfile(os.path.join(SCRIPT_DIR, "azambasha-update.sh")):
-    for s_cand in ["/opt/unetlab/scripts", "/opt/azambasha/scripts", "/opt/azam-pnet/EMULATOR/Azam-Pnet/scripts", "/opt/azam-pnet/AzamLabs/scripts"]:
+    for s_cand in ["/opt/unetlab/scripts", "/opt/azambasha/scripts", "/opt/azamlabs/EMULATOR/AzamLabs/scripts", "/opt/azamlabs/AzamLabs/scripts"]:
         if os.path.isfile(os.path.join(s_cand, "azambasha-update.sh")):
             SCRIPT_DIR = s_cand
             break
@@ -63,8 +63,8 @@ def probe_plan_and_ledger():
         os.path.join(BASE_DIR, "docs", "UPDATE_CHECK_PLAN.md"),
         os.path.join(BASE_DIR, "docs", "3_MONTHS_UPDATE_CHECK_PLAN.md"),
         "/opt/azambasha/docs/UPDATE_CHECK_PLAN.md",
-        "/opt/azam-pnet/EMULATOR/Azam-Pnet/docs/UPDATE_CHECK_PLAN.md",
-        "/opt/azam-pnet/AzamLabs/docs/UPDATE_CHECK_PLAN.md",
+        "/opt/azamlabs/EMULATOR/AzamLabs/docs/UPDATE_CHECK_PLAN.md",
+        "/opt/azamlabs/AzamLabs/docs/UPDATE_CHECK_PLAN.md",
         "/opt/unetlab/docs/UPDATE_CHECK_PLAN.md"
     ]:
         if os.path.isfile(cand):
@@ -79,7 +79,7 @@ def probe_plan_and_ledger():
     details = []
 
     # Check issue rows in ledger
-    issue_matches = re.findall(r'\[#(\d+)\]\(https://codeberg\.org/netkillui/Pnetlabv8/issues/\d+\)', content)
+    issue_matches = re.findall(r'\[#(\d+)\]\(https://codeberg\.org/netkillui/AzamLabsv8/issues/\d+\)', content)
     unique_issues = len(set(issue_matches))
     if unique_issues >= 34:
         details.append(f"All {unique_issues} community issues tracked in the ledger ({unique_issues} found, baseline >= 34).")
@@ -91,7 +91,7 @@ def probe_plan_and_ledger():
     # Filter out email address azambasha1987
     filtered_legacy = [m for m in legacy_matches if "1987" not in m.lower()]
     if not filtered_legacy:
-        details.append("Zero legacy nomenclature tokens (Azam-Basha / Azam-Pnet) detected.")
+        details.append("Zero legacy nomenclature tokens (Azam-Basha / AzamLabs) detected.")
     else:
         return False, [f"Found residual legacy tokens: {filtered_legacy}"]
 
@@ -111,8 +111,8 @@ def probe_plan_and_ledger():
     one_step_candidates = [
         os.path.join(BASE_DIR, "docs", "ONE_STEP_UPDATE_COMMANDS.md"),
         "/opt/azambasha/docs/ONE_STEP_UPDATE_COMMANDS.md",
-        "/opt/azam-pnet/EMULATOR/Azam-Pnet/docs/ONE_STEP_UPDATE_COMMANDS.md",
-        "/opt/azam-pnet/AzamLabs/docs/ONE_STEP_UPDATE_COMMANDS.md",
+        "/opt/azamlabs/EMULATOR/AzamLabs/docs/ONE_STEP_UPDATE_COMMANDS.md",
+        "/opt/azamlabs/AzamLabs/docs/ONE_STEP_UPDATE_COMMANDS.md",
         "/opt/unetlab/docs/ONE_STEP_UPDATE_COMMANDS.md",
     ]
     one_step_doc = next((c for c in one_step_candidates if os.path.isfile(c)), None)
@@ -211,7 +211,7 @@ def probe_canvas_viewport_retention():
         os.path.join(BASE_DIR, "html", "main", "js", "azam-features.js"),
         "/opt/unetlab/html/main/js/azam-features.js",
         "/opt/azambasha/html/main/azam-features.js",
-        "/opt/azam-pnet/EMULATOR/Azam-Pnet/html/main/azam-features.js"
+        "/opt/azamlabs/EMULATOR/AzamLabs/html/main/azam-features.js"
     ]:
         if os.path.isfile(cand):
             features_js = cand
@@ -247,8 +247,8 @@ def probe_ops_dashboard():
         os.path.join(BASE_DIR, "html", "azam-ops", "index.html"),
         "/opt/unetlab/html/azam-ops/index.html",
         "/opt/azambasha/html/azam-ops/index.html",
-        "/opt/azam-pnet/AzamLabs/html/azam-ops/index.html",
-        "/opt/azam-pnet/EMULATOR/Azam-Pnet/html/azam-ops/index.html"
+        "/opt/azamlabs/AzamLabs/html/azam-ops/index.html",
+        "/opt/azamlabs/EMULATOR/AzamLabs/html/azam-ops/index.html"
     ]:
         if os.path.isfile(cand):
             ops_html = cand
@@ -280,8 +280,8 @@ def probe_docker_subsystem():
         os.path.join(BASE_DIR, "docs", "UPDATE_CHECK_PLAN.md"),
         os.path.join(BASE_DIR, "docs", "3_MONTHS_UPDATE_CHECK_PLAN.md"),
         "/opt/azambasha/docs/UPDATE_CHECK_PLAN.md",
-        "/opt/azam-pnet/EMULATOR/Azam-Pnet/docs/UPDATE_CHECK_PLAN.md",
-        "/opt/azam-pnet/AzamLabs/docs/UPDATE_CHECK_PLAN.md",
+        "/opt/azamlabs/EMULATOR/AzamLabs/docs/UPDATE_CHECK_PLAN.md",
+        "/opt/azamlabs/AzamLabs/docs/UPDATE_CHECK_PLAN.md",
         "/opt/unetlab/docs/UPDATE_CHECK_PLAN.md"
     ]:
         if os.path.isfile(cand):
@@ -335,7 +335,7 @@ def probe_satellite_version_alignment():
     with open(update_path, "r", encoding="utf-8") as f:
         update_content = f.read()
     if "align_daemon_versions" in update_content:
-        details.append("azambasha-update.sh includes align_daemon_versions for pnetlab-satd & pnetlab-brokerd.")
+        details.append("azambasha-update.sh includes align_daemon_versions for azamlabs-satd & azamlabs-brokerd.")
     else:
         return False, ["azambasha-update.sh missing align_daemon_versions"]
 
@@ -372,7 +372,7 @@ def probe_template_schema_and_startup():
         return False, ["azambasha-fix-node-startup.sh missing /opt/qemu collision protection"]
 
     # 3. Check TAP interface teardown hook
-    if "Teardown TAP interface cleanup" in startup_code and "Azam-Pnet Teardown Fix" in startup_code:
+    if "Teardown TAP interface cleanup" in startup_code and "AzamLabs Teardown Fix" in startup_code:
         details.append("device.php: Node TAP interface teardown cleanup hook verified.")
     else:
         return False, ["azambasha-fix-node-startup.sh missing TAP interface teardown cleanup"]
@@ -483,16 +483,16 @@ def probe_universal_optimization():
     install_candidates = [
         os.path.join(BASE_DIR, "install.sh"),
         "/opt/azambasha/install.sh",
-        "/opt/azam-pnet/EMULATOR/Azam-Pnet/install.sh",
-        "/opt/azam-pnet/AzamLabs/install.sh"
+        "/opt/azamlabs/EMULATOR/AzamLabs/install.sh",
+        "/opt/azamlabs/AzamLabs/install.sh"
     ]
     install_sh = next((c for c in install_candidates if os.path.isfile(c)), None)
 
     bootstrap_candidates = [
         os.path.join(BASE_DIR, "azambasha-bootstrap-and-install.sh"),
         "/opt/azambasha/azambasha-bootstrap-and-install.sh",
-        "/opt/azam-pnet/EMULATOR/Azam-Pnet/azambasha-bootstrap-and-install.sh",
-        "/opt/azam-pnet/AzamLabs/azambasha-bootstrap-and-install.sh",
+        "/opt/azamlabs/EMULATOR/AzamLabs/azambasha-bootstrap-and-install.sh",
+        "/opt/azamlabs/AzamLabs/azambasha-bootstrap-and-install.sh",
         os.path.join(SCRIPT_DIR, "azambasha-bootstrap-and-install.sh"),
     ]
     bootstrap_sh = next((c for c in bootstrap_candidates if os.path.isfile(c)), None)

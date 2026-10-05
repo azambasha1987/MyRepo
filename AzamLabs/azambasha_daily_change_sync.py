@@ -4,7 +4,7 @@ Azam Basha v8 24-Hour Differential Change-Detection & Sync Workflow
 Checks every 24 hours for remote updates and downloads ONLY files that have changed or are newly published.
 
 Source Tracks:
-- Track 1: https://codeberg.org/netkillui/Pnetlabv8.git (Git commits & source)
+- Track 1: https://codeberg.org/netkillui/AzamLabsv8.git (Git commits & source)
 - Track 2: https://codeberg.org/api/v1/packages/netkillui & Debian APT Pool (Releases & .deb packages)
 
 Differential Sync Rules:
@@ -140,7 +140,7 @@ def check_and_sync_track1(state, changes):
         log(f"[Track 1] Initializing repository at {GIT_DIR}...")
         if os.path.exists(GIT_DIR):
             shutil.rmtree(GIT_DIR, ignore_errors=True)
-        subprocess.run(["git", "clone", "https://codeberg.org/netkillui/Pnetlabv8.git", GIT_DIR], check=True)
+        subprocess.run(["git", "clone", "https://codeberg.org/netkillui/AzamLabsv8.git", GIT_DIR], check=True)
         head_now = subprocess.run(["git", "-C", GIT_DIR, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
         state["git_head"] = head_now
         changes["git_changes"].append(f"Initial clone at HEAD: {head_now}")
@@ -169,7 +169,7 @@ def check_and_sync_track1(state, changes):
     except Exception as e:
         log(f"[Track 1] Fetch warning: {e}. Re-cloning repository...")
         shutil.rmtree(GIT_DIR, ignore_errors=True)
-        subprocess.run(["git", "clone", "https://codeberg.org/netkillui/Pnetlabv8.git", GIT_DIR], check=True)
+        subprocess.run(["git", "clone", "https://codeberg.org/netkillui/AzamLabsv8.git", GIT_DIR], check=True)
         head_now = subprocess.run(["git", "-C", GIT_DIR, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
         state["git_head"] = head_now
         log(f"[Track 1] Re-cloned at HEAD: {head_now}")
@@ -340,10 +340,10 @@ def check_and_sync_track2(state, changes):
 
 def generate_report(remote_files):
     report_lines = []
-    report_lines.append("# PNetLab Artifacts & Releases Verification Report\n")
+    report_lines.append("# AzamLabs Artifacts & Releases Verification Report\n")
     report_lines.append(f"Last updated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}\n")
     report_lines.append("## Step 1: Git Repository Verification\n")
-    report_lines.append("- **Remote URL**: `https://codeberg.org/netkillui/Pnetlabv8.git`")
+    report_lines.append("- **Remote URL**: `https://codeberg.org/netkillui/AzamLabsv8.git`")
     report_lines.append("- **Local Clone Path**: [`track-1-git/`](track-1-git/)")
     report_lines.append("- **Branch**: `main`\n")
 

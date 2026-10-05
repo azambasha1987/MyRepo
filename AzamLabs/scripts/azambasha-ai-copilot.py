@@ -20,7 +20,7 @@ import urllib.request
 import urllib.error
 import re
 
-CONFIG_FILE = "/etc/pnetlab/azambasha-ai.conf"
+CONFIG_FILE = "/etc/azamlabs/azambasha-ai.conf"
 DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_MODEL = "llama3.2"
 
@@ -287,7 +287,7 @@ def diagnose_log(log_text):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Azam-Pnet AI Network Lab Copilot")
+    parser = argparse.ArgumentParser(description="AzamLabs AI Network Lab Copilot")
     parser.add_argument("--prompt", type=str, help="Natural language request")
     parser.add_argument("--template", type=str, choices=list(TEMPLATES.keys()), help="Built-in template key")
     parser.add_argument("--diagnose", type=str, help="Raw routing table or syslog snippet to analyze")

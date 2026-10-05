@@ -63,11 +63,11 @@ if [ "$TARGET_INPUT" = "auto" ] || [ -z "$TARGET_INPUT" ]; then
     # Search all candidate VERSION file locations
     for v_candidate in \
         "${REPO_ROOT}/VERSION" \
-        "/opt/azam-pnet/AzamLabs/VERSION" \
-        "/opt/azam-pnet/EMULATOR/Azam-Pnet/VERSION" \
+        "/opt/azamlabs/AzamLabs/VERSION" \
+        "/opt/azamlabs/EMULATOR/AzamLabs/VERSION" \
         "/opt/azambasha/VERSION" \
         "/opt/unetlab/VERSION" \
-        "/etc/pnetlab-version" \
+        "/etc/azamlabs-version" \
         "${SCRIPT_DIR}/../VERSION"; do
         if [ -f "$v_candidate" ]; then
             BASE_DETECT="$(grep -E '^PACKAGE_VERSION=' "$v_candidate" 2>/dev/null | cut -d'=' -f2 | tr -d ' \r\n' || true)"
@@ -77,7 +77,7 @@ if [ "$TARGET_INPUT" = "auto" ] || [ -z "$TARGET_INPUT" ]; then
     if [ -z "$BASE_DETECT" ]; then
         for doc_candidate in \
             "${REPO_ROOT}/docs/UPDATE_CHECK_PLAN.md" \
-            "/opt/azam-pnet/EMULATOR/Azam-Pnet/docs/UPDATE_CHECK_PLAN.md" \
+            "/opt/azamlabs/EMULATOR/AzamLabs/docs/UPDATE_CHECK_PLAN.md" \
             "/opt/azambasha/docs/UPDATE_CHECK_PLAN.md" \
             "${REPO_ROOT}/docs/WEEKLY_IMPLEMENTATION_PLAN.md"; do
             if [ -f "$doc_candidate" ]; then
@@ -146,7 +146,7 @@ PHPEOF
 fi
 
 # Persist authoritative VERSION metadata across system paths
-for v_dest in "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/opt/azam-pnet/AzamLabs/VERSION" "/opt/azam-pnet/EMULATOR/Azam-Pnet/VERSION" "/etc/pnetlab-version"; do
+for v_dest in "/opt/unetlab/VERSION" "/opt/azambasha/VERSION" "/opt/azamlabs/AzamLabs/VERSION" "/opt/azamlabs/EMULATOR/AzamLabs/VERSION" "/etc/azamlabs-version"; do
     if [ -d "$(dirname "$v_dest")" ]; then
         cat << VEOF > "$v_dest"
 VERSION=${RELEASE_VER}
@@ -168,8 +168,8 @@ try:
     with open(status_api, "r", encoding="utf-8", errors="ignore") as f:
         content = f.read()
     
-    old_needle = "'pnetlab'  => str_replace('noble', 'resolute', $vget('dpkg-query -W -f=\\'${Version}\\' pnetlab 2>/dev/null')),"
-    new_code   = "'pnetlab'  => defined('PNET_PACKAGE_VERSION') ? PNET_PACKAGE_VERSION : str_replace('noble', 'resolute', $vget('dpkg-query -W -f=\\'${Version}\\' pnetlab 2>/dev/null')),"
+    old_needle = "'azamlabs'  => str_replace('noble', 'resolute', $vget('dpkg-query -W -f=\\'${Version}\\' azamlabs 2>/dev/null')),"
+    new_code   = "'azamlabs'  => defined('PNET_PACKAGE_VERSION') ? PNET_PACKAGE_VERSION : str_replace('noble', 'resolute', $vget('dpkg-query -W -f=\\'${Version}\\' azamlabs 2>/dev/null')),"
     
     if old_needle in content:
         content = content.replace(old_needle, new_code)
@@ -187,15 +187,15 @@ fi
 MYSQL_CMD="mysql"
 if [ -f /root/.my.cnf ]; then
     MYSQL_CMD="mysql --defaults-file=/root/.my.cnf"
-elif mysql -u root -ppnetlab -e "SELECT 1;" >/dev/null 2>&1; then
-    MYSQL_CMD="mysql -u root -ppnetlab"
-elif mysql -u pnetlab -ppnetlab -e "SELECT 1;" >/dev/null 2>&1; then
-    MYSQL_CMD="mysql -u pnetlab -ppnetlab"
+elif mysql -u root -pazam -e "SELECT 1;" >/dev/null 2>&1; then
+    MYSQL_CMD="mysql -u root -pazam"
+elif mysql -u azamlabs -pazam -e "SELECT 1;" >/dev/null 2>&1; then
+    MYSQL_CMD="mysql -u azamlabs -pazam"
 fi
 
-if $MYSQL_CMD -e "USE pnetlab_db;" >/dev/null 2>&1; then
+if $MYSQL_CMD -e "USE azamlabs_db;" >/dev/null 2>&1; then
     $MYSQL_CMD -e "
-USE pnetlab_db;
+USE azamlabs_db;
 INSERT INTO control (control_name, control_value) VALUES ('ctrl_version', '${RELEASE_VER}')
 ON DUPLICATE KEY UPDATE control_value = '${RELEASE_VER}';
 " 2>/dev/null || true
@@ -223,7 +223,7 @@ echo ""
 echo "============================================================"
 echo " [SUCCESS] WEB-GUI VERSION SYNCHRONIZATION COMPLETE!        "
 echo "============================================================"
-echo " Web UI Display: PNetLab v${RELEASE_VER}"
+echo " Web UI Display: AzamLabs v${RELEASE_VER}"
 echo " Release Row   : v${RELEASE_VER}"
 echo " Package Row   : ${PACKAGE_VER}"
 if echo "$VER_JSON" | grep -q "\"release\":\"v${RELEASE_VER}\""; then

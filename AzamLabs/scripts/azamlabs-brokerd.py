@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# pnetlab-brokerd — root privilege broker for the PNetLab engine (B1).
+# azamlabs-brokerd — root privilege broker for the AzamLabs engine (B1).
 #
 # Replaces the engine's exec("sudo ...") call sites: a root daemon on a unix
 # socket exposing an ALLOWLISTED verb set with per-argument validation. PHP
@@ -12,7 +12,7 @@
 # Peer must be uid 0 or www-data (SO_PEERCRED). Every request is logged to
 # journald (stderr). Unknown verbs / bad args are rejected, never executed.
 #
-# Run via pnetlab-brokerd.service (shipped in the pnetlab deb).
+# Run via azamlabs-brokerd.service (shipped in the azamlabs deb).
 
 import hashlib
 import hmac
@@ -54,7 +54,7 @@ try:
 except Exception:      # pragma: no cover - broker refuses docker_create without it
     yaml = None
 
-SOCK_PATH = "/run/pnetlab/broker.sock"
+SOCK_PATH = "/run/azamlabs/broker.sock"
 SOCK_GROUP = "www-data"
 MAX_REQUEST = 65536
 
@@ -66,7 +66,7 @@ ROCE_AGENT_TIMEOUT = 2.0
 ROCE_AGENT_MAX_RESPONSE = 32768
 ROCE_BROKER_API = "rxe-broker/v1"
 ROCE_WORKLOAD_API = "rxe-workload/v1"
-ROCE_RUN_DIR = "/run/pnetlab/roce"
+ROCE_RUN_DIR = "/run/azamlabs/roce"
 ROCE_RUN_LIMIT = 64
 ROCE_WORKLOAD_LOCK = threading.RLock()
 RE_ROCE_RUN = re.compile(r"^[0-9a-f]{32}$")
@@ -84,8 +84,8 @@ WRAPPER_LOG = BASE + "/data/Logs/unl_wrapper.txt"
 # metadata is runtime-only: it records the authoritative value supplied by
 # DeviceQemu at attach time so a policy toggle never has to parse QEMU argv.
 CPU_POLICY_FILE = BASE + "/cpulimit"
-CPU_SCOPE_ROOT = "/sys/fs/cgroup/pnetlab.slice"
-CPU_SCOPE_STATE_DIR = "/run/pnetlab/qemu-cpu"
+CPU_SCOPE_ROOT = "/sys/fs/cgroup/azamlabs.slice"
+CPU_SCOPE_STATE_DIR = "/run/azamlabs/qemu-cpu"
 CPU_PERIOD_US = 100000
 CPU_WEIGHT = 100
 CPU_QUOTA_PER_VCPU_PERCENT = 50
@@ -125,9 +125,9 @@ AI_BRIDGE_SECRET = AI_DIR + "/bridge.secret"
 AI_USAGE = AI_DIR + "/usage.json"               # per-day, per-pod token ledger (P3)
 AI_PROGRESS_DIR = AI_DIR + "/progress"          # per-pod live build event stream (P7)
 AI_AGENT = BASE + "/scripts/mcp/ai_lab_agent.py"
-MCP_UNIT = "pnetlab-mcp.service"
-MCP_UNIT_SRC = BASE + "/scripts/mcp/pnetlab-mcp.service"
-MCP_UNIT_DST = "/etc/systemd/system/pnetlab-mcp.service"
+MCP_UNIT = "azamlabs-mcp.service"
+MCP_UNIT_SRC = BASE + "/scripts/mcp/azamlabs-mcp.service"
+MCP_UNIT_DST = "/etc/systemd/system/azamlabs-mcp.service"
 MCP_SERVICE_OPS = {"start", "stop", "restart", "enable", "disable", "status"}
 RE_TOKEN_NAME = re.compile(r"^[A-Za-z0-9 _.-]{1,48}$")
 RE_LAB_PATH = re.compile(r"^(?!.*(?:^|/)\.\.(?:/|$))/[^\x00]*\.unl$")
@@ -146,7 +146,7 @@ ADDONS_QEMU = BASE + "/addons/qemu"
 # the linked clone (`^[a-zA-Z0-9]+.qcow2$`), minus that one's unescaped dot.
 RE_QEMU_DISK = re.compile(r"^[a-zA-Z0-9]{1,64}\.qcow2$")
 # A destination image DIRECTORY NAME — never a path. Dots ARE allowed because
-# PNetLab's own qemu image dirs use them by convention
+# AzamLabs's own qemu image dirs use them by convention
 # (vios-adventerprisek9-m.spa.159-3.m8), and a saved image that cannot follow
 # the house naming would just get renamed by hand afterwards. Safety comes from
 # the first character having to be alphanumeric — so "." and ".." cannot be
@@ -742,7 +742,7 @@ def _cpu_policy_enabled():
 
 
 def _qemu_scope_unit(session):
-    return "pnetlab-qemu-%d.scope" % session
+    return "azamlabs-qemu-%d.scope" % session
 
 
 def _qemu_scope_metadata_path(session):
@@ -910,7 +910,7 @@ def _discover_qemu(session):
 
 
 def _scope_cgroup_path(unit):
-    if not re.fullmatch(r"pnetlab-qemu-[0-9]+\.scope", unit):
+    if not re.fullmatch(r"azamlabs-qemu-[0-9]+\.scope", unit):
         raise Reject("bad QEMU scope unit")
     return os.path.join(CPU_SCOPE_ROOT, unit)
 
@@ -932,7 +932,7 @@ def _read_scope_value(path, name):
 def _verify_qemu_scope(pid, session, unit, starttime, cpu_max, weight):
     """Verify PID identity, cgroup membership, and exact controller values."""
     deadline = time.monotonic() + CPU_SCOPE_VERIFY_SECONDS
-    expected_path = "/pnetlab.slice/" + unit
+    expected_path = "/azamlabs.slice/" + unit
     path = _scope_cgroup_path(unit)
     while True:
         ok, current_starttime = _qemu_identity(pid, session)
@@ -973,19 +973,19 @@ def _qemu_quota_us(smp):
 
 
 def _qemu_quota_timer_unit(session):
-    return "pnetlab-qemu-%d-quota.timer" % session
+    return "azamlabs-qemu-%d-quota.timer" % session
 
 
-def _set_pnetlab_slice_weight():
+def _set_azamlabs_slice_weight():
     rc, out, err = run([
-        "systemctl", "set-property", "--runtime", "pnetlab.slice",
+        "systemctl", "set-property", "--runtime", "azamlabs.slice",
         "CPUWeight=%d" % CPU_WEIGHT,
     ], timeout=30, check_rc=False)
     if rc != 0:
-        raise Reject("set-property failed for pnetlab.slice: %s" %
+        raise Reject("set-property failed for azamlabs.slice: %s" %
                      (err.strip() or rc))
     if _read_scope_value(CPU_SCOPE_ROOT, "cpu.weight") != str(CPU_WEIGHT):
-        raise Reject("pnetlab.slice CPUWeight read-back mismatch")
+        raise Reject("azamlabs.slice CPUWeight read-back mismatch")
 
 
 def _run_qemu_scope(unit, pid, session, smp):
@@ -996,7 +996,7 @@ def _run_qemu_scope(unit, pid, session, smp):
         "org.freedesktop.systemd1.Manager", "StartTransientUnit",
         "ssa(sv)a(sa(sv))", unit, "fail", "6",
         "PIDs", "au", "1", str(pid),
-        "Slice", "s", "pnetlab.slice",
+        "Slice", "s", "azamlabs.slice",
         "CPUQuotaPerSecUSec", "t", str(CPU_QUOTA_INFINITY_US),
         "CPUQuotaPeriodUSec", "t", str(CPU_PERIOD_US),
         "CPUWeight", "t", str(CPU_WEIGHT),
@@ -1072,7 +1072,7 @@ def verb_qemu_cpu_scope(args):
         try:
             pid, starttime = _discover_qemu(session)
             _run_qemu_scope(unit, pid, session, smp)
-            _set_pnetlab_slice_weight()
+            _set_azamlabs_slice_weight()
             _verify_qemu_scope(pid, session, unit, starttime,
                                "max %d" % CPU_PERIOD_US,
                                str(CPU_WEIGHT))
@@ -1106,7 +1106,7 @@ def _iter_qemu_scope_units():
     except OSError as e:
         raise Reject("cannot enumerate QEMU scopes: %s" % e)
     return sorted(name for name in names
-                  if re.fullmatch(r"pnetlab-qemu-[0-9]+\.scope", name))
+                  if re.fullmatch(r"azamlabs-qemu-[0-9]+\.scope", name))
 
 
 def _scope_qemu_pid(unit, session):
@@ -1154,7 +1154,7 @@ def verb_qemu_cpu_policy(args):
         units = _iter_qemu_scope_units()
         targets = []
         for unit in units:
-            session = int(re.fullmatch(r"pnetlab-qemu-([0-9]+)\.scope",
+            session = int(re.fullmatch(r"azamlabs-qemu-([0-9]+)\.scope",
                                        unit).group(1))
             target = _scope_qemu_pid(unit, session)
             if target is None:
@@ -1450,7 +1450,7 @@ def verb_capture_teardown(args):
                           for direction in CAPTURE_FILTERS}
                 if "foreign" in states.values():
                     # Do not strand a foreign mirror action pointing at a deleted
-                    # device merely because it occupies PNetLab's reserved pref.
+                    # device merely because it occupies AzamLabs's reserved pref.
                     raise Reject("capture filter ownership conflict on " + tap)
                 for direction in CAPTURE_FILTERS:
                     try:
@@ -1707,7 +1707,7 @@ def verb_linkwatch_start(args):
     os.chmod(hb, 0o664)
     shutil.chown(hb, "root", "www-data")
     spawn_unit(unit,
-               ["/usr/bin/python3", BASE + "/scripts/pnetlab-linkwatchd.py", wid],
+               ["/usr/bin/python3", BASE + "/scripts/azamlabs-linkwatchd.py", wid],
                props=("MemoryMax=64M", "CPUQuota=30%"))
     return 0, out, ""
 
@@ -1876,7 +1876,7 @@ def verb_prototrace_start(args):
     os.chmod(hb, 0o664)
     shutil.chown(hb, "root", "www-data")
     spawn_unit(unit,
-               ["/usr/bin/python3", BASE + "/scripts/pnetlab-prototracer.py", wid],
+               ["/usr/bin/python3", BASE + "/scripts/azamlabs-prototracer.py", wid],
                props=("MemoryMax=64M", "CPUQuota=30%"))
     return 0, [expr], ""
 
@@ -2160,7 +2160,7 @@ def verb_device_factory_run(args):
     run_quiet(["dos2unix", script])
     os.chmod(script, 0o755)
     nid = v_re(args, "id", RE_FACTORY_ID)
-    # Device-store install scripts run `mysql pnetlab_db ...` relying on root's
+    # Device-store install scripts run `mysql azamlabs_db ...` relying on root's
     # /root/.my.cnf. A transient systemd unit starts with HOME unset, so mysql
     # never reads that file -> ERROR 1045 (root@localhost, using password: NO) on
     # docker image installs. Set HOME=/root so the credential-less root mysql the
@@ -2454,12 +2454,12 @@ def verb_folder_delete(args):
 # ---- server network config (management bridge + DNS) -----------------------
 # Edits the appliance's own networking: the pnet0 management bridge stanza in
 # /etc/network/interfaces (ifupdown) and DNS/search-domain via the systemd-
-# resolved drop-in PNetLab already ships. Every write timestamps a backup first.
+# resolved drop-in AzamLabs already ships. Every write timestamps a backup first.
 # Applying a pnet0 address change bounces the management link — the caller opts
 # into that with apply=1; DNS-only changes never bounce (just restart resolved).
 
 NETCFG_INTERFACES = "/etc/network/interfaces"
-NETCFG_RESOLVED = "/etc/systemd/resolved.conf.d/pnetlab.conf"
+NETCFG_RESOLVED = "/etc/systemd/resolved.conf.d/azamlabs.conf"
 NETCFG_BACKUP_DIR = BASE + "/data/netcfg-backups"
 RE_NETCFG_DOMAIN = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9.-]{0,252}[A-Za-z0-9])?$")
 
@@ -2664,7 +2664,7 @@ def verb_server_netcfg(args):
         # typo before we get here.
         run_quiet([
             "systemd-run", "--no-block", "--collect",
-            "--unit=pnet-netcfg-reboot",
+            "--unit=azamlabs-netcfg-reboot",
             "/bin/sh", "-c", "sleep 3; systemctl reboot",
         ], timeout=15)
         rebooting = True
@@ -2677,16 +2677,16 @@ def verb_server_netcfg(args):
 
 # ---- cluster (multi-host) ----------------------------------------------------
 # Master-side verbs for the 1-master + up-to-5-satellite cluster. The PSK and
-# satellite registry live under /etc/pnetlab/cluster (root 0600) so www-data
+# satellite registry live under /etc/azamlabs/cluster (root 0600) so www-data
 # never sees them: PHP asks the broker, the broker owns the TLS+HMAC transport
-# to each satellite's pnetlab-satd (port 9050). All verbs are inert until an
+# to each satellite's azamlabs-satd (port 9050). All verbs are inert until an
 # admin generates a PSK (cluster_psk_new).
 
-CLUSTER_DIR = "/etc/pnetlab/cluster"
+CLUSTER_DIR = "/etc/azamlabs/cluster"
 CLUSTER_PSK = CLUSTER_DIR + "/psk"
 CLUSTER_HOSTS = CLUSTER_DIR + "/hosts.json"
 CLUSTER_KEY = CLUSTER_DIR + "/id_ed25519"
-CLUSTER_MYSQL_CNF = "/etc/mysql/mysql.conf.d/zz-pnetlab-cluster.cnf"
+CLUSTER_MYSQL_CNF = "/etc/mysql/mysql.conf.d/zz-azamlabs-cluster.cnf"
 SATD_PORT = 9050
 RE_CERT_FP = re.compile(r"^sha256:[0-9a-f]{64}$")
 RE_HOST_NAME = re.compile(r"^[A-Za-z0-9 ._-]{1,64}$")
@@ -2723,10 +2723,10 @@ def _cluster_save_hosts(data):
 
 
 def _mysql(sql):
-    """Root SQL on the local pnetlab_db; password via env, never argv."""
+    """Root SQL on the local azamlabs_db; password via env, never argv."""
     env = dict(os.environ)
-    env["MYSQL_PWD"] = "pnetlab"
-    p = subprocess.run(["mysql", "--user=root", "pnetlab_db"],
+    env["MYSQL_PWD"] = "azamlabs"
+    p = subprocess.run(["mysql", "--user=root", "azamlabs_db"],
                        input=sql.encode(), stdout=subprocess.PIPE,
                        stderr=subprocess.PIPE, env=env, timeout=30)
     if p.returncode != 0:
@@ -2764,7 +2764,7 @@ def verb_cluster_join(args):
     # first join: expose mysqld on the LAN (host-scoped grants do the gating)
     if not os.path.isfile(CLUSTER_MYSQL_CNF):
         with open(CLUSTER_MYSQL_CNF, "w") as f:
-            f.write("# pnetlab cluster: satellites connect to the master DB\n"
+            f.write("# azamlabs cluster: satellites connect to the master DB\n"
                     "[mysqld]\nbind-address = 0.0.0.0\n"
                     "mysqlx-bind-address = 127.0.0.1\n")
         run_quiet(["systemctl", "restart", "mysql"], timeout=120)
@@ -2783,16 +2783,16 @@ def verb_cluster_join(args):
     prev = data["hosts"].get(str(host_id))
     db_pass = secrets.token_urlsafe(18)
     if prev and prev.get("ip") and prev["ip"] != ip:
-        _mysql("DROP USER IF EXISTS 'pnetlab'@'%s';" % prev["ip"])
+        _mysql("DROP USER IF EXISTS 'azamlabs'@'%s';" % prev["ip"])
     _mysql(
-        "DROP USER IF EXISTS 'pnetlab'@'{ip}';"
-        "CREATE USER 'pnetlab'@'{ip}' IDENTIFIED BY '{pw}';"
-        "GRANT ALL PRIVILEGES ON pnetlab_db.* TO 'pnetlab'@'{ip}';"
+        "DROP USER IF EXISTS 'azamlabs'@'{ip}';"
+        "CREATE USER 'azamlabs'@'{ip}' IDENTIFIED BY '{pw}';"
+        "GRANT ALL PRIVILEGES ON azamlabs_db.* TO 'azamlabs'@'{ip}';"
         "FLUSH PRIVILEGES;".format(ip=ip, pw=db_pass))
 
     if not os.path.isfile(CLUSTER_KEY):
         rc, _, err = run(["ssh-keygen", "-t", "ed25519", "-N", "",
-                          "-C", "pnetlab-cluster", "-f", CLUSTER_KEY],
+                          "-C", "azamlabs-cluster", "-f", CLUSTER_KEY],
                          timeout=30)
         if rc != 0:
             raise Reject("ssh-keygen failed: " + err.strip()[:200])
@@ -2814,7 +2814,7 @@ def verb_cluster_remove(args):
     prev = data["hosts"].pop(str(host_id), None)
     if prev and prev.get("ip"):
         try:
-            _mysql("DROP USER IF EXISTS 'pnetlab'@'%s';" % prev["ip"])
+            _mysql("DROP USER IF EXISTS 'azamlabs'@'%s';" % prev["ip"])
         except Reject:
             pass  # grant cleanup is best-effort; registry removal is the point
     _cluster_save_hosts(data)
@@ -3259,7 +3259,7 @@ def verb_netem_set(args):
 
 
 def verb_netem_del(args):
-    """Delete only PNetLab's exact netem root and verify kernel default."""
+    """Delete only AzamLabs's exact netem root and verify kernel default."""
     tap = _v_name(args, LAB_TAP_RE, "tap")
     if not link_exists(tap):
         return 0, [], ""
@@ -3421,7 +3421,7 @@ def verb_iface_vlan(args):
 # All host-side state is keyed by session/net_id so every verb is idempotent
 # and verb_router_delete tears it down with no leak across lab restarts.
 
-RUN_DIR = "/run/pnetlab"
+RUN_DIR = "/run/azamlabs"
 
 
 def _router_names(args):
@@ -3683,7 +3683,7 @@ def verb_router_delete(args):
             run_quiet(["ip", "link", "del", dev])
     if _netns_exists(ns):
         run_quiet(["ip", "netns", "del", ns])
-    # config is per-run: drop the persisted state so a reused net_id (PNetLab
+    # config is per-run: drop the persisted state so a reused net_id (AzamLabs
     # recycles the lowest free id) never inherits a previous router's config.
     try:
         os.unlink(_router_state_path(s, n))
@@ -3758,7 +3758,7 @@ def _wificell_normalize(args):
         if sec == "wpa-eap":
             entry["radius_server"] = (v_ip_list(w, "radius_server")
                                       if w.get("radius_server") else "")
-            rs = w.get("radius_secret", "pnetlab-radius")
+            rs = w.get("radius_secret", "azamlabs-radius")
             if not isinstance(rs, str) or not (1 <= len(rs) <= 64):
                 raise Reject("bad radius secret")
             entry["radius_secret"] = rs
@@ -3972,7 +3972,7 @@ def verb_cluster_sync_manifest(args):
     (/opt/unetlab/scripts/docker-template-manifest.sha256) master->satellite.
     The satellite's broker gates dangerous/free-form docker templates on this
     root-owned manifest (_manifest_trusted/_manifest_hashes): it ships inside
-    the pnetlab-satellite deb but is REGENERATED on the master by
+    the azamlabs-satellite deb but is REGENERATED on the master by
     gen-template-manifest.sh whenever a shipped template's bytes change, so a
     joined satellite would otherwise fail-closed on those templates. Same
     join-time ssh key + rrsync jail (/opt/unetlab) as cluster_sync_lab; rsync
@@ -4072,7 +4072,7 @@ def _master_version():
         # AzamLabs authoritative dynamic version resolution
         base_ver = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "VERSION")
         local_ver = os.path.join(os.path.dirname(os.path.abspath(__file__)), "VERSION")
-        for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/pnetlab-version", base_ver, local_ver):
+        for v_path in ("/opt/unetlab/VERSION", "/opt/azambasha/VERSION", "/etc/azamlabs-version", base_ver, local_ver):
             try:
                 if os.path.isfile(v_path):
                     with open(v_path, "r", encoding="utf-8") as f:
@@ -4092,7 +4092,7 @@ def _master_version():
                             return _MASTER_VERSION
             except Exception:
                 pass
-        rc, out, _ = run(["dpkg-query", "-W", "-f", "${Version}", "pnetlab"],
+        rc, out, _ = run(["dpkg-query", "-W", "-f", "${Version}", "azamlabs"],
                          timeout=15)
         _MASTER_VERSION = out[0].strip() if rc == 0 and out else ""
     return _MASTER_VERSION
@@ -4872,7 +4872,7 @@ def verb_roce_agent_health(args):
 
 def verb_node_kill_orphan_qemu(args):
     """Kill any leftover qemu still bound to this node's running path BEFORE the
-    node (re)starts. PNetLab can leave an orphaned qemu when a node is deleted/
+    node (re)starts. AzamLabs can leave an orphaned qemu when a node is deleted/
     recreated or restarted; for a Wireless node that orphan keeps its radio on the
     shared vwifi medium and beacons a STALE SSID (ghost network) even after the
     config is fixed. Called only from a wireless node's prepare() — i.e. before
@@ -5088,7 +5088,7 @@ def _ai_load_config():
 
 def _ai_apply_owner(path, group, mode):
     """chmod + chown root:<group>, tolerating a not-yet-created group. If a config
-    write ever races ahead of the postinst that creates the pnetlab-mcp user (or on
+    write ever races ahead of the postinst that creates the azamlabs-mcp user (or on
     an old box mid-upgrade), this degrades to root:root instead of crashing the
     broker — the MCP service just can't read until the user exists, and the next
     save (post-upgrade) fixes the owner."""
@@ -5105,16 +5105,16 @@ def _ai_apply_owner(path, group, mode):
 def _ai_save_config(cfg):
     os.makedirs(AI_DIR, exist_ok=True)
     # 0751 root:www-data — BOTH readers must TRAVERSE this dir: www-data (the engine
-    # shim) reads the 0640 bridge.secret via its group, and pnetlab-mcp (the
+    # shim) reads the 0640 bridge.secret via its group, and azamlabs-mcp (the
     # unprivileged MCP service) reads the 0640 config.json/usage.json. www-data keeps
-    # group traversal; pnetlab-mcp traverses via the other-execute bit. No secret
+    # group traversal; azamlabs-mcp traverses via the other-execute bit. No secret
     # leaks — the dir is NOT other-readable (no listing) and every file inside is
     # individually group-locked 0640. MUST re-apply on every rewrite: the chmod is
     # what keeps traversal working after an os.replace resets nothing here (the dir
     # is not replaced, but re-asserting is cheap and self-heals an old 0750 box).
     os.chmod(AI_DIR, 0o751)
     shutil.chown(AI_DIR, "root", "www-data")
-    # config.json: 0640 root:pnetlab-mcp so the unprivileged MCP service can READ
+    # config.json: 0640 root:azamlabs-mcp so the unprivileged MCP service can READ
     # the token hashes / bridge secret / LLM key it needs, without those secrets
     # becoming readable to www-data or the world. MUST re-apply owner+mode on EVERY
     # rewrite (set on the temp file so the published inode is correct atomically):
@@ -5123,10 +5123,10 @@ def _ai_save_config(cfg):
     tmp = AI_CONFIG + ".tmp"
     with open(tmp, "w") as fh:
         json.dump(cfg, fh, indent=2)
-    _ai_apply_owner(tmp, "pnetlab-mcp", 0o640)
+    _ai_apply_owner(tmp, "azamlabs-mcp", 0o640)
     os.replace(tmp, AI_CONFIG)
     # mirror the bridge secret for the www-data engine shim (0640 root:www-data).
-    # pnetlab-mcp does NOT read this file — it takes bridge_secret from config.json —
+    # azamlabs-mcp does NOT read this file — it takes bridge_secret from config.json —
     # so it stays www-data-only (least privilege: the service never touches it).
     secret = cfg.get("mcp", {}).get("bridge_secret", "")
     tmp2 = AI_BRIDGE_SECRET + ".tmp"
@@ -5194,7 +5194,7 @@ def _mcp_ensure_unit():
 
 
 def verb_mcp_service(args):
-    """systemctl toggle for the (toggleable) pnetlab-mcp.service — modelled on the
+    """systemctl toggle for the (toggleable) azamlabs-mcp.service — modelled on the
     status page's ksm|uksm|cpulimit broker hops. The unit is installed on the
     first enable/start (ships disabled by default). `status` returns a JSON line."""
     op = v_enum(args, "op", MCP_SERVICE_OPS)
@@ -5308,9 +5308,9 @@ def verb_ai_settings_write(args):
 
 def verb_mcp_token_new(args):
     """Generate a bearer access token for an external MCP client. The plaintext
-    is returned ONCE; only its sha256 is stored. Bound to a PNetLab pod/tenant."""
+    is returned ONCE; only its sha256 is stored. Bound to a AzamLabs pod/tenant."""
     name = v_re(args, "name", RE_TOKEN_NAME)
-    # pod == a PNetLab user id (the users PK). The dashboard (mcp/api.php) supplies
+    # pod == a AzamLabs user id (the users PK). The dashboard (mcp/api.php) supplies
     # the minting admin's own pod when the request omits one; a literal 0 here is a
     # non-user and the bridge will reject it ("unknown pod"), so callers should
     # always pass a real pod.
@@ -5345,7 +5345,7 @@ def verb_mcp_token_del(args):
 
 
 def _ai_ledger():
-    return UsageLedger(AI_USAGE, lambda path: _ai_apply_owner(path, "pnetlab-mcp", 0o640))
+    return UsageLedger(AI_USAGE, lambda path: _ai_apply_owner(path, "azamlabs-mcp", 0o640))
 
 
 def _ai_usage_today(pod):
@@ -5953,7 +5953,7 @@ def verb_cluster_sync_satellite(args):
     sync_deb_roots = (
         "/opt/unetlab/data/satellite",
         "/opt/unetlab/cluster-bundle",
-        "/var/cache/pnetlab/debs",
+        "/var/cache/azamlabs/debs",
     )
     deb_source = v_path_under_any(args, "deb_source", sync_deb_roots)
     bridge_deb_source = v_path_under_any(args, "bridge_deb_source", sync_deb_roots)
@@ -5979,7 +5979,7 @@ def verb_cluster_sync_satellite(args):
 # be accepted); the legacy shared per-lab capture container is
 # Capture_<tenant>_<lab_session>. RE_CTR covers all three shapes for any later
 # verb that receives a name (e.g. echoed back from `docker ps`) instead of ids.
-# Stage 7: the tcp://127.0.0.1:4243 endpoint is GONE (pnetlab-docker 6.0.0-31
+# Stage 7: the tcp://127.0.0.1:4243 endpoint is GONE (azamlabs-docker 6.0.0-31
 # binds unix:///var/run/docker.sock only). The broker runs as root, so it dials
 # the unix socket directly; every verb below inherits this single constant.
 DOCKER_HOST = "unix:///var/run/docker.sock"
@@ -6363,7 +6363,7 @@ def _parse_freeform(text, runpath, allow_publish_net):
         else:
             raise Reject(
                 "template: unsupported docker flag %r — convert the template to "
-                "the typed docker: schema or sign it with pnetlab-template-sign" % t)
+                "the typed docker: schema or sign it with azamlabs-template-sign" % t)
         i += 1
     return out
 
@@ -6404,7 +6404,7 @@ def _docker_build_typed(block, runpath, signed):
             raise Reject(
                 "template requests %s but its bytes are not in the shipped "
                 "manifest; convert to the safe subset or have an admin sign it: "
-                "sudo pnetlab-template-sign" % feature)
+                "sudo azamlabs-template-sign" % feature)
 
     out = []
     if block.get("privileged") is True:
@@ -6500,7 +6500,7 @@ def _docker_capabilities(tpl, raw, runpath, allow_publish_net):
         raise Reject(
             "template not in shipped manifest (sha256=%s): convert its "
             "dock_args/docker_options to the typed docker: schema, or an admin "
-            "must sign it with /opt/unetlab/scripts/pnetlab-template-sign" % digest)
+            "must sign it with /opt/unetlab/scripts/azamlabs-template-sign" % digest)
     return _parse_freeform(free, runpath, allow_publish_net), entry
 
 
@@ -6961,7 +6961,7 @@ def verb_docker_image_pull(args):
             "docker -H=%s pull %s; RC=$?; "
             "if [ \"$RC\" = \"0\" ]; then echo \"Done. %s is ready.\"; "
             "else echo \"FAILED to pull %s (rc=$RC)\"; fi; "
-            "mysql pnetlab_db -e \"DELETE FROM process_device WHERE "
+            "mysql azamlabs_db -e \"DELETE FROM process_device WHERE "
             "process_device_id='%s'\"; } > %s 2>&1"
             % (q, DOCKER_HOST, q, q, q, job, logpath))
     log("docker_image_pull %s job=%s" % (ref, job))
@@ -6988,7 +6988,7 @@ def verb_docker_image_rmi(args):
 
 def _docker_updates_module():
     """Import only shipped root-owned code, before any privileged execution."""
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "pnetlab_docker_updates.py")
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "azamlabs_docker_updates.py")
     targets = [path]
     parent = os.path.dirname(path)
     while True:
@@ -7001,8 +7001,8 @@ def _docker_updates_module():
         info = os.stat(target)
         if os.path.islink(target) or info.st_uid != 0 or info.st_mode & 0o022:
             raise Reject("Untrusted Docker update helper")
-    import pnetlab_docker_updates
-    return pnetlab_docker_updates
+    import azamlabs_docker_updates
+    return azamlabs_docker_updates
 
 
 def verb_docker_node_updates(args):
@@ -7100,14 +7100,14 @@ def verb_docker_version(args):
 # per-lab shape). Deliberately EXCLUDES docker<n> node containers — capture_rm
 # must never be able to rm a lab node.
 RE_CAPTURE_NAME = re.compile(r"^Capture_\d{1,10}_\d{1,10}(?:_\d{1,10}_\d{1,10})?$")
-CAPTURE_IMAGE = "pnet-capture-web:1.0"
+CAPTURE_IMAGE = "azam-capture-web:1.0"
 WINBOX_IMAGE = "alexhorner/winbox-dockerised"
 
 
 def verb_capture_create(args):
     """Create the live per-interface capture sidecar:
     `docker create --shm-size 1G --cap-add=NET_ADMIN -ti --net=none
-       --name=Capture_<t>_<l>_<ns>_<if> -h <tap> pnet-capture-web:1.0`
+       --name=Capture_<t>_<l>_<ns>_<if> -h <tap> azam-capture-web:1.0`
     Name AND -h hostname (the node tap: vunl<ns>_<if> / ser<ns>_<if>, selected
     by the typed 'serial' flag) are derived here from typed ints; image and
     every flag are fixed. --net=none: eth0/eth1 are attached afterwards by the
@@ -7260,7 +7260,7 @@ def _extauth_default_config():
         "fallback_local": False,
         "radius": {"primary_host": "", "primary_port": 1812,
                    "secondary_host": "", "secondary_port": 1812,
-                   "secret": "", "timeout": 3, "nas_identifier": "pnetlab"},
+                   "secret": "", "timeout": 3, "nas_identifier": "azamlabs"},
         "ldap": {"uri": "", "starttls": False, "verify": True,
                  "bind_dn": "", "bind_pw": "", "base_dn": "",
                  "user_attr": "sAMAccountName", "group_attr": "memberOf",
@@ -7364,7 +7364,7 @@ def _extauth_radius_verify(cfg, username, password):
         req = srv.CreateAuthPacket(code=radpacket.AccessRequest,
                                    User_Name=username)
         req["User-Password"] = req.PwCrypt(password)
-        nasid = rcfg.get("nas_identifier") or "pnetlab"
+        nasid = rcfg.get("nas_identifier") or "azamlabs"
         req["NAS-Identifier"] = nasid
         try:
             # SendPacket verifies the Response Authenticator (MD5 over
@@ -7961,7 +7961,7 @@ def main():
     srv = Server(SOCK_PATH, Handler)
     os.chmod(SOCK_PATH, 0o660)
     shutil.chown(SOCK_PATH, "root", SOCK_GROUP)
-    log("pnetlab-brokerd listening on %s (%d verbs)" %
+    log("azamlabs-brokerd listening on %s (%d verbs)" %
         (SOCK_PATH, len(VERBS)))
     srv.serve_forever()
 

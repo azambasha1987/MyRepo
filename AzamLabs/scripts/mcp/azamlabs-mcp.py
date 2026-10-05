@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# pnetlab-mcp — PNetLab MCP server (AI Lab Builder, Phase P1: read-only tools).
+# azamlabs-mcp — AzamLabs MCP server (AI Lab Builder, Phase P1: read-only tools).
 #
 # One tool surface, two doors:
 #   - EXTERNAL clients (Claude Desktop/Code, any MCP client) dial the Streamable-
@@ -10,9 +10,9 @@
 # This file is a thin MCP *protocol* server. All lab parsing/validation happens
 # in the real engine: every tool proxies to the localhost PHP bridge
 # (html/mcp/bridge.php), authenticated with the shared bridge secret. The bearer
-# token resolves to a PNetLab pod/tenant and every read is scoped to it.
+# token resolves to a AzamLabs pod/tenant and every read is scoped to it.
 #
-# Runs as the toggleable pnetlab-mcp.service (disabled by default). Transports:
+# Runs as the toggleable azamlabs-mcp.service (disabled by default). Transports:
 #   --http   Streamable-HTTP on the configured bind:port  [default]
 #   --stdio  stdio transport for a localhost CLI/dev client (trusted, pod 0)
 #
@@ -171,8 +171,8 @@ def load_config():
 
 
 def verify_bearer(auth_header):
-    """Map an `Authorization: Bearer <tok>` header to a PNetLab pod, or None.
-    Tokens are stored as sha256 hashes in the 0640 root:pnetlab-mcp config that
+    """Map an `Authorization: Bearer <tok>` header to a AzamLabs pod, or None.
+    Tokens are stored as sha256 hashes in the 0640 root:azamlabs-mcp config that
     this (unprivileged) service reads."""
     if not auth_header:
         return None
@@ -349,11 +349,11 @@ def build_server():
     # json_response: return one JSON body per request (no SSE). The SDK's stateless
     # transport mints no mcp-session-id, so per-connection identity comes only from
     # a client-sent mcp-session-id header (see current_session / _bindable()).
-    mcp = FastMCP("pnetlab", stateless_http=True, json_response=True)
+    mcp = FastMCP("azamlabs", stateless_http=True, json_response=True)
 
     @mcp.tool()
     def list_templates() -> dict:
-        """List the PNetLab node templates installed on this server. Each entry
+        """List the AzamLabs node templates installed on this server. Each entry
         has slug, description, type, config_capable, and image_available.
         config_capable marks the config_script family (vIOS / vIOSL2 / IOL / XRd /
         NX-OSv9k / Catalyst-SDWAN / CSR) that supports day-0 config import/export;
@@ -929,7 +929,7 @@ def build_server():
 
 def _usage_status(pod):
     """Today's token usage for a pod + the configured per-user daily cap. The
-    ledger/config are 0640 root:pnetlab-mcp, so this unprivileged service reads
+    ledger/config are 0640 root:azamlabs-mcp, so this unprivileged service reads
     them directly (the root broker owns all writes)."""
     import datetime
     day = datetime.date.today().isoformat()
@@ -1063,7 +1063,7 @@ def make_http_app(mcp):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="PNetLab MCP server")
+    ap = argparse.ArgumentParser(description="AzamLabs MCP server")
     ap.add_argument("--stdio", action="store_true",
                     help="stdio transport (trusted local client)")
     ap.add_argument("--http", action="store_true",
@@ -1095,7 +1095,7 @@ def main():
     cfg = load_config().get("mcp", {})
     bind = args.bind or cfg.get("bind", "127.0.0.1")
     port = args.port or int(cfg.get("port", 5701))
-    sys.stderr.write("pnetlab-mcp: Streamable-HTTP on %s:%d (path /mcp)\n"
+    sys.stderr.write("azamlabs-mcp: Streamable-HTTP on %s:%d (path /mcp)\n"
                      % (bind, port))
     sys.stderr.flush()
     try:

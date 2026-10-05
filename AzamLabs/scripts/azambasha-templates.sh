@@ -4,7 +4,7 @@
 # ==============================================================================
 # Maintains a curated Git-synced library of pre-built .unl lab topologies:
 #   CCNA, CCIE-RS, BGP, MPLS, OSPF, IS-IS, SD-WAN, XRd cloud-native, and more.
-# Deploy any topology in seconds via the PNetLab REST API.
+# Deploy any topology in seconds via the AzamLabs REST API.
 # ==============================================================================
 
 set -euo pipefail
@@ -33,13 +33,13 @@ usage() {
     echo ""
     echo -e "${BOLD}Commands:${RESET}"
     echo "  list                  List all available template topologies"
-    echo "  deploy <name>         Deploy a template lab into PNetLab"
+    echo "  deploy <name>         Deploy a template lab into AzamLabs"
     echo "  show <name>           Show details and description of a template"
     echo "  list-repos            List curated community repository sources (CML2, GNS3, EVE-NG)"
     echo "  browse <repo>         Browse & index labs in a repository or custom GitHub URL"
     echo "  pull <repo> <name>    Pull, auto-convert, and deploy lab from any repository"
     echo "  test-cml              Test CML2 import engine with authentic Cisco DevNet CML2 topology"
-    echo "  import-cml <file/url> Import and convert any CML2 YAML topology into PNetLab v8"
+    echo "  import-cml <file/url> Import and convert any CML2 YAML topology into AzamLabs v8"
     echo "  publish <file.unl>    Add a .unl topology to the local catalog"
     echo "  refresh               Re-sync template catalog from GitHub"
     echo "  remove <name>         Remove a template from the local catalog"
@@ -105,7 +105,7 @@ generate_stub_unl() {
 
     cat > "$dest_file" << UNLEOF
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<lab name="${name}" id="${uuid}" version="1" scripttimeout="300" countdown="0" description="${desc}" author="Azam-Pnet Templates" body="">
+<lab name="${name}" id="${uuid}" version="1" scripttimeout="300" countdown="0" description="${desc}" author="AzamLabs Templates" body="">
   <topology>
     <nodes>
 UNLEOF
@@ -146,7 +146,7 @@ case "$MODE" in
   list)
     init_catalog
     echo -e "${CYAN}================================================================================"
-    echo -e "     ${BOLD}Azam-Pnet Lab Template Marketplace — Available Topologies${RESET}${CYAN}"
+    echo -e "     ${BOLD}AzamLabs Lab Template Marketplace — Available Topologies${RESET}${CYAN}"
     echo -e "================================================================================${RESET}"
     echo -e "${BOLD}  Category     Name                         Nodes  Tags${RESET}"
     echo -e "${DIM}  --------------------------------------------------------------------------${RESET}"
@@ -265,7 +265,7 @@ print('NOT_FOUND')
     chown -R www-data:www-data "${LABS_DIR}/Azam-Templates/" 2>/dev/null || true
     
     echo -e "  ${GREEN}[✔ DEPLOYED]${RESET} Template ready at: ${DEPLOYED_FILE}"
-    echo -e "  ${GREEN}[✔]${RESET} Open PNetLab GUI → Navigate to 'Azam-Templates' folder → Click ${TEMPLATE_NAME}.unl"
+    echo -e "  ${GREEN}[✔]${RESET} Open AzamLabs GUI → Navigate to 'Azam-Templates' folder → Click ${TEMPLATE_NAME}.unl"
     echo -e "${CYAN}====================================================================${RESET}"
     ;;
 

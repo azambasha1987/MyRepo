@@ -1,10 +1,10 @@
 <#
 .SYNOPSIS
-    PNETLab Windows 1-Click Wireshark & SecureCRT / PuTTY Protocol Integrator
+    AzamLabs Windows 1-Click Wireshark & SecureCRT / PuTTY Protocol Integrator
 .DESCRIPTION
-    Registers the 'pnetlab://' and 'capture://' URL protocol handlers in the Windows Registry.
-    Allows clicking 'Capture' on any link in the PNETLab Web UI to automatically launch local
-    Wireshark.exe with a real-time live SSH packet stream from the PNETLab VM.
+    Registers the 'azamlabs://' and 'capture://' URL protocol handlers in the Windows Registry.
+    Allows clicking 'Capture' on any link in the AzamLabs Web UI to automatically launch local
+    Wireshark.exe with a real-time live SSH packet stream from the AzamLabs VM.
 #>
 
 param (
@@ -19,20 +19,20 @@ if (-not $isAdmin) {
     exit 0
 }
 
-$InstallDir = "$env:ProgramData\PNETLab"
-$WiresharkWrapper = "$InstallDir\pnetlab-wireshark.bat"
+$InstallDir = "$env:ProgramData\AzamLabs"
+$WiresharkWrapper = "$InstallDir\azamlabs-wireshark.bat"
 
 if ($Uninstall) {
-    Write-Host "Uninstalling PNETLab Windows Protocol Handler..." -ForegroundColor Yellow
-    Remove-Item -Path "HKCR:\pnetlab" -Recurse -ErrorAction SilentlyContinue
+    Write-Host "Uninstalling AzamLabs Windows Protocol Handler..." -ForegroundColor Yellow
+    Remove-Item -Path "HKCR:\azamlabs" -Recurse -ErrorAction SilentlyContinue
     Remove-Item -Path "HKCR:\capture" -Recurse -ErrorAction SilentlyContinue
     Remove-Item -Path "$InstallDir" -Recurse -ErrorAction SilentlyContinue
-    Write-Host "[OK] PNETLab Wireshark handler removed." -ForegroundColor Green
+    Write-Host "[OK] AzamLabs Wireshark handler removed." -ForegroundColor Green
     exit 0
 }
 
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host "    PNETLab 1-Click Live Wireshark Protocol Integrator      " -ForegroundColor Cyan
+Write-Host "    AzamLabs 1-Click Live Wireshark Protocol Integrator      " -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
 # 1. Locate Wireshark.exe
@@ -69,10 +69,10 @@ $BatchContent = @"
 @echo off
 setlocal enabledelayedexpansion
 
-:: PNETLab Wireshark Protocol Handler
-:: Input format: pnetlab://<HOST>/<NODE_ID>/<IF_INDEX> or pnetlab://capture?host=<HOST>&net=<IF>
+:: AzamLabs Wireshark Protocol Handler
+:: Input format: azamlabs://<HOST>/<NODE_ID>/<IF_INDEX> or azamlabs://capture?host=<HOST>&net=<IF>
 set "RAW_URL=%~1"
-set "RAW_URL=!RAW_URL:pnetlab://=!"
+set "RAW_URL=!RAW_URL:azamlabs://=!"
 set "RAW_URL=!RAW_URL:capture://=!"
 set "RAW_URL=!RAW_URL:/= !"
 
@@ -84,20 +84,20 @@ for /f "tokens=1,2,3" %%A in ("!RAW_URL!") do (
 
 if "!IFACE!"=="" set "IFACE=vnet0"
 
-echo Connecting to PNETLab Host !HOST! on interface !IFACE!...
+echo Connecting to AzamLabs Host !HOST! on interface !IFACE!...
 ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -l root !HOST! "tcpdump -U -n -i !IFACE! -w - 2>/dev/null" | "$FoundWireshark" -k -i -
 "@
 
 Set-Content -Path $WiresharkWrapper -Value $BatchContent -Encoding ASCII
 Write-Host "[2/3] Wrapper Script Created: $WiresharkWrapper" -ForegroundColor Green
 
-# 3. Register 'pnetlab://' and 'capture://' in Windows Registry
-Write-Host "[3/3] Registering Windows URI Protocol Scheme (pnetlab:// & capture://)..." -ForegroundColor Yellow
+# 3. Register 'azamlabs://' and 'capture://' in Windows Registry
+Write-Host "[3/3] Registering Windows URI Protocol Scheme (azamlabs:// & capture://)..." -ForegroundColor Yellow
 
-foreach ($proto in @("pnetlab", "capture")) {
+foreach ($proto in @("azamlabs", "capture")) {
     $regPath = "Registry::HKEY_CLASSES_ROOT\$proto"
     New-Item -Path $regPath -Force | Out-Null
-    Set-ItemProperty -Path $regPath -Name "(default)" -Value "URL:PNETLab Live Packet Capture Protocol" | Out-Null
+    Set-ItemProperty -Path $regPath -Name "(default)" -Value "URL:AzamLabs Live Packet Capture Protocol" | Out-Null
     Set-ItemProperty -Path $regPath -Name "URL Protocol" -Value "" | Out-Null
     
     $cmdPath = "$regPath\shell\open\command"
@@ -108,6 +108,6 @@ foreach ($proto in @("pnetlab", "capture")) {
 Write-Host "`n============================================================" -ForegroundColor Cyan
 Write-Host "  [SUCCESS] 1-Click Wireshark Protocol Registered on Windows! " -ForegroundColor Green
 Write-Host "============================================================" -ForegroundColor Cyan
-Write-Host " Clicking 'Capture' on any link in the PNETLab Web UI will  "
+Write-Host " Clicking 'Capture' on any link in the AzamLabs Web UI will  "
 Write-Host " now automatically stream live packets directly into Wireshark."
 Write-Host "============================================================" -ForegroundColor Cyan

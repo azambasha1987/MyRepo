@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PNETLab Real-Time Per-Link Telemetry & Dataplane Stats Exporter
+AzamLabs Real-Time Per-Link Telemetry & Dataplane Stats Exporter
 ==============================================================
 Monitors per-interface and per-link metrics across virtual networks:
 - Packets Per Second (PPS Rx / Tx)
@@ -132,7 +132,7 @@ def run_live_dashboard():
             os.system('cls' if os.name == 'nt' else 'clear')
 
             print("="*80)
-            print("         PNETLab Real-Time Dataplane & Link Telemetry Monitor")
+            print("         AzamLabs Real-Time Dataplane & Link Telemetry Monitor")
             print("="*80)
             print(f"{'Interface':<14} {'State':<7} {'Rx PPS':<9} {'Tx PPS':<9} {'Rx Bandwidth':<14} {'Tx Bandwidth':<14} {'Drops':<6}")
             print("-" * 80)
@@ -166,16 +166,16 @@ class MetricsHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/plain; version=0.0.4")
             self.end_headers()
-            lines = ["# PNETLab Dataplane Prometheus Metrics\n"]
+            lines = ["# AzamLabs Dataplane Prometheus Metrics\n"]
             for iface, data in curr.items():
-                lines.append(f'pnetlab_rx_packets_total{{interface="{iface}"}} {data["rx_packets"]}')
-                lines.append(f'pnetlab_tx_packets_total{{interface="{iface}"}} {data["tx_packets"]}')
-                lines.append(f'pnetlab_rx_bytes_total{{interface="{iface}"}} {data["rx_bytes"]}')
-                lines.append(f'pnetlab_tx_bytes_total{{interface="{iface}"}} {data["tx_bytes"]}')
-                lines.append(f'pnetlab_rx_drops_total{{interface="{iface}"}} {data["rx_drops"]}')
-                lines.append(f'pnetlab_tx_drops_total{{interface="{iface}"}} {data["tx_drops"]}')
-                lines.append(f'pnetlab_rx_errors_total{{interface="{iface}"}} {data["rx_errors"]}')
-                lines.append(f'pnetlab_tx_errors_total{{interface="{iface}"}} {data["tx_errors"]}')
+                lines.append(f'azamlabs_rx_packets_total{{interface="{iface}"}} {data["rx_packets"]}')
+                lines.append(f'azamlabs_tx_packets_total{{interface="{iface}"}} {data["tx_packets"]}')
+                lines.append(f'azamlabs_rx_bytes_total{{interface="{iface}"}} {data["rx_bytes"]}')
+                lines.append(f'azamlabs_tx_bytes_total{{interface="{iface}"}} {data["tx_bytes"]}')
+                lines.append(f'azamlabs_rx_drops_total{{interface="{iface}"}} {data["rx_drops"]}')
+                lines.append(f'azamlabs_tx_drops_total{{interface="{iface}"}} {data["tx_drops"]}')
+                lines.append(f'azamlabs_rx_errors_total{{interface="{iface}"}} {data["rx_errors"]}')
+                lines.append(f'azamlabs_tx_errors_total{{interface="{iface}"}} {data["tx_errors"]}')
             self.wfile.write("\n".join(lines).encode("utf-8") + b"\n")
 
     def log_message(self, format, *args):
@@ -183,7 +183,7 @@ class MetricsHandler(BaseHTTPRequestHandler):
 
 def run_metrics_server(port=9105):
     server = HTTPServer(("0.0.0.0", port), MetricsHandler)
-    print(f"PNETLab Dataplane Telemetry Exporter running on http://0.0.0.0:{port}/ (JSON: /json)")
+    print(f"AzamLabs Dataplane Telemetry Exporter running on http://0.0.0.0:{port}/ (JSON: /json)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

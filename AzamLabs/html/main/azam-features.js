@@ -1,5 +1,5 @@
 /* ============================================================================
-   PNetLab Main Dashboard — Azam-Features Enterprise Operations Center
+   AzamLabs Main Dashboard — Azam-Features Enterprise Operations Center
    Integrated into /main/ as the primary "Azam-Features" navigation tab.
    Communicates with the backend API service on /azam-ops/api/
    ============================================================================ */
@@ -195,7 +195,7 @@
               '<div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#0284c7,#7c3aed);color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 12px rgba(2,132,199,0.3);"><i class="fa fa-th-large"></i></div>' +
               '<div>' +
                 '<div style="font-weight:700;font-size:17px;color:#f1f5f9;">Lab Templates & Universal Converter Marketplace</div>' +
-                '<div style="font-size:12.5px;color:var(--pnq-text-muted,#94a3b8);">Browse, convert, filter and auto-fix CML2, GNS3, and EVE-NG topologies into native PNetLab v8</div>' +
+                '<div style="font-size:12.5px;color:var(--pnq-text-muted,#94a3b8);">Browse, convert, filter and auto-fix CML2, GNS3, and EVE-NG topologies into native AzamLabs v8</div>' +
               '</div>' +
             '</div>' +
             '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">' +
@@ -242,7 +242,7 @@
             '<div id="az-repo-discover-list" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto;"></div>' +
           '</div>' +
         '</div>' +
-        '<!-- 1. Format Filters (CML2, EVE-NG, GNS3, PNetLab) -->' +
+        '<!-- 1. Format Filters (CML2, EVE-NG, GNS3, AzamLabs) -->' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">' +
           '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
             '<span style="font-size:11px;font-weight:800;color:#94a3b8;letter-spacing:0.5px;text-transform:uppercase;">FORMAT FILTER:</span>' +
@@ -709,7 +709,7 @@
               var fmtLabel = 'CML 2.x';
               if (lab.format === 'eve-ng') { fmtColor = '#a78bfa'; fmtLabel = 'EVE-NG'; }
               else if (lab.format === 'gns3') { fmtColor = '#f59e0b'; fmtLabel = 'GNS3'; }
-              else if (lab.format === 'pnetlab-v8') { fmtColor = '#4ade80'; fmtLabel = 'PNetLab'; }
+              else if (lab.format === 'azamlabs-v8') { fmtColor = '#4ade80'; fmtLabel = 'AzamLabs'; }
 
               html += '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:6px;">';
               html += '  <div style="flex:1;min-width:0;">';
@@ -756,7 +756,7 @@
                   if (pullRes.success) {
                     pBtn.style.background = '#15803d';
                     pBtn.innerHTML = '<i class="fa fa-check"></i> Pulled & Deployed!';
-                    App.toast('✔ Successfully pulled and deployed ' + lName + ' into PNetLab!', 'ok');
+                    App.toast('✔ Successfully pulled and deployed ' + lName + ' into AzamLabs!', 'ok');
                     var fixInput = container.querySelector('#az-fix-lab-path');
                     if (fixInput && pullRes.unl_path) fixInput.value = pullRes.unl_path;
                     loadTemplates();
@@ -961,16 +961,16 @@
     { name: "gns3-frr-bgp-mesh", format: "gns3", category: "bgp", desc: "GNS3 Open-Source FRRouting BGP Mesh: Containerized Linux routers running high-speed modern FRR.", nodes: 5, tags: ["gns3","frr","bgp","linux","open-source"], source_url: "https://github.com/danehans/gns3-labs/tree/master/bgp-mesh" },
     { name: "gns3-spine-leaf", format: "gns3", category: "datacenter", desc: "GNS3 Datacenter Spine-Leaf: Multi-vendor fabric with automated eBGP unnumbered underlay.", nodes: 6, tags: ["gns3","spine-leaf","datacenter","ebgp","automation"], source_url: "https://github.com/danehans/gns3-labs/tree/master/spine-leaf" },
 
-    // Native PNetLab v8 / Hybrid Topologies
-    { name: "ccna-switching", format: "pnetlab-v8", category: "ccna", desc: "CCNA Switching: 6x IOL L2 with STP, VTP, Inter-VLAN, EtherChannel, and HSRP pre-configured.", nodes: 8, tags: ["pnetlab","pnetlab-v8","ccna","switching","stp","vlan","hsrp"], source_url: "https://github.com/JeremyITLab/CCNA-Labs" },
-    { name: "ccna-wan", format: "pnetlab-v8", category: "ccna", desc: "CCNA WAN: PPP, HDLC, Frame Relay, DMVPN phase 1 topology with 4 routers.", nodes: 4, tags: ["pnetlab","pnetlab-v8","ccna","wan","ppp","dmvpn"], source_url: "https://github.com/JeremyITLab/CCNA-Labs" },
-    { name: "bgp-internet-edge", format: "pnetlab-v8", category: "bgp", desc: "Internet edge: 2x ISP routers + 2x CPE with BGP dual-homing, prefix filtering, AS-path prepend.", nodes: 4, tags: ["pnetlab","pnetlab-v8","bgp","internet","edge","filtering"], source_url: "https://github.com/packetpushers/labs" },
-    { name: "ospf-multi-area", format: "pnetlab-v8", category: "ospf", desc: "OSPF multi-area: Areas 0, 1, 2, stub/NSSA, virtual links, redistribution with 6 IOSv routers.", nodes: 6, tags: ["pnetlab","pnetlab-v8","ospf","multiarea","redistribution"], source_url: "https://github.com/CiscoDevNet/cml-community" },
-    { name: "mpls-sr", format: "pnetlab-v8", category: "mpls", desc: "Segment Routing: XRv9k or IOSv SR-MPLS with TI-LFA fast reroute, SID allocation, and SR-TE.", nodes: 4, tags: ["pnetlab","pnetlab-v8","mpls","segment-routing","sr-te","xrv"], source_url: "https://github.com/packetpushers/labs" },
-    { name: "firewall-perimeter", format: "pnetlab-v8", category: "security", desc: "Perimeter security: ASAv + Cisco ISE + 2x edge routers with ZBF, NAT, VPN, and ACLs.", nodes: 5, tags: ["pnetlab","pnetlab-v8","security","asa","firewall","nat","vpn"], source_url: "https://github.com/Shadow578/eve-ng-labs" },
-    { name: "datacenter-vxlan", format: "pnetlab-v8", category: "datacenter", desc: "VXLAN/EVPN BGP: 2x spine + 4x leaf Nexus 9Kv with L2VNI, L3VNI, and VTEP auto-discovery.", nodes: 6, tags: ["pnetlab","pnetlab-v8","vxlan","evpn","bgp","nexus","datacenter"], source_url: "https://github.com/packetpushers/labs" },
-    { name: "ccie-rs-lab1", format: "pnetlab-v8", category: "ccie", desc: "CCIE RS mock lab 1: 8-router topology with OSPF, BGP, MPLS, QoS, and redistribution tasks.", nodes: 8, tags: ["pnetlab","pnetlab-v8","ccie","advanced","mock-lab"], source_url: "https://github.com/Shadow578/eve-ng-labs" },
-    { name: "ipv6-dual-stack", format: "pnetlab-v8", category: "ccna", desc: "IPv6 dual-stack: 4x routers with OSPFv3, BGP4+, RIPng, SLAAC, DHCPv6, and NAT64.", nodes: 4, tags: ["pnetlab","pnetlab-v8","ipv6","ospfv3","bgp","dual-stack"], source_url: "https://github.com/JeremyITLab/CCNA-Labs" }
+    // Native AzamLabs v8 / Hybrid Topologies
+    { name: "ccna-switching", format: "azamlabs-v8", category: "ccna", desc: "CCNA Switching: 6x IOL L2 with STP, VTP, Inter-VLAN, EtherChannel, and HSRP pre-configured.", nodes: 8, tags: ["azamlabs","azamlabs-v8","ccna","switching","stp","vlan","hsrp"], source_url: "https://github.com/JeremyITLab/CCNA-Labs" },
+    { name: "ccna-wan", format: "azamlabs-v8", category: "ccna", desc: "CCNA WAN: PPP, HDLC, Frame Relay, DMVPN phase 1 topology with 4 routers.", nodes: 4, tags: ["azamlabs","azamlabs-v8","ccna","wan","ppp","dmvpn"], source_url: "https://github.com/JeremyITLab/CCNA-Labs" },
+    { name: "bgp-internet-edge", format: "azamlabs-v8", category: "bgp", desc: "Internet edge: 2x ISP routers + 2x CPE with BGP dual-homing, prefix filtering, AS-path prepend.", nodes: 4, tags: ["azamlabs","azamlabs-v8","bgp","internet","edge","filtering"], source_url: "https://github.com/packetpushers/labs" },
+    { name: "ospf-multi-area", format: "azamlabs-v8", category: "ospf", desc: "OSPF multi-area: Areas 0, 1, 2, stub/NSSA, virtual links, redistribution with 6 IOSv routers.", nodes: 6, tags: ["azamlabs","azamlabs-v8","ospf","multiarea","redistribution"], source_url: "https://github.com/CiscoDevNet/cml-community" },
+    { name: "mpls-sr", format: "azamlabs-v8", category: "mpls", desc: "Segment Routing: XRv9k or IOSv SR-MPLS with TI-LFA fast reroute, SID allocation, and SR-TE.", nodes: 4, tags: ["azamlabs","azamlabs-v8","mpls","segment-routing","sr-te","xrv"], source_url: "https://github.com/packetpushers/labs" },
+    { name: "firewall-perimeter", format: "azamlabs-v8", category: "security", desc: "Perimeter security: ASAv + Cisco ISE + 2x edge routers with ZBF, NAT, VPN, and ACLs.", nodes: 5, tags: ["azamlabs","azamlabs-v8","security","asa","firewall","nat","vpn"], source_url: "https://github.com/Shadow578/eve-ng-labs" },
+    { name: "datacenter-vxlan", format: "azamlabs-v8", category: "datacenter", desc: "VXLAN/EVPN BGP: 2x spine + 4x leaf Nexus 9Kv with L2VNI, L3VNI, and VTEP auto-discovery.", nodes: 6, tags: ["azamlabs","azamlabs-v8","vxlan","evpn","bgp","nexus","datacenter"], source_url: "https://github.com/packetpushers/labs" },
+    { name: "ccie-rs-lab1", format: "azamlabs-v8", category: "ccie", desc: "CCIE RS mock lab 1: 8-router topology with OSPF, BGP, MPLS, QoS, and redistribution tasks.", nodes: 8, tags: ["azamlabs","azamlabs-v8","ccie","advanced","mock-lab"], source_url: "https://github.com/Shadow578/eve-ng-labs" },
+    { name: "ipv6-dual-stack", format: "azamlabs-v8", category: "ccna", desc: "IPv6 dual-stack: 4x routers with OSPFv3, BGP4+, RIPng, SLAAC, DHCPv6, and NAT64.", nodes: 4, tags: ["azamlabs","azamlabs-v8","ipv6","ospfv3","bgp","dual-stack"], source_url: "https://github.com/JeremyITLab/CCNA-Labs" }
   ];
 
   var allTemplates = DEFAULT_CLIENT_TEMPLATES.slice();
@@ -982,11 +982,11 @@
     var filtered = allTemplates.filter(function (t) {
       // 1. Format filter
       if (activeFormatFilter !== 'all') {
-        var fmt = (t.format || 'pnetlab-v8').toLowerCase();
+        var fmt = (t.format || 'azamlabs-v8').toLowerCase();
         if (activeFormatFilter === 'cml2' && !fmt.includes('cml')) return false;
         if (activeFormatFilter === 'eve-ng' && !fmt.includes('eve')) return false;
         if (activeFormatFilter === 'gns3' && !fmt.includes('gns3')) return false;
-        if (activeFormatFilter === 'pnetlab-v8' && !fmt.includes('pnet')) return false;
+        if (activeFormatFilter === 'azamlabs-v8' && !fmt.includes('pnet')) return false;
       }
       // 2. Category filter
       if (activeCategoryFilter !== 'all') {
@@ -1053,7 +1053,7 @@
       { id: 'cml2',       name: 'CML 2.x (Cisco DevNet)',    icon: 'fa-globe',  color: '#0284c7' },
       { id: 'eve-ng',     name: 'EVE-NG (Community UNL)',    icon: 'fa-bolt',   color: '#8b5cf6' },
       { id: 'gns3',       name: 'GNS3 (Open-Source JSON)',   icon: 'fa-flask',  color: '#10b981' },
-      { id: 'pnetlab-v8', name: 'PNetLab Native (v8 XML)',   icon: 'fa-cube',   color: '#f59e0b' }
+      { id: 'azamlabs-v8', name: 'AzamLabs Native (v8 XML)',   icon: 'fa-cube',   color: '#f59e0b' }
     ];
     var html = '';
     formats.forEach(function (f) {
@@ -1118,8 +1118,8 @@
       else if (t.category === 'security') catColor = '#10b981';
       else if (t.category === 'datacenter') catColor = '#f59e0b';
 
-      var fmt = (t.format || 'pnetlab-v8').toLowerCase();
-      var fmtBadge = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.35);"><i class="fa fa-cube"></i> PNetLab v8</span>';
+      var fmt = (t.format || 'azamlabs-v8').toLowerCase();
+      var fmtBadge = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.35);"><i class="fa fa-cube"></i> AzamLabs v8</span>';
       if (fmt.includes('cml')) {
         fmtBadge = '<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;background:rgba(14,165,233,0.15);color:#0ea5e9;border:1px solid rgba(14,165,233,0.35);"><i class="fa fa-globe"></i> CML 2.x YAML</span>';
       } else if (fmt.includes('eve')) {
@@ -1182,7 +1182,7 @@
   };
 
   window.__azDeployTemplate = function(name, btn) {
-    if (!confirm('Deploy & auto-convert template lab "' + name + '" to your PNetLab repository?\n\nThis automatically converts links, fixes hypervisor device types, injects base configs, and builds the HTML workbook.')) return;
+    if (!confirm('Deploy & auto-convert template lab "' + name + '" to your AzamLabs repository?\n\nThis automatically converts links, fixes hypervisor device types, injects base configs, and builds the HTML workbook.')) return;
     runTool('templates-deploy', { template: name }, btn, 'term-templates');
   };
 
@@ -1458,7 +1458,7 @@
               '</div>' +
               '<div style="font-size:12px;color:#94a3b8;line-height:1.5;margin-bottom:10px;">Associates <code>capture://</code> and <code>telnet://</code> URIs directly with your local Wireshark and PuTTY/SecureCRT executables.</div>' +
               '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
-                '<a href="/azam-ops/api/client/toolkit/pnetlab-urischeme-installer.bat" download class="btn btn-primary btn-sm" style="background:#0284c7;border:none;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-download"></i> Download URI Scheme Installer (.bat)</a>' +
+                '<a href="/azam-ops/api/client/toolkit/azamlabs-urischeme-installer.bat" download class="btn btn-primary btn-sm" style="background:#0284c7;border:none;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-download"></i> Download URI Scheme Installer (.bat)</a>' +
                 '<a href="/azam-ops/api/client/toolkit/setup-windows-ssl-trust.ps1" download class="btn btn-ghost btn-sm" style="font-size:12px;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-lock"></i> SSL CA Trust (.ps1)</a>' +
                 '<a href="/azam-ops/api/client/toolkit/setup-windows-wireshark.ps1" download class="btn btn-ghost btn-sm" style="font-size:12px;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-rss"></i> Wireshark Pipe (.ps1)</a>' +
               '</div>' +
@@ -1470,7 +1470,7 @@
               '</div>' +
               '<div style="font-size:12px;color:#94a3b8;line-height:1.5;margin-bottom:10px;">Configures default handlers for telnet and Wireshark remote named pipes over SSH.</div>' +
               '<div style="display:flex;gap:8px;">' +
-                '<a href="/azam-ops/api/client/toolkit/pnetlab-client-setup.sh" download class="btn btn-primary btn-sm" style="background:#059669;border:none;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-download"></i> Download Setup Script (.sh)</a>' +
+                '<a href="/azam-ops/api/client/toolkit/azamlabs-client-setup.sh" download class="btn btn-primary btn-sm" style="background:#059669;border:none;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-download"></i> Download Setup Script (.sh)</a>' +
               '</div>' +
             '</div>' +
             '<div class="card" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:14px;">' +
@@ -1480,7 +1480,7 @@
               '</div>' +
               '<div style="font-size:12px;color:#94a3b8;line-height:1.5;margin-bottom:10px;">Standalone Python 3 script with session auth, lab lifecycle methods, topology export, and telemetry queries.</div>' +
               '<div style="display:flex;gap:8px;">' +
-                '<a href="/azam-ops/api/client/toolkit/pnetlab-api-client.py" download class="btn btn-primary btn-sm" style="background:#7c3aed;border:none;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-download"></i> Download pnetlab-api-client.py</a>' +
+                '<a href="/azam-ops/api/client/toolkit/azamlabs-api-client.py" download class="btn btn-primary btn-sm" style="background:#7c3aed;border:none;color:#fff;font-size:12px;display:inline-flex;align-items:center;gap:6px;"><i class="fa fa-download"></i> Download azamlabs-api-client.py</a>' +
               '</div>' +
             '</div>' +
           '</div>' +
@@ -1643,8 +1643,8 @@
         if (window.networkWatcher && typeof window.networkWatcher.maxFilters === 'number') {
           window.networkWatcher.maxFilters = 20;
         }
-        if (window.PNetLabWatcher && typeof window.PNetLabWatcher.maxFilters === 'number') {
-          window.PNetLabWatcher.maxFilters = 20;
+        if (window.AzamLabsWatcher && typeof window.AzamLabsWatcher.maxFilters === 'number') {
+          window.AzamLabsWatcher.maxFilters = 20;
         }
         var filterInputs = document.querySelectorAll('input[name*="filter"], input.watcher-filter-input, #watcher_filter_input');
         for (var i = 0; i < filterInputs.length; i++) {

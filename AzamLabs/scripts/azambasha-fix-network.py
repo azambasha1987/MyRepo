@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ==============================================================================
-# Azam-Pnet Permanent High-Performance Network Engine for Ubuntu 26.04+
+# AzamLabs Permanent High-Performance Network Engine for Ubuntu 26.04+
 # Authoritative Dual-Sync: /etc/network/interfaces & Netplan 1.0 (systemd-networkd)
 # Dynamic Hardware-Backed Physical Uplink Discovery (VMware, Proxmox, KVM, Bare Metal)
 # ==============================================================================
@@ -14,7 +14,7 @@ import ipaddress
 import json
 
 print("=" * 60)
-print("    Azam-Pnet Permanent Network Engine for Ubuntu 26.04+   ")
+print("    AzamLabs Permanent Network Engine for Ubuntu 26.04+   ")
 print("=" * 60)
 
 def run_cmd(cmd, check=False, timeout=15):
@@ -115,9 +115,9 @@ os.makedirs("/etc/network/interfaces.d", exist_ok=True)
 os.makedirs("/opt/unetlab/data/netcfg-backups", mode=0o755, exist_ok=True)
 os.makedirs("/etc/systemd/resolved.conf.d", mode=0o755, exist_ok=True)
 os.makedirs("/etc/netplan", mode=0o755, exist_ok=True)
-os.makedirs("/run/pnetlab", mode=0o755, exist_ok=True)
+os.makedirs("/run/azamlabs", mode=0o755, exist_ok=True)
 try:
-    shutil.chown("/run/pnetlab", "root", "www-data")
+    shutil.chown("/run/azamlabs", "root", "www-data")
 except Exception:
     pass
 
@@ -148,7 +148,7 @@ if os.path.isdir("/etc/netplan"):
 
 # Purge any conflicting netplan YAMLs
 for f in os.listdir("/etc/netplan"):
-    if f.endswith((".yaml", ".yml")) and f != "01-pnetlab-netcfg.yaml":
+    if f.endswith((".yaml", ".yml")) and f != "01-azamlabs-netcfg.yaml":
         try:
             os.remove(os.path.join("/etc/netplan", f))
         except Exception:
@@ -157,14 +157,14 @@ for f in os.listdir("/etc/netplan"):
 # 4. Bridge sysctl bypass and module configuration
 print("[4/7] Applying kernel bridge bypass and sysctl forwarding parameters...")
 os.makedirs("/etc/modules-load.d", exist_ok=True)
-with open("/etc/modules-load.d/pnetlab.conf", "w") as f:
+with open("/etc/modules-load.d/azamlabs.conf", "w") as f:
     f.write("bridge\nstp\nllc\n8021q\ntun\ndummy\nbr_netfilter\n")
 
 for mod in ["bridge", "8021q", "tun", "br_netfilter"]:
     run_cmd(["modprobe", mod])
 
 os.makedirs("/etc/sysctl.d", exist_ok=True)
-with open("/etc/sysctl.d/99-pnetlab-bridge.conf", "w") as f:
+with open("/etc/sysctl.d/99-azamlabs-bridge.conf", "w") as f:
     f.write("""net.bridge.bridge-nf-call-iptables = 0
 net.bridge.bridge-nf-call-arptables = 0
 net.bridge.bridge-nf-call-ip6tables = 0
@@ -236,7 +236,7 @@ auto lo
 iface lo inet loopback
 
 # The primary network interface
-# BEGIN pnetlab-netcfg pnet0
+# BEGIN azamlabs-netcfg pnet0
 allow-hotplug pnet0
 iface pnet0 inet static
     address {current_ip}
@@ -245,7 +245,7 @@ iface pnet0 inet static
     pre-up ip link set dev {real_iface} up
     bridge_ports {real_iface}
     bridge_stp off
-# END pnetlab-netcfg pnet0
+# END azamlabs-netcfg pnet0
 """
     cidr = 24
     try:
@@ -283,13 +283,13 @@ auto lo
 iface lo inet loopback
 
 # The primary network interface
-# BEGIN pnetlab-netcfg pnet0
+# BEGIN azamlabs-netcfg pnet0
 allow-hotplug pnet0
 iface pnet0 inet dhcp
     pre-up ip link set dev {real_iface} up
     bridge_ports {real_iface}
     bridge_stp off
-# END pnetlab-netcfg pnet0
+# END azamlabs-netcfg pnet0
 """
     netplan_content = f"""network:
   version: 2
@@ -314,9 +314,9 @@ with open("/etc/network/interfaces", "w") as f:
     f.write(ifaces_content)
 os.chmod("/etc/network/interfaces", 0o644)
 
-with open("/etc/netplan/01-pnetlab-netcfg.yaml", "w") as f:
+with open("/etc/netplan/01-azamlabs-netcfg.yaml", "w") as f:
     f.write(netplan_content)
-os.chmod("/etc/netplan/01-pnetlab-netcfg.yaml", 0o600)
+os.chmod("/etc/netplan/01-azamlabs-netcfg.yaml", 0o600)
 
 # Neutralize legacy OVF/firstboot wizard permanently
 os.makedirs("/opt/ovf", exist_ok=True)
@@ -331,7 +331,7 @@ for flag_file in ["/opt/ovf/.configured", "/opt/ovf/configured", "/opt/unetlab/.
 profile_ovf = "/etc/profile.d/ovf.sh"
 try:
     with open(profile_ovf, "w") as f:
-        f.write("""# PNetLab environment aliases
+        f.write("""# AzamLabs environment aliases
 alias unl_wrapper='/opt/unetlab/wrappers/unl_wrapper'
 alias pnet_info='/opt/unetlab/scripts/pnet_info.sh'
 alias azam-doctor='/usr/local/bin/azam-doctor'
@@ -356,7 +356,7 @@ if is_static and current_ip:
         run_cmd(["ip", "route", "replace", "default", "via", current_gw, "dev", "pnet0"])
 
 # 6. Install Persistent Boot Guard Engine & Systemd Unit
-print("[6/7] Installing Azam-Pnet persistent network supervisor...")
+print("[6/7] Installing AzamLabs persistent network supervisor...")
 engine_script = r"""#!/usr/bin/env python3
 import os
 import sys
@@ -414,13 +414,13 @@ def main():
     real_iface = discover_physical_uplink()
     
     # 1. Ensure runtime directories & socket permissions
-    os.makedirs("/run/pnetlab", mode=0o755, exist_ok=True)
+    os.makedirs("/run/azamlabs", mode=0o755, exist_ok=True)
     try:
-        shutil.chown("/run/pnetlab", "root", "www-data")
-        os.chmod("/run/pnetlab", 0o755)
+        shutil.chown("/run/azamlabs", "root", "www-data")
+        os.chmod("/run/azamlabs", 0o755)
     except Exception:
         pass
-    sock_path = "/run/pnetlab/broker.sock"
+    sock_path = "/run/azamlabs/broker.sock"
     if os.path.exists(sock_path):
         try:
             os.chmod(sock_path, 0o666)
@@ -454,13 +454,13 @@ auto lo
 iface lo inet loopback
 
 # The primary network interface
-# BEGIN pnetlab-netcfg pnet0
+# BEGIN azamlabs-netcfg pnet0
 allow-hotplug pnet0
 iface pnet0 inet dhcp
     pre-up ip link set dev {real_iface} up
     bridge_ports {real_iface}
     bridge_stp off
-# END pnetlab-netcfg pnet0
+# END azamlabs-netcfg pnet0
 '''
         try:
             with open(ifaces_path, "w") as f:
@@ -540,36 +540,36 @@ if __name__ == "__main__":
     main()
 """
 
-with open("/usr/local/bin/pnetlab-network-engine", "w") as f:
+with open("/usr/local/bin/azamlabs-network-engine", "w") as f:
     f.write(engine_script)
-os.chmod("/usr/local/bin/pnetlab-network-engine", 0o755)
+os.chmod("/usr/local/bin/azamlabs-network-engine", 0o755)
 
 unit_content = """[Unit]
-Description=Azam-Pnet High-Performance Network Engine & Bridge Supervisor
+Description=AzamLabs High-Performance Network Engine & Bridge Supervisor
 DefaultDependencies=no
-Before=network-online.target pnetlab-brokerd.service apache2.service systemd-resolved.service
+Before=network-online.target azamlabs-brokerd.service apache2.service systemd-resolved.service
 After=local-fs.target
 Wants=network.target
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
-ExecStart=/usr/local/bin/pnetlab-network-engine
+ExecStart=/usr/local/bin/azamlabs-network-engine
 TimeoutSec=15
 
 [Install]
 WantedBy=multi-user.target
 """
-with open("/etc/systemd/system/pnetlab-network-engine.service", "w") as f:
+with open("/etc/systemd/system/azamlabs-network-engine.service", "w") as f:
     f.write(unit_content)
 
 run_cmd(["systemctl", "daemon-reload"])
-run_cmd(["systemctl", "enable", "pnetlab-network-engine.service"])
-run_cmd(["systemctl", "start", "pnetlab-network-engine.service"])
+run_cmd(["systemctl", "enable", "azamlabs-network-engine.service"])
+run_cmd(["systemctl", "start", "azamlabs-network-engine.service"])
 
-# 7. Authoritative Patch for /opt/unetlab/scripts/pnetlab-brokerd.py
-print("[7/7] Hardening /opt/unetlab/scripts/pnetlab-brokerd.py...")
-broker_path = "/opt/unetlab/scripts/pnetlab-brokerd.py"
+# 7. Authoritative Patch for /opt/unetlab/scripts/azamlabs-brokerd.py
+print("[7/7] Hardening /opt/unetlab/scripts/azamlabs-brokerd.py...")
+broker_path = "/opt/unetlab/scripts/azamlabs-brokerd.py"
 if os.path.exists(broker_path):
     with open(broker_path, "r", encoding="utf-8", errors="ignore") as f:
         code = f.read()
@@ -582,7 +582,7 @@ if os.path.exists(broker_path):
 
     if start_idx != -1 and end_idx != -1:
         new_netcfg_section = '''NETCFG_INTERFACES = "/etc/network/interfaces"
-NETCFG_RESOLVED = "/etc/systemd/resolved.conf.d/pnetlab.conf"
+NETCFG_RESOLVED = "/etc/systemd/resolved.conf.d/azamlabs.conf"
 NETCFG_BACKUP_DIR = BASE + "/data/netcfg-backups"
 RE_NETCFG_DOMAIN = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9.-]{0,252}[A-Za-z0-9])?$")
 
@@ -658,13 +658,13 @@ def _ensure_interfaces_file():
             "auto lo\\n"
             "iface lo inet loopback\\n\\n"
             "# The primary network interface\\n"
-            "# BEGIN pnetlab-netcfg pnet0\\n"
+            "# BEGIN azamlabs-netcfg pnet0\\n"
             "allow-hotplug pnet0\\n"
             "iface pnet0 inet dhcp\\n"
             f"    pre-up ip link set dev {real_iface} up\\n"
             f"    bridge_ports {real_iface}\\n"
             "    bridge_stp off\\n"
-            "# END pnetlab-netcfg pnet0\\n"
+            "# END azamlabs-netcfg pnet0\\n"
         )
         try:
             with open(NETCFG_INTERFACES, "w") as f:
@@ -745,7 +745,7 @@ def _netcfg_read_resolved():
 
 def _netcfg_build_pnet0(mode, address, netmask, gateway):
     real_iface = _get_real_iface()
-    out = ["# BEGIN pnetlab-netcfg pnet0",
+    out = ["# BEGIN azamlabs-netcfg pnet0",
            "allow-hotplug pnet0",
            "iface pnet0 inet %s" % mode,
            "    pre-up ip link set dev %s up" % real_iface,
@@ -756,7 +756,7 @@ def _netcfg_build_pnet0(mode, address, netmask, gateway):
         out.append("    netmask %s" % netmask)
         if gateway:
             out.append("    gateway %s" % gateway)
-    out.append("# END pnetlab-netcfg pnet0")
+    out.append("# END azamlabs-netcfg pnet0")
     return out
 
 
@@ -765,11 +765,11 @@ def _netcfg_replace_pnet0(content, new_stanza):
     out, i, n, done = [], 0, len(lines), False
     while i < n:
         line_clean = lines[i].strip()
-        if line_clean in ("# BEGIN pnetlab-netcfg pnet0", "auto pnet0", "allow-hotplug pnet0"):
+        if line_clean in ("# BEGIN azamlabs-netcfg pnet0", "auto pnet0", "allow-hotplug pnet0"):
             out.extend(new_stanza)
             out.append("")
-            if line_clean == "# BEGIN pnetlab-netcfg pnet0":
-                while i < n and lines[i].strip() != "# END pnetlab-netcfg pnet0":
+            if line_clean == "# BEGIN azamlabs-netcfg pnet0":
+                while i < n and lines[i].strip() != "# END azamlabs-netcfg pnet0":
                     i += 1
                 if i < n:
                     i += 1
@@ -856,7 +856,7 @@ def verb_server_netcfg(args):
         real_iface = _get_real_iface()
         os.makedirs("/etc/netplan", exist_ok=True)
         for old_np in os.listdir("/etc/netplan"):
-            if old_np.endswith((".yaml", ".yml")) and old_np != "01-pnetlab-netcfg.yaml":
+            if old_np.endswith((".yaml", ".yml")) and old_np != "01-azamlabs-netcfg.yaml":
                 try:
                     os.remove(os.path.join("/etc/netplan", old_np))
                 except Exception:
@@ -921,9 +921,9 @@ def verb_server_netcfg(args):
                 "        stp: false\\n"
                 "        forward-delay: 0\\n"
             )
-        with open("/etc/netplan/01-pnetlab-netcfg.yaml", "w") as nf:
+        with open("/etc/netplan/01-azamlabs-netcfg.yaml", "w") as nf:
             nf.write(netplan_yaml)
-        os.chmod("/etc/netplan/01-pnetlab-netcfg.yaml", 0o600)
+        os.chmod("/etc/netplan/01-azamlabs-netcfg.yaml", 0o600)
     except Exception:
         pass
 
@@ -944,7 +944,7 @@ def verb_server_netcfg(args):
     if iface_changed and apply_net:
         run_quiet([
             "systemd-run", "--no-block", "--collect",
-            "--unit=pnet-netcfg-reboot",
+            "--unit=azamlabs-netcfg-reboot",
             "/bin/sh", "-c", "sleep 3; systemctl reboot",
         ], timeout=15)
         rebooting = True
@@ -965,7 +965,7 @@ def verb_server_netcfg(args):
     srv = Server(SOCK_PATH, Handler)
     os.chmod(SOCK_PATH, 0o660)
     shutil.chown(SOCK_PATH, "root", SOCK_GROUP)
-    log("pnetlab-brokerd listening on %s (%d verbs)" %
+    log("azamlabs-brokerd listening on %s (%d verbs)" %
         (SOCK_PATH, len(VERBS)))
     srv.serve_forever()'''
 
@@ -987,7 +987,7 @@ def verb_server_netcfg(args):
         shutil.chown(SOCK_PATH, "root", SOCK_GROUP)
     except Exception:
         pass
-    log("pnetlab-brokerd listening on %s (%d verbs)" %
+    log("azamlabs-brokerd listening on %s (%d verbs)" %
         (SOCK_PATH, len(VERBS)))
     srv.serve_forever()'''
 
@@ -997,15 +997,15 @@ def verb_server_netcfg(args):
         with open(broker_path, "w", encoding="utf-8") as f:
             f.write(patched_code)
         os.chmod(broker_path, 0o755)
-        print("      -> Successfully patched /opt/unetlab/scripts/pnetlab-brokerd.py")
+        print("      -> Successfully patched /opt/unetlab/scripts/azamlabs-brokerd.py")
 
 # Restart brokerd
 run_cmd(["systemctl", "daemon-reload"])
-run_cmd(["systemctl", "restart", "pnetlab-brokerd.service"])
+run_cmd(["systemctl", "restart", "azamlabs-brokerd.service"])
 
 # Mask conflicting legacy services
-run_cmd(["systemctl", "mask", "pnetlab-netcfg-firstboot.service", "networking.service", "systemd-networkd-wait-online.service"])
+run_cmd(["systemctl", "mask", "azamlabs-netcfg-firstboot.service", "networking.service", "systemd-networkd-wait-online.service"])
 
 print("=" * 60)
-print("    [SUCCESS] Azam-Pnet Network Engine Permanently Configured!  ")
+print("    [SUCCESS] AzamLabs Network Engine Permanently Configured!  ")
 print("=" * 60)

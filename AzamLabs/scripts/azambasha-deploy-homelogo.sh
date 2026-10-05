@@ -107,6 +107,15 @@ if [ "$AVATAR_SRC" != "$AVATAR_VM" ] && [ -f "$AVATAR_REPO" ]; then
     chmod 0644 "$AVATAR_VM" 2>/dev/null || true
 fi
 
+# --- Ensure jumping avatar login interface HTML & CSS are synchronized ---
+if [ -d "${PARENT_DIR}/login" ]; then
+    [ -f "${PARENT_DIR}/login/index.html" ] && cp -f "${PARENT_DIR}/login/index.html" /opt/unetlab/html/login/index.html 2>/dev/null || true
+    [ -f "${PARENT_DIR}/login/login.css" ] && cp -f "${PARENT_DIR}/login/login.css" /opt/unetlab/html/login/login.css 2>/dev/null || true
+    [ -f "${PARENT_DIR}/login/login.js" ] && cp -f "${PARENT_DIR}/login/login.js" /opt/unetlab/html/login/login.js 2>/dev/null || true
+    chmod 0644 /opt/unetlab/html/login/*.html /opt/unetlab/html/login/*.css /opt/unetlab/html/login/*.js 2>/dev/null || true
+    echo "  [✔] Jumping avatar login template & CSS synchronized"
+fi
+
 # --- Fix ownership ---
 chown -R www-data:www-data \
     /opt/unetlab/data/branding \

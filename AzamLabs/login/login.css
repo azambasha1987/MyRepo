@@ -212,13 +212,19 @@ body {
 	perspective: 1000px;
 }
 
-/* Floating Levitation with Dynamic Lighting */
+/* Floating & Jumping Levitation with Dynamic Lighting */
 @keyframes avatarLevitate {
 	0%, 100% {
 		transform: translateY(0px) scale(1);
 	}
+	40% {
+		transform: translateY(-14px) scale(1.03);
+	}
 	50% {
-		transform: translateY(-8px) scale(1.02);
+		transform: translateY(-15px) scale(1.035);
+	}
+	70% {
+		transform: translateY(-5px) scale(0.995);
 	}
 }
 

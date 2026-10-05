@@ -197,6 +197,20 @@ sync_from_github() {
         cp -rf "${src_repo}"/html/azam-ops /opt/unetlab/html/ 2>/dev/null || true
     fi
 
+    # Synchronize jumping avatar login interface & avatar logo
+    if [ -d "${src_repo}/login" ]; then
+        mkdir -p /opt/unetlab/html/login/img 2>/dev/null || true
+        cp -rf "${src_repo}"/login/* /opt/unetlab/html/login/ 2>/dev/null || true
+        chmod 0644 /opt/unetlab/html/login/*.html /opt/unetlab/html/login/*.css /opt/unetlab/html/login/*.js 2>/dev/null || true
+        chmod 0644 /opt/unetlab/html/login/img/* 2>/dev/null || true
+        chown -R www-data:www-data /opt/unetlab/html/login 2>/dev/null || true
+        if [ -f "${src_repo}/login/img/azam_home_avatar.png" ]; then
+            mkdir -p /opt/unetlab/data/branding 2>/dev/null || true
+            cp -f "${src_repo}/login/img/azam_home_avatar.png" /opt/unetlab/data/branding/logo.png 2>/dev/null || true
+            chown -R www-data:www-data /opt/unetlab/data/branding 2>/dev/null || true
+        fi
+    fi
+
     # Ensure Cisco IOS subsystem dynamips binary is present
     if ! dpkg -s dynamips >/dev/null 2>&1; then
         export DEBIAN_FRONTEND=noninteractive

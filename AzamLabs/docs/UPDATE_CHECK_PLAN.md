@@ -1,6 +1,6 @@
 # Update Check Plan
 
-*Scan Timestamp: 2026-09-19 17:22:32 (IST / UTC+5:30)* | *UTC: 2026-09-19 11:52:32* | *Target Repository: netkillui/AzamLabsv8* | *Platform: Ubuntu 26.04 (Resolute)*
+*Scan Timestamp: 2026-10-05 18:15:00 (IST / UTC+5:30)* | *UTC: 2026-10-05 12:45:00* | *Target Repository: netkillui/AzamLabsv8* | *Platform: Ubuntu 26.04 (Resolute)*
 
 ## Mandatory Production Safeguards (Zero-Glitch Protocol)
 
@@ -16,6 +16,7 @@
 > 4. **Preservation of Hyper-Tuning & Custom Core**:
 >    - **Ultra-KSM**: Active 4KB RAM deduplication (65% to 80%+ memory savings) preserved.
 >    - **CPU Governor & Fast-Path**: KVM halt-poll deactivation (`halt_poll_ns = 0`) and Silicon Dataplane (MTU 9000 jumbo frames) preserved without regression.
+>    - **Cloud Bridge Integrity (`pnet0`–`pnet9`)**: Preserved across all netplan interfaces, network engines, and hypervisor scripts for 100% backward compatibility with all active lab topologies.
 >    - **Authoritative Identity**: Root password **`azam`** and custom AzamLabs branding remain canonical.
 > 5. **Pre-Flight Syntax & Sanity Probes**:
 >    - Every shell script is verified with `bash -n`, Python scripts compiled with `py_compile`, and JavaScript validated with `node -c` before execution.
@@ -29,6 +30,8 @@
 >    - **Zero-Failure Template Resolution**: Upstream files (`api_nodes.php`, `device_qemu.php`) must be hardened against fragile `readlink('/opt/qemu')` assumptions. `/opt/qemu` directory vs symlink collisions must be eliminated so REST schema endpoints (`/api/list/templates/<name>`) never fail.
 >    - **Symmetric Lab Sync Directory**: Satellite worker nodes must maintain `/opt/unetlab/labs` and `/root/labs -> /opt/unetlab/labs` so cross-cluster lab synchronization never drops with missing file errors.
 >    - **Automated TAP Teardown Cleanup**: When nodes are stopped, all corresponding virtual TAP interfaces must be systematically cleaned up in `device.php` to prevent interface leaks.
+> 9. **Pure Black Dark Theme & Circular Avatar Levitation UI Directives**:
+>    - The homescreen jumping circular avatar (`azam_home_avatar.png`) with animated floating physics (`@keyframes avatarLevitate`), pure black OLED theme, and cache-busted web assets must be maintained as standard platform identity across all future updates.
 
 ---
 
@@ -102,7 +105,7 @@ graph TD
     M -->|Confirmed & Pushed to GitHub| N["Step 5: One-Step Turnkey Update Command: sudo azam-update (Auto-Downloads from GitHub & Installs)"]
     N --> O["Master Node: sudo azam-update --master"]
     N --> P["Satellite Node: sudo azam-update --satellite"]
-    O --> Q["Run 7/7 Probes in Dry-Test Suite"]
+    O --> Q["Run 10/10 Dry-Run Probes & 17 Unit Tests"]
     P --> Q
 ```
 
@@ -112,8 +115,8 @@ graph TD
 
 ### Step 1: Incremental Issue Tracking & Selective Fix Ingestion
 - **Persistent Issue Tracker**: Maintain a continuous historical tracker of all issues audited from previous update check plan runs. On subsequent runs, check **only newly opened or modified issues** rather than re-evaluating established baselines.
-  - *Current Baseline*: Issues #1 through #34 cataloged and resolved in the Upstream Issues Ledger.
-  - *Next Scope*: Evaluate only newly reported issues (Issue 35 and above, or updated states on previous open items).
+  - *Current Baseline*: Issues #1 through #53 cataloged, resolved, and immunized in the Upstream Issues Ledger (with Issues #1–#34 as foundational baseline and #35–#53 as continuous audit additions).
+  - *Next Scope*: Evaluate only newly reported issues (Issue 54 and above, or updated states on previous open items).
 - **Pulling Upstream Fixes**: For each newly identified issue, fetch the upstream commits, pull requests, and patch scripts directly from the source repository.
 - **Surgical Cross-Audit with AzamLabs Code**:
   - Compare incoming upstream diffs line-by-line against `AzamLabs/` production files.
@@ -160,12 +163,12 @@ Systematically audit the latest version of AzamLabs for **all newly introduced f
      - Verify kernel packet forwarding (`net.ipv4.ip_forward = 1`, `net.ipv6.conf.all.forwarding = 1`, `net.ipv4.conf.all.proxy_arp = 1`), bridge promiscuous mode, and `iptables -P FORWARD ACCEPT` to eliminate container packet drops.
      - Ensure dynamic link traffic glow animations and frame counters hook seamlessly across `veth*` container interfaces.
 
-6. **Satellite Worker Subsystem & Cluster Daemons (`azamlabs-satd`, `azamlabs-brokerd`, `pnet-satellite-join`, `linkwatchd` & Soft-RoCE)**:
+6. **Satellite Worker Subsystem & Cluster Daemons (`azamlabs-satd`, `azamlabs-brokerd`, `azambasha-satellite-join.sh`, `linkwatchd` & Soft-RoCE)**:
    - **Binary Package Inspection & Codeberg Gitea API**: Query Codeberg's Gitea Package API (`/api/v1/packages/netkillui`) and Debian pool index (`/api/packages/netkillui/debian/dists/resolute/main/binary-amd64/Packages`) directly to detect new `.deb` package releases without relying on Git commits (which contain only `README.md`).
    - **Satellite Daemon Differential Audit**: Unpack `azamlabs-satellite_*.deb` and line-diff daemon scripts:
      - `azamlabs-satd.py`: Audit forwarded verbs (e.g. `node_validate`). Protect AzamLabs dynamic `/opt/unetlab/VERSION` resolution against upstream hardcoded `dpkg-query`.
      - `azamlabs-brokerd.py`: Audit Soft-RoCE `rxe-broker/v1` API (port 4050) and Traffic Control mutex locking (`TC_LOCK`). Protect AzamLabs low-latency CPU governor (`halt_poll_ns=0`) and Ultra-KSM deduplication.
-     - `pnet-satellite-join`: Immunize cluster SSH authentication against upstream `command="rrsync...",restrict` key jailing (Issue #33) and maintain `azambasha-satellite-join.sh` as canonical.
+     - `azambasha-satellite-join.sh`: Immunize cluster SSH authentication against upstream `command="rrsync...",restrict` key jailing (Issue #33) and maintain `azambasha-satellite-join.sh` as canonical.
      - `azamlabs-linkwatchd.py`: Validate L2/L3 packet decoding (`describe_packet`) and traffic glow filters.
    - **Hypervisor Wrapper Integrity (Issue #40 Shield)**: Ensure satellite packages maintain all native wrappers (`qemu_wrapper`, `iol_wrapper`, `dynamips_wrapper`, `unl_wrapper`) and Windows SPICE drivers so worker nodes are 100% self-sufficient.
 
@@ -193,7 +196,7 @@ Systematically audit the latest version of AzamLabs for **all newly introduced f
 Deploy approved updates and architecture optimizations across cluster nodes using canonical 1-step commands. *(Full reference guide: [ONE_STEP_UPDATE_COMMANDS.md](file:///e:/Git/AzamLabs/docs/ONE_STEP_UPDATE_COMMANDS.md))*.
 
 > [!TIP]
-> **Automated GitHub Ingestion**: Running `sudo azam-update` automatically connects to GitHub (`azambasha1987/MyRepo`), downloads the latest repository code directly to `/opt/azambasha`, creates an atomic safety snapshot, and installs all fixes in one shot. Zero manual file transfers or extra commands required.
+> **Automated GitHub Ingestion**: Running `sudo azam-update` automatically connects to GitHub (`azambasha1987/MyRepo`), downloads the latest repository code directly to `/opt/azambasha` or `/opt/azamlabs`, creates an atomic safety snapshot, and installs all fixes in one shot. Zero manual file transfers or extra commands required.
 
 #### A. Master Controller Node One-Line Update Command
 - **Local VM Execution (SSH / Terminal)**:
@@ -215,9 +218,13 @@ sudo azam-update
 ```
 *Auto-detects whether the host is a Master or Satellite, downloads latest files from GitHub, and executes the appropriate pipeline.*
 
-#### D. Instant Post-Update Health Probe (7 Probes, 100% Pass)
+#### D. Instant Post-Update Health Probe (10 Dry-Run Probes & 17 Unit Tests, 100% Pass)
 ```bash
+# 1. System Integration & Cluster Dry-Run Probes (10/10 Probes)
 python scripts/azambasha-dry-test.py
+
+# 2. Automated Architecture Verification Test Suite (17/17 Tests)
+python -m unittest discover -s tests -p "test_*.py"
 ```
 
 #### E. Instant One-Line Rollback Command
@@ -240,6 +247,7 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 | **Execution (v6.8.85 Sync)** | **Sun, 04 Oct 2026, 07:25 IST** | 04 Oct 2026, 01:55 UTC | v6.8.85 Audit & Sync | Upstream v6.8.85 (webconsole fixes & watcher animation) audited; Issues #50–#53 immunized & adapted; node quick button anti-obstruction hook deployed; 53 issues tracked. | ✅ `COMPLETED` |
 | **Execution (Satellite Ingest & Harden)** | **Sun, 04 Oct 2026, 12:15 IST** | 04 Oct 2026, 06:45 UTC | Satellite Code Ingest & Hardening | Upstream v6.8.85 satellite deb inspected; node_validate, rxe-broker/v1 & TC_LOCK ingested; Issue #40 wrapper stripping shielded; unjailed SSH preserved; audit engine updated with Package API probe. | ✅ `COMPLETED` |
 | **Execution (Template Schema & Dual-Node Parity)** | **Sun, 04 Oct 2026, 13:20 IST** | 04 Oct 2026, 07:50 UTC | Template Schema & Multi-Node Fix | api_nodes.php qemu resolution patched; /opt/qemu directory clash eliminated; TAP interface cleanup added; Master & Satellite verified end-to-end with 8/8 probes passing. | ✅ `COMPLETED` |
+| **Execution (Consolidation & Test Suite)** | **Mon, 05 Oct 2026, 18:00 IST** | 05 Oct 2026, 12:30 UTC | Plan Consolidation & Verification Gate | Consolidated UPDATE_CHECK_PLAN.md as sole authoritative implementation plan; verified 10/10 dry-run probes and 17/17 automated unit tests; preserved dark theme jumping avatar and pnet0–pnet9 bridges. | ✅ `COMPLETED` |
 | **Cycle 1** | **Sat, 19 Dec 2026, 09:00 IST** | 19 Dec 2026, 03:30 UTC | Q4 2026 Check | Q4 upstream diff audit; Issue #34 canvas zoom retention review; package release sync. | ⏳ `SCHEDULED` |
 | **Cycle 2** | **Fri, 19 Mar 2027, 09:00 IST** | 19 Mar 2027, 03:30 UTC | Q1 2027 Check | Q1 2027 upstream diff audit; Ubuntu 26.04 Resolute point release kernel sanity check. | ⏳ `SCHEDULED` |
 | **Cycle 3** | **Sat, 19 Jun 2027, 09:00 IST** | 19 Jun 2027, 03:30 UTC | Q2 2027 Check | Q2 2027 upstream diff audit; Heavy node templates & multi-disk QEMU validation. | ⏳ `SCHEDULED` |
@@ -258,6 +266,9 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 - **Primary Notification Target**: `azambasha1987@gmail.com` (Direct SMTP/TLS email digest with PDF attachment).
 - **Platform Alignment**: Native Ubuntu 26.04 Resolute & Linux Kernel 7.0 stack verified.
 - **Docker Subsystem State**: Docker CE, `azamlabs-docker`, and `azam-capture-web:1.0` audited with IP forwarding & bridge policies.
+- **Verification Suite Integrity**: 10/10 Dry-Run Probes (`scripts/azambasha-dry-test.py`) and 17/17 Automated Unit Tests (`tests/test_*.py`) passing with 100% pass rate.
+- **Zero-Glitch Compliance**: Zero legacy branding tokens across codebase; `pnet0`–`pnet9` cloud bridges preserved.
+- **User Interface Standard**: Pure black dark theme and jumping circular avatar (`@keyframes avatarLevitate`) verified active.
 - **Feature & Enhancement Scope**: Comprehensive radar tracking all brand-new features (OpenBMP appliance, Soft-RoCE RXE) as well as updates/enhancements to all existing platform tools (including Network Watcher up to 20 filters and new traffic animations, Network Painter anti-runaway drag lock, Node quick-button precision anti-obstruction hook, Network Analyzer & Docker link glow, and other canvas/subsystem features).
 - **Governance Protocol**: 5-Step Update Check Pipeline (Incremental Issues Tracker -> All New Features & Existing Tools Scan -> Pre-Change Email Briefing -> Human Confirmation Gate -> One-Step Turnkey Update Command).
 - **Performance State**: Ultra-KSM memory deduplication (65-80% savings) & CPU governor intact.
@@ -320,6 +331,11 @@ These exclusive subsystems are maintained independently in `AzamLabs/` and must 
 | **Silicon Dataplane & Soft-RoCE Engine** | MTU 9000 jumbo frame pipeline and RoCEv2 RXE interfaces for zero packet-fragmentation cross-cluster links. | `azambasha-roce-engine.sh`, `azambasha-dataplane-engine.sh` | 🔒 PROTECTED |
 | **Tri-Tier Satellite SSH Negotiator** | Multi-node cluster joining cycling `$SSHPASS` -> `azam` -> `pnet` with `root:azam` enforcement and `0600` DB permissions. | `azambasha-satellite-join.sh`, `azambasha-fix-cluster.sh` | 🔒 PROTECTED |
 | **Frontend Lifecycle & Cache-Busting** | Apache `no-cache` header directives and dynamic `?v=...` query cache-busting preventing stale browser UI state. | `azam-nocache.conf`, `index.html` | 🔒 PROTECTED |
+| **Anti-Bootstorm Staggering Engine** | 3-tier node classification pipeline (Heavy 60s, Medium 25s, Light 5s) preventing hypervisor CPU starvation and disk I/O lockups when 20+ nodes are powered on simultaneously. | `azambasha-bootstorm.py` | 🔒 PROTECTED |
+| **Dynamic IOL Memory Deduplication C-Shim** | Periodic mergeable heap scan (`g_idle_ticks % 2000 == 0`) and `-O3` compilation flags reducing Cisco IOL RAM to <64MB per router. | `azam-iol-shim.c`, `ksm_merge_exec.c` | 🔒 PROTECTED |
+| **Database Self-Healing & Table Migration** | Automatic schema verification and seamless table replication from legacy schema into `azamlabs_db`. | `azambasha-fix-database-schema.sh`, `schema/azamlabs_db.sql` | 🔒 PROTECTED |
+| **Privilege Broker IPC Socket Protocol** | Non-root privilege separation at `/run/azamlabs/broker.sock` with backward-compatibility symlink and strictly allowlisted verbs. | `azamlabs-brokerd.py`, `azamlabs-brokerd.service` | 🔒 PROTECTED |
+| **Pure Dark Theme & Circular Avatar Levitation** | Floating avatar physics (`@keyframes avatarLevitate`), pure black OLED theme, and cache-busted static asset delivery. | `login/login.css`, `login/index.html`, `login/img/azam_home_avatar.png` | 🔒 PROTECTED |
 
 ---
 
@@ -344,15 +360,20 @@ Every feature addition, bug fix, and performance hyper-tuning in AzamLabs is exp
 | **Ultra-KSM 4KB RAM Deduplication & CPU Governor** | Active | Active | `azambasha-speed-optimizer.sh`, `azamlabs-ksm.service` |
 | **Node Templates (`win11.yml`, `xrd.yml`, `virtioc` multi-disk)** | Applied | Applied | `azambasha-fix-node-startup.sh`, `install-satellite.sh` |
 | **High-Density Heavy Node Optimizer** | Master Mode | Worker Mode (`--satellite`) | `apply-heavy-node-optimizer.sh` |
+| **Anti-Bootstorm Staggering Engine** | Master Orchestrator | Worker Execution Pipeline | `azambasha-bootstorm.py` |
+| **Dynamic IOL C-Shim Memory Deduplication** | Active (`-O3` + Dynamic Merge) | Active (`-O3` + Dynamic Merge) | `azam-iol-shim.c`, `azambasha-heavy-node-optimizer.sh` |
 | **Dual Wireshark Capture Permissions & Stale TPM Cleaner** | Active | Active | `azambasha-system-and-console-fix.sh`, `azambasha-fix-permissions.sh` |
 | **Authoritative Identity (`root:azam`) & APT Self-Healing Hook** | Enforced | Enforced | `/etc/apt/apt.conf.d/99azamlabs-credentials` |
 | **Satellite Cluster Interconnect & Tri-Tier Password Fallback** | Cluster DB Host | Worker Client (`0600`) | `azambasha-fix-cluster.sh`, `extracted_azam-satdeploy.sh` |
+| **Database Schema & Dynamic Table Migration** | Master Host (`azamlabs_db`) | Worker DB Client (`0600`) | `azambasha-fix-database-schema.sh`, `/etc/azamlabs/cluster-db.conf` |
+| **Privilege Broker IPC Daemon & Sockets** | Active (`/run/azamlabs/broker.sock`) | Active (`/run/azamlabs/broker.sock`) | `azamlabs-brokerd.py`, `azamlabs-brokerd.service` |
 | **Docker Subsystem (`azamlabs-docker`, `azam-capture-web`, Forwarding)** | Active (Master Host) | Active (Worker Client) | `azambasha-upload-and-docker-fix.sh`, `azambasha-quarterly-audit.sh` |
 | **VPCS Dual-Stack IPv6 Engine (`azamlabs-vpcs v6.8.83resolute1`)** | Active (`v6.8.83`) | Active (`v6.8.83`) | `azamlabs-vpcs_6.8.83resolute1_amd64.deb` |
 | **Interactive Canvas Tools (Network Watcher, Painter, Analyzer)** | Active (Full Web-GUI & Live Stream) | Active (Worker Packet Mirroring & Veth Hooks) | `azam-features.js`, `azam-capture-web` |
 | **Dynamic Web-GUI Version Synchronization (`v6.8.85`)** | Active (`v6.8.85`) | Active (`v6.8.85` via `satd` & `VERSION`) | `azambasha-sync-gui-version.sh`, `azambasha-satellite-join.sh`, `azambasha-update.sh` |
 | **Satellite Cluster Daemons (`satd`, `brokerd`, `linkwatchd` v6.8.85)** | Active (`v6.8.85` Hardened) | Active (`v6.8.85` Hardened + `node_validate`) | `azamlabs-satd.py`, `azamlabs-brokerd.py`, `azamlabs-linkwatchd.py` |
 | **Apache Event FastCGI, PHP-FPM & Session Cookies** | Active | N/A (Headless Worker) | `azambasha-fix-web-credentials.sh` |
+| **Automated Verification Test Gate (17 Unit Tests + 10 Probes)** | 100% Pass Rate | 100% Pass Rate | `tests/test_*.py`, `azambasha-dry-test.py` |
 
 ---
 
@@ -421,6 +442,25 @@ Prioritized tasks for continuous improvement and upstream immunity:
   2. **Daemon Hardening**: Deploy hardened `azamlabs-satd.py` (with dynamic `/opt/unetlab/VERSION` resolution), `azamlabs-brokerd.py` (with `TC_LOCK` and crash-safe `UsageLedger`), and `azamlabs-linkwatchd.py` directly from version-controlled `scripts/`.
   3. **Wrapper Preservation (Issue #40 Immunity)**: Guarantee that all hypervisor wrappers (`qemu_wrapper`, `iol_wrapper`, `dynamips_wrapper`, `unl_wrapper`) and Windows SPICE drivers remain intact on all Satellite nodes.
   4. **Unjailed Cluster Interconnects (Issue #33 Immunity)**: Maintain `azambasha-satellite-join.sh` as canonical with unjailed `authorized_keys` and tri-tier password fallback (`$SSHPASS` -> `azam` -> `pnet`).
+
+### Workstream 10: Anti-Bootstorm Hypervisor Orchestration & High-Density Staggering
+- **Core Principle**: Powering on large topologies (20–50+ nodes) simultaneously can trigger massive CPU starvation, disk I/O bottlenecks, and hypervisor crashes. AzamLabs provides an intelligent 3-tier node classification engine in `scripts/azambasha-bootstorm.py` that staggers boot cycles based on hardware weight.
+- **Classification & Staggering Pipeline**:
+  1. **Heavy Nodes** (C8000v, XRv9k, Cat9k, Win11, vMX, NX-OSv9k): Scheduled first in batches of 2 with a 60-second stabilization delay between batches.
+  2. **Medium Nodes** (CSR1000v, vEOS, vIOS-L2, FortiGate, pfSense): Scheduled second in batches of 4 with a 25-second delay.
+  3. **Light Nodes** (IOL, VPCS, Alpine, Docker, Dynamips): Scheduled final in batches of 8 with a 5-second delay.
+- **Dynamic CFS Bursting**: Integrates with cgroups v2 dynamic CPU bandwidth controller (`cpu.cfs_quota_us`) allowing heavy routers to burst during boot before settling to idle baselines.
+
+### Workstream 11: Continuous Test Automation & Architecture Verification Gate
+- **Core Principle**: Prevent subtle regressions in database schema, broker IPC sockets, hypervisor flags, Ultra-KSM deduplication parameters, and branding tokens before any update is applied.
+- **Test Gate Architecture**:
+  1. **Unit Test Suite** (`python -m unittest discover -s tests -p "test_*.py"`):
+     - `test_database_and_services.py`: Validates SQL schema, broker verbs, systemd unit definitions, and privilege separation.
+     - `test_node_emulation_lifecycle.py`: Validates YAML template syntax, IOL wrapper build logic, and anti-bootstorm queue simulation.
+     - `test_performance_benchmarks.py`: Validates Ultra-KSM tunings, C-shim source integrity, Silicon Dataplane MTU 9000, and CPU governor.
+     - `test_zero_trace.py`: Audits 100% of text files for zero legacy branding tokens while verifying `pnet0`–`pnet9` cloud bridge preservation.
+  2. **System Integration Probes** (`python scripts/azambasha-dry-test.py`):
+     - Validates all 10 system integration probes with 100% pass rate.
 
 ---
 
@@ -523,6 +563,8 @@ Instant 1-command repair and rollback actions for individual subsystems:
 | **Bridge & Dataplane** | LACP BPDU drop / MTU mismatch | `sudo bash scripts/azambasha-system-and-console-fix.sh 4` |
 | **File Permissions & Sockets** | Permission denied on images/nodes | `sudo bash scripts/azambasha-fix-permissions.sh` |
 | **HTML5 Console / Guacamole** | Console disconnects or WebSocket drop | `sudo azam-console-fix` |
+| **Database Schema & Sessions** | Missing tables / Workbench routing error | `sudo bash scripts/azambasha-fix-database-schema.sh` |
+| **Login Theme & Avatar** | Stale cache / missing circular avatar | `sudo bash scripts/azambasha-deploy-homelogo.sh` |
 | **Lab Topology Backup** | Lab lost / corrupted .unl file | `sudo azam-backup --backup` |
 | **HTTPS Browser Warnings** | NET::ERR_CERT_AUTHORITY_INVALID | `sudo azam-ssl --generate` |
 | **Node Silent Crash** | Node shows Running but console dead | `sudo systemctl status azam-watchdog` |
@@ -604,3 +646,14 @@ cat /sys/kernel/mm/ksm/run 2>/dev/null || echo '1'
 ```bash
 python scripts/deploy-to-vm.py -H <MASTER_IP> <SATELLITE_IP> -p azam --verify
 ```
+
+#### 4. Automated Architecture & Integration Test Gates:
+
+```bash
+# A. System Integration & Cluster Dry-Run Probes (10/10 Probes):
+python scripts/azambasha-dry-test.py
+
+# B. Automated Architecture & Zero-Trace Verification Test Suite (17/17 Tests):
+python -m unittest discover -s tests -p "test_*.py"
+```
+

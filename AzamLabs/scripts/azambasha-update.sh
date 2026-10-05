@@ -196,6 +196,28 @@ sync_from_github() {
         mkdir -p /opt/unetlab/html 2>/dev/null || true
         cp -rf "${src_repo}"/html/azam-ops /opt/unetlab/html/ 2>/dev/null || true
     fi
+    if [ -d "${src_repo}/login" ]; then
+        mkdir -p /opt/unetlab/html/login 2>/dev/null || true
+        cp -rf "${src_repo}"/login/* /opt/unetlab/html/login/ 2>/dev/null || true
+        chmod 0644 /opt/unetlab/html/login/*.html /opt/unetlab/html/login/*.css /opt/unetlab/html/login/*.js 2>/dev/null || true
+        chown -R www-data:www-data /opt/unetlab/html/login 2>/dev/null || true
+    fi
+
+    # Synchronize canonical platform branding configuration (AzamLabs & official logo)
+    mkdir -p /opt/unetlab/data/branding 2>/dev/null || true
+    cat << 'EOF_BRAND' > /opt/unetlab/data/branding/config.json
+{
+  "name": "AzamLabs",
+  "login_header": "Next-Gen Network Emulation Platform",
+  "hide_default_creds": false
+}
+EOF_BRAND
+    if [ -f "${src_repo}/assets/logo.png" ]; then
+        cp -f "${src_repo}/assets/logo.png" /opt/unetlab/data/branding/logo.png 2>/dev/null || true
+        cp -f "${src_repo}/assets/logo.png" /opt/unetlab/html/images/logo.png 2>/dev/null || true
+        cp -f "${src_repo}/assets/logo.png" /opt/unetlab/html/themes/default/images/logo.png 2>/dev/null || true
+    fi
+    chown -R www-data:www-data /opt/unetlab/data/branding 2>/dev/null || true
 
     # Ensure Cisco IOS subsystem dynamips binary is present
     if ! dpkg -s dynamips >/dev/null 2>&1; then

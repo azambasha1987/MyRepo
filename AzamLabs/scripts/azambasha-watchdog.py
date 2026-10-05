@@ -5,7 +5,7 @@ Azam Basha Node Failure Detection & Auto-Recovery Watchdog (azam-watchdog)
 ==============================================================================
 A systemd-compatible daemon that monitors every active QEMU/IOL process,
 detects silent crashes, auto-recovers nodes via AzamLabs REST API,
-and dispatches WhatsApp alerts when a node fails and is recovered.
+and logs recovery events to the watchdog log file.
 ==============================================================================
 """
 
@@ -25,8 +25,7 @@ import ssl
 
 WATCHDOG_LOG = "/opt/azambasha/logs/watchdog.log"
 PID_FILE = "/var/run/azam-watchdog.pid"
-NOTIFY_SCRIPT = "/opt/azambasha/scripts/azambasha-notify.py"
-NOTIFY_CONF = "/etc/azamlabs/azambasha-notify.conf"
+
 POLL_INTERVAL = 30  # seconds between health checks
 
 
@@ -119,18 +118,8 @@ def extract_node_info(cmdline: str) -> dict:
 
 
 def send_alert(title: str, message: str):
-    """Send WhatsApp/webhook alert via azambasha-notify.py if configured."""
-    if not os.path.isfile(NOTIFY_SCRIPT):
-        return
-    if not os.path.isfile(NOTIFY_CONF):
-        return
-    try:
-        subprocess.run(
-            [sys.executable, NOTIFY_SCRIPT, "--title", title, "--message", message],
-            timeout=30, check=False
-        )
-    except Exception as e:
-        logging.warning(f"Alert dispatch failed: {e}")
+    """Log recovery alert to the watchdog log file."""
+    logging.warning(f"[ALERT] {title}: {message}")
 
 
 def attempt_node_recovery(node_info: dict, master_ip: str, password: str) -> bool:

@@ -97,8 +97,8 @@ graph TD
     F --> G
     G --> H["Audit All New Features, Existing Tools (e.g. Watcher, Painter, Analyzer), Virtualization & Containers"]
     H --> I["Optimize Code Specifically for AzamLabs Architecture"]
-    I --> J["Step 3: Pre-Change Research Digest to Email"]
-    J --> K["Dispatch Detailed Research Email to azambasha1987@gmail.com"]
+    I --> J["Step 3: Pre-Change Research Briefing"]
+    J --> K["Compile & Present Research Digest for Approval"]
     K --> L["Step 4: Await Explicit Human Confirmation"]
     L --> M{"Approved by azambasha1987@gmail.com?"}
     M -->|Pending / Revision Requested| L
@@ -177,10 +177,9 @@ Systematically audit the latest version of AzamLabs for **all newly introduced f
    - Optimize all candidate code, new feature additions, tool enhancements, and container configurations specifically for AzamLabs: integrate with **Ultra-KSM 4KB RAM deduplication** (65–80% savings), **Silicon Dataplane MTU 9000 jumbo frames**, **CPU Governor** (`halt_poll_ns=0`), **Pure Black Dark Mode** aesthetics, and **Authoritative `root:azam` credentials**.
    - Enforce symmetrical availability across **both Master Controller and Satellite Worker nodes**.
 
-### Step 3: Pre-Change Research Digest & Direct Email Dispatch
-- **Mandatory Pre-Mutation Email Gate**: Before making ANY changes, modifying code, or applying fixes to AzamLabs, compile and send a comprehensive research briefing email directly to:
-  **`azambasha1987@gmail.com`**
-- **Required Email Content Structure**:
+### Step 3: Pre-Change Research Digest & Approval Gate
+- **Mandatory Pre-Mutation Research Gate**: Before making ANY changes, modifying code, or applying fixes to AzamLabs, compile and present a comprehensive research briefing directly in the chat session for review.
+- **Required Research Content Structure**:
   1. **Executive Research Summary**: Current upstream release, git commit hash, and overall health status.
   2. **Step 1 Delta Analysis (What is New in Issues)**: Summary of newly detected issues (Issue 35+), upstream proposed fixes, and AzamLabs disposition (Adopt, Adapt, or Reject).
   3. **Step 2 Discoveries (All New Features, Enhancements to Existing Features & Virtualization/Containers)**: Detailed inventory of any brand-new features discovered, enhancements or bug fixes to existing tools (including examples like Network Watcher, Network Painter, Network Analyzer, and other platform features), new QEMU appliance templates, and new Docker container images/services.
@@ -189,7 +188,7 @@ Systematically audit the latest version of AzamLabs for **all newly introduced f
   6. **Safeguard Verification**: Snapshot checkpoint details and 1-command rollback instructions.
 
 ### Step 4: Human-in-the-Loop Confirmation Gate
-- **Enforced Execution Pause**: The assistant or automated audit engine must **NEVER** apply changes autonomously. Execution halts until **explicit written confirmation and approval** is received from **azambasha1987@gmail.com** (via email reply or interactive chat prompt).
+- **Enforced Execution Pause**: The assistant or automated audit engine must **NEVER** apply changes autonomously. Execution halts until **explicit written confirmation and approval** is received via interactive chat prompt.
 - **Post-Confirmation Transition**: Once approved, changes are committed and pushed to GitHub (`git push origin main`). Proceed directly to **Step 5** on the target node. `sudo azam-update` automatically downloads all updated files from GitHub and executes the installation in a single step.
 
 ### Step 5: One-Step Turnkey Update Command Execution (Master & Satellite)
@@ -263,14 +262,14 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 - **Web-GUI Display Status**: Synchronized with latest implemented release (`AzamLabs v6.8.85`).
 - **Recent Upstream Commits**: 20 commits inspected (including commit `af324237` OpenBMP qcow2 addition and `8ba4ed43` v6.8.85 release announcement).
 - **Audit Cadence**: Quarterly (Every 3 Months) locked to Indian Standard Time (IST - UTC+5:30).
-- **Primary Notification Target**: `azambasha1987@gmail.com` (Direct SMTP/TLS email digest with PDF attachment).
+
 - **Platform Alignment**: Native Ubuntu 26.04 Resolute & Linux Kernel 7.0 stack verified.
 - **Docker Subsystem State**: Docker CE, `azamlabs-docker`, and `azam-capture-web:1.0` audited with IP forwarding & bridge policies.
 - **Verification Suite Integrity**: 10/10 Dry-Run Probes (`scripts/azambasha-dry-test.py`) and 17/17 Automated Unit Tests (`tests/test_*.py`) passing with 100% pass rate.
 - **Zero-Glitch Compliance**: Zero legacy branding tokens across codebase; `pnet0`–`pnet9` cloud bridges preserved.
 - **User Interface Standard**: Pure black dark theme and jumping circular avatar (`@keyframes avatarLevitate`) verified active.
 - **Feature & Enhancement Scope**: Comprehensive radar tracking all brand-new features (OpenBMP appliance, Soft-RoCE RXE) as well as updates/enhancements to all existing platform tools (including Network Watcher up to 20 filters and new traffic animations, Network Painter anti-runaway drag lock, Node quick-button precision anti-obstruction hook, Network Analyzer & Docker link glow, and other canvas/subsystem features).
-- **Governance Protocol**: 5-Step Update Check Pipeline (Incremental Issues Tracker -> All New Features & Existing Tools Scan -> Pre-Change Email Briefing -> Human Confirmation Gate -> One-Step Turnkey Update Command).
+- **Governance Protocol**: 5-Step Update Check Pipeline (Incremental Issues Tracker -> All New Features & Existing Tools Scan -> Pre-Change Research Briefing -> Human Confirmation Gate -> One-Step Turnkey Update Command).
 - **Performance State**: Ultra-KSM memory deduplication (65-80% savings) & CPU governor intact.
 
 ---
@@ -401,13 +400,8 @@ Prioritized tasks for continuous improvement and upstream immunity:
   1. During each quarterly audit, the audit engine compares upstream template libraries (`html/templates/intel/*.yml`, `html/templates/amd/*.yml`) against local `/opt/unetlab/html/templates/intel/`.
   2. Any newly detected appliances (e.g., new Cisco, Arista, Juniper, Fortinet, Palo Alto, or Linux models) are cataloged.
   3. The audit report details device metadata, required QCOW2 directory names (e.g. `c8000v-17.12.01/`, `fortinet-7.4/`), and suggested RAM/vCPU allocations.
-  4. Dispatches the newly available appliance list directly in the email digest to `azambasha1987@gmail.com`.
+  4. Dispatches the newly available appliance list in the quarterly audit report.
 
-### Workstream 6: Multi-Channel Alert Dispatch & Email Reporting (`azambasha1987@gmail.com`)
-- **Goal**: Native SMTP/TLS email notification pipeline in `scripts/azambasha-notify.py` delivering:
-  - 24-hour advance heads-up notice before each quarterly audit.
-  - Complete quarterly audit reports with attached **PDF Audit Digest** directly to `azambasha1987@gmail.com`.
-  - Immediate watchdog notifications upon node auto-recovery or hardware events.
 
 ### Workstream 7: Docker Appliance & Container Subsystem Audit (New First-Class Pillar)
 - **Core Principle**: Docker nodes and microservices provide high-density routing (`azamlabs/frr`), network testing (`azamlabs/network-multitool`), and in-browser HTML5 packet capture (`azam-capture-web:1.0`). Docker containers and daemons must be actively audited and cataloged alongside QEMU appliances every 3 months.
@@ -580,12 +574,12 @@ Production utilities installed across Master and Satellite nodes:
 | `azam-fleet` | Multi-Node Health | 1-Click live dashboard: RAM, KSM savings, active nodes, and satellite link health. |
 | `azam-capacity` | Density Modeling | Hardware capacity estimator with Ultra-KSM deduplication node ceiling calculation. |
 | `azam-doctor` | Disk & Appliance | QEMU template auditor and IOL iourc license generator. |
-| `azam-notify` | Alert Dispatcher | Instant email (`azambasha1987@gmail.com`), WhatsApp (CallMeBot), and webhook alerts. |
+
 | `azam-bench <SAT_IP>` | Dataplane QoS | MTU 9000 jumbo frame probe, Soft-RoCE RXE counter audit, and iperf3 throughput test. |
 | `azam-bootstorm --lab <PATH>` | Boot Orchestrator | Anti-bootstorm: staggers heavy -> medium -> light node boot batches with configurable delays. |
 | `azam-console-fix` | HTML5 Consoles | WebSocket tunnel repair, guacd health check, stale pipe cleanup, Windows .reg generator. |
 | `azam-backup / azam-restore` | Lab Backup/Restore | Timestamped .unl + device config + MySQL snapshot with 1-command full restore. |
-| `azam-watchdog --install` | Node Auto-Recovery | Systemd daemon: detects QEMU/IOL silent crashes, auto-restarts nodes, alerts WhatsApp/Email. |
+| `azam-watchdog --install` | Node Auto-Recovery | Systemd daemon: detects QEMU/IOL silent crashes, auto-restarts nodes, and logs recovery events. |
 | `azam-perf` | Hot-Node Profiler | Live color-coded CPU/RAM/IO ranking table. `--kill-hot` pauses top CPU offender. |
 | `azam-ssl --generate` | HTTPS Trust | 5-year SAN cert + Windows CA trust package eliminating all browser security warnings. |
 | `azam-templates deploy <name>` | Lab Marketplace | 14-topology catalog: CCNA, BGP, MPLS, CCIE, VXLAN. 1-command deploy. |

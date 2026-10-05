@@ -1,9 +1,8 @@
-#!/usr/bin/env bash
+﻿#!/usr/bin/env bash
 # ==============================================================================
-# AzamLabs Automated 3-Months Intelligence & Alert Scheduler Setup
+# AzamLabs Quarterly Audit Scheduler Setup
 # ==============================================================================
-# Configures notification credentials (/etc/azamlabs/azambasha-notify.conf)
-# targeting azambasha1987@gmail.com and installs the turnkey azam-audit tool.
+# Installs the turnkey azam-audit tool and decommissions legacy scanner units.
 # ==============================================================================
 set -euo pipefail
 
@@ -18,14 +17,9 @@ if [ ! -f "${SCRIPT_DIR}/azambasha-quarterly-audit.sh" ]; then
     fi
 fi
 
-EMAIL="${1:-azambasha1987@gmail.com}"
-PHONE="${2:-}"
-APIKEY="${3:-}"
-WEBHOOK="${4:-}"
 
 echo "================================================================================"
-echo "    AzamLabs Automated 3-Months Intelligence & Alert Setup                      "
-echo "    Target Recipient: ${EMAIL}                                                  "
+echo "    AzamLabs Quarterly Audit Scheduler Setup                                    "
 echo "================================================================================"
 
 # Check root
@@ -34,24 +28,6 @@ if [ "$(id -u)" -ne 0 ]; then
     exit 1
 fi
 
-NOTIFY_CONF="/etc/azamlabs/azambasha-notify.conf"
-mkdir -p /etc/azamlabs
-
-# Store notification configuration
-echo "[*] Storing notification configuration in $NOTIFY_CONF..."
-cat > "$NOTIFY_CONF" << EOF
-# AzamLabs Cluster Notification Configuration
-EMAIL_TO="${EMAIL}"
-EMAIL_USER=""
-EMAIL_PASS=""
-SMTP_SERVER=""
-SMTP_PORT=""
-WHATSAPP_PHONE="${PHONE}"
-WHATSAPP_APIKEY="${APIKEY}"
-WEBHOOK_URL="${WEBHOOK}"
-EOF
-chmod 0600 "$NOTIFY_CONF"
-echo "[✔] Configuration saved."
 
 # 1. Cleanup / Decommission Retired Scanner Service and Timer
 echo "[*] Decommissioning legacy Upstream Scanner systemd units and cron jobs..."
@@ -78,5 +54,4 @@ fi
 echo "================================================================================"
 echo "[✔] Setup complete. Turnkey quarterly audit is ready:"
 echo "    Run: sudo azam-audit --check"
-echo "    Configuration: $NOTIFY_CONF"
 echo "================================================================================"

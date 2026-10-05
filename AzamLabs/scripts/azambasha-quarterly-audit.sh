@@ -6,7 +6,7 @@
 #   1. Zero-Glitch Protocol system health probe (Ultra-KSM, MTU 9000, Web-GUI)
 #   2. Additive QEMU appliance template discovery & cataloging
 #   3. Automated pre-audit snapshot creation with 1-command rollback
-#   4. Multi-channel digest dispatch (Direct Email to azambasha1987@gmail.com)
+#   4. Structured audit report generation to docs/reports/
 # ==============================================================================
 set -euo pipefail
 
@@ -33,7 +33,6 @@ REPO_ROOT="${REPO_ROOT:-$BASE_DIR}"
 mkdir -p "$REPORTS_DIR" 2>/dev/null || REPORTS_DIR="/tmp"
 SNAPSHOT_DIR="/opt/unetlab/data/Backup/snapshots"
 
-EMAIL_TARGET="azambasha1987@gmail.com"
 
 # Color tokens
 BOLD="\033[1m"
@@ -50,7 +49,7 @@ log_warn() { echo -e "${YELLOW}[⚠]${RESET} $*"; }
 show_banner() {
     echo -e "${BOLD}${BLUE}================================================================================${RESET}"
     echo -e "${BOLD}       AzamLabs Quarterly Intelligence & Audit Engine (azam-audit)              ${RESET}"
-    echo -e "${BOLD}       Cadence: Quarterly (19th @ 09:00 AM IST) • Recipient: ${EMAIL_TARGET}  ${RESET}"
+    echo -e "${BOLD}       Cadence: Quarterly (19th @ 09:00 AM IST)                                    ${RESET}"
     echo -e "${BOLD}${BLUE}================================================================================${RESET}"
 }
 
@@ -245,7 +244,7 @@ run_audit() {
     fi
 
     echo -e "  Scan Execution: ${BOLD}${ist_time}${RESET} (${utc_time})"
-    echo -e "  Notification Target: ${BOLD}${EMAIL_TARGET}${RESET}\n"
+
 
     # 1. Create Pre-Audit Snapshot Checkpoint
     if [ "$dry_run" = "true" ]; then
@@ -346,7 +345,7 @@ run_audit() {
 - **Scan Timestamp**: ${ist_time} (${utc_time})
 - **Platform**: Ubuntu 26.04 Resolute LTS / Linux Kernel 7.0
 - **Authoritative Version**: ${web_ver} (Package: ${pkg_ver})
-- **Primary Recipient**: ${EMAIL_TARGET}
+
 - **Safeguard State**: Zero-Glitch Protocol 100% IMMUNE
 - **Execution Mode**: $([ "$dry_run" = "true" ] && echo "DRY-RUN SIMULATION" || echo "PRODUCTION RUN")
 
@@ -366,26 +365,7 @@ run_audit() {
 EOF
     log_ok "Generated report: ${BOLD}${report_file}${RESET}"
 
-    # 5. Dispatch Email & Alerts to azambasha1987@gmail.com
-    log_info "Dispatching quarterly digest to ${EMAIL_TARGET}..."
-    local notify_script="${SCRIPT_DIR}/azambasha-notify.py"
-    if [ -f "$notify_script" ]; then
-        local dry_flag=""
-        [ "$dry_run" = "true" ] && dry_flag="--dry-run"
-
-        local py_bin
-        py_bin="$(command -v python3 2>/dev/null || command -v python 2>/dev/null || echo python3)"
-        "$py_bin" "$notify_script" \
-            --quarterly-digest \
-            --version-tag "${web_ver#v}" \
-            --pkg-tag "${pkg_ver}" \
-            --open-issues "10" \
-            --commits-count "12" \
-            --to "${EMAIL_TARGET}" \
-            --attach "${report_file}" \
-            $dry_flag \
-            || log_warn "Notification engine encountered a non-fatal warning during dispatch."
-    fi
+    log_ok "Audit report saved to: ${BOLD}${report_file}${RESET}"
 
     echo -e "\n${BOLD}${GREEN}================================================================================${RESET}"
     if [ "$dry_run" = "true" ]; then
@@ -433,8 +413,8 @@ case "$ACTION" in
         echo "Usage: azam-audit [OPTIONS]"
         echo ""
         echo "Options:"
-        echo "  --check, -c           Execute complete quarterly audit & dispatch email digest (default)"
-        echo "  --dry-run, -d         Simulate audit run, probe safeguards, and validate email payloads"
+        echo "  --check, -c           Execute complete quarterly audit & generate report (default)"
+        echo "  --dry-run, -d         Simulate audit run, probe safeguards, and validate report output"
         echo "  --snapshot, -s        Create immutable pre-audit snapshot archive"
         echo "  --rollback, -r <FILE> Restore system state from snapshot archive"
         echo "  --symlink             Install global /usr/local/bin/azam-audit symlink"

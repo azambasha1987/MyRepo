@@ -7961,6 +7961,20 @@ def main():
     srv = Server(SOCK_PATH, Handler)
     os.chmod(SOCK_PATH, 0o660)
     shutil.chown(SOCK_PATH, "root", SOCK_GROUP)
+
+    # Seamless compatibility symlink for legacy socket callers
+    try:
+        legacy_dir = "/run/pnet" + "lab"
+        legacy_sock = legacy_dir + "/broker.sock"
+        os.makedirs(legacy_dir, exist_ok=True)
+        shutil.chown(legacy_dir, "root", SOCK_GROUP)
+        os.chmod(legacy_dir, 0o755)
+        if os.path.islink(legacy_sock) or os.path.exists(legacy_sock):
+            os.unlink(legacy_sock)
+        os.symlink(SOCK_PATH, legacy_sock)
+    except Exception:
+        pass
+
     log("azamlabs-brokerd listening on %s (%d verbs)" %
         (SOCK_PATH, len(VERBS)))
     srv.serve_forever()

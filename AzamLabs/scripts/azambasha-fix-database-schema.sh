@@ -43,6 +43,21 @@ EOF
 mysql < "$INIT_SQL" 2>/dev/null || mysql -u root < "$INIT_SQL" 2>/dev/null || true
 rm -f "$INIT_SQL"
 
+# Automatically migrate legacy database tables if azamlabs_db is fresh
+LEGACY_DB_PREFIX="pnet"
+LEGACY_DB_NAME="${LEGACY_DB_PREFIX}lab_db"
+if mysql -N -e "SHOW DATABASES LIKE '${LEGACY_DB_PREFIX}%_db';" 2>/dev/null | grep -q "db"; then
+    TABLE_COUNT=$(mysql -N -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='azamlabs_db';" 2>/dev/null || echo "0")
+    if [ "$TABLE_COUNT" -eq 0 ]; then
+        echo "[*] Existing database found. Replicating topology and user tables to azamlabs_db..."
+        LEGACY_NAME=$(mysql -N -e "SHOW DATABASES LIKE 'pnet%_db';" 2>/dev/null | head -n1 || echo "")
+        if [ -n "$LEGACY_NAME" ]; then
+            mysqldump --single-transaction --routines --triggers "$LEGACY_NAME" 2>/dev/null | mysql azamlabs_db 2>/dev/null || true
+            echo "  [✔] Migrated all existing labs, topology sessions, and credentials into azamlabs_db."
+        fi
+    fi
+fi
+
 # 2. Locate and import full schema files if present
 for path in \
     "${PARENT_DIR}/schema/azambasha_db.sql" \

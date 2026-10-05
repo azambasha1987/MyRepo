@@ -17,7 +17,7 @@
 
 ## 🖥️ 1. Master Controller Node One-Line Commands
 
-The Master Controller node runs the PNetLab Web-GUI, Apache FastCGI, MySQL database, Guacamole console proxy, and cluster orchestration.
+The Master Controller node runs the AzamLabs Web-GUI, Apache FastCGI, MySQL database, Guacamole console proxy, and cluster orchestration.
 
 > [!TIP]
 > **Automated In-Band GitHub Download**: When you run `sudo azam-update`, it automatically connects to GitHub (`azambasha1987/MyRepo`), pulls all updated files directly to `/opt/azambasha`, creates an atomic safety snapshot, and installs all fixes in a single step.
@@ -33,7 +33,7 @@ sudo azam-update --master
 2. **Safety Snapshot**: Captures timestamped `.tar.gz` checkpoint of `/opt/unetlab/{html/includes,templates,data/branding}`.
 3. **Permanent Session Fix**: Configures 10-year session cookies (`Never-Logout`).
 4. **Lab Export & APT Fix**: Installs `zip`/`unzip`, handles nested folder structures.
-5. **Upload & Docker Subsystem**: 512MB PHP/Apache limits, Docker CE repository, official `pnet-capture-web:1.0` HTML5 packet capture container, and `pnetlab-docker-image-watcher.service`.
+5. **Upload & Docker Subsystem**: 512MB PHP/Apache limits, Docker CE repository, official `azam-capture-web:1.0` HTML5 packet capture container, and `azamlabs-docker-image-watcher.service`.
 6. **SSL IP-SAN & Console Fix**: Self-signed 5-year IP-SAN cert, Guacamole `:8081` proxy, and 32-byte crypto key.
 7. **Database Deep-Fix**: Cleans SQL modes, raises 1M query limits, configures logrotate.
 8. **File Permissions & Sockets**: Resets `/dev/kvm` and lab node permissions.
@@ -75,12 +75,12 @@ sudo azam-update --satellite
 6. **Node Startup Engine**: Fixes Windows 11 UEFI SMM (`smm=on`) and Cisco IOSv boot timeouts.
 7. **Soft-RoCE (RXE) Dataplane**: Enables `rdma_rxe` driver for lossless RDMA clustering.
 8. **Heavy Node Optimizer**: Applies KVM halt-poll deactivation (`halt_poll_ns = 0`) and anti-bootstorm staggering.
-9. **Docker Subsystem & Image Watcher**: Enforces `net.ipv4.ip_forward = 1`, bridge policies, and `pnetlab-docker-image-watcher.service`.
+9. **Docker Subsystem & Image Watcher**: Enforces `net.ipv4.ip_forward = 1`, bridge policies, and `azamlabs-docker-image-watcher.service`.
 10. **Image Doctor**: Audits and repairs virtual disk QCOW2 images.
 11. **File Permissions**: Normalizes permissions on `/opt/unetlab/addons/` and clears stale locks.
 12. **Authoritative Credentials**: Enforces canonical `root:azam` password and MOTD banner.
-13. **Satellite Root & Cluster DB**: Restores `0600` permissions on `/etc/pnetlab/cluster-db.conf`.
-14. **Worker Daemon Self-Healing & Rate-Limit Immunity**: Deploys `StartLimitIntervalSec=0` drop-ins for `pnetlab-satd`, `pnetlab-brokerd`, and `docker`, resets failed states, and verifies root credentials (`root:azam`).
+13. **Satellite Root & Cluster DB**: Restores `0600` permissions on `/etc/azamlabs/cluster-db.conf`.
+14. **Worker Daemon Self-Healing & Rate-Limit Immunity**: Deploys `StartLimitIntervalSec=0` drop-ins for `azamlabs-satd`, `azamlabs-brokerd`, and `docker`, resets failed states, and verifies root credentials (`root:azam`).
 
 ---
 
@@ -92,7 +92,7 @@ If running directly on a node and you prefer the system to detect whether it is 
 sudo azam-update
 ```
 
-The script inspects `/etc/pnetlab-role` and `dpkg -s pnetlab-satellite`:
+The script inspects `/etc/azamlabs-role` and `dpkg -s azamlabs-satellite`:
 - If Satellite is detected $\rightarrow$ runs the 13-step Satellite Worker pipeline.
 - If Master is detected $\rightarrow$ runs the 15-step Master Controller pipeline.
 

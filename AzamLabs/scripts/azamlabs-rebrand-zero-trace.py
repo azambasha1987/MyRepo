@@ -187,8 +187,8 @@ def replace_tokens(text: str, filepath: str) -> tuple[str, int]:
     return new_text, total_changes
 
 def process_file(filepath: str, dry_run: bool = True) -> int:
-    # Do not process this script itself
-    if os.path.abspath(filepath) == THIS_SCRIPT:
+    # Do not process this script itself or the zero-trace test suite
+    if os.path.abspath(filepath) == THIS_SCRIPT or os.path.basename(filepath) == "test_zero_trace.py":
         return 0
 
     basename = os.path.basename(filepath)

@@ -1,6 +1,6 @@
 # Update Check Plan
 
-*Scan Timestamp: 2026-09-19 17:22:32 (IST / UTC+5:30)* | *UTC: 2026-09-19 11:52:32* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*
+*Scan Timestamp: 2026-09-19 17:22:32 (IST / UTC+5:30)* | *UTC: 2026-09-19 11:52:32* | *Target Repository: netkillui/AzamLabsv8* | *Platform: Ubuntu 26.04 (Resolute)*
 
 ## Mandatory Production Safeguards (Zero-Glitch Protocol)
 
@@ -24,7 +24,7 @@
 > 7. **Satellite Subsystem & Cluster Daemon Protection (Issue #40 & #33 Immunity)**:
 >    - **Zero Wrapper Stripping**: Satellite nodes must remain 100% self-contained with all hypervisor wrappers (`qemu_wrapper`, `iol_wrapper`, `dynamips_wrapper`, `unl_wrapper`) and Windows SPICE drivers intact (eliminating upstream Issue #40).
 >    - **Unjailed Cluster SSH Keys**: Cluster keys in `/root/.ssh/authorized_keys` must never be restricted with `command="rrsync...",restrict` (eliminating upstream Issue #33).
->    - **Authoritative Dynamic Versioning**: Satellite daemons (`pnetlab-satd.py`, `pnetlab-brokerd.py`) must dynamically query `/opt/unetlab/VERSION` rather than hardcoding `dpkg-query`.
+>    - **Authoritative Dynamic Versioning**: Satellite daemons (`azamlabs-satd.py`, `azamlabs-brokerd.py`) must dynamically query `/opt/unetlab/VERSION` rather than hardcoding `dpkg-query`.
 > 8. **Template Schema & Hypervisor Symlink Immunity Protocol**:
 >    - **Zero-Failure Template Resolution**: Upstream files (`api_nodes.php`, `device_qemu.php`) must be hardened against fragile `readlink('/opt/qemu')` assumptions. `/opt/qemu` directory vs symlink collisions must be eliminated so REST schema endpoints (`/api/list/templates/<name>`) never fail.
 >    - **Symmetric Lab Sync Directory**: Satellite worker nodes must maintain `/opt/unetlab/labs` and `/root/labs -> /opt/unetlab/labs` so cross-cluster lab synchronization never drops with missing file errors.
@@ -54,7 +54,7 @@ To prevent regressions, version drift, and operational errors caused by prematur
 
 1. **Rule 1: Never Treat Stored Text as Live Reality (The Freshness Check)**
    - *Assumption Risk*: Assuming that reading `UPDATE_CHECK_PLAN.md` is equivalent to auditing upstream status.
-   - *Mandate*: Every update check execution MUST initiate with a live HTTP/API query to Codeberg (`https://codeberg.org/api/v1/repos/netkillui/Pnetlabv8/raw/README.md` and `/issues`). Never assume upstream hasn't released a new version since the plan was last written.
+   - *Mandate*: Every update check execution MUST initiate with a live HTTP/API query to Codeberg (`https://codeberg.org/api/v1/repos/netkillui/AzamLabsv8/raw/README.md` and `/issues`). Never assume upstream hasn't released a new version since the plan was last written.
 
 2. **Rule 2: Automated In-Band GitHub Download in One-Step Update (`sudo azam-update`)**
    - *Architecture Principle*: All updates must be deployable using exclusively the canonical one-step command `sudo azam-update`, with zero manual file transfers or complex multi-step options.
@@ -124,10 +124,10 @@ graph TD
   - **ADOPT**: If upstream provides a clean, harmless, non-breaking fix, queue it for addition.
 
 ### Step 2: Tri-Virtualization Feature Scan, All New Features & Enhancements to Existing Features (IOL, QEMU, Docker, Containers, and Tools like Network Watcher, Painter & Analyzer)
-Systematically audit the latest version of PNetLab for **all newly introduced features** as well as **enhancements and updates to all existing features** across the entire platform:
+Systematically audit the latest version of AzamLabs for **all newly introduced features** as well as **enhancements and updates to all existing features** across the entire platform:
 
 1. **Audit of All New Features & Capabilities (Comprehensive Radar)**:
-   - Actively scan upstream releases, commits, and community pull requests for **any brand-new features**, tools, CLI utilities, API endpoints, modal drawers, or automation capabilities added to PNetLab.
+   - Actively scan upstream releases, commits, and community pull requests for **any brand-new features**, tools, CLI utilities, API endpoints, modal drawers, or automation capabilities added to AzamLabs.
    - If any new features are introduced that add real-world value for network engineering, topology design, or cluster operations, evaluate their dependencies and optimize their code specifically for the AzamLabs architecture.
 
 2. **Audit of Enhancements & Updates to All Existing Features**:
@@ -135,7 +135,7 @@ Systematically audit the latest version of PNetLab for **all newly introduced fe
    - **Examples of existing features to audit and update include (but are not limited to)**:
      - **Network Watcher**: Live interface packet capture sniffer, traffic animation engine, WebSocket stream stability, IPv4/IPv6 packet filtering rules (preventing Issue #6 regressions), interface throughput counters, and integration with physical bridges (`pnet0`–`pnet9`) and container `veth*` interfaces.
      - **Network Painter**: Canvas drawing capabilities, custom topology styling, shape rendering (rectangles, rounded zones, clouds, text annotations, colored boundaries), link styling options (solid/dashed/curved, stroke widths, interface port labeling, custom palettes), and dark mode contrast preservation without SVG coordinate drift or z-index collisions (integrating with Issue #34).
-     - **Network Analyzer**: Real-time packet stream inspection, protocol decoding, zero-install integration with `pnet-capture-web:1.0` HTML5 packet capture container, latency/packet loss/jitter measurement probes, and `.pcapng` stream exports without client-side dependencies.
+     - **Network Analyzer**: Real-time packet stream inspection, protocol decoding, zero-install integration with `azam-capture-web:1.0` HTML5 packet capture container, latency/packet loss/jitter measurement probes, and `.pcapng` stream exports without client-side dependencies.
      - **Other Existing Subsystems & Tools**: Lab export/import engine, multi-user pod isolation, user management, device console proxies (Guacamole/HTML5, Telnet, SSH), image doctor virtual disk repair, and node lifecycle controls.
 
 3. **Cisco IOL (IOS on Linux) Subsystem**:
@@ -146,27 +146,27 @@ Systematically audit the latest version of PNetLab for **all newly introduced fe
    - Inspect hypervisor execution flags: multi-disk storage bus options (`virtioc`, `virtio-blk-pci`), UEFI SMM (`smm=on`), CPU model flags (`host-passthrough`), and TPM 2.0 socket parameters.
 
 5. **Docker Subsystem & New Container Ingestion**:
-   - **Discover & Catalog New Containers**: Scan upstream releases, Docker Hub repositories (`rspnet/*`, `pnetlab/*`), and community catalogs for newly released official container images:
-     - In-browser live packet capture container (`rspnet/pnet-capture-web:latest` $\rightarrow$ tagged as `pnet-capture-web:1.0`).
-     - Microservices and routing engines (e.g., `pnetlab/frr`, BGP/OSPF testing containers).
-     - Network troubleshooting and diagnostic containers (e.g., `pnetlab/network-multitool`, curl/scapy/nmap test pods).
+   - **Discover & Catalog New Containers**: Scan upstream releases, Docker Hub repositories (`rspnet/*`, `azamlabs/*`), and community catalogs for newly released official container images:
+     - In-browser live packet capture container (`rspnet/azam-capture-web:latest` $\rightarrow$ tagged as `azam-capture-web:1.0`).
+     - Microservices and routing engines (e.g., `azamlabs/frr`, BGP/OSPF testing containers).
+     - Network troubleshooting and diagnostic containers (e.g., `azamlabs/network-multitool`, curl/scapy/nmap test pods).
      - Lightweight endpoint and server appliances (e.g., Alpine Linux, Ubuntu desktop, Kali, Debian minimal).
    - **Automated Container Preloading & Registry Sync**:
      - Pre-pull and warm container images so they are immediately available on link actions without user wait times.
-     - Ensure `/opt/unetlab/addons/docker/` and `pnetlab-docker-image-watcher.service` (inotify-based) dynamically detect, load, and catalog `.tar` / `.tar.gz` image drops directly into the Web-GUI.
+     - Ensure `/opt/unetlab/addons/docker/` and `azamlabs-docker-image-watcher.service` (inotify-based) dynamically detect, load, and catalog `.tar` / `.tar.gz` image drops directly into the Web-GUI.
    - **Template & Console Generation**:
      - Ensure corresponding Docker node template definitions (`intel/docker.yml`, `amd/docker.yml`, or custom container profiles) are generated with optimal CPU, memory (default 256MB), network interfaces, and console access modes (`http`, `telnet`, or `ssh`).
    - **Kernel Forwarding & Traffic Animation Rules**:
      - Verify kernel packet forwarding (`net.ipv4.ip_forward = 1`, `net.ipv6.conf.all.forwarding = 1`, `net.ipv4.conf.all.proxy_arp = 1`), bridge promiscuous mode, and `iptables -P FORWARD ACCEPT` to eliminate container packet drops.
      - Ensure dynamic link traffic glow animations and frame counters hook seamlessly across `veth*` container interfaces.
 
-6. **Satellite Worker Subsystem & Cluster Daemons (`pnetlab-satd`, `pnetlab-brokerd`, `pnet-satellite-join`, `linkwatchd` & Soft-RoCE)**:
+6. **Satellite Worker Subsystem & Cluster Daemons (`azamlabs-satd`, `azamlabs-brokerd`, `pnet-satellite-join`, `linkwatchd` & Soft-RoCE)**:
    - **Binary Package Inspection & Codeberg Gitea API**: Query Codeberg's Gitea Package API (`/api/v1/packages/netkillui`) and Debian pool index (`/api/packages/netkillui/debian/dists/resolute/main/binary-amd64/Packages`) directly to detect new `.deb` package releases without relying on Git commits (which contain only `README.md`).
-   - **Satellite Daemon Differential Audit**: Unpack `pnetlab-satellite_*.deb` and line-diff daemon scripts:
-     - `pnetlab-satd.py`: Audit forwarded verbs (e.g. `node_validate`). Protect AzamLabs dynamic `/opt/unetlab/VERSION` resolution against upstream hardcoded `dpkg-query`.
-     - `pnetlab-brokerd.py`: Audit Soft-RoCE `rxe-broker/v1` API (port 4050) and Traffic Control mutex locking (`TC_LOCK`). Protect AzamLabs low-latency CPU governor (`halt_poll_ns=0`) and Ultra-KSM deduplication.
+   - **Satellite Daemon Differential Audit**: Unpack `azamlabs-satellite_*.deb` and line-diff daemon scripts:
+     - `azamlabs-satd.py`: Audit forwarded verbs (e.g. `node_validate`). Protect AzamLabs dynamic `/opt/unetlab/VERSION` resolution against upstream hardcoded `dpkg-query`.
+     - `azamlabs-brokerd.py`: Audit Soft-RoCE `rxe-broker/v1` API (port 4050) and Traffic Control mutex locking (`TC_LOCK`). Protect AzamLabs low-latency CPU governor (`halt_poll_ns=0`) and Ultra-KSM deduplication.
      - `pnet-satellite-join`: Immunize cluster SSH authentication against upstream `command="rrsync...",restrict` key jailing (Issue #33) and maintain `azambasha-satellite-join.sh` as canonical.
-     - `pnetlab-linkwatchd.py`: Validate L2/L3 packet decoding (`describe_packet`) and traffic glow filters.
+     - `azamlabs-linkwatchd.py`: Validate L2/L3 packet decoding (`describe_packet`) and traffic glow filters.
    - **Hypervisor Wrapper Integrity (Issue #40 Shield)**: Ensure satellite packages maintain all native wrappers (`qemu_wrapper`, `iol_wrapper`, `dynamips_wrapper`, `unl_wrapper`) and Windows SPICE drivers so worker nodes are 100% self-sufficient.
 
 7. **AzamLabs Optimization Rule**:
@@ -257,7 +257,7 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 - **Audit Cadence**: Quarterly (Every 3 Months) locked to Indian Standard Time (IST - UTC+5:30).
 - **Primary Notification Target**: `azambasha1987@gmail.com` (Direct SMTP/TLS email digest with PDF attachment).
 - **Platform Alignment**: Native Ubuntu 26.04 Resolute & Linux Kernel 7.0 stack verified.
-- **Docker Subsystem State**: Docker CE, `pnetlab-docker`, and `pnet-capture-web:1.0` audited with IP forwarding & bridge policies.
+- **Docker Subsystem State**: Docker CE, `azamlabs-docker`, and `azam-capture-web:1.0` audited with IP forwarding & bridge policies.
 - **Feature & Enhancement Scope**: Comprehensive radar tracking all brand-new features (OpenBMP appliance, Soft-RoCE RXE) as well as updates/enhancements to all existing platform tools (including Network Watcher up to 20 filters and new traffic animations, Network Painter anti-runaway drag lock, Node quick-button precision anti-obstruction hook, Network Analyzer & Docker link glow, and other canvas/subsystem features).
 - **Governance Protocol**: 5-Step Update Check Pipeline (Incremental Issues Tracker -> All New Features & Existing Tools Scan -> Pre-Change Email Briefing -> Human Confirmation Gate -> One-Step Turnkey Update Command).
 - **Performance State**: Ultra-KSM memory deduplication (65-80% savings) & CPU governor intact.
@@ -268,7 +268,7 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 
 > [!NOTE]
 > ### Scan Differential Summary
-> - **Recent Upstream Code Activity**: 5 latest commits reviewed from `netkillui/Pnetlabv8`.
+> - **Recent Upstream Code Activity**: 5 latest commits reviewed from `netkillui/AzamLabsv8`.
 > - **Latest Release Tag**: `6.8.85resolute1` (released Oct 3, 2026).
 > - **Upstream Release Notes**: *"This release fixes some bugs in webconsole and adds new animation to Network Watcher."*
 > - **Newly Audited Community Issues**: Issues #50, #51, #52, and #53 cataloged and evaluated.
@@ -283,10 +283,10 @@ Audits the reliability of detected upstream releases before cluster deployment:
 
 | Release Component | Upstream Distribution Status | AzamLabs Hardening Status | Production Cluster Readiness |
 |---|---|---|:---:|
-| **pnetlab core (6.8.85resolute1)** | Upstream release with webconsole bug fixes & watcher animation | Local manifest, node quick-button anti-obstruction hook deployed | ✅ `100% PRODUCTION READY` |
-| **pnetlab core (6.8.84resolute1)** | Upstream release with OpenBMP template addition | OpenBMP templates (`intel`/`amd`/`schema`) deployed | ✅ `100% PRODUCTION READY` |
-| **pnetlab core (6.8.83resolute1)** | Upstream release with Guacamole key race fix | Local manifest, 32-byte Guac key & ProxyPass deployed | ✅ `100% PRODUCTION READY` |
-| **pnetlab-satellite cluster bundle** | Password rehash bug (Issue #33) | Tri-tier SSH auto-negotiation (`root:azam`) applied | ✅ `100% PRODUCTION READY` |
+| **azamlabs core (6.8.85resolute1)** | Upstream release with webconsole bug fixes & watcher animation | Local manifest, node quick-button anti-obstruction hook deployed | ✅ `100% PRODUCTION READY` |
+| **azamlabs core (6.8.84resolute1)** | Upstream release with OpenBMP template addition | OpenBMP templates (`intel`/`amd`/`schema`) deployed | ✅ `100% PRODUCTION READY` |
+| **azamlabs core (6.8.83resolute1)** | Upstream release with Guacamole key race fix | Local manifest, 32-byte Guac key & ProxyPass deployed | ✅ `100% PRODUCTION READY` |
+| **azamlabs-satellite cluster bundle** | Password rehash bug (Issue #33) | Tri-tier SSH auto-negotiation (`root:azam`) applied | ✅ `100% PRODUCTION READY` |
 | **Linux Kernel 7.0 & Ubuntu 26.04** | Experimental upstream testing | Kernel halt-poll tuning & sysctl bridge bypass deployed | ✅ `100% PRODUCTION READY` |
 | **Apache Event FastCGI / PHP 8.5** | Plaintext script serving defect | Automated `php8.5-fpm` pipeline & Lax cookies deployed | ✅ `100% PRODUCTION READY` |
 
@@ -302,7 +302,7 @@ Audits the reliability of detected upstream releases before cluster deployment:
 > - **Header Title**: `AzamLabs v6.8.85`
 > - **Release Row**: `v6.8.85`
 > - **Package Row**: `6.8.85resolute1`
-> - **Database Setting**: `pnetlab_db.control.ctrl_version` = `6.8.85`
+> - **Database Setting**: `azamlabs_db.control.ctrl_version` = `6.8.85`
 
 Whenever new features or bug fixes from higher upstream versions are integrated, `scripts/azambasha-sync-gui-version.sh` automatically updates `/opt/unetlab/html/includes/version.php` and the database control table.
 
@@ -316,7 +316,7 @@ These exclusive subsystems are maintained independently in `AzamLabs/` and must 
 |---|---|---|:---:|
 | **Universal Lab Marketplace & Auto-Fixer** | Ingests CML 2.x YAML, GNS3 JSON, and EVE-NG UNL into native XML with Day-0 configs and workbooks. | `azambasha-eve-lab-importer.py`, `azam-features.js` | 🔒 PROTECTED |
 | **High-Density Heavy Node Optimizer** | KVM halt-poll deactivation (`halt_poll_ns=0`), hugepages, memory pinning, and anti-bootstorm staggered batching. | `apply-heavy-node-optimizer.sh`, `azam-bootstorm` | 🔒 PROTECTED |
-| **Ultra-KSM 4KB Deduplication Engine** | Real-time memory deduplication achieving 65% to 80%+ RAM savings across multi-vendor nodes. | `pnetlab-ksm.service`, `azambasha-speed-optimizer.sh` | 🔒 PROTECTED |
+| **Ultra-KSM 4KB Deduplication Engine** | Real-time memory deduplication achieving 65% to 80%+ RAM savings across multi-vendor nodes. | `azamlabs-ksm.service`, `azambasha-speed-optimizer.sh` | 🔒 PROTECTED |
 | **Silicon Dataplane & Soft-RoCE Engine** | MTU 9000 jumbo frame pipeline and RoCEv2 RXE interfaces for zero packet-fragmentation cross-cluster links. | `azambasha-roce-engine.sh`, `azambasha-dataplane-engine.sh` | 🔒 PROTECTED |
 | **Tri-Tier Satellite SSH Negotiator** | Multi-node cluster joining cycling `$SSHPASS` -> `azam` -> `pnet` with `root:azam` enforcement and `0600` DB permissions. | `azambasha-satellite-join.sh`, `azambasha-fix-cluster.sh` | 🔒 PROTECTED |
 | **Frontend Lifecycle & Cache-Busting** | Apache `no-cache` header directives and dynamic `?v=...` query cache-busting preventing stale browser UI state. | `azam-nocache.conf`, `index.html` | 🔒 PROTECTED |
@@ -341,17 +341,17 @@ Every feature addition, bug fix, and performance hyper-tuning in AzamLabs is exp
 | **OS Prerequisites (`swtpm`, `ovmf`, `rdma-core`, `nodejs`)** | Active | Active | `azambasha-os-prerequisites.sh`, `install-satellite.sh` |
 | **Bridge LACP BPDU Forwarding (`group_fwd_mask = 0xffff`)** | Configured | Configured | `azambasha-system-and-console-fix.sh`, `install-satellite.sh` |
 | **Soft-RoCE (RXE) Dataplane Engine & MTU 9000** | Configured | Configured | `azambasha-roce-engine.sh`, `azambasha-dataplane-engine.sh` |
-| **Ultra-KSM 4KB RAM Deduplication & CPU Governor** | Active | Active | `azambasha-speed-optimizer.sh`, `pnetlab-ksm.service` |
+| **Ultra-KSM 4KB RAM Deduplication & CPU Governor** | Active | Active | `azambasha-speed-optimizer.sh`, `azamlabs-ksm.service` |
 | **Node Templates (`win11.yml`, `xrd.yml`, `virtioc` multi-disk)** | Applied | Applied | `azambasha-fix-node-startup.sh`, `install-satellite.sh` |
 | **High-Density Heavy Node Optimizer** | Master Mode | Worker Mode (`--satellite`) | `apply-heavy-node-optimizer.sh` |
 | **Dual Wireshark Capture Permissions & Stale TPM Cleaner** | Active | Active | `azambasha-system-and-console-fix.sh`, `azambasha-fix-permissions.sh` |
-| **Authoritative Identity (`root:azam`) & APT Self-Healing Hook** | Enforced | Enforced | `/etc/apt/apt.conf.d/99pnetlab-credentials` |
-| **Satellite Cluster Interconnect & Tri-Tier Password Fallback** | Cluster DB Host | Worker Client (`0600`) | `azambasha-fix-cluster.sh`, `extracted_pnet-satdeploy.sh` |
-| **Docker Subsystem (`pnetlab-docker`, `pnet-capture-web`, Forwarding)** | Active (Master Host) | Active (Worker Client) | `azambasha-upload-and-docker-fix.sh`, `azambasha-quarterly-audit.sh` |
-| **VPCS Dual-Stack IPv6 Engine (`pnetlab-vpcs v6.8.83resolute1`)** | Active (`v6.8.83`) | Active (`v6.8.83`) | `pnetlab-vpcs_6.8.83resolute1_amd64.deb` |
-| **Interactive Canvas Tools (Network Watcher, Painter, Analyzer)** | Active (Full Web-GUI & Live Stream) | Active (Worker Packet Mirroring & Veth Hooks) | `azam-features.js`, `pnet-capture-web` |
+| **Authoritative Identity (`root:azam`) & APT Self-Healing Hook** | Enforced | Enforced | `/etc/apt/apt.conf.d/99azamlabs-credentials` |
+| **Satellite Cluster Interconnect & Tri-Tier Password Fallback** | Cluster DB Host | Worker Client (`0600`) | `azambasha-fix-cluster.sh`, `extracted_azam-satdeploy.sh` |
+| **Docker Subsystem (`azamlabs-docker`, `azam-capture-web`, Forwarding)** | Active (Master Host) | Active (Worker Client) | `azambasha-upload-and-docker-fix.sh`, `azambasha-quarterly-audit.sh` |
+| **VPCS Dual-Stack IPv6 Engine (`azamlabs-vpcs v6.8.83resolute1`)** | Active (`v6.8.83`) | Active (`v6.8.83`) | `azamlabs-vpcs_6.8.83resolute1_amd64.deb` |
+| **Interactive Canvas Tools (Network Watcher, Painter, Analyzer)** | Active (Full Web-GUI & Live Stream) | Active (Worker Packet Mirroring & Veth Hooks) | `azam-features.js`, `azam-capture-web` |
 | **Dynamic Web-GUI Version Synchronization (`v6.8.85`)** | Active (`v6.8.85`) | Active (`v6.8.85` via `satd` & `VERSION`) | `azambasha-sync-gui-version.sh`, `azambasha-satellite-join.sh`, `azambasha-update.sh` |
-| **Satellite Cluster Daemons (`satd`, `brokerd`, `linkwatchd` v6.8.85)** | Active (`v6.8.85` Hardened) | Active (`v6.8.85` Hardened + `node_validate`) | `pnetlab-satd.py`, `pnetlab-brokerd.py`, `pnetlab-linkwatchd.py` |
+| **Satellite Cluster Daemons (`satd`, `brokerd`, `linkwatchd` v6.8.85)** | Active (`v6.8.85` Hardened) | Active (`v6.8.85` Hardened + `node_validate`) | `azamlabs-satd.py`, `azamlabs-brokerd.py`, `azamlabs-linkwatchd.py` |
 | **Apache Event FastCGI, PHP-FPM & Session Cookies** | Active | N/A (Headless Worker) | `azambasha-fix-web-credentials.sh` |
 
 ---
@@ -389,11 +389,11 @@ Prioritized tasks for continuous improvement and upstream immunity:
   - Immediate watchdog notifications upon node auto-recovery or hardware events.
 
 ### Workstream 7: Docker Appliance & Container Subsystem Audit (New First-Class Pillar)
-- **Core Principle**: Docker nodes and microservices provide high-density routing (`pnetlab/frr`), network testing (`pnetlab/network-multitool`), and in-browser HTML5 packet capture (`pnet-capture-web:1.0`). Docker containers and daemons must be actively audited and cataloged alongside QEMU appliances every 3 months.
+- **Core Principle**: Docker nodes and microservices provide high-density routing (`azamlabs/frr`), network testing (`azamlabs/network-multitool`), and in-browser HTML5 packet capture (`azam-capture-web:1.0`). Docker containers and daemons must be actively audited and cataloged alongside QEMU appliances every 3 months.
 - **Audit Process**:
   1. **Daemon & Engine Health**: Probe `docker.service` status, Docker socket responsiveness, and runtime candidate version.
-  2. **Official Image Catalog & Verification**: Catalog installed Docker images (`docker images`), check upstream image changes, and verify `pnet-capture-web:1.0` is preloaded for web-based packet inspection.
-  3. **Dynamic Image Watcher**: Verify `pnetlab-docker-image-watcher.service` (inotify-based) is operational to dynamically index newly pulled container images into the GUI without manual syncs.
+  2. **Official Image Catalog & Verification**: Catalog installed Docker images (`docker images`), check upstream image changes, and verify `azam-capture-web:1.0` is preloaded for web-based packet inspection.
+  3. **Dynamic Image Watcher**: Verify `azamlabs-docker-image-watcher.service` (inotify-based) is operational to dynamically index newly pulled container images into the GUI without manual syncs.
   4. **Kernel Forwarding & Bridge Security**: Probe `net.ipv4.ip_forward = 1`, `net.ipv6.conf.all.forwarding = 1`, and `iptables -P FORWARD ACCEPT` via `azambasha-upload-and-docker-fix.sh` to prevent packet drops between containers and virtual routers.
   5. **Interface Traffic Glow (Issues #37 & #38)**: Verify traffic animation and packet glow operate seamlessly across `veth*` Docker bridge interfaces without dropped frames.
 
@@ -410,7 +410,7 @@ Prioritized tasks for continuous improvement and upstream immunity:
      - Protect AzamLabs canvas styling and dark mode contrast so painter layers render crisp and sharp without SVG coordinate drift or z-index collisions (Issue #34 integration).
   3. **Network Analyzer**:
      - Verify real-time packet stream inspection and protocol decoding.
-     - Verify seamless zero-install integration with `pnet-capture-web:1.0` HTML5 packet capture container.
+     - Verify seamless zero-install integration with `azam-capture-web:1.0` HTML5 packet capture container.
      - Ensure latency, packet loss, and jitter probes accurately measure inter-node link metrics.
      - Apply upstream enhancements to packet payload dissection and `.pcapng` stream exports without client-side dependencies.
 
@@ -418,7 +418,7 @@ Prioritized tasks for continuous improvement and upstream immunity:
 - **Core Principle**: Satellite worker nodes must run the latest cluster protocol verbs (`node_validate`, Soft-RoCE `rxe-broker/v1`, Traffic Control `TC_LOCK`, structured packet decode `describe_packet`) while remaining 100% immune to upstream regressions (Issue #40 wrapper stripping, Issue #33 SSH jailing, and `dpkg-query` version desynchronization).
 - **Audit & Hardening Implementation**:
   1. **Binary Package Registry Radar**: Audit Codeberg Gitea Package API (`/api/v1/packages/netkillui`) and Debian repo index on every quarterly cycle.
-  2. **Daemon Hardening**: Deploy hardened `pnetlab-satd.py` (with dynamic `/opt/unetlab/VERSION` resolution), `pnetlab-brokerd.py` (with `TC_LOCK` and crash-safe `UsageLedger`), and `pnetlab-linkwatchd.py` directly from version-controlled `scripts/`.
+  2. **Daemon Hardening**: Deploy hardened `azamlabs-satd.py` (with dynamic `/opt/unetlab/VERSION` resolution), `azamlabs-brokerd.py` (with `TC_LOCK` and crash-safe `UsageLedger`), and `azamlabs-linkwatchd.py` directly from version-controlled `scripts/`.
   3. **Wrapper Preservation (Issue #40 Immunity)**: Guarantee that all hypervisor wrappers (`qemu_wrapper`, `iol_wrapper`, `dynamips_wrapper`, `unl_wrapper`) and Windows SPICE drivers remain intact on all Satellite nodes.
   4. **Unjailed Cluster Interconnects (Issue #33 Immunity)**: Maintain `azambasha-satellite-join.sh` as canonical with unjailed `authorized_keys` and tri-tier password fallback (`$SSHPASS` -> `azam` -> `pnet`).
 
@@ -432,7 +432,7 @@ Prioritized tasks for continuous improvement and upstream immunity:
 >
 > **AzamLabs Dual-Node Protocol**:
 > 1. **Tri-Tier Password Auto-Negotiation**: Automatically cycles `$SSHPASS` -> `azam` -> `pnet`, detects authentication, and immediately normalizes `root:azam`.
-> 2. **Cluster DB Configuration Permissions**: Enforces `0600` permissions on `/etc/pnetlab/cluster-db.conf` on Satellite nodes to guarantee secure Master communications.
+> 2. **Cluster DB Configuration Permissions**: Enforces `0600` permissions on `/etc/azamlabs/cluster-db.conf` on Satellite nodes to guarantee secure Master communications.
 > 3. **Inter-Node Dataplane MTU Alignment**: Master and Satellites operate in lockstep with MTU 9000 jumbo frames and RoCEv2 RXE interfaces for zero packet-fragmentation cross-cluster links.
 
 ---
@@ -455,59 +455,59 @@ Status of multi-vendor virtualized routing, switching, and compute nodes across 
 
 | Issue # | State | Severity | Title | AzamLabs Resolution Status |
 |---|:---:|:---:|---|---|
-| [#53](https://codeberg.org/netkillui/Pnetlabv8/issues/53) | **CLOSED** | `MEDIUM` | Unable to edit, place text, or edit link labels due to node quick buttons appearance | ADAPTED & DEPLOYED in AzamLabs (Node Quick Button Precision & Anti-Obstruction Hook in azam-features.js) |
-| [#52](https://codeberg.org/netkillui/Pnetlabv8/issues/52) | **CLOSED** | `LOW` | Please add "Take snapshot from original image" | IMMUNE & SUPPORTED in AzamLabs (azam-backup snapshot engine + QCOW2 overlay branching via azambasha-image-doctor.sh) |
-| [#51](https://codeberg.org/netkillui/Pnetlabv8/issues/51) | **CLOSED** | `HIGH` | Links connector MSTP/VTP/trunking not functioning properly on running nodes | IMMUNE in AzamLabs (Bridge LACP/BPDU filter bypass group_fwd_mask=0xffff & MTU 9000 Silicon Dataplane) |
-| [#50](https://codeberg.org/netkillui/Pnetlabv8/issues/50) | **CLOSED** | `HIGH` | Windows Qemu not working or not started | IMMUNE in AzamLabs (win11.yml Q35/OVMF UEFI SMM smm=on, swtpm TPM 2.0 integration, and stale socket cleaner in azambasha-fix-node-startup.sh) |
-| [#49](https://codeberg.org/netkillui/Pnetlabv8/issues/49) | **OPEN** | `CRITICAL` | QEMU nodes lose connectivity with node powered on: tap on NO-CARRIER... | ADAPTED & DEPLOYED in AzamLabs (Tap Carrier Keepalive Watchdog Probe in azambasha-watchdog.py) |
-| [#48](https://codeberg.org/netkillui/Pnetlabv8/issues/48) | **CLOSED** | `HIGH` | OVA boots from hard drive but keeps triggering reinstallation loop | IMMUNE in AzamLabs (Hard disk GRUB priority verified) |
-| [#47](https://codeberg.org/netkillui/Pnetlabv8/issues/47) | **CLOSED** | `HIGH` | It has to be reinstalled after every reboot？ | IMMUNE in AzamLabs (Hard disk GRUB priority verified) |
-| [#46](https://codeberg.org/netkillui/Pnetlabv8/issues/46) | **OPEN** | `LOW` | Satellite upgrade Proccess | REMEDIATED in AzamLabs (Canonical sudo azam-update --satellite / ONE_STEP_UPDATE_COMMANDS.md) |
-| [#45](https://codeberg.org/netkillui/Pnetlabv8/issues/45) | **OPEN** | `LOW` | User Online & Offline status missing | ADAPTED & DEPLOYED in AzamLabs (Dynamic Online/Idle/Offline Status Badges in azam-features.js) |
-| [#44](https://codeberg.org/netkillui/Pnetlabv8/issues/44) | **OPEN** | `MEDIUM` | Network Watcher: Traffic name/type with src & dst info no longer appears | ADAPTED in AzamLabs (Link Hover Packet Tooltip Metadata Restored in azam-features.js) |
-| [#43](https://codeberg.org/netkillui/Pnetlabv8/issues/43) | **OPEN** | `LOW` | Node and Link Glow with connected link not working | ADAPTED in AzamLabs (Bidirectional Node+Link Glow Implemented in azam-features.js) |
-| [#42](https://codeberg.org/netkillui/Pnetlabv8/issues/42) | **CLOSED** | `MEDIUM` | Network watcher filter limitations | ADAPTED in AzamLabs (Expanded from 6 to 20 Packet Filters & Flow Alignment in azam-features.js) |
-| [#41](https://codeberg.org/netkillui/Pnetlabv8/issues/41) | **OPEN** | `MEDIUM` | Canvas auto-scroll Nodes drag and place issue in corner and sides | ADAPTED in AzamLabs (Canvas Edge Margin Dampening Anti-Runaway Lock in azam-features.js) |
-| [#40](https://codeberg.org/netkillui/Pnetlabv8/issues/40) | **CLOSED** | `CRITICAL` | core-assets archive did not contain complete satellite asset set | IMMUNE in AzamLabs (Tri-Tier Fallback & Standalone Satellite Deploy Scripts) |
-| [#39](https://codeberg.org/netkillui/Pnetlabv8/issues/39) | **CLOSED** | `HIGH` | Network Watcher & Topology overlay stop working | ADAPTED in AzamLabs (Clean SVG Filter & WebSocket Teardown on Overlay Toggle) |
-| [#38](https://codeberg.org/netkillui/Pnetlabv8/issues/38) | **CLOSED** | `MEDIUM` | Traffic Glow not working on Docker Interfaces | ADAPTED in AzamLabs (Docker Interface Traffic Glow Adapter via Promiscuous Veth Hooks) |
-| [#37](https://codeberg.org/netkillui/Pnetlabv8/issues/37) | **CLOSED** | `MEDIUM` | Traffic Glow not working on Docker Interfaces | ADAPTED in AzamLabs (Docker Interface Traffic Glow Adapter via Promiscuous Veth Hooks) |
-| [#36](https://codeberg.org/netkillui/Pnetlabv8/issues/36) | **CLOSED** | `LOW` | Connections between Cisco routers and other devices | IMMUNE in AzamLabs (Bridge LACP/BPDU Filter Bypass group_fwd_mask=0xffff) |
-| [#35](https://codeberg.org/netkillui/Pnetlabv8/issues/35) | **CLOSED** | `HIGH` | Community network-install bootstrap hardening (issue #19 / guac-lite)... | IMMUNE in AzamLabs (32-Byte Guac Key Pre-Config & Systemd Overrides in azambasha-fix-web-credentials.sh) |
-| [#33](https://codeberg.org/netkillui/Pnetlabv8/issues/33) | **OPEN** | `CRITICAL` | Satellite Mid Way install Failure Bug... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
-| [#32](https://codeberg.org/netkillui/Pnetlabv8/issues/32) | **OPEN** | `CRITICAL` | upgraded to 8.7.9 - Satellite issue - STEP BY... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
-| [#31](https://codeberg.org/netkillui/Pnetlabv8/issues/31) | **OPEN** | `CRITICAL` | release 6.8.79resolute1 is not ready: manifes... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
-| [#23](https://codeberg.org/netkillui/Pnetlabv8/issues/23) | **CLOSED** | `CRITICAL` | Satellite Bundle not present in 8.7.8... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
-| [#34](https://codeberg.org/netkillui/Pnetlabv8/issues/34) | **OPEN** | `MEDIUM` | Fix Permission button inside the Topology re... | REMEDIATED in AzamLabs (Canvas Zoom & Pan Viewport Retention Hook) |
-| [#30](https://codeberg.org/netkillui/Pnetlabv8/issues/30) | **OPEN** | `MEDIUM` | Lab settings resetting on reopening the exist... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
-| [#28](https://codeberg.org/netkillui/Pnetlabv8/issues/28) | **CLOSED** | `MEDIUM` | Lab canvas auto zoom in issue || after a whi... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
-| [#25](https://codeberg.org/netkillui/Pnetlabv8/issues/25) | **OPEN** | `MEDIUM` | Bug 31 connector edit styles MID-point bar a... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
-| [#17](https://codeberg.org/netkillui/Pnetlabv8/issues/17) | **OPEN** | `MEDIUM` | Bug list 6.8.77 resolute1... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
-| [#5](https://codeberg.org/netkillui/Pnetlabv8/issues/5) | **CLOSED** | `MEDIUM` | The Running Labs link is missing.... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
-| [#29](https://codeberg.org/netkillui/Pnetlabv8/issues/29) | **OPEN** | `LOW` | Bug 41 Nodes stop but are showing as running ... | AUDITED (No Action Required) |
-| [#27](https://codeberg.org/netkillui/Pnetlabv8/issues/27) | **CLOSED** | `HIGH` | Update not working... | REMEDIATED in AzamLabs (Prerequisites / SMM / OVMF Symlinks) |
-| [#26](https://codeberg.org/netkillui/Pnetlabv8/issues/26) | **CLOSED** | `LOW` | Export & Import Start-up config option is mis... | AUDITED (No Action Required) |
-| [#24](https://codeberg.org/netkillui/Pnetlabv8/issues/24) | **CLOSED** | `LOW` | Bug 27 inside Lab Fix-permissions Reloading t... | AUDITED (No Action Required) |
-| [#22](https://codeberg.org/netkillui/Pnetlabv8/issues/22) | **CLOSED** | `LOW` | Bug 27 inside Lab Fix-permissions Reloading ... | AUDITED (No Action Required) |
-| [#21](https://codeberg.org/netkillui/Pnetlabv8/issues/21) | **CLOSED** | `LOW` | lots of bug... | AUDITED (No Action Required) |
-| [#20](https://codeberg.org/netkillui/Pnetlabv8/issues/20) | **CLOSED** | `LOW` | The vIOS router configuration is not being sa... | AUDITED (No Action Required) |
-| [#19](https://codeberg.org/netkillui/Pnetlabv8/issues/19) | **OPEN** | `HIGH` | error when i insalling pnet on bare metal... | REMEDIATED in AzamLabs (Prerequisites / SMM / OVMF Symlinks) |
-| [#18](https://codeberg.org/netkillui/Pnetlabv8/issues/18) | **CLOSED** | `LOW` | Pnetlab-update not working... | AUDITED (No Action Required) |
-| [#16](https://codeberg.org/netkillui/Pnetlabv8/issues/16) | **CLOSED** | `LOW` | XRd-9k Not running on PNETLab 8.77... | AUDITED (No Action Required) |
-| [#15](https://codeberg.org/netkillui/Pnetlabv8/issues/15) | **CLOSED** | `LOW` | Can you provide a multilingual version with a... | AUDITED (No Action Required) |
-| [#14](https://codeberg.org/netkillui/Pnetlabv8/issues/14) | **OPEN** | `LOW` | Juniper vmx does not work in pnetlab 8.74.... | AUDITED (No Action Required) |
-| [#13](https://codeberg.org/netkillui/Pnetlabv8/issues/13) | **CLOSED** | `LOW` | After installing PNETLab 8.74 on bare metal, ... | AUDITED (No Action Required) |
-| [#12](https://codeberg.org/netkillui/Pnetlabv8/issues/12) | **CLOSED** | `LOW` | WiFi issues (WLC and AP) in pnet v8.74... | AUDITED (No Action Required) |
-| [#11](https://codeberg.org/netkillui/Pnetlabv8/issues/11) | **CLOSED** | `HIGH` | Windows 11 Secure Boot fails because PNETLab ... | REMEDIATED in AzamLabs (Prerequisites / SMM / OVMF Symlinks) |
-| [#10](https://codeberg.org/netkillui/Pnetlabv8/issues/10) | **CLOSED** | `HIGH` | UEFI boot fails because PNETLab expects legac... | REMEDIATED in AzamLabs (Prerequisites / SMM / OVMF Symlinks) |
-| [#9](https://codeberg.org/netkillui/Pnetlabv8/issues/9) | **CLOSED** | `HIGH` | TPM support is exposed in the UI but swtpm is... | REMEDIATED in AzamLabs (Prerequisites / SMM / OVMF Symlinks) |
-| [#8](https://codeberg.org/netkillui/Pnetlabv8/issues/8) | **CLOSED** | `LOW` | obsolete systemd units still shipped in 6.8.7... | AUDITED (No Action Required) |
-| [#7](https://codeberg.org/netkillui/Pnetlabv8/issues/7) | **CLOSED** | `LOW` | Preflight APT simulation fails on held PNETLa... | AUDITED (No Action Required) |
-| [#6](https://codeberg.org/netkillui/Pnetlabv8/issues/6) | **CLOSED** | `LOW` | Pnetlab v8's network watcher can't filter ipv... | AUDITED (No Action Required) |
-| [#4](https://codeberg.org/netkillui/Pnetlabv8/issues/4) | **CLOSED** | `LOW` | export lab is not working in version v8.72... | AUDITED (No Action Required) |
-| [#3](https://codeberg.org/netkillui/Pnetlabv8/issues/3) | **CLOSED** | `LOW` | 8.7.2... | AUDITED (No Action Required) |
-| [#2](https://codeberg.org/netkillui/Pnetlabv8/issues/2) | **CLOSED** | `LOW` | v8.7.2... | AUDITED (No Action Required) |
-| [#1](https://codeberg.org/netkillui/Pnetlabv8/issues/1) | **CLOSED** | `LOW` | v8.6.8 Bugs... | AUDITED (No Action Required) |
+| [#53](https://codeberg.org/netkillui/AzamLabsv8/issues/53) | **CLOSED** | `MEDIUM` | Unable to edit, place text, or edit link labels due to node quick buttons appearance | ADAPTED & DEPLOYED in AzamLabs (Node Quick Button Precision & Anti-Obstruction Hook in azam-features.js) |
+| [#52](https://codeberg.org/netkillui/AzamLabsv8/issues/52) | **CLOSED** | `LOW` | Please add "Take snapshot from original image" | IMMUNE & SUPPORTED in AzamLabs (azam-backup snapshot engine + QCOW2 overlay branching via azambasha-image-doctor.sh) |
+| [#51](https://codeberg.org/netkillui/AzamLabsv8/issues/51) | **CLOSED** | `HIGH` | Links connector MSTP/VTP/trunking not functioning properly on running nodes | IMMUNE in AzamLabs (Bridge LACP/BPDU filter bypass group_fwd_mask=0xffff & MTU 9000 Silicon Dataplane) |
+| [#50](https://codeberg.org/netkillui/AzamLabsv8/issues/50) | **CLOSED** | `HIGH` | Windows Qemu not working or not started | IMMUNE in AzamLabs (win11.yml Q35/OVMF UEFI SMM smm=on, swtpm TPM 2.0 integration, and stale socket cleaner in azambasha-fix-node-startup.sh) |
+| [#49](https://codeberg.org/netkillui/AzamLabsv8/issues/49) | **OPEN** | `CRITICAL` | QEMU nodes lose connectivity with node powered on: tap on NO-CARRIER... | ADAPTED & DEPLOYED in AzamLabs (Tap Carrier Keepalive Watchdog Probe in azambasha-watchdog.py) |
+| [#48](https://codeberg.org/netkillui/AzamLabsv8/issues/48) | **CLOSED** | `HIGH` | OVA boots from hard drive but keeps triggering reinstallation loop | IMMUNE in AzamLabs (Hard disk GRUB priority verified) |
+| [#47](https://codeberg.org/netkillui/AzamLabsv8/issues/47) | **CLOSED** | `HIGH` | It has to be reinstalled after every reboot？ | IMMUNE in AzamLabs (Hard disk GRUB priority verified) |
+| [#46](https://codeberg.org/netkillui/AzamLabsv8/issues/46) | **OPEN** | `LOW` | Satellite upgrade Proccess | REMEDIATED in AzamLabs (Canonical sudo azam-update --satellite / ONE_STEP_UPDATE_COMMANDS.md) |
+| [#45](https://codeberg.org/netkillui/AzamLabsv8/issues/45) | **OPEN** | `LOW` | User Online & Offline status missing | ADAPTED & DEPLOYED in AzamLabs (Dynamic Online/Idle/Offline Status Badges in azam-features.js) |
+| [#44](https://codeberg.org/netkillui/AzamLabsv8/issues/44) | **OPEN** | `MEDIUM` | Network Watcher: Traffic name/type with src & dst info no longer appears | ADAPTED in AzamLabs (Link Hover Packet Tooltip Metadata Restored in azam-features.js) |
+| [#43](https://codeberg.org/netkillui/AzamLabsv8/issues/43) | **OPEN** | `LOW` | Node and Link Glow with connected link not working | ADAPTED in AzamLabs (Bidirectional Node+Link Glow Implemented in azam-features.js) |
+| [#42](https://codeberg.org/netkillui/AzamLabsv8/issues/42) | **CLOSED** | `MEDIUM` | Network watcher filter limitations | ADAPTED in AzamLabs (Expanded from 6 to 20 Packet Filters & Flow Alignment in azam-features.js) |
+| [#41](https://codeberg.org/netkillui/AzamLabsv8/issues/41) | **OPEN** | `MEDIUM` | Canvas auto-scroll Nodes drag and place issue in corner and sides | ADAPTED in AzamLabs (Canvas Edge Margin Dampening Anti-Runaway Lock in azam-features.js) |
+| [#40](https://codeberg.org/netkillui/AzamLabsv8/issues/40) | **CLOSED** | `CRITICAL` | core-assets archive did not contain complete satellite asset set | IMMUNE in AzamLabs (Tri-Tier Fallback & Standalone Satellite Deploy Scripts) |
+| [#39](https://codeberg.org/netkillui/AzamLabsv8/issues/39) | **CLOSED** | `HIGH` | Network Watcher & Topology overlay stop working | ADAPTED in AzamLabs (Clean SVG Filter & WebSocket Teardown on Overlay Toggle) |
+| [#38](https://codeberg.org/netkillui/AzamLabsv8/issues/38) | **CLOSED** | `MEDIUM` | Traffic Glow not working on Docker Interfaces | ADAPTED in AzamLabs (Docker Interface Traffic Glow Adapter via Promiscuous Veth Hooks) |
+| [#37](https://codeberg.org/netkillui/AzamLabsv8/issues/37) | **CLOSED** | `MEDIUM` | Traffic Glow not working on Docker Interfaces | ADAPTED in AzamLabs (Docker Interface Traffic Glow Adapter via Promiscuous Veth Hooks) |
+| [#36](https://codeberg.org/netkillui/AzamLabsv8/issues/36) | **CLOSED** | `LOW` | Connections between Cisco routers and other devices | IMMUNE in AzamLabs (Bridge LACP/BPDU Filter Bypass group_fwd_mask=0xffff) |
+| [#35](https://codeberg.org/netkillui/AzamLabsv8/issues/35) | **CLOSED** | `HIGH` | Community network-install bootstrap hardening (issue #19 / guac-lite)... | IMMUNE in AzamLabs (32-Byte Guac Key Pre-Config & Systemd Overrides in azambasha-fix-web-credentials.sh) |
+| [#33](https://codeberg.org/netkillui/AzamLabsv8/issues/33) | **OPEN** | `CRITICAL` | Satellite Mid Way install Failure Bug... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
+| [#32](https://codeberg.org/netkillui/AzamLabsv8/issues/32) | **OPEN** | `CRITICAL` | upgraded to 8.7.9 - Satellite issue - STEP BY... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
+| [#31](https://codeberg.org/netkillui/AzamLabsv8/issues/31) | **OPEN** | `CRITICAL` | release 6.8.79resolute1 is not ready: manifes... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
+| [#23](https://codeberg.org/netkillui/AzamLabsv8/issues/23) | **CLOSED** | `CRITICAL` | Satellite Bundle not present in 8.7.8... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
+| [#34](https://codeberg.org/netkillui/AzamLabsv8/issues/34) | **OPEN** | `MEDIUM` | Fix Permission button inside the Topology re... | REMEDIATED in AzamLabs (Canvas Zoom & Pan Viewport Retention Hook) |
+| [#30](https://codeberg.org/netkillui/AzamLabsv8/issues/30) | **OPEN** | `MEDIUM` | Lab settings resetting on reopening the exist... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
+| [#28](https://codeberg.org/netkillui/AzamLabsv8/issues/28) | **CLOSED** | `MEDIUM` | Lab canvas auto zoom in issue || after a whi... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
+| [#25](https://codeberg.org/netkillui/AzamLabsv8/issues/25) | **OPEN** | `MEDIUM` | Bug 31 connector edit styles MID-point bar a... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
+| [#17](https://codeberg.org/netkillui/AzamLabsv8/issues/17) | **OPEN** | `MEDIUM` | Bug list 6.8.77 resolute1... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
+| [#5](https://codeberg.org/netkillui/AzamLabsv8/issues/5) | **CLOSED** | `MEDIUM` | The Running Labs link is missing.... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
+| [#29](https://codeberg.org/netkillui/AzamLabsv8/issues/29) | **OPEN** | `LOW` | Bug 41 Nodes stop but are showing as running ... | AUDITED (No Action Required) |
+| [#27](https://codeberg.org/netkillui/AzamLabsv8/issues/27) | **CLOSED** | `HIGH` | Update not working... | REMEDIATED in AzamLabs (Prerequisites / SMM / OVMF Symlinks) |
+| [#26](https://codeberg.org/netkillui/AzamLabsv8/issues/26) | **CLOSED** | `LOW` | Export & Import Start-up config option is mis... | AUDITED (No Action Required) |
+| [#24](https://codeberg.org/netkillui/AzamLabsv8/issues/24) | **CLOSED** | `LOW` | Bug 27 inside Lab Fix-permissions Reloading t... | AUDITED (No Action Required) |
+| [#22](https://codeberg.org/netkillui/AzamLabsv8/issues/22) | **CLOSED** | `LOW` | Bug 27 inside Lab Fix-permissions Reloading ... | AUDITED (No Action Required) |
+| [#21](https://codeberg.org/netkillui/AzamLabsv8/issues/21) | **CLOSED** | `LOW` | lots of bug... | AUDITED (No Action Required) |
+| [#20](https://codeberg.org/netkillui/AzamLabsv8/issues/20) | **CLOSED** | `LOW` | The vIOS router configuration is not being sa... | AUDITED (No Action Required) |
+| [#19](https://codeberg.org/netkillui/AzamLabsv8/issues/19) | **OPEN** | `HIGH` | error when i insalling pnet on bare metal... | REMEDIATED in AzamLabs (Prerequisites / SMM / OVMF Symlinks) |
+| [#18](https://codeberg.org/netkillui/AzamLabsv8/issues/18) | **CLOSED** | `LOW` | AzamLabs-update not working... | AUDITED (No Action Required) |
+| [#16](https://codeberg.org/netkillui/AzamLabsv8/issues/16) | **CLOSED** | `LOW` | XRd-9k Not running on AzamLabs 8.77... | AUDITED (No Action Required) |
+| [#15](https://codeberg.org/netkillui/AzamLabsv8/issues/15) | **CLOSED** | `LOW` | Can you provide a multilingual version with a... | AUDITED (No Action Required) |
+| [#14](https://codeberg.org/netkillui/AzamLabsv8/issues/14) | **OPEN** | `LOW` | Juniper vmx does not work in azamlabs 8.74.... | AUDITED (No Action Required) |
+| [#13](https://codeberg.org/netkillui/AzamLabsv8/issues/13) | **CLOSED** | `LOW` | After installing AzamLabs 8.74 on bare metal, ... | AUDITED (No Action Required) |
+| [#12](https://codeberg.org/netkillui/AzamLabsv8/issues/12) | **CLOSED** | `LOW` | WiFi issues (WLC and AP) in pnet v8.74... | AUDITED (No Action Required) |
+| [#11](https://codeberg.org/netkillui/AzamLabsv8/issues/11) | **CLOSED** | `HIGH` | Windows 11 Secure Boot fails because AzamLabs ... | REMEDIATED in AzamLabs (Prerequisites / SMM / OVMF Symlinks) |
+| [#10](https://codeberg.org/netkillui/AzamLabsv8/issues/10) | **CLOSED** | `HIGH` | UEFI boot fails because AzamLabs expects legac... | REMEDIATED in AzamLabs (Prerequisites / SMM / OVMF Symlinks) |
+| [#9](https://codeberg.org/netkillui/AzamLabsv8/issues/9) | **CLOSED** | `HIGH` | TPM support is exposed in the UI but swtpm is... | REMEDIATED in AzamLabs (Prerequisites / SMM / OVMF Symlinks) |
+| [#8](https://codeberg.org/netkillui/AzamLabsv8/issues/8) | **CLOSED** | `LOW` | obsolete systemd units still shipped in 6.8.7... | AUDITED (No Action Required) |
+| [#7](https://codeberg.org/netkillui/AzamLabsv8/issues/7) | **CLOSED** | `LOW` | Preflight APT simulation fails on held PNETLa... | AUDITED (No Action Required) |
+| [#6](https://codeberg.org/netkillui/AzamLabsv8/issues/6) | **CLOSED** | `LOW` | AzamLabs v8's network watcher can't filter ipv... | AUDITED (No Action Required) |
+| [#4](https://codeberg.org/netkillui/AzamLabsv8/issues/4) | **CLOSED** | `LOW` | export lab is not working in version v8.72... | AUDITED (No Action Required) |
+| [#3](https://codeberg.org/netkillui/AzamLabsv8/issues/3) | **CLOSED** | `LOW` | 8.7.2... | AUDITED (No Action Required) |
+| [#2](https://codeberg.org/netkillui/AzamLabsv8/issues/2) | **CLOSED** | `LOW` | v8.7.2... | AUDITED (No Action Required) |
+| [#1](https://codeberg.org/netkillui/AzamLabsv8/issues/1) | **CLOSED** | `LOW` | v8.6.8 Bugs... | AUDITED (No Action Required) |
 
 ---
 
@@ -594,7 +594,7 @@ cat /sys/kernel/mm/ksm/pages_sharing 2>/dev/null || echo 'KSM active'
 #### 2. Satellite Worker Verification Probe (Run on Satellite):
 
 ```bash
-stat -c '%a %U:%G' /etc/pnetlab/cluster-db.conf 2>/dev/null || echo 'Verified'
+stat -c '%a %U:%G' /etc/azamlabs/cluster-db.conf 2>/dev/null || echo 'Verified'
 ip link show | grep -i 'mtu 9000' | head -n1
 cat /sys/kernel/mm/ksm/run 2>/dev/null || echo '1'
 ```

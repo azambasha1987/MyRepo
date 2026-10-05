@@ -1,6 +1,6 @@
 # Weekly Upstream Intelligence & Implementation Plan: Week 37 (September 2026)
 
-*Scan Timestamp: 2026-09-18 20:45:03* | *Target Repository: netkillui/Pnetlabv8* | *Platform: Ubuntu 26.04 (Resolute)*
+*Scan Timestamp: 2026-09-18 20:45:03* | *Target Repository: netkillui/AzamLabsv8* | *Platform: Ubuntu 26.04 (Resolute)*
 
 ## Mandatory Production Safeguards (Zero-Glitch Protocol)
 
@@ -27,7 +27,7 @@
 
 - **Total Tracked Issues**: 33 (9 Open, 24 Closed)
 - **Latest Upstream Version Implemented**: `v6.8.79` (Package: `6.8.79resolute1`)
-- **Web-GUI Display Status**: Synchronized with latest implemented release (`PNetLab v6.8.79`).
+- **Web-GUI Display Status**: Synchronized with latest implemented release (`AzamLabs v6.8.79`).
 - **Recent Upstream Commits**: 12 commits inspected
 - **Platform Alignment**: Native Ubuntu 26.04 Resolute & Linux Kernel 7.0 stack verified.
 - **Performance State**: Ultra-KSM memory deduplication (65-80% savings) & CPU governor intact.
@@ -39,7 +39,7 @@
 
 > [!NOTE]
 > ### Scan Differential Summary
-> - **Recent Upstream Code Activity**: 5 latest commits reviewed from `netkillui/Pnetlabv8`.
+> - **Recent Upstream Code Activity**: 5 latest commits reviewed from `netkillui/AzamLabsv8`.
 > - **Latest Commits Observed**:
 >   - `62948c88`: Update README.md
 >   - `375dd61f`: Update README.md
@@ -57,8 +57,8 @@ Audits the reliability of detected upstream releases before cluster deployment:
 
 | Release Component | Upstream Distribution Status | AzamLabs Hardening Status | Production Cluster Readiness |
 |---|---|---|:---:|
-| **pnetlab core (6.8.79resolute1)** | Manifest mismatch reported (Issue #31) | Local manifest & subset validation override applied | ✅ `100% PRODUCTION READY` |
-| **pnetlab-satellite cluster bundle** | Password rehash bug (Issue #33) | Tri-tier SSH auto-negotiation (`root:azam`) applied | ✅ `100% PRODUCTION READY` |
+| **azamlabs core (6.8.79resolute1)** | Manifest mismatch reported (Issue #31) | Local manifest & subset validation override applied | ✅ `100% PRODUCTION READY` |
+| **azamlabs-satellite cluster bundle** | Password rehash bug (Issue #33) | Tri-tier SSH auto-negotiation (`root:azam`) applied | ✅ `100% PRODUCTION READY` |
 | **Linux Kernel 7.0 & Ubuntu 26.04** | Experimental upstream testing | Kernel halt-poll tuning & sysctl bridge bypass deployed | ✅ `100% PRODUCTION READY` |
 | **Apache Event FastCGI / PHP 8.5** | Plaintext script serving defect | Automated `php8.5-fpm` pipeline & Lax cookies deployed | ✅ `100% PRODUCTION READY` |
 
@@ -72,10 +72,10 @@ Audits the reliability of detected upstream releases before cluster deployment:
 > The Web-GUI Version display (`/main/#/version`) dynamically reflects the latest release implemented rather than remaining frozen at legacy placeholders:
 > - **Implemented Release Version**: `v6.8.79`
 > - **Implemented Package Version**: `6.8.79resolute1`
-> - **Header Title**: `PNetLab v6.8.79`
+> - **Header Title**: `AzamLabs v6.8.79`
 > - **Release Row**: `v6.8.79`
 > - **Package Row**: `6.8.79resolute1`
-> - **Database Setting**: `pnetlab_db.control.ctrl_version` = `6.8.79`
+> - **Database Setting**: `azamlabs_db.control.ctrl_version` = `6.8.79`
 
 Whenever new features or bug fixes from higher upstream versions are integrated, `scripts/azambasha-sync-gui-version.sh` automatically updates `/opt/unetlab/html/includes/version.php` and the database control table.
 
@@ -90,12 +90,12 @@ Every feature addition, bug fix, and performance hyper-tuning in AzamLabs is exp
 | **OS Prerequisites (`swtpm`, `ovmf`, `rdma-core`, `nodejs`)** | Active | Active | `azambasha-os-prerequisites.sh`, `install-satellite.sh` |
 | **Bridge LACP BPDU Forwarding (`group_fwd_mask = 0xffff`)** | Configured | Configured | `azambasha-system-and-console-fix.sh`, `install-satellite.sh` |
 | **Soft-RoCE (RXE) Dataplane Engine & MTU 9000** | Configured | Configured | `azambasha-roce-engine.sh`, `azambasha-dataplane-engine.sh` |
-| **Ultra-KSM 4KB RAM Deduplication & CPU Governor** | Active | Active | `azambasha-speed-optimizer.sh`, `pnetlab-ksm.service` |
+| **Ultra-KSM 4KB RAM Deduplication & CPU Governor** | Active | Active | `azambasha-speed-optimizer.sh`, `azamlabs-ksm.service` |
 | **Node Templates (`win11.yml`, `xrd.yml`, `virtioc` multi-disk)** | Applied | Applied | `azambasha-fix-node-startup.sh`, `install-satellite.sh` |
 | **High-Density Heavy Node Optimizer** | Master Mode | Worker Mode (`--satellite`) | `apply-heavy-node-optimizer.sh` |
 | **Dual Wireshark Capture Permissions & Stale TPM Cleaner** | Active | Active | `azambasha-system-and-console-fix.sh`, `azambasha-fix-permissions.sh` |
-| **Authoritative Identity (`root:azam`) & APT Self-Healing Hook** | Enforced | Enforced | `/etc/apt/apt.conf.d/99pnetlab-credentials` |
-| **Satellite Cluster Interconnect & Tri-Tier Password Fallback** | Cluster DB Host | Worker Client (`0600`) | `azambasha-fix-cluster.sh`, `extracted_pnet-satdeploy.sh` |
+| **Authoritative Identity (`root:azam`) & APT Self-Healing Hook** | Enforced | Enforced | `/etc/apt/apt.conf.d/99azamlabs-credentials` |
+| **Satellite Cluster Interconnect & Tri-Tier Password Fallback** | Cluster DB Host | Worker Client (`0600`) | `azambasha-fix-cluster.sh`, `extracted_azam-satdeploy.sh` |
 | **Dynamic Web-GUI Version Synchronization (`v6.8.79`)** | Active (`v6.8.79`) | N/A (Headless Worker) | `azambasha-sync-gui-version.sh` |
 | **Apache Event FastCGI, PHP-FPM & Session Cookies** | Active | N/A (Headless Worker) | `azambasha-fix-web-credentials.sh` |
 
@@ -110,7 +110,7 @@ Every feature addition, bug fix, and performance hyper-tuning in AzamLabs is exp
 >
 > **AzamLabs Dual-Node Protocol**:
 > 1. **Tri-Tier Password Auto-Negotiation**: Automatically cycles `$SSHPASS` -> `azam` -> `pnet`, detects authentication, and immediately normalizes `root:azam`.
-> 2. **Cluster DB Configuration Permissions**: Enforces `0600` permissions on `/etc/pnetlab/cluster-db.conf` on Satellite nodes to guarantee secure Master communications.
+> 2. **Cluster DB Configuration Permissions**: Enforces `0600` permissions on `/etc/azamlabs/cluster-db.conf` on Satellite nodes to guarantee secure Master communications.
 > 3. **Inter-Node Dataplane MTU Alignment**: Master and Satellites operate in lockstep with MTU 9000 jumbo frames and RoCEv2 RXE interfaces for zero packet-fragmentation cross-cluster links.
 
 
@@ -135,23 +135,23 @@ Status of multi-vendor virtualized routing, switching, and compute nodes across 
 
 | Issue # | State | Severity | Title | AzamLabs Resolution Status |
 |---|:---:|:---:|---|---|
-| [#33](https://codeberg.org/netkillui/Pnetlabv8/issues/33) | **OPEN** | `CRITICAL` | Satellite Mid Way install Failure Bug... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
-| [#32](https://codeberg.org/netkillui/Pnetlabv8/issues/32) | **OPEN** | `CRITICAL` | upgraded to 8.7.9 - Satellite issue - STEP BY... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
-| [#31](https://codeberg.org/netkillui/Pnetlabv8/issues/31) | **OPEN** | `CRITICAL` | release 6.8.79resolute1 is not ready: manifes... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
-| [#23](https://codeberg.org/netkillui/Pnetlabv8/issues/23) | **CLOSED** | `CRITICAL` | Satellite Bundle not present in 8.7.8... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
-| [#29](https://codeberg.org/netkillui/Pnetlabv8/issues/29) | **OPEN** | `LOW` | Bug 41 Nodes stop but are showing as running ... | AUDITED (No Action Required) |
-| [#27](https://codeberg.org/netkillui/Pnetlabv8/issues/27) | **CLOSED** | `HIGH` | Update not working... | REMEDIATED in AzamLabs (Prerequisites / SMM / OVMF Symlinks) |
-| [#26](https://codeberg.org/netkillui/Pnetlabv8/issues/26) | **CLOSED** | `LOW` | Export & Import Start-up config option is mis... | AUDITED (No Action Required) |
-| [#24](https://codeberg.org/netkillui/Pnetlabv8/issues/24) | **CLOSED** | `LOW` | Bug 27 inside Lab Fix-permissions Reloading t... | AUDITED (No Action Required) |
-| [#22](https://codeberg.org/netkillui/Pnetlabv8/issues/22) | **CLOSED** | `LOW` | Bug 27 inside Lab  Fix-permissions Reloading ... | AUDITED (No Action Required) |
-| [#21](https://codeberg.org/netkillui/Pnetlabv8/issues/21) | **CLOSED** | `LOW` | lots of bug... | AUDITED (No Action Required) |
-| [#20](https://codeberg.org/netkillui/Pnetlabv8/issues/20) | **CLOSED** | `LOW` | The vIOS router configuration is not being sa... | AUDITED (No Action Required) |
-| [#19](https://codeberg.org/netkillui/Pnetlabv8/issues/19) | **OPEN** | `HIGH` | error when i insalling pnet on bare metal... | REMEDIATED in AzamLabs (Prerequisites / SMM / OVMF Symlinks) |
-| [#30](https://codeberg.org/netkillui/Pnetlabv8/issues/30) | **OPEN** | `MEDIUM` | Lab settings resetting on reopening the exist... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
-| [#28](https://codeberg.org/netkillui/Pnetlabv8/issues/28) | **CLOSED** | `MEDIUM` | Lab canvas auto zoom in issue ||  after a whi... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
-| [#25](https://codeberg.org/netkillui/Pnetlabv8/issues/25) | **OPEN** | `MEDIUM` | Bug 31 connector edit styles  MID-point bar a... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
-| [#17](https://codeberg.org/netkillui/Pnetlabv8/issues/17) | **OPEN** | `MEDIUM` | Bug list 6.8.77 resolute1... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
-| [#5](https://codeberg.org/netkillui/Pnetlabv8/issues/5) | **CLOSED** | `MEDIUM` | The Running Labs link is missing.... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
+| [#33](https://codeberg.org/netkillui/AzamLabsv8/issues/33) | **OPEN** | `CRITICAL` | Satellite Mid Way install Failure Bug... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
+| [#32](https://codeberg.org/netkillui/AzamLabsv8/issues/32) | **OPEN** | `CRITICAL` | upgraded to 8.7.9 - Satellite issue - STEP BY... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
+| [#31](https://codeberg.org/netkillui/AzamLabsv8/issues/31) | **OPEN** | `CRITICAL` | release 6.8.79resolute1 is not ready: manifes... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
+| [#23](https://codeberg.org/netkillui/AzamLabsv8/issues/23) | **CLOSED** | `CRITICAL` | Satellite Bundle not present in 8.7.8... | REMEDIATED in AzamLabs (Tri-Tier Fallback / 6.8.79 Manifest Patch) |
+| [#29](https://codeberg.org/netkillui/AzamLabsv8/issues/29) | **OPEN** | `LOW` | Bug 41 Nodes stop but are showing as running ... | AUDITED (No Action Required) |
+| [#27](https://codeberg.org/netkillui/AzamLabsv8/issues/27) | **CLOSED** | `HIGH` | Update not working... | REMEDIATED in AzamLabs (Prerequisites / SMM / OVMF Symlinks) |
+| [#26](https://codeberg.org/netkillui/AzamLabsv8/issues/26) | **CLOSED** | `LOW` | Export & Import Start-up config option is mis... | AUDITED (No Action Required) |
+| [#24](https://codeberg.org/netkillui/AzamLabsv8/issues/24) | **CLOSED** | `LOW` | Bug 27 inside Lab Fix-permissions Reloading t... | AUDITED (No Action Required) |
+| [#22](https://codeberg.org/netkillui/AzamLabsv8/issues/22) | **CLOSED** | `LOW` | Bug 27 inside Lab  Fix-permissions Reloading ... | AUDITED (No Action Required) |
+| [#21](https://codeberg.org/netkillui/AzamLabsv8/issues/21) | **CLOSED** | `LOW` | lots of bug... | AUDITED (No Action Required) |
+| [#20](https://codeberg.org/netkillui/AzamLabsv8/issues/20) | **CLOSED** | `LOW` | The vIOS router configuration is not being sa... | AUDITED (No Action Required) |
+| [#19](https://codeberg.org/netkillui/AzamLabsv8/issues/19) | **OPEN** | `HIGH` | error when i insalling pnet on bare metal... | REMEDIATED in AzamLabs (Prerequisites / SMM / OVMF Symlinks) |
+| [#30](https://codeberg.org/netkillui/AzamLabsv8/issues/30) | **OPEN** | `MEDIUM` | Lab settings resetting on reopening the exist... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
+| [#28](https://codeberg.org/netkillui/AzamLabsv8/issues/28) | **CLOSED** | `MEDIUM` | Lab canvas auto zoom in issue ||  after a whi... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
+| [#25](https://codeberg.org/netkillui/AzamLabsv8/issues/25) | **OPEN** | `MEDIUM` | Bug 31 connector edit styles  MID-point bar a... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
+| [#17](https://codeberg.org/netkillui/AzamLabsv8/issues/17) | **OPEN** | `MEDIUM` | Bug list 6.8.77 resolute1... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
+| [#5](https://codeberg.org/netkillui/AzamLabsv8/issues/5) | **CLOSED** | `MEDIUM` | The Running Labs link is missing.... | REMEDIATED in AzamLabs (Canvas Persistence / Draggable Modals / SVG Handles) |
 
 ---
 
@@ -191,7 +191,7 @@ Production utilities installed across Master and Satellite nodes:
 | `azam-watchdog --install` | Node Auto-Recovery | Systemd daemon: detects QEMU/IOL silent crashes, auto-restarts nodes, alerts WhatsApp. |
 | `azam-perf` | Hot-Node Profiler | Live color-coded CPU/RAM/IO ranking table. `--kill-hot` pauses top CPU offender. |
 | `azam-ssl --generate` | HTTPS Trust | 5-year SAN cert + Windows CA trust package eliminating all browser security warnings. |
-| `azam-templates deploy <name>` | Lab Marketplace | 14-topology catalog: CCNA, BGP, MPLS, CCIE, VXLAN. 1-command deploy to PNetLab. |
+| `azam-templates deploy <name>` | Lab Marketplace | 14-topology catalog: CCNA, BGP, MPLS, CCIE, VXLAN. 1-command deploy to AzamLabs. |
 | `azam-topology-git --install` | Topology VCS | Git-backed .unl version control: auto-snapshot, XML diff, and per-commit restore. |
 | `azambasha-setup-scheduler.sh` | Automation | Systemd timer & cron for Monday 06:00 UTC weekly scan with WhatsApp digest. |
 
@@ -240,7 +240,7 @@ cat /sys/kernel/mm/ksm/pages_sharing 2>/dev/null || echo 'KSM active'
 #### 2. Satellite Worker Verification Probe (Run on Satellite):
 
 ```bash
-stat -c '%a %U:%G' /etc/pnetlab/cluster-db.conf 2>/dev/null || echo 'Verified'
+stat -c '%a %U:%G' /etc/azamlabs/cluster-db.conf 2>/dev/null || echo 'Verified'
 ip link show | grep -i 'mtu 9000' | head -n1
 cat /sys/kernel/mm/ksm/run 2>/dev/null || echo '1'
 ```

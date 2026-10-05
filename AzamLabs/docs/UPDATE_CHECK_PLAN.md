@@ -100,7 +100,7 @@ graph TD
     I --> J["Step 3: Pre-Change Research Briefing"]
     J --> K["Compile & Present Research Digest for Approval"]
     K --> L["Step 4: Await Explicit Human Confirmation"]
-    L --> M{"Approved by azambasha1987@gmail.com?"}
+    L --> M{"Confirmed via Chat Prompt?"}
     M -->|Pending / Revision Requested| L
     M -->|Confirmed & Pushed to GitHub| N["Step 5: One-Step Turnkey Update Command: sudo azam-update (Auto-Downloads from GitHub & Installs)"]
     N --> O["Master Node: sudo azam-update --master"]
@@ -189,6 +189,7 @@ Systematically audit the latest version of AzamLabs for **all newly introduced f
 
 ### Step 4: Human-in-the-Loop Confirmation Gate
 - **Enforced Execution Pause**: The assistant or automated audit engine must **NEVER** apply changes autonomously. Execution halts until **explicit written confirmation and approval** is received via interactive chat prompt.
+- **24-Hour Confirmation TTL**: Approval is valid for a maximum of **24 hours**. If more than 24h elapse between Step 4 approval and Step 5 deployment, a fresh live upstream drift check (Step 0) must be re-executed to confirm zero new upstream commits before proceeding.
 - **Post-Confirmation Transition**: Once approved, changes are committed and pushed to GitHub (`git push origin main`). Proceed directly to **Step 5** on the target node. `sudo azam-update` automatically downloads all updated files from GitHub and executes the installation in a single step.
 
 ### Step 5: One-Step Turnkey Update Command Execution (Master & Satellite)
@@ -262,7 +263,6 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 - **Web-GUI Display Status**: Synchronized with latest implemented release (`AzamLabs v6.8.85`).
 - **Recent Upstream Commits**: 20 commits inspected (including commit `af324237` OpenBMP qcow2 addition and `8ba4ed43` v6.8.85 release announcement).
 - **Audit Cadence**: Quarterly (Every 3 Months) locked to Indian Standard Time (IST - UTC+5:30).
-
 - **Platform Alignment**: Native Ubuntu 26.04 Resolute & Linux Kernel 7.0 stack verified.
 - **Docker Subsystem State**: Docker CE, `azamlabs-docker`, and `azam-capture-web:1.0` audited with IP forwarding & bridge policies.
 - **Verification Suite Integrity**: 10/10 Dry-Run Probes (`scripts/azambasha-dry-test.py`) and 17/17 Automated Unit Tests (`tests/test_*.py`) passing with 100% pass rate.
@@ -389,10 +389,10 @@ Prioritized tasks for continuous improvement and upstream immunity:
 - **AzamLabs Remediation**: Build an automated vendor fallback alias table in `azambasha-eve-lab-importer.py` (`iosv` -> installed IOL/QEMU, `veos` -> installed Arista, `vsrx` -> installed Juniper) so pulled community labs boot with zero manual tweaking. [Status: ✅ `COMPLETED & VERIFIED`]
 
 ### Workstream 3: Fleet Health & Real-time Satellite Interconnect Dashboard
-- **Goal**: Embed live worker telemetry (CPU, RAM, Ultra-KSM savings, MTU 9000 ping latency, and RoCE packet health) directly into the AzamLabs Operations Center GUI.
+- **Goal**: Embed live worker telemetry (CPU, RAM, Ultra-KSM savings, MTU 9000 ping latency, and RoCE packet health) directly into the AzamLabs Operations Center GUI. [Status: ⏳ `PLANNED — Cycle 1 (19 Dec 2026)`]
 
 ### Workstream 4: Air-Gapped Offline Lab Bundle Packaging
-- **Goal**: Provide a 1-command bundler (`azam-lab-pack`) packaging top community labs directly into `/opt/azambasha/templates/` for instant air-gapped lab provisioning.
+- **Goal**: Provide a 1-command bundler (`azam-lab-pack`) packaging top community labs directly into `/opt/azambasha/templates/` for instant air-gapped lab provisioning. [Status: ⏳ `PLANNED — Cycle 1 (19 Dec 2026)`]
 
 ### Workstream 5: Automated QEMU Appliance & Template Discovery (New First-Class Feature)
 - **Core Principle**: In network virtualization, new vendor appliance support is a critical upgrade feature. Because node templates (`*.yml`) are self-contained, importing newly published QEMU appliance definitions is **completely additive and carries zero risk** to existing labs.
@@ -402,8 +402,7 @@ Prioritized tasks for continuous improvement and upstream immunity:
   3. The audit report details device metadata, required QCOW2 directory names (e.g. `c8000v-17.12.01/`, `fortinet-7.4/`), and suggested RAM/vCPU allocations.
   4. Dispatches the newly available appliance list in the quarterly audit report.
 
-
-### Workstream 7: Docker Appliance & Container Subsystem Audit (New First-Class Pillar)
+### Workstream 6: Docker Appliance & Container Subsystem Audit (New First-Class Pillar)
 - **Core Principle**: Docker nodes and microservices provide high-density routing (`azamlabs/frr`), network testing (`azamlabs/network-multitool`), and in-browser HTML5 packet capture (`azam-capture-web:1.0`). Docker containers and daemons must be actively audited and cataloged alongside QEMU appliances every 3 months.
 - **Audit Process**:
   1. **Daemon & Engine Health**: Probe `docker.service` status, Docker socket responsiveness, and runtime candidate version.
@@ -412,7 +411,7 @@ Prioritized tasks for continuous improvement and upstream immunity:
   4. **Kernel Forwarding & Bridge Security**: Probe `net.ipv4.ip_forward = 1`, `net.ipv6.conf.all.forwarding = 1`, and `iptables -P FORWARD ACCEPT` via `azambasha-upload-and-docker-fix.sh` to prevent packet drops between containers and virtual routers.
   5. **Interface Traffic Glow (Issues #37 & #38)**: Verify traffic animation and packet glow operate seamlessly across `veth*` Docker bridge interfaces without dropped frames.
 
-### Workstream 8: Interactive Canvas Tools & Diagnostic Suite Audit (Network Watcher, Painter & Analyzer)
+### Workstream 7: Interactive Canvas Tools & Diagnostic Suite Audit (Network Watcher, Painter & Analyzer)
 - **Core Principle**: The interactive canvas tools—**Network Watcher** (live traffic sniffing & filters), **Network Painter** (topology drawing & styling), and **Network Analyzer** (flow inspection & in-browser Wireshark capture)—are the primary day-to-day UI surfaces for network labbing. Any upstream enhancements, bug fixes, or performance updates to these tools must be audited every 3 months and adapted cleanly into AzamLabs.
 - **Audit & Enhancement Scope**:
   1. **Network Watcher**:
@@ -429,7 +428,7 @@ Prioritized tasks for continuous improvement and upstream immunity:
      - Ensure latency, packet loss, and jitter probes accurately measure inter-node link metrics.
      - Apply upstream enhancements to packet payload dissection and `.pcapng` stream exports without client-side dependencies.
 
-### Workstream 9: Satellite Node Code Ingestion, Hardening & Issue #40 Immunity
+### Workstream 8: Satellite Node Code Ingestion, Hardening & Issue #40 Immunity
 - **Core Principle**: Satellite worker nodes must run the latest cluster protocol verbs (`node_validate`, Soft-RoCE `rxe-broker/v1`, Traffic Control `TC_LOCK`, structured packet decode `describe_packet`) while remaining 100% immune to upstream regressions (Issue #40 wrapper stripping, Issue #33 SSH jailing, and `dpkg-query` version desynchronization).
 - **Audit & Hardening Implementation**:
   1. **Binary Package Registry Radar**: Audit Codeberg Gitea Package API (`/api/v1/packages/netkillui`) and Debian repo index on every quarterly cycle.
@@ -437,7 +436,7 @@ Prioritized tasks for continuous improvement and upstream immunity:
   3. **Wrapper Preservation (Issue #40 Immunity)**: Guarantee that all hypervisor wrappers (`qemu_wrapper`, `iol_wrapper`, `dynamips_wrapper`, `unl_wrapper`) and Windows SPICE drivers remain intact on all Satellite nodes.
   4. **Unjailed Cluster Interconnects (Issue #33 Immunity)**: Maintain `azambasha-satellite-join.sh` as canonical with unjailed `authorized_keys` and tri-tier password fallback (`$SSHPASS` -> `azam` -> `pnet`).
 
-### Workstream 10: Anti-Bootstorm Hypervisor Orchestration & High-Density Staggering
+### Workstream 9: Anti-Bootstorm Hypervisor Orchestration & High-Density Staggering
 - **Core Principle**: Powering on large topologies (20–50+ nodes) simultaneously can trigger massive CPU starvation, disk I/O bottlenecks, and hypervisor crashes. AzamLabs provides an intelligent 3-tier node classification engine in `scripts/azambasha-bootstorm.py` that staggers boot cycles based on hardware weight.
 - **Classification & Staggering Pipeline**:
   1. **Heavy Nodes** (C8000v, XRv9k, Cat9k, Win11, vMX, NX-OSv9k): Scheduled first in batches of 2 with a 60-second stabilization delay between batches.
@@ -445,7 +444,7 @@ Prioritized tasks for continuous improvement and upstream immunity:
   3. **Light Nodes** (IOL, VPCS, Alpine, Docker, Dynamips): Scheduled final in batches of 8 with a 5-second delay.
 - **Dynamic CFS Bursting**: Integrates with cgroups v2 dynamic CPU bandwidth controller (`cpu.cfs_quota_us`) allowing heavy routers to burst during boot before settling to idle baselines.
 
-### Workstream 11: Continuous Test Automation & Architecture Verification Gate
+### Workstream 10: Continuous Test Automation & Architecture Verification Gate
 - **Core Principle**: Prevent subtle regressions in database schema, broker IPC sockets, hypervisor flags, Ultra-KSM deduplication parameters, and branding tokens before any update is applied.
 - **Test Gate Architecture**:
   1. **Unit Test Suite** (`python -m unittest discover -s tests -p "test_*.py"`):
@@ -561,7 +560,7 @@ Instant 1-command repair and rollback actions for individual subsystems:
 | **Login Theme & Avatar** | Stale cache / missing circular avatar | `sudo bash scripts/azambasha-deploy-homelogo.sh` |
 | **Lab Topology Backup** | Lab lost / corrupted .unl file | `sudo azam-backup --backup` |
 | **HTTPS Browser Warnings** | NET::ERR_CERT_AUTHORITY_INVALID | `sudo azam-ssl --generate` |
-| **Node Silent Crash** | Node shows Running but console dead | `sudo systemctl status azam-watchdog` |
+| **Node Silent Crash** | Node shows Running but console dead | `sudo systemctl status azam-watchdog` \| `tail -f /opt/azambasha/logs/watchdog.log` |
 
 ---
 
@@ -584,7 +583,15 @@ Production utilities installed across Master and Satellite nodes:
 | `azam-ssl --generate` | HTTPS Trust | 5-year SAN cert + Windows CA trust package eliminating all browser security warnings. |
 | `azam-templates deploy <name>` | Lab Marketplace | 14-topology catalog: CCNA, BGP, MPLS, CCIE, VXLAN. 1-command deploy. |
 | `azam-topology-git --install` | Topology VCS | Git-backed .unl version control: auto-snapshot, XML diff, and per-commit restore. |
-| `azambasha-setup-scheduler.sh` | Automation | Scheduled task & daemon cleanup utility (upstream scanner retired per user directive). |
+| `azambasha-setup-scheduler.sh` | Automation | Installs global `azam-audit` & `azam-update` symlinks and decommissions legacy scanner units. |
+
+---
+
+## 🗑️ Retired Components
+
+| Component | Retirement Date | Reason | Replacement |
+|---|---|---|---|
+| `scripts/azambasha-notify.py` | 2026-10-05 | Email and WhatsApp notification channels removed per user directive. External push notifications are out of scope for an air-gapped network emulation cluster. | Recovery events logged to `/opt/azambasha/logs/watchdog.log` via `azam-watchdog`. Quarterly audit reports saved to `docs/reports/`. |
 
 ---
 

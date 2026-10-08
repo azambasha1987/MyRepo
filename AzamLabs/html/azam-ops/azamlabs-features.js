@@ -1568,24 +1568,117 @@
     isBusy: false,
     abortFlag: false,
 
-    // Natural alphanumeric collation (R1, R2, ..., R9, R10, ..., R20)
+    // Natural numeric chunk comparator (handles Server-1, Server-2, Server-10, Sever-1, Sever-2, VPC-1, VPC-10)
+    compareNatural: function(a, b) {
+      var nameA = String(a || '').trim();
+      var nameB = String(b || '').trim();
+      if (nameA === nameB) return 0;
+
+      var regex = /(\d+)/;
+      var partsA = nameA.split(regex).filter(Boolean);
+      var partsB = nameB.split(regex).filter(Boolean);
+      var len = Math.max(partsA.length, partsB.length);
+
+      for (var i = 0; i < len; i++) {
+        var pA = partsA[i];
+        var pB = partsB[i];
+        if (pA === undefined) return -1;
+        if (pB === undefined) return 1;
+
+        var isNumA = /^\d+$/.test(pA);
+        var isNumB = /^\d+$/.test(pB);
+
+        if (isNumA && isNumB) {
+          var diff = parseInt(pA, 10) - parseInt(pB, 10);
+          if (diff !== 0) return diff;
+        } else {
+          var strComp = pA.localeCompare(pB, undefined, { sensitivity: 'base' });
+          if (strComp !== 0) return strComp;
+        }
+      }
+      return 0;
+    },
+
+    // Categorize device by name and template (Routers, Switches, Servers, VPCs, Others)
+    getCategory: function(node) {
+      var name = String((node && (node.name || node.title)) || '').toUpperCase();
+      var tpl = String((node && node.template) || '').toLowerCase();
+      var ntype = String((node && node.type) || '').toLowerCase();
+
+      // VPCs / PCs
+      if (/^(VPC|VPCS|PC|CLIENT|WORKSTATION)/i.test(name) || tpl === 'vpcs' || ntype === 'vpcs') {
+        return 'vpcs';
+      }
+      // Servers (including Server-1, Sever-2 typo tolerance, SRV, SVR, Host, Linux, Windows, Docker)
+      if (/^(SERVER|SEVER|SRV|SVR|HOST|NODE|LINUX|UBUNTU|DEBIAN|CENTOS|WIN)/i.test(name) || /server|linux|windows|docker/i.test(tpl)) {
+        return 'servers';
+      }
+      // Switches
+      if (/^(SW|SWITCH|LEAF|SPINE|ACCESS|DIST|VIOS[\-_]?L2)/i.test(name) || /switch|l2/i.test(tpl)) {
+        return 'switches';
+      }
+      // Routers
+      if (/^(R|ROUTER|CORE|EDGE|AGG|GW|VIOS[\-_]?R)/i.test(name) || /router/i.test(tpl)) {
+        return 'routers';
+      }
+      return 'others';
+    },
+
+    getNodeDisplayName: function(node) {
+      if (!node) return '';
+      if (node.name && String(node.name).trim()) return String(node.name).trim();
+      var domEl = document.getElementById('node' + node.id) || 
+                  document.querySelector('.node_frame[data-path="' + node.id + '"]');
+      if (domEl) {
+        var label = domEl.querySelector('.node_name, .node-name, .node_title, label, span');
+        if (label && label.textContent && label.textContent.trim()) {
+          return label.textContent.trim();
+        }
+      }
+      if (node.title && String(node.title).trim()) return String(node.title).trim();
+      return 'Node_' + (node.id || '0');
+    },
+
+    // Natural alphanumeric collation supporting logical categories
     naturalSort: function(nodes, mode) {
+      var self = this;
       var list = nodes.slice().sort(function(a, b) {
-        var nameA = String((a && a.name) || ('Node ' + (a && a.id)));
-        var nameB = String((b && b.name) || ('Node ' + (b && b.id)));
-        return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+        var nameA = self.getNodeDisplayName(a);
+        var nameB = self.getNodeDisplayName(b);
+        return self.compareNatural(nameA, nameB);
       });
-      if (mode === 'routers-first') {
-        var r = list.filter(function(n) { return /^r/i.test((n && n.name) || ''); });
-        var o = list.filter(function(n) { return !/^r/i.test((n && n.name) || ''); });
-        return r.concat(o);
+
+      if (mode === 'pure' || mode === 'name') {
+        return list;
+      }
+
+      // Group by category
+      var groups = { routers: [], switches: [], servers: [], vpcs: [], others: [] };
+      list.forEach(function(n) {
+        var cat = self.getCategory(n);
+        groups[cat].push(n);
+      });
+
+      if (mode === 'vpcs-first' || mode === 'vpcs') {
+        return groups.vpcs.concat(groups.servers, groups.routers, groups.switches, groups.others);
+      }
+      if (mode === 'vpcs-only') {
+        return groups.vpcs;
+      }
+      if (mode === 'servers-first' || mode === 'servers') {
+        return groups.servers.concat(groups.vpcs, groups.routers, groups.switches, groups.others);
+      }
+      if (mode === 'servers-only') {
+        return groups.servers;
       }
       if (mode === 'switches-first') {
-        var s = list.filter(function(n) { return /^sw/i.test((n && n.name) || ''); });
-        var o = list.filter(function(n) { return !/^sw/i.test((n && n.name) || ''); });
-        return s.concat(o);
+        return groups.switches.concat(groups.routers, groups.servers, groups.vpcs, groups.others);
       }
-      return list;
+      if (mode === 'routers-first') {
+        return groups.routers.concat(groups.switches, groups.servers, groups.vpcs, groups.others);
+      }
+      // Default: Logical Order (Routers -> Switches -> Servers -> VPCs -> Others)
+      return groups.routers.concat(groups.switches, groups.servers, groups.vpcs, groups.others);
     },
 
     // Discover running or selected nodes
@@ -1605,15 +1698,15 @@
           });
         }
       }
-      // If not selected or empty selection, get all active nodes
+      // If not selected or empty selection, get all active nodes (status != 0 ensures VPCS/Servers are included)
       if (!rawList.length && window.nodes) {
         for (var id in window.nodes) {
           var node = window.nodes[id];
-          if (node && (node.status == 2 || node.status === '2' || node.status === 3 || node.running)) {
+          if (node && (node.status !== 0 && node.status !== '0' && node.status !== false)) {
             rawList.push(node);
           }
         }
-        // Fallback: If no running nodes found, take all nodes in topology
+        // Fallback: If none active, take all nodes in topology
         if (!rawList.length) {
           for (var id2 in window.nodes) {
             if (window.nodes[id2]) rawList.push(window.nodes[id2]);
@@ -1627,33 +1720,45 @@
     openSingle: function(node) {
       if (!node) return;
       var host = window.location.hostname || '127.0.0.1';
-      var port = node.port || (32768 + parseInt(node.id, 10));
       var proto = node.console || 'telnet';
-      var nodeName = node.name || ('Node_' + node.id);
+      var nodeName = this.getNodeDisplayName(node);
 
-      var url = node.url;
+      // 1. Authoritative DOM Link on canvas (guarantees correct dynamic VPCS / Server port)
+      var domNode = document.getElementById('node' + node.id) || 
+                    document.querySelector('.node_frame[data-path="' + node.id + '"]');
+      var domA = domNode ? domNode.querySelector('a') : null;
+      var domHref = domA ? (domA.getAttribute('href') || domA.href) : '';
+
+      var url = '';
+      if (domHref && domHref !== '#' && domHref.indexOf('javascript:') === -1) {
+        url = domHref;
+      } else if (node.url) {
+        url = node.url;
+      } else {
+        var port = node.port || (32768 + parseInt(node.id, 10));
+        url = proto + '://' + host + ':' + port;
+      }
+
       var isHtml5 = (window.userConsolePref === 'html5') || 
                     (document.cookie && document.cookie.indexOf('console=html5') !== -1) ||
                     (url && (url.indexOf('html5') !== -1 || url.indexOf('guacamole') !== -1));
 
-      if (!url) {
-        if (isHtml5) {
-          url = '/html5/#/client/' + btoa(node.id || '1') + '?token=' + (window.sessionToken || '');
-        } else {
-          url = proto + '://' + host + ':' + port;
-        }
-      }
-
       if (isHtml5) {
         // HTML5 In-Browser Web Console
+        if (url.indexOf('http') === -1 && url.indexOf('/html5') === -1) {
+          url = '/html5/#/client/' + btoa(node.id || '1') + '?token=' + (window.sessionToken || '');
+        }
         window.open(url, '_blank');
       } else {
-        // SecureCRT / Native Client
-        // Format with #NodeName for SecureCRT session title parsing
+        // Native Client (SecureCRT / PuTTY / Windows Terminal)
         var nativeUrl = url;
-        if (nativeUrl.indexOf('telnet://') === 0 && nativeUrl.indexOf('#') === -1) {
+        var passTabNames = localStorage.getItem('pnq_seq_tab_names') === 'true';
+        if (passTabNames && nativeUrl.indexOf('telnet://') === 0 && nativeUrl.indexOf('#') === -1) {
           nativeUrl += '#' + encodeURIComponent(nodeName);
+        } else if (!passTabNames && nativeUrl.indexOf('#') !== -1) {
+          nativeUrl = nativeUrl.split('#')[0];
         }
+
         var a = document.createElement('a');
         a.href = nativeUrl;
         a.target = '_blank';
@@ -1760,7 +1865,7 @@
         }
 
         var node = nodes[idx];
-        var nodeName = (node && node.name) || ('Node ' + (node && node.id));
+        var nodeName = self.getNodeDisplayName(node);
         self.updateHud(idx + 1, nodes.length, nodeName, engineName);
 
         try {
@@ -1805,7 +1910,7 @@
     });
 
     // Intercept default Console All clicks from sidebar and context menus
-    $(document).on('click', '.action-nodesconsole, [data-action="nodesconsole"], [data-path="nodes/console"], .action-nodesopen', function(e) {
+    $(document).on('click', '.action-nodesconsole, [data-action="nodesconsole"], [data-path="nodes/console"], .action-nodesopen, a[href*="nodes/console"]', function(e) {
       if (window.azamSequencedConsole && !window.azamSequencedConsole.isBusy) {
         e.preventDefault();
         e.stopImmediatePropagation();
@@ -1868,17 +1973,20 @@
     seqConsoleWrap.id = 'pnq-btn-seq-console-wrap';
     seqConsoleWrap.style.cssText = 'display:inline-flex;align-items:center;margin-left:6px;position:relative;vertical-align:middle;';
     seqConsoleWrap.innerHTML = 
-      '<button id="pnq-btn-seq-console" type="button" class="btn btn-sm" style="background:linear-gradient(135deg,#0284c7,#2563eb);border:none;color:#fff;font-weight:700;padding:4px 10px;border-top-left-radius:6px;border-bottom-left-radius:6px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(37,99,235,0.3);cursor:pointer;" title="Sequentially open consoles (1→N, R1→R20) in SecureCRT / HTML5 without scrambling tabs">' +
+      '<button id="pnq-btn-seq-console" type="button" class="btn btn-sm" style="background:linear-gradient(135deg,#0284c7,#2563eb);border:none;color:#fff;font-weight:700;padding:4px 10px;border-top-left-radius:6px;border-bottom-left-radius:6px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(37,99,235,0.3);cursor:pointer;" title="Sequentially open consoles (Routers → Switches → Servers → VPCs) in SecureCRT / HTML5">' +
         '<i class="fa fa-terminal"></i> <span>Sequenced Console</span>' +
       '</button>' +
-      '<button id="pnq-btn-seq-console-menu" type="button" class="btn btn-sm" style="background:linear-gradient(135deg,#0284c7,#1d4ed8);border:none;border-left:1px solid rgba(255,255,255,0.25);color:#fff;padding:4px 8px;border-top-right-radius:6px;border-bottom-right-radius:6px;cursor:pointer;" title="Options & Engine Profiles">' +
+      '<button id="pnq-btn-seq-console-menu" type="button" class="btn btn-sm" style="background:linear-gradient(135deg,#0284c7,#1d4ed8);border:none;border-left:1px solid rgba(255,255,255,0.25);color:#fff;padding:4px 8px;border-top-right-radius:6px;border-bottom-right-radius:6px;cursor:pointer;" title="Options & Device Hierarchy">' +
         '<i class="fa fa-caret-down"></i>' +
       '</button>' +
-      '<div id="pnq-seq-dropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:#0f172a;border:1px solid rgba(56,189,248,0.3);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.6);min-width:240px;z-index:999999;padding:6px 0;font-size:12px;">' +
-        '<a href="#" data-seq="all" class="pnq-seq-item" style="display:flex;align-items:center;gap:8px;padding:7px 14px;color:#e2e8f0;text-decoration:none;"><i class="fa fa-list-ol" style="color:#38bdf8;width:14px;"></i> <b>Console All (1 → N)</b></a>' +
-        '<a href="#" data-seq="routers-first" class="pnq-seq-item" style="display:flex;align-items:center;gap:8px;padding:7px 14px;color:#e2e8f0;text-decoration:none;"><i class="fa fa-random" style="color:#10b981;width:14px;"></i> Routers First (R1..Rn → SW..)</a>' +
+      '<div id="pnq-seq-dropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:#0f172a;border:1px solid rgba(56,189,248,0.3);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.6);min-width:270px;z-index:999999;padding:6px 0;font-size:12px;">' +
+        '<a href="#" data-seq="all" class="pnq-seq-item" style="display:flex;align-items:center;gap:8px;padding:7px 14px;color:#e2e8f0;text-decoration:none;"><i class="fa fa-list-ol" style="color:#38bdf8;width:14px;"></i> <b>Console All (R → SW → SVR → VPC)</b></a>' +
+        '<a href="#" data-seq="vpcs-first" class="pnq-seq-item" style="display:flex;align-items:center;gap:8px;padding:7px 14px;color:#e2e8f0;text-decoration:none;"><i class="fa fa-laptop" style="color:#10b981;width:14px;"></i> <b>VPCs & PCs First (VPC-1..n → R..)</b></a>' +
+        '<a href="#" data-seq="servers-first" class="pnq-seq-item" style="display:flex;align-items:center;gap:8px;padding:7px 14px;color:#e2e8f0;text-decoration:none;"><i class="fa fa-server" style="color:#f59e0b;width:14px;"></i> <b>Servers First (Server-1..n → VPC..)</b></a>' +
+        '<a href="#" data-seq="routers-first" class="pnq-seq-item" style="display:flex;align-items:center;gap:8px;padding:7px 14px;color:#e2e8f0;text-decoration:none;"><i class="fa fa-random" style="color:#38bdf8;width:14px;"></i> Routers First (R1..Rn → SW..)</a>' +
         '<a href="#" data-seq="switches-first" class="pnq-seq-item" style="display:flex;align-items:center;gap:8px;padding:7px 14px;color:#e2e8f0;text-decoration:none;"><i class="fa fa-random" style="color:#a855f7;width:14px;"></i> Switches First (SW.. → R..)</a>' +
-        '<a href="#" data-seq="selected" class="pnq-seq-item" style="display:flex;align-items:center;gap:8px;padding:7px 14px;color:#e2e8f0;text-decoration:none;"><i class="fa fa-check-square-o" style="color:#f59e0b;width:14px;"></i> Selected Nodes Only</a>' +
+        '<a href="#" data-seq="pure" class="pnq-seq-item" style="display:flex;align-items:center;gap:8px;padding:7px 14px;color:#e2e8f0;text-decoration:none;"><i class="fa fa-sort-alpha-asc" style="color:#ec4899;width:14px;"></i> Pure Natural Name (A → Z)</a>' +
+        '<a href="#" data-seq="selected" class="pnq-seq-item" style="display:flex;align-items:center;gap:8px;padding:7px 14px;color:#e2e8f0;text-decoration:none;"><i class="fa fa-check-square-o" style="color:#06b6d4;width:14px;"></i> Selected Nodes Only</a>' +
         '<div style="height:1px;background:rgba(255,255,255,0.1);margin:5px 0;"></div>' +
         '<div style="padding:4px 14px 2px;font-size:10px;color:#64748b;font-weight:700;letter-spacing:0.5px;">TIMING & ENGINE PROFILE</div>' +
         '<a href="#" data-delay="250" class="pnq-seq-item" style="display:flex;align-items:center;gap:8px;padding:6px 14px;color:#94a3b8;text-decoration:none;"><i class="fa fa-desktop" style="color:#38bdf8;width:14px;"></i> SecureCRT (250ms)</a>' +

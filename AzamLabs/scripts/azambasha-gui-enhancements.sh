@@ -326,10 +326,24 @@ cat << 'JSEOF' > "${THEMES_JS}/azamlabs-spotlight.js"
         });
         items.push({
             type: 'cmd',
-            title: '⚡ Sequenced Console All (1 → N)',
+            title: '⚡ Sequenced Console All (R → SW → SVR → VPC)',
             subtitle: 'Opens all device consoles strictly ordered in SecureCRT / HTML5',
             icon: 'fa-terminal',
             action: function() { if (window.azamSequencedConsole) window.azamSequencedConsole.launch({ mode: 'all' }); }
+        });
+        items.push({
+            type: 'cmd',
+            title: '⚡ Sequenced Console (VPCs & PCs First)',
+            subtitle: 'Opens VPC and PC consoles (VPC-1..VPC-n) first in order',
+            icon: 'fa-laptop',
+            action: function() { if (window.azamSequencedConsole) window.azamSequencedConsole.launch({ mode: 'vpcs-first' }); }
+        });
+        items.push({
+            type: 'cmd',
+            title: '⚡ Sequenced Console (Servers First)',
+            subtitle: 'Opens server consoles (Server-1..Server-n) first in order',
+            icon: 'fa-server',
+            action: function() { if (window.azamSequencedConsole) window.azamSequencedConsole.launch({ mode: 'servers-first' }); }
         });
         items.push({
             type: 'cmd',

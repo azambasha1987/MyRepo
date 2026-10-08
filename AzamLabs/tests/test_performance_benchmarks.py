@@ -198,9 +198,17 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         for code in (feat_code, seq_code):
             self.assertIn("window.azamSequencedConsole", code)
             self.assertIn("naturalSort", code)
+            self.assertIn("compareNatural", code)
+            self.assertIn("getCategory", code)
+            self.assertIn("getNodeDisplayName", code)
             self.assertIn("openSingle", code)
             self.assertIn("showHud", code)
             self.assertIn("pnq-seq-console-hud", code)
+            # Verify Server, Sever typo tolerance, and VPC regexes
+            self.assertIn("SERVER|SEVER", code)
+            self.assertIn("VPC|VPCS|PC", code)
+            self.assertIn("vpcs-first", code)
+            self.assertIn("servers-first", code)
             # Verify SecureCRT 250ms and HTML5 180ms timings
             self.assertIn("180 : 250", code)
             self.assertIn("SecureCRT", code)
@@ -224,7 +232,19 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         import re
 
         def natural_sort_key(s):
-            return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
+            return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s) if text]
+
+        def get_category(name):
+            name_u = name.upper()
+            if re.match(r'^(VPC|VPCS|PC|CLIENT)', name_u):
+                return 'vpcs'
+            if re.match(r'^(SERVER|SEVER|SRV|SVR|HOST|NODE|LINUX|WIN)', name_u):
+                return 'servers'
+            if re.match(r'^(SW|SWITCH|LEAF|SPINE)', name_u):
+                return 'switches'
+            if re.match(r'^(R|ROUTER|CORE|EDGE|GW)', name_u):
+                return 'routers'
+            return 'others'
 
         nodes = [
             {"id": 1, "name": "R10"},
@@ -233,24 +253,83 @@ class TestPerformanceBenchmarks(unittest.TestCase):
             {"id": 4, "name": "SW10"},
             {"id": 5, "name": "SW2"},
             {"id": 6, "name": "SW1"},
+            {"id": 7, "name": "Server-10"},
+            {"id": 8, "name": "Server-1"},
+            {"id": 9, "name": "Server-2"},
+            {"id": 10, "name": "Sever-1"},
+            {"id": 11, "name": "Sever-2"},
+            {"id": 12, "name": "VPC-10"},
+            {"id": 13, "name": "VPC-1"},
+            {"id": 14, "name": "VPC-2"},
         ]
 
-        # Natural sort
+        # Pure Natural sort
         sorted_nodes = sorted(nodes, key=lambda n: natural_sort_key(n["name"]))
         sorted_names = [n["name"] for n in sorted_nodes]
-        self.assertEqual(sorted_names, ["R1", "R2", "R10", "SW1", "SW2", "SW10"])
 
-        # Routers first
-        routers = [n for n in sorted_nodes if n["name"].upper().startswith("R")]
-        others = [n for n in sorted_nodes if not n["name"].upper().startswith("R")]
-        rf_names = [n["name"] for n in routers + others]
-        self.assertEqual(rf_names, ["R1", "R2", "R10", "SW1", "SW2", "SW10"])
+        # Verify Server-1 < Server-2 < Server-10
+        srv_idx_1 = sorted_names.index("Server-1")
+        srv_idx_2 = sorted_names.index("Server-2")
+        srv_idx_10 = sorted_names.index("Server-10")
+        self.assertTrue(srv_idx_1 < srv_idx_2 < srv_idx_10, "Server-1 must come before Server-2 and Server-10")
 
-        # Switches first
-        switches = [n for n in sorted_nodes if n["name"].upper().startswith("SW")]
-        non_sw = [n for n in sorted_nodes if not n["name"].upper().startswith("SW")]
-        sf_names = [n["name"] for n in switches + non_sw]
-        self.assertEqual(sf_names, ["SW1", "SW2", "SW10", "R1", "R2", "R10"])
+        # Verify Sever-1 < Sever-2 (typo tolerance)
+        svr_idx_1 = sorted_names.index("Sever-1")
+        svr_idx_2 = sorted_names.index("Sever-2")
+        self.assertTrue(svr_idx_1 < svr_idx_2, "Sever-1 must come before Sever-2")
+
+        # Verify VPC-1 < VPC-2 < VPC-10
+        vpc_idx_1 = sorted_names.index("VPC-1")
+        vpc_idx_2 = sorted_names.index("VPC-2")
+        vpc_idx_10 = sorted_names.index("VPC-10")
+        self.assertTrue(vpc_idx_1 < vpc_idx_2 < vpc_idx_10, "VPC-1 must come before VPC-2 and VPC-10")
+
+        # Category mapping verification
+        self.assertEqual(get_category("Server-1"), "servers")
+        self.assertEqual(get_category("Sever-2"), "servers")
+        self.assertEqual(get_category("VPC-1"), "vpcs")
+        self.assertEqual(get_category("R1"), "routers")
+        self.assertEqual(get_category("SW1"), "switches")
+
+        # Logical Hierarchy: Routers -> Switches -> Servers -> VPCs
+        by_cat = {"routers": [], "switches": [], "servers": [], "vpcs": [], "others": []}
+        for n in sorted_nodes:
+            by_cat[get_category(n["name"])].append(n["name"])
+
+        logical_order = by_cat["routers"] + by_cat["switches"] + by_cat["servers"] + by_cat["vpcs"]
+        self.assertEqual(
+            logical_order,
+            [
+                "R1", "R2", "R10",
+                "SW1", "SW2", "SW10",
+                "Server-1", "Server-2", "Server-10", "Sever-1", "Sever-2",
+                "VPC-1", "VPC-2", "VPC-10"
+            ]
+        )
+
+        # VPCs First: VPCs -> Servers -> Routers -> Switches
+        vpcs_first_order = by_cat["vpcs"] + by_cat["servers"] + by_cat["routers"] + by_cat["switches"]
+        self.assertEqual(
+            vpcs_first_order,
+            [
+                "VPC-1", "VPC-2", "VPC-10",
+                "Server-1", "Server-2", "Server-10", "Sever-1", "Sever-2",
+                "R1", "R2", "R10",
+                "SW1", "SW2", "SW10"
+            ]
+        )
+
+        # Servers First: Servers -> VPCs -> Routers -> Switches
+        servers_first_order = by_cat["servers"] + by_cat["vpcs"] + by_cat["routers"] + by_cat["switches"]
+        self.assertEqual(
+            servers_first_order,
+            [
+                "Server-1", "Server-2", "Server-10", "Sever-1", "Sever-2",
+                "VPC-1", "VPC-2", "VPC-10",
+                "R1", "R2", "R10",
+                "SW1", "SW2", "SW10"
+            ]
+        )
 
 if __name__ == "__main__":
     unittest.main()

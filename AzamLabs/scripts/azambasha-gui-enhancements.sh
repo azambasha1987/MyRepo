@@ -703,15 +703,18 @@ if [ -f "${THEMES_CSS}/azambasha-dark.css" ] && ! grep -q "radial-gradient" "${T
 CSSEOF
 fi
 
-# Copy standalone Sequenced Console module
+# Copy Sequenced Console and Canvas Feature modules
 if [ -f "${HTML_DIR}/azam-ops/azamlabs-sequenced-console.js" ]; then
-    cp "${HTML_DIR}/azam-ops/azamlabs-sequenced-console.js" "${THEMES_JS}/azamlabs-sequenced-console.js" 2>/dev/null || true
+    cp -f "${HTML_DIR}/azam-ops/azamlabs-sequenced-console.js" "${THEMES_JS}/azamlabs-sequenced-console.js" 2>/dev/null || true
+fi
+if [ -f "${HTML_DIR}/azam-ops/azamlabs-features.js" ]; then
+    cp -f "${HTML_DIR}/azam-ops/azamlabs-features.js" "${THEMES_JS}/azamlabs-features.js" 2>/dev/null || true
 fi
 
 # Inject scripts into index.html
 INDEX_HTML="${HTML_DIR}/themes/default/index.html"
 if [ -f "$INDEX_HTML" ]; then
-    for js in azamlabs-smart-align.js azamlabs-spotlight.js azamlabs-minimap.js azamlabs-sequenced-console.js; do
+    for js in azamlabs-smart-align.js azamlabs-spotlight.js azamlabs-minimap.js azamlabs-sequenced-console.js azamlabs-features.js; do
         if ! grep -q "$js" "$INDEX_HTML"; then
             sed -i "/<\/body>/i <script src=\"/themes/default/js/$js\"></script>" "$INDEX_HTML"
         fi

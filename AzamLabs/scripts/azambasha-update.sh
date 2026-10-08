@@ -195,6 +195,15 @@ sync_from_github() {
     if [ -d "${src_repo}/html/azam-ops" ]; then
         mkdir -p /opt/unetlab/html 2>/dev/null || true
         cp -rf "${src_repo}"/html/azam-ops /opt/unetlab/html/ 2>/dev/null || true
+        for tdir in /opt/unetlab/html/themes/*/js; do
+            if [ -d "$tdir" ]; then
+                cp -f "${src_repo}/html/azam-ops/azamlabs-features.js" "${tdir}/" 2>/dev/null || true
+                cp -f "${src_repo}/html/azam-ops/azamlabs-sequenced-console.js" "${tdir}/" 2>/dev/null || true
+            fi
+        done
+    fi
+    if [ -d "${src_repo}/html/main" ] && [ -d "/opt/unetlab/html/main/js" ]; then
+        cp -rf "${src_repo}"/html/main/* /opt/unetlab/html/main/ 2>/dev/null || true
     fi
 
     # Synchronize jumping avatar login interface & avatar logo

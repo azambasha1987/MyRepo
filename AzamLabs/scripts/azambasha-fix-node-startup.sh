@@ -464,8 +464,8 @@ fi
 # Deploy Windows 11 Hardware-Compliant Template (win11.yml) with Ultra-KSM & TPM 2.0
 # Deploy Cisco XRd-9k Cloud-Native Template (xrd.yml) with cgroups v2
 for tdir in /opt/unetlab/html/templates /opt/unetlab/html/templates/intel /opt/unetlab/html/templates/amd; do
-    if [ -d "$tdir" ]; then
-        cat << 'EOF_W11' > "${tdir}/win11.yml"
+    mkdir -p "$tdir" 2>/dev/null || true
+    cat << 'EOF_W11' > "${tdir}/win11.yml"
 ---
 type: qemu
 description: Windows 11 Enterprise (UEFI, Secure Boot, TPM 2.0, Ultra-KSM)
@@ -551,7 +551,14 @@ qemu_options: "-machine pc,mem-merge=on -cpu host,migratable=no,+invtsc -enable-
 icon: Switch.png
 ...
 EOF_VIOSL2
-    fi
+done
+
+# Ensure all templates are synchronized between /opt/unetlab/html/templates, intel, and amd
+for sync_dest in /opt/unetlab/html/templates/intel /opt/unetlab/html/templates/amd; do
+    mkdir -p "$sync_dest" 2>/dev/null || true
+    for tpl in /opt/unetlab/html/templates/*.yml; do
+        [ -f "$tpl" ] && cp -n "$tpl" "$sync_dest/" 2>/dev/null || true
+    done
 done
 
 # Issue #20 & #26: Cisco vIOS & IOL NVRAM / Startup-Config Auto-Preservation

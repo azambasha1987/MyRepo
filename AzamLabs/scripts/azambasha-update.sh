@@ -476,35 +476,41 @@ EOF_OVERRIDE
     # 6. Template Schema Health Probe (Prevent "Could not load template schema" upstream regressions)
     log_info "Probing template schema resolution engine..."
     local tpl_res=""
+    # Primary probe: Slim 2 requires trailing slash for collection route: /api/list/templates/
     if [ -s "$cookie_jar" ]; then
-        tpl_res=$(curl -sk -b "$cookie_jar" https://127.0.0.1/api/list/templates/vios 2>/dev/null || true)
+        tpl_res=$(curl -sk -b "$cookie_jar" https://127.0.0.1/api/list/templates/ 2>/dev/null || true)
     fi
     if [[ "$tpl_res" != *"\"status\":\"success\""* ]] && [ -n "$admin_token" ]; then
-        tpl_res=$(curl -sk -b "token=${admin_token}" https://127.0.0.1/api/list/templates/vios 2>/dev/null || true)
-    fi
-    if [[ "$tpl_res" != *"\"status\":\"success\""* ]] && [ -s "$cookie_jar" ]; then
-        # Fallback to general template collection probe
-        tpl_res=$(curl -sk -b "$cookie_jar" https://127.0.0.1/api/list/templates 2>/dev/null || true)
+        tpl_res=$(curl -sk -b "token=${admin_token}" https://127.0.0.1/api/list/templates/ 2>/dev/null || true)
     fi
 
-    if [[ "$tpl_res" == *"\"status\":\"success\""* ]]; then
+    # Also check vios single template schema resolution if available
+    local vios_res=""
+    if [ -s "$cookie_jar" ]; then
+        vios_res=$(curl -sk -b "$cookie_jar" https://127.0.0.1/api/list/templates/vios 2>/dev/null || true)
+    fi
+    if [[ "$vios_res" != *"\"status\":\"success\""* ]] && [ -n "$admin_token" ]; then
+        vios_res=$(curl -sk -b "token=${admin_token}" https://127.0.0.1/api/list/templates/vios 2>/dev/null || true)
+    fi
+
+    if [[ "$vios_res" == *"\"status\":\"success\""* ]]; then
         log_ok "Template Schema Engine: ${BOLD}VERIFIED ACTIVE (vios/QEMU schema loaded successfully)${RESET}"
+    elif [[ "$tpl_res" == *"\"status\":\"success\""* ]]; then
+        log_ok "Template Schema Engine: ${BOLD}VERIFIED ACTIVE (node templates loaded successfully)${RESET}"
     else
         log_warn "Template schema probe returned non-success; running azambasha-fix-node-startup.sh..."
         bash "${SCRIPT_DIR}/azambasha-fix-node-startup.sh" >/dev/null 2>&1 || true
         # Re-authenticate and re-probe
         curl -sk -c "$cookie_jar" -o /dev/null -X POST https://127.0.0.1/api/auth -H "Content-Type: application/json" -d '{"username":"admin","password":"azam"}' 2>/dev/null || true
+        tpl_res=""
         if [ -s "$cookie_jar" ]; then
-            tpl_res=$(curl -sk -b "$cookie_jar" https://127.0.0.1/api/list/templates/vios 2>/dev/null || true)
+            tpl_res=$(curl -sk -b "$cookie_jar" https://127.0.0.1/api/list/templates/ 2>/dev/null || true)
         fi
         if [[ "$tpl_res" != *"\"status\":\"success\""* ]]; then
             admin_token=$(grep -E '[[:space:]]token[[:space:]]' "$cookie_jar" 2>/dev/null | awk '{print $NF}' || true)
             if [ -n "$admin_token" ]; then
-                tpl_res=$(curl -sk -b "token=${admin_token}" https://127.0.0.1/api/list/templates/vios 2>/dev/null || true)
+                tpl_res=$(curl -sk -b "token=${admin_token}" https://127.0.0.1/api/list/templates/ 2>/dev/null || true)
             fi
-        fi
-        if [[ "$tpl_res" != *"\"status\":\"success\""* ]] && [ -s "$cookie_jar" ]; then
-            tpl_res=$(curl -sk -b "$cookie_jar" https://127.0.0.1/api/list/templates 2>/dev/null || true)
         fi
         if [[ "$tpl_res" == *"\"status\":\"success\""* ]]; then
             log_ok "Template Schema Engine: ${BOLD}REMEDIATED & VERIFIED ACTIVE${RESET}"

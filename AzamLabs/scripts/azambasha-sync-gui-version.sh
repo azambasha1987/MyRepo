@@ -86,7 +86,7 @@ if [ "$TARGET_INPUT" = "auto" ] || [ -z "$TARGET_INPUT" ]; then
         done
     fi
     if [ -z "$BASE_DETECT" ]; then
-        BASE_DETECT="6.8.85resolute1"
+        BASE_DETECT="6.8.86resolute1"
     fi
     TARGET_INPUT="$BASE_DETECT"
 fi

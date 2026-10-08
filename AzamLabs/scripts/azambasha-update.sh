@@ -438,39 +438,47 @@ EOF_OVERRIDE
         systemctl restart azambasha-cpu-governor.service 2>/dev/null || true
     fi
 
-    # 5. Live Verification Probe (Save session cookie jar for downstream API probes)
+    # 5. Live Verification Probe (Preserve active browser session token if present)
     local cookie_jar
     cookie_jar=$(mktemp /tmp/azam_admin_cookie.XXXXXX 2>/dev/null || echo "/tmp/azam_admin_cookie.txt")
-    local code
-    code=$(curl -sk -c "$cookie_jar" -o /dev/null -w "%{http_code}" -X POST https://127.0.0.1/api/auth -H "Content-Type: application/json" -d '{"username":"admin","password":"azam"}' 2>/dev/null || echo "000")
-    if [ "$code" = "200" ]; then
-        log_ok "Web-GUI Admin Authentication: ${BOLD}VERIFIED ACTIVE (admin / azam - HTTP 200)${RESET}"
-    else
-        log_warn "Web-GUI auth probe returned HTTP $code; triggering deep-credentials fix..."
-        bash "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" --silent 2>/dev/null || true
-        code=$(curl -sk -c "$cookie_jar" -o /dev/null -w "%{http_code}" -X POST https://127.0.0.1/api/auth -H "Content-Type: application/json" -d '{"username":"admin","password":"azam"}' 2>/dev/null || echo "000")
+    local code="000"
+    local admin_token=""
+
+    # Attempt to reuse existing active session from MySQL database first
+    for cand in \
+        "mysql --defaults-file=/etc/mysql/debian.cnf" \
+        "mysql -u root -pazam" \
+        "mysql -u root" \
+        "mysql -u azamlabs -pazam" \
+        "mysql azamlabs_db" \
+        "mariadb -u root"; do
+        admin_token=$($cand azamlabs_db -N -e "SELECT cookie FROM users WHERE username='admin' AND cookie IS NOT NULL AND LENGTH(cookie) >= 16 ORDER BY session DESC LIMIT 1;" 2>/dev/null || true)
+        [ -n "$admin_token" ] && break
+    done
+
+    if [ -n "$admin_token" ]; then
+        code=$(curl -sk -H "Cookie: token=${admin_token}" -o /dev/null -w "%{http_code}" https://127.0.0.1/api/auth 2>/dev/null || echo "000")
         if [ "$code" = "200" ]; then
-            log_ok "Web-GUI Admin Authentication: ${BOLD}REMEDIATED & VERIFIED ACTIVE (HTTP 200)${RESET}"
+            printf "127.0.0.1\tFALSE\t/\tTRUE\t2147483647\ttoken\t%s\n" "$admin_token" > "$cookie_jar"
+            log_ok "Web-GUI Admin Authentication: ${BOLD}VERIFIED ACTIVE (Active browser session preserved - HTTP 200)${RESET}"
         fi
     fi
 
-    # Extract admin token for fallback authorization if needed
-    local admin_token=""
-    if [ -f "$cookie_jar" ]; then
-        admin_token=$(grep -E '[[:space:]]token[[:space:]]' "$cookie_jar" 2>/dev/null | awk '{print $NF}' || true)
-    fi
-    if [ -z "$admin_token" ]; then
-        for cand in \
-            "mysql --defaults-file=/etc/mysql/debian.cnf" \
-            "mysql -u root" \
-            "mysql -S /var/run/mysqld/mysqld.sock -u root" \
-            "mysql -S /run/mysqld/mysqld.sock -u root" \
-            "mysql -u azamlabs -pazam" \
-            "mysql azamlabs_db" \
-            "mariadb -u root"; do
-            admin_token=$($cand azamlabs_db -N -e "SELECT cookie FROM users WHERE username='admin' LIMIT 1;" 2>/dev/null || true)
-            [ -n "$admin_token" ] && break
-        done
+    if [ "$code" != "200" ]; then
+        code=$(curl -sk -c "$cookie_jar" -o /dev/null -w "%{http_code}" -X POST https://127.0.0.1/api/auth -H "Content-Type: application/json" -d '{"username":"admin","password":"azam"}' 2>/dev/null || echo "000")
+        if [ "$code" = "200" ]; then
+            log_ok "Web-GUI Admin Authentication: ${BOLD}VERIFIED ACTIVE (admin / azam - HTTP 200)${RESET}"
+        else
+            log_warn "Web-GUI auth probe returned HTTP $code; triggering deep-credentials fix..."
+            bash "${SCRIPT_DIR}/azambasha-fix-web-credentials.sh" --silent 2>/dev/null || true
+            code=$(curl -sk -c "$cookie_jar" -o /dev/null -w "%{http_code}" -X POST https://127.0.0.1/api/auth -H "Content-Type: application/json" -d '{"username":"admin","password":"azam"}' 2>/dev/null || echo "000")
+            if [ "$code" = "200" ]; then
+                log_ok "Web-GUI Admin Authentication: ${BOLD}REMEDIATED & VERIFIED ACTIVE (HTTP 200)${RESET}"
+            fi
+        fi
+        if [ -f "$cookie_jar" ]; then
+            admin_token=$(grep -E '[[:space:]]token[[:space:]]' "$cookie_jar" 2>/dev/null | awk '{print $NF}' || true)
+        fi
     fi
 
     # 6. Template Schema Health Probe (Prevent "Could not load template schema" upstream regressions)
@@ -500,8 +508,10 @@ EOF_OVERRIDE
     else
         log_warn "Template schema probe returned non-success; running azambasha-fix-node-startup.sh..."
         bash "${SCRIPT_DIR}/azambasha-fix-node-startup.sh" >/dev/null 2>&1 || true
-        # Re-authenticate and re-probe
-        curl -sk -c "$cookie_jar" -o /dev/null -X POST https://127.0.0.1/api/auth -H "Content-Type: application/json" -d '{"username":"admin","password":"azam"}' 2>/dev/null || true
+        # Re-authenticate only if active token is missing/invalid
+        if [ -z "$admin_token" ] || ! curl -sk -H "Cookie: token=${admin_token}" -o /dev/null -w "%{http_code}" https://127.0.0.1/api/auth 2>/dev/null | grep -q "200"; then
+            curl -sk -c "$cookie_jar" -o /dev/null -X POST https://127.0.0.1/api/auth -H "Content-Type: application/json" -d '{"username":"admin","password":"azam"}' 2>/dev/null || true
+        fi
         tpl_res=""
         if [ -s "$cookie_jar" ]; then
             tpl_res=$(curl -sk -b "$cookie_jar" https://127.0.0.1/api/list/templates/ 2>/dev/null || true)

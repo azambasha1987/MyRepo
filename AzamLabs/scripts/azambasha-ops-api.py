@@ -926,6 +926,21 @@ print("[*] AzamLabs Python SDK Loaded.")
                                 if k.strip() == "token":
                                     token = v.strip()
                                     break
+                    if not token:
+                        for db_cmd in [
+                            ["mysql", "--defaults-file=/etc/mysql/debian.cnf", "azamlabs_db", "-N", "-e"],
+                            ["mysql", "-u", "root", "-pazam", "azamlabs_db", "-N", "-e"],
+                            ["mysql", "-u", "root", "azamlabs_db", "-N", "-e"],
+                            ["mysql", "-u", "azamlabs", "-pazam", "azamlabs_db", "-N", "-e"],
+                            ["mysql", "azamlabs_db", "-N", "-e"],
+                        ]:
+                            try:
+                                r = subprocess.run(db_cmd + ["SELECT cookie FROM users WHERE username='admin' AND cookie IS NOT NULL AND LENGTH(cookie) >= 16 ORDER BY session DESC LIMIT 1;"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=2)
+                                if r.returncode == 0 and r.stdout.strip():
+                                    token = r.stdout.strip()
+                                    break
+                            except Exception:
+                                pass
                     bootstorm_bin = "/usr/local/bin/azam-bootstorm"
                     if not os.path.exists(bootstorm_bin):
                         for candidate in [

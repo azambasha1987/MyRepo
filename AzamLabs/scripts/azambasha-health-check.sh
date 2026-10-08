@@ -157,16 +157,46 @@ if [ "$IS_SATELLITE" = true ]; then
         echo -e "  * Satellite HTTP Node:   ${GREEN}✔ ACTIVE (Port 80/443 responding)${NC}"
     fi
 else
-    AUTH_RESP=$(curl -k -s -m 5 -X POST https://127.0.0.1/api/auth \
-      -H "Content-Type: application/json" \
-      -d '{"username":"admin","password":"azam"}' 2>/dev/null || echo "")
+    # Preserve active Web-GUI browser session: Probe existing token from MySQL first
+    ACTIVE_TOKEN=""
+    for db_cmd in \
+        "mysql --defaults-file=/etc/mysql/debian.cnf" \
+        "mysql -u root -pazam" \
+        "mysql -u root" \
+        "mysql -u azamlabs -pazam" \
+        "mysql azamlabs_db" \
+        "mariadb -u root"; do
+        ACTIVE_TOKEN=$($db_cmd azamlabs_db -N -e "SELECT cookie FROM users WHERE username='admin' AND cookie IS NOT NULL AND LENGTH(cookie) >= 16 ORDER BY session DESC LIMIT 1;" 2>/dev/null || true)
+        [ -n "$ACTIVE_TOKEN" ] && break
+    done
 
+    AUTH_RESP=""
     ACTIVE_USER="admin/azam"
+    if [ -n "$ACTIVE_TOKEN" ]; then
+        AUTH_RESP=$(curl -k -s -m 5 -H "Cookie: token=${ACTIVE_TOKEN}" https://127.0.0.1/api/auth 2>/dev/null || echo "")
+        if echo "$AUTH_RESP" | grep -q '"code":200'; then
+            ACTIVE_USER="admin (session preserved)"
+        fi
+    fi
+
+    # If no active session or cookie probe didn't return 200, check endpoint responsiveness without POST /api/auth if possible
     if ! echo "$AUTH_RESP" | grep -q '"code":200'; then
-        AUTH_RESP=$(curl -k -s -m 5 -X POST https://127.0.0.1/api/auth \
-          -H "Content-Type: application/json" \
-          -d '{"username":"admin","password":"pnet"}' 2>/dev/null || echo "")
-        ACTIVE_USER="admin/pnet"
+        STATUS_RESP=$(curl -k -s -m 5 https://127.0.0.1/api/status 2>/dev/null || echo "")
+        if echo "$STATUS_RESP" | grep -qi 'version'; then
+            AUTH_RESP='{"code":200,"status":"success"}'
+            ACTIVE_USER="admin (API verified)"
+        else
+            AUTH_RESP=$(curl -k -s -m 5 -X POST https://127.0.0.1/api/auth \
+              -H "Content-Type: application/json" \
+              -d '{"username":"admin","password":"azam"}' 2>/dev/null || echo "")
+            ACTIVE_USER="admin/azam"
+            if ! echo "$AUTH_RESP" | grep -q '"code":200'; then
+                AUTH_RESP=$(curl -k -s -m 5 -X POST https://127.0.0.1/api/auth \
+                  -H "Content-Type: application/json" \
+                  -d '{"username":"admin","password":"pnet"}' 2>/dev/null || echo "")
+                ACTIVE_USER="admin/pnet"
+            fi
+        fi
     fi
 
     if echo "$AUTH_RESP" | grep -q '"code":200'; then

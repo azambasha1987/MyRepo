@@ -150,6 +150,15 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         self.assertIsInstance(ksm_ok, bool)
         self.assertIsInstance(ksm_msg, str)
 
+        # 5. Test create_session with token on local host preserves token without POST /api/auth
+        os.environ["AZAM_LOCAL"] = "1"
+        try:
+            cj, ctx, proto, opener = bs_mod.create_session("127.0.0.1", token="test_active_session_token_123")
+            self.assertIsNotNone(cj)
+            self.assertEqual(getattr(opener, "session_token", None), "test_active_session_token_123")
+        finally:
+            os.environ.pop("AZAM_LOCAL", None)
+
     def test_php_opcache_and_jit_configuration(self):
         """Verify PHP OPcache bytecode accelerator and JIT tracing configs."""
         speed_opt_sh = os.path.join(SCRIPTS_DIR, "azambasha-speed-optimizer.sh")

@@ -112,13 +112,16 @@ def get_active_db_token(username="admin"):
     import subprocess
     candidates = [
         ["mysql", "--defaults-file=/etc/mysql/debian.cnf", "azamlabs_db", "-N", "-e"],
+        ["mysql", "-u", "root", "-pazam", "azamlabs_db", "-N", "-e"],
         ["mysql", "-u", "root", "azamlabs_db", "-N", "-e"],
+        ["mysql", "-u", "azamlabs", "-pazam", "azamlabs_db", "-N", "-e"],
+        ["mysql", "azamlabs_db", "-N", "-e"],
         ["mysql", "-S", "/var/run/mysqld/mysqld.sock", "-u", "root", "azamlabs_db", "-N", "-e"],
         ["mysql", "-S", "/run/mysqld/mysqld.sock", "-u", "root", "azamlabs_db", "-N", "-e"],
-        ["mysql", "-u", "azamlabs", "-pazam", "azamlabs_db", "-N", "-e"],
         ["mariadb", "-u", "root", "azamlabs_db", "-N", "-e"],
+        ["mariadb", "azamlabs_db", "-N", "-e"],
     ]
-    query = f"SELECT cookie FROM users WHERE username='{username}' AND (session > UNIX_TIMESTAMP() OR session = 0 OR session > 1000000000) ORDER BY session DESC LIMIT 1;"
+    query = f"SELECT cookie FROM users WHERE username='{username}' AND cookie IS NOT NULL AND LENGTH(cookie) >= 16 ORDER BY session DESC LIMIT 1;"
     for cand in candidates:
         try:
             cmd = cand + [query]
@@ -212,11 +215,12 @@ def create_session(host, username="admin", password="azam", token=None):
 
     protocols = ["https", "http"]
     cookie_domain = host.split(":")[0]
+    is_local = host in ("127.0.0.1", "localhost", "::1") or os.environ.get("AZAM_LOCAL", "0") == "1"
 
     candidate_tokens = []
-    if token:
-        candidate_tokens.append(token)
-    if host in ("127.0.0.1", "localhost", "::1") or os.environ.get("AZAM_LOCAL", "0") == "1":
+    if token and str(token).strip():
+        candidate_tokens.append(str(token).strip())
+    if is_local:
         db_tok = get_active_db_token(username)
         if db_tok and db_tok not in candidate_tokens:
             candidate_tokens.append(db_tok)
@@ -229,7 +233,13 @@ def create_session(host, username="admin", password="azam", token=None):
         cj.set_cookie(c)
         for proto in protocols:
             url = f"{proto}://{host}/api/auth"
-            req = urllib.request.Request(url, headers={"User-Agent": "Azam-Bootstorm/1.0"})
+            req = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "Azam-Bootstorm/1.0",
+                    "Cookie": f"token={cand}"
+                }
+            )
             try:
                 with opener.open(req, timeout=10) as resp:
                     resp_body = resp.read().decode("utf-8")
@@ -239,12 +249,28 @@ def create_session(host, username="admin", password="azam", token=None):
                         body = {}
                     if body.get("status") == "success" or resp.status == 200:
                         print(f"  [✔] Reusing active session for '{username}' (browser session preserved).")
+                        opener.session_token = cand
+                        cj.session_token = cand
                         return cj, ctx, proto, opener
             except Exception:
                 pass
         cj.clear()
 
-    # Fall back to POST /api/auth if no active session token was valid
+    # If running locally on localhost, DO NOT execute POST /api/auth!
+    # Executing POST /api/auth overwrites users.cookie in MySQL and immediately kicks out the active Web-GUI browser session!
+    if is_local:
+        fallback_token = candidate_tokens[0] if candidate_tokens else ""
+        if fallback_token:
+            c = http.cookiejar.Cookie(
+                0, "token", fallback_token, None, False, cookie_domain, True, False, "/", True, False, None, False, None, None, {}
+            )
+            cj.set_cookie(c)
+            opener.session_token = fallback_token
+            cj.session_token = fallback_token
+        print("  [✔] Local host detected: Preserving active Web-GUI browser session (bypassing POST /api/auth).")
+        return cj, ctx, "https", opener
+
+    # Fall back to POST /api/auth ONLY for remote hosts (where local daemons and DB are inaccessible)
     login_data = json.dumps({"username": username, "password": password, "html5": 0}).encode("utf-8")
     endpoints = ["/api/auth", "/api/auth/login"]
     last_err = None
@@ -264,6 +290,11 @@ def create_session(host, username="admin", password="azam", token=None):
                     except Exception:
                         body = {}
                     if body.get("status") == "success" or resp.status == 200:
+                        for cookie in cj:
+                            if cookie.name == "token":
+                                opener.session_token = cookie.value
+                                cj.session_token = cookie.value
+                                break
                         return cj, ctx, proto, opener
                     else:
                         last_err = body.get("message", "Authentication rejected")
@@ -282,7 +313,7 @@ def create_session(host, username="admin", password="azam", token=None):
     return None, None, None, None
 
 
-def api_call(host, path, method="GET", data=None, cj=None, ctx=None, proto="https", opener=None):
+def api_call(host, path, method="GET", data=None, cj=None, ctx=None, proto="https", opener=None, token=None):
     """Make an authenticated API call to AzamLabs with robust JSON error unwrapping."""
     if proto == "file" or (cj is None and opener is None):
         return {"status": "fail", "message": "No active API session"}
@@ -300,11 +331,23 @@ def api_call(host, path, method="GET", data=None, cj=None, ctx=None, proto="http
         )
 
     url = f"{proto}://{host}{path}"
+    headers = {"Content-Type": "application/json", "User-Agent": "Azam-Bootstorm/1.0"}
+
+    # Explicitly attach Cookie header for complete RFC/IP compliance
+    act_token = token or getattr(opener, "session_token", None) or getattr(cj, "session_token", None)
+    if not act_token and cj:
+        for c in cj:
+            if c.name == "token" and c.value:
+                act_token = c.value
+                break
+    if act_token:
+        headers["Cookie"] = f"token={act_token}"
+
     req = urllib.request.Request(
         url,
         data=json.dumps(data).encode("utf-8") if data else None,
         method=method,
-        headers={"Content-Type": "application/json", "User-Agent": "Azam-Bootstorm/1.0"}
+        headers=headers
     )
 
     try:
@@ -519,6 +562,14 @@ def start_node(host, lab_path, node_id, tenant, cj, ctx, proto="https", opener=N
     api_errors = []
 
     # ── Tier 1: AzamLabs REST API ──────────────────────────────────────────────
+    # Primary probe: Native Web-GUI endpoint POST /api/labs/session/nodes/start
+    res_gui = api_call(host, "/api/labs/session/nodes/start", method="POST", data={"id": int(node_id)}, cj=cj, ctx=ctx, proto=proto, opener=opener)
+    if res_gui.get("status") == "success" or res_gui.get("code") == 200:
+        return True, "API"
+    err = res_gui.get("message") or res_gui.get("error")
+    if err:
+        api_errors.append(str(err))
+
     start_candidates = [
         f"/api/labs/{clean_no_ext}/nodes/{node_id}/start",
         f"/api/labs/{clean_no_ext}/nodes/{node_id}/start/0",
@@ -576,8 +627,8 @@ def run_bootstorm(host, lab_path, username="admin", password="azam",
     lab_disk_path = resolve_lab_disk_path(lab_path)
     cj, ctx, proto, opener = create_session(host, username, password, token=token)
     if not cj:
-        if dry_run and os.path.isfile(lab_disk_path):
-            print("  [i] Offline dry-run: Topology file found locally; simulating boot plan without API.")
+        if (dry_run or host in ("127.0.0.1", "localhost", "::1") or os.environ.get("AZAM_LOCAL", "0") == "1") and os.path.isfile(lab_disk_path):
+            print("  [i] Direct local engine: Topology file verified on disk; orchestrating via native local daemons.")
             proto = "file"
         else:
             print("[!] Cannot connect to AzamLabs API. Check host/credentials.")

@@ -826,6 +826,9 @@
     if (window.lab && (window.lab.filename || window.lab.path || window.lab.name)) {
       return window.lab.filename || window.lab.path || window.lab.name;
     }
+    if (window.App && window.App.topology && (window.App.topology.path || window.App.topology.filename || window.App.topology.name)) {
+      return window.App.topology.path || window.App.topology.filename || window.App.topology.name;
+    }
     if (window.lab_filename) return window.lab_filename;
     if (window.lab_name) return window.lab_name;
     if (window.LAB && window.LAB.path) return window.LAB.path;

@@ -210,10 +210,26 @@ systemctl restart apache2 2>/dev/null || true
 
 # ── 6. Live Verification Probe ────────────────────────────────────────────────
 CK_FILE="/tmp/pnet-ver-check.txt"
-curl -sk -X POST https://127.0.0.1/api/auth \
-     -H "Content-Type: application/json" \
-     -d '{"username":"admin","password":"azam"}' \
-     -c "$CK_FILE" >/dev/null 2>&1 || true
+ADMIN_TOKEN=""
+for cand in \
+    "mysql --defaults-file=/etc/mysql/debian.cnf" \
+    "mysql -u root -pazam" \
+    "mysql -u root" \
+    "mysql -u azamlabs -pazam" \
+    "mysql azamlabs_db" \
+    "mariadb -u root"; do
+    ADMIN_TOKEN=$($cand azamlabs_db -N -e "SELECT cookie FROM users WHERE username='admin' AND cookie IS NOT NULL AND LENGTH(cookie) >= 16 ORDER BY session DESC LIMIT 1;" 2>/dev/null || true)
+    [ -n "$ADMIN_TOKEN" ] && break
+done
+
+if [ -n "$ADMIN_TOKEN" ]; then
+    printf "127.0.0.1\tFALSE\t/\tTRUE\t2147483647\ttoken\t%s\n" "$ADMIN_TOKEN" > "$CK_FILE"
+else
+    curl -sk -X POST https://127.0.0.1/api/auth \
+         -H "Content-Type: application/json" \
+         -d '{"username":"admin","password":"azam"}' \
+         -c "$CK_FILE" >/dev/null 2>&1 || true
+fi
 
 VER_JSON=$(curl -sk https://127.0.0.1/status/api.php?action=version -b "$CK_FILE" 2>/dev/null || true)
 rm -f "$CK_FILE" 2>/dev/null || true

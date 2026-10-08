@@ -5,15 +5,17 @@
  *
  * Solves the unordered/scrambled terminal tabs issue:
  *  1. Discovers active nodes and applies Chunked Natural Alphanumeric Sorting
- *     (R1..R20, SW1..SW10, Server-1..Server-10, Sever-1..Sever-2, VPC-1..VPC-20).
- *  2. Groups devices hierarchically: Routers → Switches → Servers → VPCs,
+ *     (R1..R20, SW1..SW10, Server-1..Server-10, Sever-1..Sever-2, user-1..user-20, VPC-1..VPC-20).
+ *  2. Groups devices hierarchically: Routers → Switches → Servers → VPCs/Users,
  *     with quick options for VPCs-First, Servers-First, or Pure Natural Name.
  *  3. Dynamic VPCS port resolution from authoritative canvas DOM links.
  *  4. Routes dispatches through an Asynchronous FIFO Staggered Queue
- *     (250ms for SecureCRT, 180ms for HTML5) so the OS / Browser
+ *     (350ms for SecureCRT, 200ms for HTML5) so the OS / Browser
  *     window manager docks tabs in strict sequential order.
- *  5. Injects floating Cyber Progress HUD with real-time abort control.
- *  6. Transparently intercepts default sidebar & context-menu clicks.
+ *  5. Invisible iframe protocol dispatch: Eliminates blank browser tab storms
+ *     and enforces strictly serialized Windows ShellExecute delivery.
+ *  6. Injects floating Cyber Progress HUD with real-time abort control.
+ *  7. Intercepts sidebar, context-menu, and shortcut console triggers.
  * ─────────────────────────────────────────────────────────────
  */
 (function() {
@@ -25,7 +27,7 @@
     isBusy: false,
     abortFlag: false,
 
-    // Natural numeric chunk comparator (handles Server-1, Server-2, Server-10, Sever-1, Sever-2, VPC-1, VPC-10)
+    // Natural numeric chunk comparator (handles Server-1, Server-2, Server-10, Sever-1, Sever-2, user-1, user-2, VPC-1, VPC-10)
     compareNatural: function(a, b) {
       var nameA = String(a || '').trim();
       var nameB = String(b || '').trim();
@@ -49,7 +51,9 @@
           var diff = parseInt(pA, 10) - parseInt(pB, 10);
           if (diff !== 0) return diff;
         } else {
-          var strComp = pA.localeCompare(pB, undefined, { sensitivity: 'base' });
+          var normA = pA.replace(/[-_\s]+/g, ' ').toLowerCase();
+          var normB = pB.replace(/[-_\s]+/g, ' ').toLowerCase();
+          var strComp = normA.localeCompare(normB, undefined, { sensitivity: 'base' });
           if (strComp !== 0) return strComp;
         }
       }
@@ -62,20 +66,35 @@
       var tpl = String((node && node.template) || '').toLowerCase();
       var ntype = String((node && node.type) || '').toLowerCase();
 
-      // VPCs / PCs
-      if (/^(VPC|VPCS|PC|CLIENT|WORKSTATION)/i.test(name) || tpl === 'vpcs' || ntype === 'vpcs') {
-        return 'vpcs';
+      // 1. Explicit user-given name patterns take TOP priority!
+      // Routers (R1..Rn, Router-1, Core-1, Edge-1, GW-1)
+      if (/^(R|ROUTER|CORE|EDGE|AGG|GW|VIOS[\-_]?R)(\b|\d|[-_]|$)/i.test(name)) {
+        return 'routers';
       }
-      // Servers (including Server-1, Sever-2 typo tolerance, SRV, SVR, Host, Linux, Windows, Docker)
-      if (/^(SERVER|SEVER|SRV|SVR|HOST|NODE|LINUX|UBUNTU|DEBIAN|CENTOS|WIN)/i.test(name) || /server|linux|windows|docker/i.test(tpl)) {
-        return 'servers';
-      }
-      // Switches
-      if (/^(SW|SWITCH|LEAF|SPINE|ACCESS|DIST|VIOS[\-_]?L2)/i.test(name) || /switch|l2/i.test(tpl)) {
+      // Switches (SW1..SWn, Switch-1, Leaf-1, Spine-1, Access-1, Dist-1)
+      if (/^(SW|SWITCH|LEAF|SPINE|ACCESS|DIST|VIOS[\-_]?L2)(\b|\d|[-_]|$)/i.test(name)) {
         return 'switches';
       }
-      // Routers
-      if (/^(R|ROUTER|CORE|EDGE|AGG|GW|VIOS[\-_]?R)/i.test(name) || /router/i.test(tpl)) {
+      // Servers (Server-1, Server-2, Sever-1, Sever-2 typo tolerance, SRV-1, SVR-1, Host-1, Linux-1, Win-1, Docker-1)
+      if (/^(SERVER|SEVER|SRV|SVR|HOST|NODE|LINUX|UBUNTU|DEBIAN|CENTOS|WIN|DOCKER)(\b|\d|[-_]|$)/i.test(name)) {
+        return 'servers';
+      }
+      // VPCs / Users / Clients (user-1, user-2, VPC-1, PC-1, Client-1, Workstation-1)
+      if (/^(USER|USR|VPC|VPCS|PC|CLIENT|WORKSTATION)(\b|\d|[-_]|$)/i.test(name)) {
+        return 'vpcs';
+      }
+
+      // 2. Secondary fallback by template / virtualization type
+      if (tpl === 'vpcs' || ntype === 'vpcs') {
+        return 'vpcs';
+      }
+      if (/server|linux|windows|docker/i.test(tpl)) {
+        return 'servers';
+      }
+      if (/switch|l2/i.test(tpl)) {
+        return 'switches';
+      }
+      if (/router/i.test(tpl)) {
         return 'routers';
       }
       return 'others';
@@ -216,16 +235,15 @@
           nativeUrl = nativeUrl.split('#')[0];
         }
 
-        var a = document.createElement('a');
-        a.href = nativeUrl;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        a.style.display = 'none';
-        document.body.appendChild(a);
-        a.click();
+        // Invisible iframe dispatch prevents Chrome from spawning blank about:blank tabs
+        // and guarantees strictly serialized Windows ShellExecute delivery to SecureCRT
+        var ifr = document.createElement('iframe');
+        ifr.style.cssText = 'position:absolute;width:1px;height:1px;left:-9999px;top:-9999px;border:none;opacity:0.01;pointer-events:none;';
+        ifr.src = nativeUrl;
+        document.body.appendChild(ifr);
         setTimeout(function() {
-          if (a.parentNode) a.parentNode.removeChild(a);
-        }, 600);
+          if (ifr.parentNode) ifr.parentNode.removeChild(ifr);
+        }, 4000);
       }
     },
 
@@ -299,7 +317,7 @@
                     (document.cookie && document.cookie.indexOf('console=html5') !== -1) ||
                     (nodes[0] && nodes[0].url && (nodes[0].url.indexOf('html5') !== -1 || nodes[0].url.indexOf('guacamole') !== -1));
 
-      var defaultDelay = isHtml5 ? 180 : 250;
+      var defaultDelay = isHtml5 ? 200 : 350;
       var delayMs = options.delayMs || parseInt(localStorage.getItem('pnq_seq_delay'), 10) || defaultDelay;
       var engineName = isHtml5 ? 'HTML5 Web' : 'SecureCRT / Native';
 
@@ -347,7 +365,8 @@
   function initHooks() {
     if (typeof $ === 'undefined') return;
 
-    $(document).on('click', '.action-nodesconsole, [data-action="nodesconsole"], [data-path="nodes/console"], .action-nodesopen, a[href*="nodes/console"]', function(e) {
+    // Intercept default Console All clicks from sidebar, context menus, and modals
+    $(document).on('click', '.action-nodesconsole, [data-action="nodesconsole"], [data-path="nodes/console"], .action-nodesopen, a[href*="nodes/console"], a[href*="console/all"], [data-name="nodesconsole"]', function(e) {
       if (window.azamSequencedConsole && !window.azamSequencedConsole.isBusy) {
         e.preventDefault();
         e.stopImmediatePropagation();
@@ -356,16 +375,17 @@
       }
     });
 
-    $(document).on('click', '#contextmenu a, .context-menu a, .dropdown-menu a', function(e) {
+    // Intercept jQuery-contextMenu items and standard dropdowns
+    $(document).on('click', '.context-menu-item, .context-menu-list li, ul.context-menu-root li, #contextmenu li, #contextmenu a, .context-menu a, .dropdown-menu a, .dropdown-menu li, .context-menu-item span', function(e) {
       var txt = ($(this).text() || '').trim().toLowerCase();
-      if (txt === 'console to all nodes' || txt === 'console all' || txt === 'open all nodes console' || txt === 'open all consoles') {
+      if (txt.indexOf('console to all') !== -1 || txt.indexOf('console all') !== -1 || txt.indexOf('open all console') !== -1 || txt.indexOf('all nodes console') !== -1) {
         if (window.azamSequencedConsole && !window.azamSequencedConsole.isBusy) {
           e.preventDefault();
           e.stopImmediatePropagation();
           window.azamSequencedConsole.launch({ mode: 'all' });
           return false;
         }
-      } else if (txt === 'console to selected nodes' || txt === 'console selected') {
+      } else if (txt.indexOf('console to selected') !== -1 || txt.indexOf('console selected') !== -1 || txt.indexOf('selected nodes console') !== -1) {
         if (window.azamSequencedConsole && !window.azamSequencedConsole.isBusy) {
           e.preventDefault();
           e.stopImmediatePropagation();

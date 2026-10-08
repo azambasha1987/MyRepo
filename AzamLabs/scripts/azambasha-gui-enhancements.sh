@@ -711,12 +711,15 @@ if [ -f "${HTML_DIR}/azam-ops/azamlabs-features.js" ]; then
     cp -f "${HTML_DIR}/azam-ops/azamlabs-features.js" "${THEMES_JS}/azamlabs-features.js" 2>/dev/null || true
 fi
 
-# Inject scripts into index.html
+# Inject or update scripts into index.html with cache-busting
 INDEX_HTML="${HTML_DIR}/themes/default/index.html"
+CACHE_TS="$(date +%s)"
 if [ -f "$INDEX_HTML" ]; then
     for js in azamlabs-smart-align.js azamlabs-spotlight.js azamlabs-minimap.js azamlabs-sequenced-console.js azamlabs-features.js; do
-        if ! grep -q "$js" "$INDEX_HTML"; then
-            sed -i "/<\/body>/i <script src=\"/themes/default/js/$js\"></script>" "$INDEX_HTML"
+        if grep -q "$js" "$INDEX_HTML"; then
+            sed -i "s|/themes/default/js/${js}[^\"]*|/themes/default/js/${js}?v=${CACHE_TS}|g" "$INDEX_HTML"
+        else
+            sed -i "/<\/body>/i <script src=\"/themes/default/js/${js}?v=${CACHE_TS}\"></script>" "$INDEX_HTML"
         fi
     done
 fi

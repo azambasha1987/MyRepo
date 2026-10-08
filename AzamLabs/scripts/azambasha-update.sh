@@ -201,6 +201,19 @@ sync_from_github() {
                 cp -f "${src_repo}/html/azam-ops/azamlabs-sequenced-console.js" "${tdir}/" 2>/dev/null || true
             fi
         done
+        # Inject or refresh cache-buster in theme index.html
+        local cache_ts="$(date +%s)"
+        for th_idx in /opt/unetlab/html/themes/*/index.html; do
+            if [ -f "$th_idx" ]; then
+                for js_name in azamlabs-features.js azamlabs-sequenced-console.js; do
+                    if grep -q "$js_name" "$th_idx"; then
+                        sed -i "s|/themes/[^/]*/js/${js_name}[^\"]*|/themes/default/js/${js_name}?v=${cache_ts}|g" "$th_idx" 2>/dev/null || true
+                    else
+                        sed -i "/<\/body>/i <script src=\"/themes/default/js/${js_name}?v=${cache_ts}\"></script>" "$th_idx" 2>/dev/null || true
+                    fi
+                done
+            fi
+        done
     fi
     if [ -d "${src_repo}/html/main" ] && [ -d "/opt/unetlab/html/main/js" ]; then
         cp -rf "${src_repo}"/html/main/* /opt/unetlab/html/main/ 2>/dev/null || true

@@ -204,15 +204,16 @@ class TestPerformanceBenchmarks(unittest.TestCase):
             self.assertIn("openSingle", code)
             self.assertIn("showHud", code)
             self.assertIn("pnq-seq-console-hud", code)
-            # Verify Server, Sever typo tolerance, and VPC regexes
+            # Verify Server, Sever typo tolerance, and VPC/User regexes
             self.assertIn("SERVER|SEVER", code)
-            self.assertIn("VPC|VPCS|PC", code)
+            self.assertIn("USER|USR|VPC", code)
             self.assertIn("vpcs-first", code)
             self.assertIn("servers-first", code)
-            # Verify SecureCRT 250ms and HTML5 180ms timings
-            self.assertIn("180 : 250", code)
+            # Verify SecureCRT 350ms and HTML5 200ms timings
+            self.assertIn("200 : 350", code)
             self.assertIn("SecureCRT", code)
             self.assertIn("action-nodesconsole", code)
+            self.assertIn("iframe", code)
 
     def test_setup_windows_securecrt_powershell_script(self):
         """Verify Windows 1-Click SecureCRT Protocol Integrator & tab-naming wrapper."""
@@ -236,7 +237,7 @@ class TestPerformanceBenchmarks(unittest.TestCase):
 
         def get_category(name):
             name_u = name.upper()
-            if re.match(r'^(VPC|VPCS|PC|CLIENT)', name_u):
+            if re.match(r'^(USER|USR|VPC|VPCS|PC|CLIENT)', name_u):
                 return 'vpcs'
             if re.match(r'^(SERVER|SEVER|SRV|SVR|HOST|NODE|LINUX|WIN)', name_u):
                 return 'servers'
@@ -258,9 +259,12 @@ class TestPerformanceBenchmarks(unittest.TestCase):
             {"id": 9, "name": "Server-2"},
             {"id": 10, "name": "Sever-1"},
             {"id": 11, "name": "Sever-2"},
-            {"id": 12, "name": "VPC-10"},
-            {"id": 13, "name": "VPC-1"},
-            {"id": 14, "name": "VPC-2"},
+            {"id": 12, "name": "user-10"},
+            {"id": 13, "name": "user-1"},
+            {"id": 14, "name": "user-2"},
+            {"id": 15, "name": "VPC-10"},
+            {"id": 16, "name": "VPC-1"},
+            {"id": 17, "name": "VPC-2"},
         ]
 
         # Pure Natural sort
@@ -278,6 +282,12 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         svr_idx_2 = sorted_names.index("Sever-2")
         self.assertTrue(svr_idx_1 < svr_idx_2, "Sever-1 must come before Sever-2")
 
+        # Verify user-1 < user-2 < user-10
+        usr_idx_1 = sorted_names.index("user-1")
+        usr_idx_2 = sorted_names.index("user-2")
+        usr_idx_10 = sorted_names.index("user-10")
+        self.assertTrue(usr_idx_1 < usr_idx_2 < usr_idx_10, "user-1 must come before user-2 and user-10")
+
         # Verify VPC-1 < VPC-2 < VPC-10
         vpc_idx_1 = sorted_names.index("VPC-1")
         vpc_idx_2 = sorted_names.index("VPC-2")
@@ -287,11 +297,13 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         # Category mapping verification
         self.assertEqual(get_category("Server-1"), "servers")
         self.assertEqual(get_category("Sever-2"), "servers")
+        self.assertEqual(get_category("user-1"), "vpcs")
+        self.assertEqual(get_category("user-2"), "vpcs")
         self.assertEqual(get_category("VPC-1"), "vpcs")
         self.assertEqual(get_category("R1"), "routers")
         self.assertEqual(get_category("SW1"), "switches")
 
-        # Logical Hierarchy: Routers -> Switches -> Servers -> VPCs
+        # Logical Hierarchy: Routers -> Switches -> Servers -> VPCs/Users
         by_cat = {"routers": [], "switches": [], "servers": [], "vpcs": [], "others": []}
         for n in sorted_nodes:
             by_cat[get_category(n["name"])].append(n["name"])
@@ -303,29 +315,29 @@ class TestPerformanceBenchmarks(unittest.TestCase):
                 "R1", "R2", "R10",
                 "SW1", "SW2", "SW10",
                 "Server-1", "Server-2", "Server-10", "Sever-1", "Sever-2",
-                "VPC-1", "VPC-2", "VPC-10"
+                "user-1", "user-2", "user-10", "VPC-1", "VPC-2", "VPC-10"
             ]
         )
 
-        # VPCs First: VPCs -> Servers -> Routers -> Switches
+        # VPCs/Users First: VPCs/Users -> Servers -> Routers -> Switches
         vpcs_first_order = by_cat["vpcs"] + by_cat["servers"] + by_cat["routers"] + by_cat["switches"]
         self.assertEqual(
             vpcs_first_order,
             [
-                "VPC-1", "VPC-2", "VPC-10",
+                "user-1", "user-2", "user-10", "VPC-1", "VPC-2", "VPC-10",
                 "Server-1", "Server-2", "Server-10", "Sever-1", "Sever-2",
                 "R1", "R2", "R10",
                 "SW1", "SW2", "SW10"
             ]
         )
 
-        # Servers First: Servers -> VPCs -> Routers -> Switches
+        # Servers First: Servers -> VPCs/Users -> Routers -> Switches
         servers_first_order = by_cat["servers"] + by_cat["vpcs"] + by_cat["routers"] + by_cat["switches"]
         self.assertEqual(
             servers_first_order,
             [
                 "Server-1", "Server-2", "Server-10", "Sever-1", "Sever-2",
-                "VPC-1", "VPC-2", "VPC-10",
+                "user-1", "user-2", "user-10", "VPC-1", "VPC-2", "VPC-10",
                 "R1", "R2", "R10",
                 "SW1", "SW2", "SW10"
             ]

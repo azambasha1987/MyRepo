@@ -214,18 +214,25 @@ fi
 # ── 5. Install Lab Canvas Sidebar Script ────────────────────────────────────
 echo -e "${CYAN}[5/7]${RESET} Installing Lab Canvas sidebar integration…"
 CANVAS_SRC="${AZAM_DIR}/html/azam-ops/azamlabs-features.js"
+SEQ_SRC="${AZAM_DIR}/html/azam-ops/azamlabs-sequenced-console.js"
 if [ -f "${CANVAS_SRC}" ]; then
-    cp "${CANVAS_SRC}" "${THEME_JS}/azamlabs-features.js"
+    cp -f "${CANVAS_SRC}" "${THEME_JS}/azamlabs-features.js"
     echo -e "  ${GREEN}[✔]${RESET} Copied azamlabs-features.js → ${THEME_JS}/"
 fi
-
-if grep -q "azamlabs-features.js" "${THEME_INDEX}"; then
-    echo -e "  ${YELLOW}[!]${RESET} Lab Canvas script tag already present."
-else
-    cp "${THEME_INDEX}" "${THEME_INDEX}.bak"
-    sed -i 's|</body>|<script src="/themes/default/js/azamlabs-features.js" defer></script>\n</body>|' "${THEME_INDEX}"
-    echo -e "  ${GREEN}[✔]${RESET} Successfully injected script into Lab Canvas."
+if [ -f "${SEQ_SRC}" ]; then
+    cp -f "${SEQ_SRC}" "${THEME_JS}/azamlabs-sequenced-console.js"
+    echo -e "  ${GREEN}[✔]${RESET} Copied azamlabs-sequenced-console.js → ${THEME_JS}/"
 fi
+
+CACHE_TS="$(date +%s)"
+for js_file in azamlabs-features.js azamlabs-sequenced-console.js; do
+    if grep -q "$js_file" "${THEME_INDEX}"; then
+        sed -i "s|/themes/default/js/${js_file}[^\"]*|/themes/default/js/${js_file}?v=${CACHE_TS}|g" "${THEME_INDEX}" 2>/dev/null || true
+    else
+        sed -i "/<\/body>/i <script src=\"/themes/default/js/${js_file}?v=${CACHE_TS}\"></script>" "${THEME_INDEX}" 2>/dev/null || true
+    fi
+done
+echo -e "  ${GREEN}[✔]${RESET} Successfully injected features and sequenced console scripts into Lab Canvas."
 
 # ── 5b. Install Standalone Azam-Ops Dashboard ────────────────────────────────
 mkdir -p "${PNET_HTML}/azam-ops"

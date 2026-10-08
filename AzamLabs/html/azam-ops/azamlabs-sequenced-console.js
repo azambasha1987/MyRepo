@@ -62,7 +62,7 @@
 
     // Categorize device by name and template (Routers, Switches, Servers, VPCs, Others)
     getCategory: function(node) {
-      var name = String((node && (node.name || node.title)) || '').toUpperCase();
+      var name = String((node && (this.getNodeDisplayName(node) || node.name || node.title)) || '').toUpperCase();
       var tpl = String((node && node.template) || '').toLowerCase();
       var ntype = String((node && node.type) || '').toLowerCase();
 
@@ -106,10 +106,12 @@
       var domEl = document.getElementById('node' + node.id) || 
                   document.querySelector('.node_frame[data-path="' + node.id + '"]');
       if (domEl) {
-        var label = domEl.querySelector('.node_name, .node-name, .node_title, label, span');
+        var label = domEl.querySelector('.node_name, .node-name, .node_title, label, span, p');
         if (label && label.textContent && label.textContent.trim()) {
           return label.textContent.trim();
         }
+        var dataName = domEl.getAttribute('data-name') || domEl.getAttribute('title');
+        if (dataName && dataName.trim()) return dataName.trim();
       }
       if (node.title && String(node.title).trim()) return String(node.title).trim();
       return 'Node_' + (node.id || '0');
@@ -166,7 +168,7 @@
             return (window.nodes && window.nodes[n.path]) || n;
           });
         } else if (typeof $ !== 'undefined') {
-          $('.node_frame.ui-selected').each(function() {
+          $('.node_frame.ui-selected, .node_frame.free-selected').each(function() {
             var id = $(this).data('path') || $(this).attr('data-path') || (this.id || '').replace(/^node/, '');
             if (id && window.nodes && window.nodes[id]) {
               rawList.push(window.nodes[id]);
@@ -188,6 +190,17 @@
             if (window.nodes[id2]) rawList.push(window.nodes[id2]);
           }
         }
+      }
+      // Canvas DOM fallback: if rawList is still empty, scan canvas node frames
+      if (!rawList.length && typeof document !== 'undefined') {
+        var domFrames = document.querySelectorAll('.node_frame');
+        domFrames.forEach(function(df) {
+          var nid = df.getAttribute('data-path') || (df.id || '').replace(/^node/, '');
+          var nname = df.getAttribute('data-name') || (df.querySelector('.node_name, .node-name, label, span') ? df.querySelector('.node_name, .node-name, label, span').textContent.trim() : ('Node_' + nid));
+          var domA = df.querySelector('a');
+          var durl = domA ? (domA.getAttribute('href') || '') : '';
+          rawList.push({ id: nid, name: nname, url: durl, status: 2 });
+        });
       }
       return this.naturalSort(rawList, mode);
     },
@@ -235,15 +248,28 @@
           nativeUrl = nativeUrl.split('#')[0];
         }
 
-        // Invisible iframe dispatch prevents Chrome from spawning blank about:blank tabs
-        // and guarantees strictly serialized Windows ShellExecute delivery to SecureCRT
-        var ifr = document.createElement('iframe');
-        ifr.style.cssText = 'position:absolute;width:1px;height:1px;left:-9999px;top:-9999px;border:none;opacity:0.01;pointer-events:none;';
-        ifr.src = nativeUrl;
-        document.body.appendChild(ifr);
+        // 1. In-place top-level link trigger without target="_blank"
+        // This delivers protocol URL to Windows ShellExecute for SecureCRT without opening blank tabs
+        var link = document.createElement('a');
+        link.href = nativeUrl;
+        link.style.cssText = 'position:absolute;left:-9999px;top:-9999px;opacity:0.01;pointer-events:none;';
+        document.body.appendChild(link);
+        link.click();
         setTimeout(function() {
-          if (ifr.parentNode) ifr.parentNode.removeChild(ifr);
-        }, 4000);
+          if (link.parentNode) link.parentNode.removeChild(link);
+        }, 2500);
+
+        // 2. Sandboxed iframe protocol fallback for browsers requiring subframe hints
+        try {
+          var ifr = document.createElement('iframe');
+          ifr.style.cssText = 'position:absolute;width:1px;height:1px;left:-9999px;top:-9999px;border:none;opacity:0.01;pointer-events:none;';
+          ifr.setAttribute('sandbox', 'allow-scripts allow-top-navigation allow-top-navigation-to-custom-protocols');
+          ifr.src = nativeUrl;
+          document.body.appendChild(ifr);
+          setTimeout(function() {
+            if (ifr.parentNode) ifr.parentNode.removeChild(ifr);
+          }, 3000);
+        } catch (e) {}
       }
     },
 
@@ -363,37 +389,74 @@
 
   // Attach auto-interception when document is ready
   function initHooks() {
-    if (typeof $ === 'undefined') return;
+    function interceptConsoleClick(e) {
+      var target = e.target;
+      if (!target) return;
 
-    // Intercept default Console All clicks from sidebar, context menus, and modals
-    $(document).on('click', '.action-nodesconsole, [data-action="nodesconsole"], [data-path="nodes/console"], .action-nodesopen, a[href*="nodes/console"], a[href*="console/all"], [data-name="nodesconsole"]', function(e) {
-      if (window.azamSequencedConsole && !window.azamSequencedConsole.isBusy) {
+      var el = target.closest ? target.closest('a, button, li, .context-menu-item, [data-action], .action-nodesconsole, span, div') : target;
+      if (!el) return;
+
+      var isConsoleAll = false;
+      var isConsoleSelected = false;
+
+      // 1. Selector / action / data-path matching
+      if (el.matches && el.matches('.action-nodesconsole, [data-action="nodesconsole"], [data-path="nodes/console"], .action-nodesopen, a[href*="nodes/console"], a[href*="console/all"], [data-name="nodesconsole"], .action-nodes-console')) {
+        isConsoleAll = true;
+      }
+
+      // 2. Menu text, title, or aria-label matching
+      var txt = (el.innerText || el.textContent || el.getAttribute('title') || el.getAttribute('aria-label') || '').trim().toLowerCase();
+      var inMenu = !!(el.closest && el.closest('#context-menu, .context-menu, .context-menu-list, ul.context-menu-root, #sidebar, .sidebar, .dropdown-menu, #menu-collapse, .menu-collapse, .menu-manage'));
+
+      if (txt.indexOf('console to all') !== -1 || txt.indexOf('console all') !== -1 || txt.indexOf('open all console') !== -1 || txt.indexOf('all nodes console') !== -1) {
+        isConsoleAll = true;
+      } else if (txt.indexOf('console to selected') !== -1 || txt.indexOf('console selected') !== -1 || txt.indexOf('selected nodes console') !== -1) {
+        isConsoleSelected = true;
+      } else if (inMenu && (txt === 'console' || txt === 'open consoles' || txt === 'nodes console' || txt === 'consoles')) {
+        isConsoleAll = true;
+      }
+
+      if ((isConsoleAll || isConsoleSelected) && window.azamSequencedConsole && !window.azamSequencedConsole.isBusy) {
         e.preventDefault();
+        e.stopPropagation();
         e.stopImmediatePropagation();
-        window.azamSequencedConsole.launch({ mode: 'all' });
+        window.azamSequencedConsole.launch({ mode: isConsoleSelected ? 'selected' : 'all' });
         return false;
       }
-    });
+    }
 
-    // Intercept jQuery-contextMenu items and standard dropdowns
-    $(document).on('click', '.context-menu-item, .context-menu-list li, ul.context-menu-root li, #contextmenu li, #contextmenu a, .context-menu a, .dropdown-menu a, .dropdown-menu li, .context-menu-item span', function(e) {
-      var txt = ($(this).text() || '').trim().toLowerCase();
-      if (txt.indexOf('console to all') !== -1 || txt.indexOf('console all') !== -1 || txt.indexOf('open all console') !== -1 || txt.indexOf('all nodes console') !== -1) {
-        if (window.azamSequencedConsole && !window.azamSequencedConsole.isBusy) {
-          e.preventDefault();
-          e.stopImmediatePropagation();
-          window.azamSequencedConsole.launch({ mode: 'all' });
-          return false;
+    // 1. Capture-phase listener runs BEFORE any jQuery or native element listeners
+    window.addEventListener('click', interceptConsoleClick, true);
+
+    // 2. Wrap known global EVE-NG console functions
+    if (typeof window.openAllNodesConsole === 'function') {
+      window.openAllNodesConsole = function() { window.azamSequencedConsole.launch({ mode: 'all' }); };
+    }
+    if (typeof window.nodesConsole === 'function') {
+      window.nodesConsole = function() { window.azamSequencedConsole.launch({ mode: 'all' }); };
+    }
+
+    // 3. Fallback jQuery delegation for synthetic click triggers
+    if (typeof $ !== 'undefined') {
+      $(document).on('click', '.action-nodesconsole, [data-action="nodesconsole"], [data-path="nodes/console"], .action-nodesopen, a[href*="nodes/console"], a[href*="console/all"], [data-name="nodesconsole"], #context-menu a, #context-menu li, .context-menu a, .context-menu-item', function(e) {
+        var t = ($(this).text() || '').trim().toLowerCase();
+        if (t.indexOf('selected') !== -1) {
+          if (window.azamSequencedConsole && !window.azamSequencedConsole.isBusy) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            window.azamSequencedConsole.launch({ mode: 'selected' });
+            return false;
+          }
+        } else if (t.indexOf('console') !== -1 || $(this).is('.action-nodesconsole, [data-path="nodes/console"]')) {
+          if (window.azamSequencedConsole && !window.azamSequencedConsole.isBusy) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            window.azamSequencedConsole.launch({ mode: 'all' });
+            return false;
+          }
         }
-      } else if (txt.indexOf('console to selected') !== -1 || txt.indexOf('console selected') !== -1 || txt.indexOf('selected nodes console') !== -1) {
-        if (window.azamSequencedConsole && !window.azamSequencedConsole.isBusy) {
-          e.preventDefault();
-          e.stopImmediatePropagation();
-          window.azamSequencedConsole.launch({ mode: 'selected' });
-          return false;
-        }
-      }
-    });
+      });
+    }
   }
 
   if (document.readyState === 'loading') {

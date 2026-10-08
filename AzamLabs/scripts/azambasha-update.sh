@@ -214,6 +214,11 @@ sync_from_github() {
                 done
             fi
         done
+        # Ensure actions.js has top-level sequenced console priority hook
+        local act_js="/opt/unetlab/html/themes/default/js/actions.js"
+        if [ -f "$act_js" ] && ! grep -q "AzamLabs Sequenced Console Priority Hook" "$act_js"; then
+            sed -i '1i // === AzamLabs Sequenced Console Priority Hook ===\nif (typeof window !== "undefined") {\n  window.addEventListener("click", function(e) {\n    var t = e.target;\n    var el = t && t.closest ? t.closest(".action-nodesconsole, [data-path=\\"nodes/console\\"], #context-menu a, .context-menu-item") : null;\n    if (el && window.azamSequencedConsole && !window.azamSequencedConsole.isBusy) {\n      var txt = (el.innerText || el.textContent || "").toLowerCase();\n      if (el.classList.contains("action-nodesconsole") || el.getAttribute("data-path") === "nodes/console" || txt.indexOf("console to all") !== -1 || txt.indexOf("all nodes console") !== -1) {\n        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();\n        window.azamSequencedConsole.launch({ mode: "all" });\n        return false;\n      } else if (txt.indexOf("console to selected") !== -1 || txt.indexOf("selected nodes console") !== -1) {\n        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();\n        window.azamSequencedConsole.launch({ mode: "selected" });\n        return false;\n      }\n    }\n  }, true);\n}\n' "$act_js" 2>/dev/null || true
+        fi
     fi
     if [ -d "${src_repo}/html/main" ] && [ -d "/opt/unetlab/html/main/js" ]; then
         cp -rf "${src_repo}"/html/main/* /opt/unetlab/html/main/ 2>/dev/null || true

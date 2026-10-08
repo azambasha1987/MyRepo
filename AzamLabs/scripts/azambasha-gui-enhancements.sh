@@ -703,12 +703,69 @@ if [ -f "${THEMES_CSS}/azambasha-dark.css" ] && ! grep -q "radial-gradient" "${T
 CSSEOF
 fi
 
-# Copy Sequenced Console and Canvas Feature modules
-if [ -f "${HTML_DIR}/azam-ops/azamlabs-sequenced-console.js" ]; then
-    cp -f "${HTML_DIR}/azam-ops/azamlabs-sequenced-console.js" "${THEMES_JS}/azamlabs-sequenced-console.js" 2>/dev/null || true
-fi
-if [ -f "${HTML_DIR}/azam-ops/azamlabs-features.js" ]; then
-    cp -f "${HTML_DIR}/azam-ops/azamlabs-features.js" "${THEMES_JS}/azamlabs-features.js" 2>/dev/null || true
+# Copy Sequenced Console and Canvas Feature modules from repository or existing directories
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+REPO_DIR="$(cd "${SCRIPT_DIR}/.." 2>/dev/null && pwd)"
+
+mkdir -p "${HTML_DIR}/azam-ops" "${THEMES_JS}"
+
+for src_dir in "${REPO_DIR}/html/azam-ops" "/opt/azambasha/html/azam-ops" "${HTML_DIR}/azam-ops"; do
+    if [ -f "${src_dir}/azamlabs-sequenced-console.js" ]; then
+        cp -f "${src_dir}/azamlabs-sequenced-console.js" "${HTML_DIR}/azam-ops/" 2>/dev/null || true
+        cp -f "${src_dir}/azamlabs-sequenced-console.js" "${THEMES_JS}/" 2>/dev/null || true
+        for tdir in ${HTML_DIR}/themes/*/js; do
+            [ -d "$tdir" ] && cp -f "${src_dir}/azamlabs-sequenced-console.js" "${tdir}/" 2>/dev/null || true
+        done
+        break
+    fi
+done
+
+for src_dir in "${REPO_DIR}/html/azam-ops" "/opt/azambasha/html/azam-ops" "${HTML_DIR}/azam-ops"; do
+    if [ -f "${src_dir}/azamlabs-features.js" ]; then
+        cp -f "${src_dir}/azamlabs-features.js" "${HTML_DIR}/azam-ops/" 2>/dev/null || true
+        cp -f "${src_dir}/azamlabs-features.js" "${THEMES_JS}/" 2>/dev/null || true
+        for tdir in ${HTML_DIR}/themes/*/js; do
+            [ -d "$tdir" ] && cp -f "${src_dir}/azamlabs-features.js" "${tdir}/" 2>/dev/null || true
+        done
+        break
+    fi
+done
+
+# Patch native actions.js with top-level capture interceptor hook
+ACTIONS_JS="${THEMES_JS}/actions.js"
+if [ -f "$ACTIONS_JS" ]; then
+    python3 - << 'PYEOF'
+import os
+actions_file = "/opt/unetlab/html/themes/default/js/actions.js"
+if os.path.isfile(actions_file):
+    with open(actions_file, "r", encoding="utf-8") as f:
+        content = f.read()
+    hook_tag = "// === AzamLabs Sequenced Console Priority Hook ==="
+    if hook_tag not in content:
+        hook_code = """// === AzamLabs Sequenced Console Priority Hook ===
+if (typeof window !== 'undefined') {
+  window.addEventListener('click', function(e) {
+    var t = e.target;
+    var el = t && t.closest ? t.closest('.action-nodesconsole, [data-path="nodes/console"], #context-menu a, .context-menu-item') : null;
+    if (el && window.azamSequencedConsole && !window.azamSequencedConsole.isBusy) {
+      var txt = (el.innerText || el.textContent || '').toLowerCase();
+      if (el.classList.contains('action-nodesconsole') || el.getAttribute('data-path') === 'nodes/console' || txt.indexOf('console to all') !== -1 || txt.indexOf('all nodes console') !== -1) {
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        window.azamSequencedConsole.launch({ mode: 'all' });
+        return false;
+      } else if (txt.indexOf('console to selected') !== -1 || txt.indexOf('selected nodes console') !== -1) {
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        window.azamSequencedConsole.launch({ mode: 'selected' });
+        return false;
+      }
+    }
+  }, true);
+}
+"""
+        with open(actions_file, "w", encoding="utf-8") as f:
+            f.write(hook_code + "\n" + content)
+        print("  [✔] actions.js patched with Sequenced Console priority hook")
+PYEOF
 fi
 
 # Inject or update scripts into index.html with cache-busting

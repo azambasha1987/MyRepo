@@ -182,5 +182,76 @@ class TestPerformanceBenchmarks(unittest.TestCase):
         self.assertIn("opcache.jit_buffer_size = 64M", content)
         self.assertIn("realpath_cache_size = 4096K", content)
 
+    def test_sequenced_console_dispatcher_integrity(self):
+        """Verify Sequenced Console Engine in azamlabs-features.js and azamlabs-sequenced-console.js."""
+        feat_js = os.path.join(ROOT_DIR, "html", "azam-ops", "azamlabs-features.js")
+        seq_js = os.path.join(ROOT_DIR, "html", "azam-ops", "azamlabs-sequenced-console.js")
+
+        self.assertTrue(os.path.isfile(feat_js), "azamlabs-features.js must exist")
+        self.assertTrue(os.path.isfile(seq_js), "azamlabs-sequenced-console.js must exist")
+
+        with open(feat_js, "r", encoding="utf-8") as f:
+            feat_code = f.read()
+        with open(seq_js, "r", encoding="utf-8") as f:
+            seq_code = f.read()
+
+        for code in (feat_code, seq_code):
+            self.assertIn("window.azamSequencedConsole", code)
+            self.assertIn("naturalSort", code)
+            self.assertIn("openSingle", code)
+            self.assertIn("showHud", code)
+            self.assertIn("pnq-seq-console-hud", code)
+            # Verify SecureCRT 250ms and HTML5 180ms timings
+            self.assertIn("180 : 250", code)
+            self.assertIn("SecureCRT", code)
+            self.assertIn("action-nodesconsole", code)
+
+    def test_setup_windows_securecrt_powershell_script(self):
+        """Verify Windows 1-Click SecureCRT Protocol Integrator & tab-naming wrapper."""
+        ps1_path = os.path.join(SCRIPTS_DIR, "setup-windows-securecrt.ps1")
+        self.assertTrue(os.path.isfile(ps1_path), "setup-windows-securecrt.ps1 must exist")
+
+        with open(ps1_path, "r", encoding="utf-8") as f:
+            ps1_code = f.read()
+
+        self.assertIn("SecureCRT.exe", ps1_code)
+        self.assertIn("HKEY_CLASSES_ROOT\\telnet", ps1_code)
+        self.assertIn("/T /N", ps1_code)
+        self.assertIn("azamlabs-securecrt.bat", ps1_code)
+
+    def test_python_natural_sort_logic_simulation(self):
+        """Simulate and verify the Natural Alphanumeric Sorting logic for device names."""
+        import re
+
+        def natural_sort_key(s):
+            return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
+
+        nodes = [
+            {"id": 1, "name": "R10"},
+            {"id": 2, "name": "R1"},
+            {"id": 3, "name": "R2"},
+            {"id": 4, "name": "SW10"},
+            {"id": 5, "name": "SW2"},
+            {"id": 6, "name": "SW1"},
+        ]
+
+        # Natural sort
+        sorted_nodes = sorted(nodes, key=lambda n: natural_sort_key(n["name"]))
+        sorted_names = [n["name"] for n in sorted_nodes]
+        self.assertEqual(sorted_names, ["R1", "R2", "R10", "SW1", "SW2", "SW10"])
+
+        # Routers first
+        routers = [n for n in sorted_nodes if n["name"].upper().startswith("R")]
+        others = [n for n in sorted_nodes if not n["name"].upper().startswith("R")]
+        rf_names = [n["name"] for n in routers + others]
+        self.assertEqual(rf_names, ["R1", "R2", "R10", "SW1", "SW2", "SW10"])
+
+        # Switches first
+        switches = [n for n in sorted_nodes if n["name"].upper().startswith("SW")]
+        non_sw = [n for n in sorted_nodes if not n["name"].upper().startswith("SW")]
+        sf_names = [n["name"] for n in switches + non_sw]
+        self.assertEqual(sf_names, ["SW1", "SW2", "SW10", "R1", "R2", "R10"])
+
 if __name__ == "__main__":
     unittest.main()
+

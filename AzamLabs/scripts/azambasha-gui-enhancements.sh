@@ -326,6 +326,27 @@ cat << 'JSEOF' > "${THEMES_JS}/azamlabs-spotlight.js"
         });
         items.push({
             type: 'cmd',
+            title: '⚡ Sequenced Console All (1 → N)',
+            subtitle: 'Opens all device consoles strictly ordered in SecureCRT / HTML5',
+            icon: 'fa-terminal',
+            action: function() { if (window.azamSequencedConsole) window.azamSequencedConsole.launch({ mode: 'all' }); }
+        });
+        items.push({
+            type: 'cmd',
+            title: '⚡ Sequenced Console (Routers First)',
+            subtitle: 'Opens router consoles (R1..Rn) followed by switches in order',
+            icon: 'fa-random',
+            action: function() { if (window.azamSequencedConsole) window.azamSequencedConsole.launch({ mode: 'routers-first' }); }
+        });
+        items.push({
+            type: 'cmd',
+            title: '⚡ Sequenced Console (Switches First)',
+            subtitle: 'Opens switch consoles (SW1..SWn) followed by routers in order',
+            icon: 'fa-random',
+            action: function() { if (window.azamSequencedConsole) window.azamSequencedConsole.launch({ mode: 'switches-first' }); }
+        });
+        items.push({
+            type: 'cmd',
             title: 'Toggle Real-Time Telemetry Link Heatmap',
             subtitle: 'Live visual traffic monitor and error heatmap',
             icon: 'fa-bolt',
@@ -668,10 +689,15 @@ if [ -f "${THEMES_CSS}/azambasha-dark.css" ] && ! grep -q "radial-gradient" "${T
 CSSEOF
 fi
 
+# Copy standalone Sequenced Console module
+if [ -f "${HTML_DIR}/azam-ops/azamlabs-sequenced-console.js" ]; then
+    cp "${HTML_DIR}/azam-ops/azamlabs-sequenced-console.js" "${THEMES_JS}/azamlabs-sequenced-console.js" 2>/dev/null || true
+fi
+
 # Inject scripts into index.html
 INDEX_HTML="${HTML_DIR}/themes/default/index.html"
 if [ -f "$INDEX_HTML" ]; then
-    for js in azamlabs-smart-align.js azamlabs-spotlight.js azamlabs-minimap.js; do
+    for js in azamlabs-smart-align.js azamlabs-spotlight.js azamlabs-minimap.js azamlabs-sequenced-console.js; do
         if ! grep -q "$js" "$INDEX_HTML"; then
             sed -i "/<\/body>/i <script src=\"/themes/default/js/$js\"></script>" "$INDEX_HTML"
         fi

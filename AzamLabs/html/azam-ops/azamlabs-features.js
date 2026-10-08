@@ -817,20 +817,42 @@
     });
   }
 
+  function getAzamCookieToken() {
+    var match = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
+  function resolveActiveLabPath() {
+    if (window.lab && (window.lab.filename || window.lab.path || window.lab.name)) {
+      return window.lab.filename || window.lab.path || window.lab.name;
+    }
+    if (window.lab_filename) return window.lab_filename;
+    if (window.lab_name) return window.lab_name;
+    if (window.LAB && window.LAB.path) return window.LAB.path;
+    var match = (window.location.href || '').match(/[\?&]path=([^&#]+)/) || (window.location.hash || '').match(/#\/?([^?&]+\.unl)/);
+    if (match && match[1]) {
+      return decodeURIComponent(match[1]);
+    }
+    if (window.location.pathname && window.location.pathname.indexOf('.unl') !== -1) {
+      return window.location.pathname;
+    }
+    return '/Admin/active_lab.unl';
+  }
+
   /* ── Bootstorm helper ────────────────────────────────────── */
   window.azBoostorm = function (dryRun) {
     var labInput = document.getElementById('az-boot-lab');
-    var lab = labInput ? labInput.value.trim() : (window.lab_filename || window.location.pathname || '');
+    var lab = labInput ? labInput.value.trim() : resolveActiveLabPath();
     var term = document.getElementById('az-term-boot');
     if (!lab) { azToast('Enter lab path first', 'err'); return; }
-    azRunTool('bootstorm-start', { lab: lab, dry_run: dryRun }, null, 'az-term-boot');
+    azRunTool('bootstorm-start', { lab: lab, dry_run: dryRun, token: getAzamCookieToken() }, null, 'az-term-boot');
   };
 
   /* ── Canvas In-Lab Toolbar Actions ────────────────────────── */
   function openBootstormModal() {
     var modalId = 'pnq-bootstorm-modal';
     var modal = document.getElementById(modalId);
-    var currentLab = window.lab_filename || window.lab_name || window.location.pathname || '/Admin/active_lab.unl';
+    var currentLab = resolveActiveLabPath();
 
     if (!modal) {
       modal = document.createElement('div');
@@ -890,14 +912,15 @@
         var dry = modal.querySelector('#pnq-bs-dryrun').checked;
         var probe = modal.querySelector('#pnq-bs-probe').checked;
         var autoKsm = modal.querySelector('#pnq-bs-ksm').checked;
-        azRunTool('bootstorm-start', { lab: lab, heavy_delay: hd, medium_delay: md, dry_run: dry, probe_console: probe }, this, 'pnq-bs-term');
+        var tok = getAzamCookieToken();
+        azRunTool('bootstorm-start', { lab: lab, heavy_delay: hd, medium_delay: md, dry_run: dry, probe_console: probe, ksm: autoKsm, token: tok }, this, 'pnq-bs-term');
         if (autoKsm && !dry) {
           setTimeout(function () {
             fetch(API_BASE + '/node-ksm-tune', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ node_name: 'All Booted Nodes', lab_path: lab })
-            });
+            }).catch(function() {});
             azamNotifyDesktop('Anti-Bootstorm Complete', 'All nodes have been safely booted with KSM deduplication active.');
           }, 6000);
         }

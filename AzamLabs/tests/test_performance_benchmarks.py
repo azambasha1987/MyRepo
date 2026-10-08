@@ -116,6 +116,40 @@ class TestPerformanceBenchmarks(unittest.TestCase):
             weight, _ = bs_mod.classify_node(node)
             self.assertEqual(weight, "light", f"Node {l} must be classified as light")
 
+    def test_anti_bootstorm_session_token_reuse_and_features(self):
+        """Verify Anti-Bootstorm session token preservation, console readiness probing, and KSM."""
+        bootstorm_path = os.path.join(SCRIPTS_DIR, "azambasha-bootstorm.py")
+        self.assertTrue(os.path.isfile(bootstorm_path), "azambasha-bootstorm.py must exist")
+
+        spec = importlib.util.spec_from_file_location("azambasha_bootstorm", bootstorm_path)
+        bs_mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(bs_mod)
+
+        # 1. Verify function availability
+        self.assertTrue(callable(getattr(bs_mod, "get_active_db_token", None)))
+        self.assertTrue(callable(getattr(bs_mod, "probe_console_port", None)))
+        self.assertTrue(callable(getattr(bs_mod, "activate_ksm_deduplication", None)))
+
+        # 2. Verify signature compatibility
+        import inspect
+        sig_cs = inspect.signature(bs_mod.create_session)
+        self.assertIn("token", sig_cs.parameters, "create_session must accept token parameter")
+
+        sig_rb = inspect.signature(bs_mod.run_bootstorm)
+        self.assertIn("token", sig_rb.parameters, "run_bootstorm must accept token parameter")
+        self.assertIn("probe_console", sig_rb.parameters, "run_bootstorm must accept probe_console parameter")
+        self.assertIn("ksm", sig_rb.parameters, "run_bootstorm must accept ksm parameter")
+
+        # 3. Test console probe on invalid / empty port returns gracefully
+        ok, msg = bs_mod.probe_console_port("127.0.0.1", "")
+        self.assertTrue(ok)
+        self.assertEqual(msg, "No console port")
+
+        # 4. Test KSM function returns boolean status tuple
+        ksm_ok, ksm_msg = bs_mod.activate_ksm_deduplication()
+        self.assertIsInstance(ksm_ok, bool)
+        self.assertIsInstance(ksm_msg, str)
+
     def test_php_opcache_and_jit_configuration(self):
         """Verify PHP OPcache bytecode accelerator and JIT tracing configs."""
         speed_opt_sh = os.path.join(SCRIPTS_DIR, "azambasha-speed-optimizer.sh")

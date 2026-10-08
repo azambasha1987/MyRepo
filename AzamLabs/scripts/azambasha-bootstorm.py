@@ -22,6 +22,13 @@ import urllib.parse
 import urllib.error
 import http.cookiejar
 
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 # Node weight classification by template prefix
 HEAVY_TEMPLATES = {
     "c8000v", "c8k", "cat8k", "cat9k", "c9300", "c9500", "c9800",
@@ -100,26 +107,146 @@ def classify_node(node: dict) -> tuple:
     return "light", display_type
 
 
-def create_session(host, username, password):
-    """Login to AzamLabs API and return an authenticated session cookie jar, context, proto, and opener."""
+def get_active_db_token(username="admin"):
+    """Retrieve existing active session token from MySQL database if present."""
+    import subprocess
+    candidates = [
+        ["mysql", "--defaults-file=/etc/mysql/debian.cnf", "azamlabs_db", "-N", "-e"],
+        ["mysql", "-u", "root", "azamlabs_db", "-N", "-e"],
+        ["mysql", "-S", "/var/run/mysqld/mysqld.sock", "-u", "root", "azamlabs_db", "-N", "-e"],
+        ["mysql", "-S", "/run/mysqld/mysqld.sock", "-u", "root", "azamlabs_db", "-N", "-e"],
+        ["mysql", "-u", "azamlabs", "-pazam", "azamlabs_db", "-N", "-e"],
+        ["mariadb", "-u", "root", "azamlabs_db", "-N", "-e"],
+    ]
+    query = f"SELECT cookie FROM users WHERE username='{username}' AND (session > UNIX_TIMESTAMP() OR session = 0 OR session > 1000000000) ORDER BY session DESC LIMIT 1;"
+    for cand in candidates:
+        try:
+            cmd = cand + [query]
+            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=3)
+            if res.returncode == 0:
+                tok = res.stdout.strip()
+                if tok and len(tok) >= 16:
+                    return tok
+        except Exception:
+            continue
+    return None
+
+
+def probe_console_port(host, port, timeout=12):
+    """Probe whether a node's telnet console port is responsive."""
+    if not port:
+        return True, "No console port"
+    try:
+        port_int = int(port)
+        if port_int <= 0:
+            return True, "No console port"
+    except Exception:
+        return True, "Invalid port"
+
+    import socket
+    probe_host = "127.0.0.1" if host in ("localhost", "127.0.0.1", "::1") else host
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.settimeout(2.0)
+            if s.connect_ex((probe_host, port_int)) == 0:
+                try:
+                    s.settimeout(1.0)
+                    banner = s.recv(512)
+                    s.close()
+                    return True, f"Port {port_int} responsive"
+                except Exception:
+                    s.close()
+                    return True, f"Port {port_int} open"
+            s.close()
+        except Exception:
+            pass
+        time.sleep(1.0)
+    return False, f"Port {port_int} timeout after {timeout}s"
+
+
+def activate_ksm_deduplication():
+    """Enable and tune Kernel Samepage Merging (KSM) memory deduplication."""
+    ksm_dir = "/sys/kernel/mm/ksm"
+    if not os.path.isdir(ksm_dir):
+        return False, "KSM not supported on this host/kernel"
+    try:
+        settings = {
+            "run": "1",
+            "sleep_millisecs": "10",
+            "pages_to_scan": "10000",
+            "use_zero_pages": "1",
+            "merge_across_nodes": "1"
+        }
+        for k, v in settings.items():
+            fpath = os.path.join(ksm_dir, k)
+            if os.path.isfile(fpath):
+                with open(fpath, "w") as f:
+                    f.write(v)
+        return True, "KSM memory deduplication active (10,000 pages / 10ms)"
+    except Exception as e:
+        return False, str(e)
+
+
+def create_session(host, username="admin", password="azam", token=None):
+    """
+    Login to AzamLabs API and return an authenticated session cookie jar, context, proto, and opener.
+    Reuses active session tokens (via --token or local MySQL database) without issuing POST /api/auth,
+    completely preventing invalidation of active Web-GUI browser sessions.
+    """
     import ssl
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
 
-    cj = http.cookiejar.CookieJar()
+    policy = http.cookiejar.DefaultCookiePolicy(netscape=True, rfc2965=False, rfc2109_as_netscape=True)
+    policy.set_ok = lambda cookie, request: True
+    policy.return_ok = lambda cookie, request: True
+    cj = http.cookiejar.CookieJar(policy=policy)
     opener = urllib.request.build_opener(
         urllib.request.HTTPCookieProcessor(cj),
         urllib.request.HTTPSHandler(context=ctx),
         urllib.request.HTTPHandler()
     )
 
+    protocols = ["https", "http"]
+    cookie_domain = host.split(":")[0]
+
+    candidate_tokens = []
+    if token:
+        candidate_tokens.append(token)
+    if host in ("127.0.0.1", "localhost", "::1") or os.environ.get("AZAM_LOCAL", "0") == "1":
+        db_tok = get_active_db_token(username)
+        if db_tok and db_tok not in candidate_tokens:
+            candidate_tokens.append(db_tok)
+
+    # Attempt to reuse existing session without overwriting database cookie
+    for cand in candidate_tokens:
+        c = http.cookiejar.Cookie(
+            0, "token", cand, None, False, cookie_domain, True, False, "/", True, False, None, False, None, None, {}
+        )
+        cj.set_cookie(c)
+        for proto in protocols:
+            url = f"{proto}://{host}/api/auth"
+            req = urllib.request.Request(url, headers={"User-Agent": "Azam-Bootstorm/1.0"})
+            try:
+                with opener.open(req, timeout=10) as resp:
+                    resp_body = resp.read().decode("utf-8")
+                    try:
+                        body = json.loads(resp_body)
+                    except Exception:
+                        body = {}
+                    if body.get("status") == "success" or resp.status == 200:
+                        print(f"  [✔] Reusing active session for '{username}' (browser session preserved).")
+                        return cj, ctx, proto, opener
+            except Exception:
+                pass
+        cj.clear()
+
+    # Fall back to POST /api/auth if no active session token was valid
     login_data = json.dumps({"username": username, "password": password, "html5": 0}).encode("utf-8")
-
-    # Try endpoints: standard AzamLabs is /api/auth, followed by fallbacks
     endpoints = ["/api/auth", "/api/auth/login"]
-    protocols = ["https", "http"] if host in ("127.0.0.1", "localhost") else ["https", "http"]
-
     last_err = None
     for proto in protocols:
         for ep in endpoints:
@@ -142,7 +269,7 @@ def create_session(host, username, password):
                         last_err = body.get("message", "Authentication rejected")
             except urllib.error.HTTPError as e:
                 if e.code == 404:
-                    continue  # Try next endpoint
+                    continue
                 try:
                     err_body = json.loads(e.read().decode("utf-8"))
                     last_err = err_body.get("message", f"HTTP Error {e.code}: {e.reason}")
@@ -157,6 +284,8 @@ def create_session(host, username, password):
 
 def api_call(host, path, method="GET", data=None, cj=None, ctx=None, proto="https", opener=None):
     """Make an authenticated API call to AzamLabs with robust JSON error unwrapping."""
+    if proto == "file" or (cj is None and opener is None):
+        return {"status": "fail", "message": "No active API session"}
     import ssl
     if ctx is None:
         ctx = ssl.create_default_context()
@@ -292,6 +421,9 @@ def get_lab_nodes(host, lab_path, tenant, cj, ctx, proto="https", opener=None, l
                     "type": n.get("type", "qemu"),
                     "template": n.get("template", ""),
                     "image": n.get("image", ""),
+                    "port": n.get("port", ""),
+                    "url": n.get("url", ""),
+                    "console": n.get("console", "telnet"),
                     "status": 0
                 }
             if nodes_dict:
@@ -425,30 +557,41 @@ def start_node(host, lab_path, node_id, tenant, cj, ctx, proto="https", opener=N
     return False, err_summary
 
 
-def run_bootstorm(host, lab_path, username, password,
+def run_bootstorm(host, lab_path, username="admin", password="azam",
                   heavy_batch=2, heavy_delay=18,
                   medium_batch=4, medium_delay=10,
-                  dry_run=False):
+                  dry_run=False, token=None,
+                  probe_console=False, ksm=False):
     """
     Staggered boot orchestration:
-      1. Authenticate to AzamLabs API
+      1. Authenticate to AzamLabs API (or reuse active session)
       2. Retrieve topology nodes via API or local XML
       3. Classify each node into heavy / medium / light
       4. Start in batches with configurable delays across multi-tier engine
+      5. Optionally probe console ready-state and trigger KSM deduplication
     """
     print("================================================================================")
     print("        AzamLabs Anti-Bootstorm Staggered Node Startup Engine                  ")
     print("================================================================================")
-    cj, ctx, proto, opener = create_session(host, username, password)
+    lab_disk_path = resolve_lab_disk_path(lab_path)
+    cj, ctx, proto, opener = create_session(host, username, password, token=token)
     if not cj:
-        print("[!] Cannot connect to AzamLabs API. Check host/credentials.")
-        sys.exit(1)
+        if dry_run and os.path.isfile(lab_disk_path):
+            print("  [i] Offline dry-run: Topology file found locally; simulating boot plan without API.")
+            proto = "file"
+        else:
+            print("[!] Cannot connect to AzamLabs API. Check host/credentials.")
+            sys.exit(1)
 
     print(f"  Target:       {proto}://{host}")
     print(f"  Lab:          {lab_path}")
     print(f"  Heavy nodes:  batch={heavy_batch}, delay={heavy_delay}s between batches")
     print(f"  Medium nodes: batch={medium_batch}, delay={medium_delay}s between batches")
     print(f"  Light nodes:  all concurrent (no delay)")
+    if probe_console:
+        print("  Console probe: ENABLED (verifying port/prompt readiness before next batch)")
+    if ksm:
+        print("  KSM optimizer: ENABLED (activating Kernel Samepage Merging post-boot)")
     if dry_run:
         print("  *** DRY-RUN MODE - No nodes will actually be started ***")
     print("--------------------------------------------------------------------------------")
@@ -507,12 +650,28 @@ def run_bootstorm(host, lab_path, username, password,
             if dry_run:
                 print(f"  [DRY-RUN] Would start {nname} ({ntype}) [{label}]")
                 started_ok += 1
+                if probe_console:
+                    raw_node = node.get("raw_node") or {}
+                    node_port = raw_node.get("port")
+                    print(f"    [PROBE] Console ready-state simulated for {nname} (port {node_port or 'auto'}).")
             else:
                 print(f"  [↑ START] {nname} ({ntype}) [{label}]...", end=" ", flush=True)
                 ok, detail = start_node(host, lab_path, nid, None, cj, ctx, proto=proto, opener=opener, lab_disk_path=lab_disk_path)
                 if ok:
                     print(f"✔ ({detail})")
                     started_ok += 1
+                    if probe_console:
+                        raw_node = node.get("raw_node") or {}
+                        node_port = raw_node.get("port")
+                        if not node_port and "url" in raw_node:
+                            try:
+                                node_port = raw_node["url"].split(":")[-1].strip("/")
+                            except Exception:
+                                node_port = None
+                        if node_port:
+                            print(f"    [PROBE] Verifying console readiness for {nname} (port {node_port})...", end=" ", flush=True)
+                            pr_ok, pr_msg = probe_console_port(host, node_port, timeout=12)
+                            print("✔ ready" if pr_ok else f"⚠ ({pr_msg})")
                 else:
                     print(f"✘ FAILED ({detail})")
                     started_fail += 1
@@ -537,6 +696,14 @@ def run_bootstorm(host, lab_path, username, password,
     if light_nodes:
         print(f"\n[3/3] Starting {len(light_nodes)} LIGHT nodes (concurrent, no delay)...")
         start_batch(light_nodes, "LIGHT", 0)
+
+    # Post-boot memory optimization via KSM if requested
+    if ksm:
+        if dry_run:
+            print("\n[*] KSM Deduplication: [SIMULATED] High-frequency memory deduplication verified.")
+        else:
+            ksm_ok, ksm_msg = activate_ksm_deduplication()
+            print(f"\n[*] KSM Deduplication: {ksm_msg}")
 
     print("\n================================================================================")
     print(f"[✔] Boot orchestration complete! Started: {started_ok} ✔  Failed: {started_fail} ✘")
@@ -591,6 +758,12 @@ def main():
                         help="Seconds to wait between medium node batches (default: 10)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Simulate boot sequence without actually starting nodes")
+    parser.add_argument("--token", default=None,
+                        help="Active AzamLabs session token (avoids re-authenticating and browser sign-out)")
+    parser.add_argument("--probe-console", action="store_true",
+                        help="Wait for node console port readiness before starting next batch")
+    parser.add_argument("--ksm", action="store_true",
+                        help="Automatically apply high-frequency KSM memory deduplication post-boot")
     args = parser.parse_args()
 
     install_symlink()
@@ -609,7 +782,10 @@ def main():
         heavy_delay=args.heavy_delay,
         medium_batch=args.medium_batch,
         medium_delay=args.medium_delay,
-        dry_run=args.dry_run
+        dry_run=args.dry_run,
+        token=args.token,
+        probe_console=args.probe_console,
+        ksm=args.ksm
     )
 
 

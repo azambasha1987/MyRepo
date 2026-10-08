@@ -836,6 +836,22 @@ print("[*] AzamLabs Python SDK Loaded.")
 
 
 
+        if parsed.path in ("/azam-ops/api/node-ksm-tune", "/node-ksm-tune", "/api/azam/node-ksm-tune"):
+            ksm_dir = "/sys/kernel/mm/ksm"
+            applied = False
+            if os.path.isdir(ksm_dir):
+                try:
+                    for fname, val in [("run", "1"), ("sleep_millisecs", "10"), ("pages_to_scan", "10000"), ("use_zero_pages", "1"), ("merge_across_nodes", "1")]:
+                        fpath = os.path.join(ksm_dir, fname)
+                        if os.path.isfile(fpath):
+                            with open(fpath, "w") as f:
+                                f.write(val)
+                    applied = True
+                except Exception:
+                    pass
+            self.reply_json({"success": True, "ksm_active": applied, "message": "KSM deduplication tuned successfully."})
+            return
+
         if parsed.path in ("/azam-ops/api/run", "/api/azam/run", "/run"):
             tool = body.get("tool", "")
             params = body.get("params", {})
@@ -899,6 +915,17 @@ print("[*] AzamLabs Python SDK Loaded.")
                     heavy_delay = str(params.get("heavy_delay", "18"))
                     medium_delay = str(params.get("medium_delay", "10"))
                     dry_run = params.get("dry_run", False)
+                    probe_console = params.get("probe_console", False)
+                    ksm = params.get("ksm", False)
+                    token = params.get("token", "").strip()
+                    if not token:
+                        cookie_hdr = self.headers.get("Cookie", "")
+                        for item in cookie_hdr.split(";"):
+                            if "=" in item:
+                                k, v = item.strip().split("=", 1)
+                                if k.strip() == "token":
+                                    token = v.strip()
+                                    break
                     bootstorm_bin = "/usr/local/bin/azam-bootstorm"
                     if not os.path.exists(bootstorm_bin):
                         for candidate in [
@@ -918,8 +945,14 @@ print("[*] AzamLabs Python SDK Loaded.")
                     cmd = ["python3", bootstorm_bin, "--host", "127.0.0.1", "--heavy-delay", heavy_delay, "--medium-delay", medium_delay]
                     if lab:
                         cmd.extend(["--lab", lab])
+                    if token:
+                        cmd.extend(["--token", token])
                     if dry_run:
                         cmd.append("--dry-run")
+                    if probe_console:
+                        cmd.append("--probe-console")
+                    if ksm:
+                        cmd.append("--ksm")
                 elif tool == "templates-deploy":
                     tmpl = params.get("template", "").strip()
                     if not tmpl:

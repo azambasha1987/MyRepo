@@ -922,21 +922,10 @@ function runBootstorm(dryRun) {
   const lab = el('bootstorm-lab').value.trim();
   if (!lab) { toast('Enter lab path first', 'err'); return; }
   const btn = event.target;
-  // Use a custom API call since bootstorm needs extra args
-  const term = el('term-bootstorm');
-  term.classList.add('visible');
-  term.innerHTML = `<div class="terminal-header"><div class="term-dot" style="background:#ef4444"></div><div class="term-dot" style="background:#eab308"></div><div class="term-dot" style="background:#22c55e"></div><span style="margin-left:8px;color:var(--text-faint);font-size:11px">azam-bootstorm</span></div>`;
-  btn.disabled = true;
-  fetch(`${API}/run`, {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({tool:'bench', params:{lab, dry_run: dryRun}})
-  });
-  // Fallback: just show info
-  const d = document.createElement('div');
-  d.className = 't-info';
-  d.textContent = `ℹ SSH to 192.168.1.23 and run: azam-bootstorm --lab ${lab}${dryRun?' --dry-run':''}`;
-  term.appendChild(d);
-  btn.disabled = false;
+  let tok = '';
+  const match = document.cookie.match(/(?:^|;\s*)token=([^;]+)/);
+  if (match) tok = decodeURIComponent(match[1]);
+  runTool('bootstorm-start', { lab: lab, dry_run: dryRun, token: tok }, btn, 'term-bootstorm');
 }
 
 function runSslGenerate() {

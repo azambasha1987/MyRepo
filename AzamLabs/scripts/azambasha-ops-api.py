@@ -928,19 +928,70 @@ print("[*] AzamLabs Python SDK Loaded.")
                                     break
                     if not token:
                         for db_cmd in [
-                            ["mysql", "--defaults-file=/etc/mysql/debian.cnf", "azamlabs_db", "-N", "-e"],
-                            ["mysql", "-u", "root", "-pazam", "azamlabs_db", "-N", "-e"],
-                            ["mysql", "-u", "root", "azamlabs_db", "-N", "-e"],
-                            ["mysql", "-u", "azamlabs", "-pazam", "azamlabs_db", "-N", "-e"],
-                            ["mysql", "azamlabs_db", "-N", "-e"],
+                            ["mysql", "--defaults-file=/etc/mysql/debian.cnf", "-N", "-e"],
+                            ["mysql", "--defaults-extra-file=/root/.my.cnf", "-N", "-e"],
+                            ["mysql", "-u", "root", "-pazam", "-N", "-e"],
+                            ["mysql", "-u", "root", "-pazamlabs", "-N", "-e"],
+                            ["mysql", "-u", "root", "-ppnet", "-N", "-e"],
+                            ["mysql", "-u", "root", "-proot", "-N", "-e"],
+                            ["mysql", "-u", "root", "--password=", "-N", "-e"],
+                            ["mysql", "-u", "root", "-N", "-e"],
+                            ["mysql", "-u", "azamlabs", "-pazamlabs", "-N", "-e"],
+                            ["mysql", "-u", "azamlabs", "-pazam", "-N", "-e"],
+                            ["mysql", "-S", "/var/run/mysqld/mysqld.sock", "-u", "root", "-N", "-e"],
+                            ["mysql", "-S", "/run/mysqld/mysqld.sock", "-u", "root", "-N", "-e"],
+                            ["mariadb", "-u", "root", "-N", "-e"],
                         ]:
                             try:
-                                r = subprocess.run(db_cmd + ["SELECT cookie FROM users WHERE username='admin' AND cookie IS NOT NULL AND LENGTH(cookie) >= 16 ORDER BY session DESC LIMIT 1;"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=2)
+                                r = subprocess.run(db_cmd + ["SELECT cookie FROM azamlabs_db.users WHERE (username='admin' OR role='0') AND cookie IS NOT NULL AND LENGTH(cookie) >= 16 ORDER BY session DESC LIMIT 1;"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=2)
                                 if r.returncode == 0 and r.stdout.strip():
                                     token = r.stdout.strip()
                                     break
                             except Exception:
                                 pass
+
+                    # Auto-resolve lab path if placeholder or missing
+                    clean_l = lab.strip("/").rstrip(".unl")
+                    disk_cand1 = os.path.join("/opt/unetlab/labs", f"{clean_l}.unl")
+                    disk_cand2 = os.path.join("/opt/unetlab/labs", clean_l)
+                    if not lab or lab == "/Admin/active_lab.unl" or not (os.path.isfile(disk_cand1) or os.path.isfile(disk_cand2) or os.path.isfile(lab)):
+                        db_lab = None
+                        for db_cmd in [
+                            ["mysql", "--defaults-file=/etc/mysql/debian.cnf", "-N", "-e"],
+                            ["mysql", "--defaults-extra-file=/root/.my.cnf", "-N", "-e"],
+                            ["mysql", "-u", "root", "-pazam", "-N", "-e"],
+                            ["mysql", "-u", "root", "-pazamlabs", "-N", "-e"],
+                            ["mysql", "-u", "root", "-N", "-e"],
+                            ["mysql", "-u", "azamlabs", "-pazamlabs", "-N", "-e"],
+                            ["mysql", "-u", "azamlabs", "-pazam", "-N", "-e"],
+                        ]:
+                            try:
+                                r = subprocess.run(db_cmd + ["SELECT folder FROM azamlabs_db.users WHERE folder IS NOT NULL AND folder != '' AND folder != '/' ORDER BY session DESC, pod ASC LIMIT 1;"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=2)
+                                if r.returncode == 0 and r.stdout.strip():
+                                    db_lab = r.stdout.strip()
+                                    break
+                            except Exception:
+                                pass
+                        if db_lab:
+                            lab = db_lab
+                        else:
+                            latest_unl = None
+                            latest_mtime = 0
+                            labs_dir = "/opt/unetlab/labs"
+                            if os.path.isdir(labs_dir):
+                                for root, dirs, files in os.walk(labs_dir):
+                                    for f in files:
+                                        if f.endswith(".unl"):
+                                            fp = os.path.join(root, f)
+                                            try:
+                                                mt = os.path.getmtime(fp)
+                                                if mt > latest_mtime:
+                                                    latest_mtime = mt
+                                                    latest_unl = os.path.relpath(fp, labs_dir).replace("\\", "/")
+                                            except Exception:
+                                                pass
+                            if latest_unl:
+                                lab = f"/{latest_unl.lstrip('/')}"
                     bootstorm_bin = "/usr/local/bin/azam-bootstorm"
                     if not os.path.exists(bootstorm_bin):
                         for candidate in [

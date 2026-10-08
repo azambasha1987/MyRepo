@@ -529,6 +529,10 @@ EOF_OVERRIDE
         fi
     fi
     rm -f "$cookie_jar" 2>/dev/null || true
+
+    # Ensure azam-ops-api service and bootstorm symlinks are up-to-date and restarted
+    ln -sf "${SCRIPT_DIR}/azambasha-bootstorm.py" /usr/local/bin/azam-bootstorm 2>/dev/null || true
+    systemctl restart azam-ops-api.service 2>/dev/null || true
 }
 
 verify_and_stabilize_satellite() {

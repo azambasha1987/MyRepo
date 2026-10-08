@@ -839,7 +839,11 @@
     if (window.location.pathname && window.location.pathname.indexOf('.unl') !== -1) {
       return window.location.pathname;
     }
-    return '/Admin/active_lab.unl';
+    try {
+      var sLab = sessionStorage.getItem('lab') || sessionStorage.getItem('lab_filename') || localStorage.getItem('lab') || localStorage.getItem('active_lab');
+      if (sLab) return sLab;
+    } catch(e) {}
+    return '';
   }
 
   /* ── Bootstorm helper ────────────────────────────────────── */
@@ -847,7 +851,6 @@
     var labInput = document.getElementById('az-boot-lab');
     var lab = labInput ? labInput.value.trim() : resolveActiveLabPath();
     var term = document.getElementById('az-term-boot');
-    if (!lab) { azToast('Enter lab path first', 'err'); return; }
     azRunTool('bootstorm-start', { lab: lab, dry_run: dryRun, token: getAzamCookieToken() }, null, 'az-term-boot');
   };
 
@@ -873,7 +876,7 @@
           '<div style="padding:18px;display:flex;flex-direction:column;gap:14px;">' +
             '<div>' +
               '<label style="font-size:12px;color:#94a3b8;display:block;margin-bottom:4px;">Target Lab Topology:</label>' +
-              '<input type="text" id="pnq-bs-lab" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:13px;" value="' + currentLab + '">' +
+              '<input type="text" id="pnq-bs-lab" style="width:100%;padding:8px 12px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:#fff;font-size:13px;" value="' + (currentLab || '') + '" placeholder="Auto-detect active lab or enter /path/to/lab.unl">' +
             '</div>' +
             '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
               '<div>' +

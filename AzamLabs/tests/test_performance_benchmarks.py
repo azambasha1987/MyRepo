@@ -127,8 +127,10 @@ class TestPerformanceBenchmarks(unittest.TestCase):
 
         # 1. Verify function availability
         self.assertTrue(callable(getattr(bs_mod, "get_active_db_token", None)))
+        self.assertTrue(callable(getattr(bs_mod, "get_active_db_lab", None)))
         self.assertTrue(callable(getattr(bs_mod, "probe_console_port", None)))
         self.assertTrue(callable(getattr(bs_mod, "activate_ksm_deduplication", None)))
+        self.assertTrue(callable(getattr(bs_mod, "resolve_lab_disk_path", None)))
 
         # 2. Verify signature compatibility
         import inspect
@@ -156,8 +158,17 @@ class TestPerformanceBenchmarks(unittest.TestCase):
             cj, ctx, proto, opener = bs_mod.create_session("127.0.0.1", token="test_active_session_token_123")
             self.assertIsNotNone(cj)
             self.assertEqual(getattr(opener, "session_token", None), "test_active_session_token_123")
+
+            # 6. Test create_session without token falls back gracefully to file on local host if API unreachable
+            cj2, ctx2, proto2, opener2 = bs_mod.create_session("127.0.0.1", token=None)
+            self.assertIsNotNone(cj2)
+            self.assertIn(proto2, ("https", "http", "file"))
         finally:
             os.environ.pop("AZAM_LOCAL", None)
+
+        # 7. Test resolve_lab_disk_path with placeholder returns non-empty string ending with .unl
+        resolved = bs_mod.resolve_lab_disk_path("/Admin/active_lab.unl")
+        self.assertTrue(resolved.endswith(".unl"))
 
     def test_php_opcache_and_jit_configuration(self):
         """Verify PHP OPcache bytecode accelerator and JIT tracing configs."""

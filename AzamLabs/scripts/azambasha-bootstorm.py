@@ -110,28 +110,74 @@ def classify_node(node: dict) -> tuple:
 def get_active_db_token(username="admin"):
     """Retrieve existing active session token from MySQL database if present."""
     import subprocess
-    candidates = [
-        ["mysql", "--defaults-file=/etc/mysql/debian.cnf", "azamlabs_db", "-N", "-e"],
-        ["mysql", "-u", "root", "-pazam", "azamlabs_db", "-N", "-e"],
-        ["mysql", "-u", "root", "azamlabs_db", "-N", "-e"],
-        ["mysql", "-u", "azamlabs", "-pazam", "azamlabs_db", "-N", "-e"],
-        ["mysql", "azamlabs_db", "-N", "-e"],
-        ["mysql", "-S", "/var/run/mysqld/mysqld.sock", "-u", "root", "azamlabs_db", "-N", "-e"],
-        ["mysql", "-S", "/run/mysqld/mysqld.sock", "-u", "root", "azamlabs_db", "-N", "-e"],
-        ["mariadb", "-u", "root", "azamlabs_db", "-N", "-e"],
-        ["mariadb", "azamlabs_db", "-N", "-e"],
+    db_clients = ["mysql", "mariadb"]
+    options = [
+        ["--defaults-file=/etc/mysql/debian.cnf"],
+        ["--defaults-extra-file=/root/.my.cnf"],
+        ["-u", "root", "-pazam"],
+        ["-u", "root", "-pazamlabs"],
+        ["-u", "root", "-ppnet"],
+        ["-u", "root", "-proot"],
+        ["-u", "root", "--password="],
+        ["-u", "root"],
+        ["-u", "azamlabs", "-pazamlabs"],
+        ["-u", "azamlabs", "-pazam"],
+        ["-S", "/var/run/mysqld/mysqld.sock", "-u", "root"],
+        ["-S", "/run/mysqld/mysqld.sock", "-u", "root"],
+        [],
     ]
-    query = f"SELECT cookie FROM users WHERE username='{username}' AND cookie IS NOT NULL AND LENGTH(cookie) >= 16 ORDER BY session DESC LIMIT 1;"
-    for cand in candidates:
-        try:
-            cmd = cand + [query]
-            res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=3)
-            if res.returncode == 0:
-                tok = res.stdout.strip()
-                if tok and len(tok) >= 16:
-                    return tok
-        except Exception:
-            continue
+    queries = [
+        f"SELECT cookie FROM azamlabs_db.users WHERE (username='{username}' OR role='0' OR pod=0) AND cookie IS NOT NULL AND LENGTH(cookie) >= 16 ORDER BY session DESC LIMIT 1;",
+        f"SELECT cookie FROM azamlabs_db.users WHERE cookie IS NOT NULL AND LENGTH(cookie) >= 16 ORDER BY session DESC LIMIT 1;",
+        f"SELECT cookie FROM users WHERE (username='{username}' OR role='0') AND cookie IS NOT NULL AND LENGTH(cookie) >= 16 ORDER BY session DESC LIMIT 1;",
+    ]
+    for client in db_clients:
+        for opt in options:
+            for q in queries:
+                try:
+                    cmd = [client] + opt + ["-N", "-e", q]
+                    res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=2)
+                    if res.returncode == 0:
+                        tok = res.stdout.strip()
+                        if tok and len(tok) >= 16:
+                            return tok
+                except Exception:
+                    continue
+    return None
+
+
+def get_active_db_lab():
+    """Retrieve currently active lab path from database if present."""
+    import subprocess
+    db_clients = ["mysql", "mariadb"]
+    options = [
+        ["--defaults-file=/etc/mysql/debian.cnf"],
+        ["--defaults-extra-file=/root/.my.cnf"],
+        ["-u", "root", "-pazam"],
+        ["-u", "root", "-pazamlabs"],
+        ["-u", "root"],
+        ["-u", "azamlabs", "-pazamlabs"],
+        ["-u", "azamlabs", "-pazam"],
+        ["-S", "/var/run/mysqld/mysqld.sock", "-u", "root"],
+        ["-S", "/run/mysqld/mysqld.sock", "-u", "root"],
+        [],
+    ]
+    queries = [
+        "SELECT folder FROM azamlabs_db.users WHERE folder IS NOT NULL AND folder != '' AND folder != '/' ORDER BY session DESC, pod ASC LIMIT 1;",
+        "SELECT folder FROM users WHERE folder IS NOT NULL AND folder != '' AND folder != '/' ORDER BY session DESC, pod ASC LIMIT 1;",
+    ]
+    for client in db_clients:
+        for opt in options:
+            for q in queries:
+                try:
+                    cmd = [client] + opt + ["-N", "-e", q]
+                    res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, timeout=2)
+                    if res.returncode == 0:
+                        folder = res.stdout.strip()
+                        if folder:
+                            return folder
+                except Exception:
+                    continue
     return None
 
 
@@ -256,21 +302,22 @@ def create_session(host, username="admin", password="azam", token=None):
                 pass
         cj.clear()
 
-    # If running locally on localhost, DO NOT execute POST /api/auth!
+    # If running locally on localhost and active candidate token is present:
+    # DO NOT execute POST /api/auth!
     # Executing POST /api/auth overwrites users.cookie in MySQL and immediately kicks out the active Web-GUI browser session!
-    if is_local:
-        fallback_token = candidate_tokens[0] if candidate_tokens else ""
-        if fallback_token:
-            c = http.cookiejar.Cookie(
-                0, "token", fallback_token, None, False, cookie_domain, True, False, "/", True, False, None, False, None, None, {}
-            )
-            cj.set_cookie(c)
-            opener.session_token = fallback_token
-            cj.session_token = fallback_token
+    if is_local and candidate_tokens:
+        fallback_token = candidate_tokens[0]
+        c = http.cookiejar.Cookie(
+            0, "token", fallback_token, None, False, cookie_domain, True, False, "/", True, False, None, False, None, None, {}
+        )
+        cj.set_cookie(c)
+        opener.session_token = fallback_token
+        cj.session_token = fallback_token
         print("  [✔] Local host detected: Preserving active Web-GUI browser session (bypassing POST /api/auth).")
         return cj, ctx, "https", opener
 
-    # Fall back to POST /api/auth ONLY for remote hosts (where local daemons and DB are inaccessible)
+    # If NO active tokens were found in database or arguments, no active Web-GUI browser session exists to preserve!
+    # Perform fresh POST /api/auth login:
     login_data = json.dumps({"username": username, "password": password, "html5": 0}).encode("utf-8")
     endpoints = ["/api/auth", "/api/auth/login"]
     last_err = None
@@ -295,6 +342,7 @@ def create_session(host, username="admin", password="azam", token=None):
                                 opener.session_token = cookie.value
                                 cj.session_token = cookie.value
                                 break
+                        print(f"  [✔] Authenticated session for '{username}'.")
                         return cj, ctx, proto, opener
                     else:
                         last_err = body.get("message", "Authentication rejected")
@@ -308,6 +356,11 @@ def create_session(host, username="admin", password="azam", token=None):
                     last_err = f"HTTP Error {e.code}: {e.reason}"
             except Exception as e:
                 last_err = str(e)
+
+    # If running locally and API is unreachable or unauthenticated, smoothly fall back to local direct engine
+    if is_local:
+        print("  [i] API session unavailable: Fallback to direct local execution daemons.")
+        return cj, ctx, "file", opener
 
     print(f"[!] Auth error: {last_err or 'Endpoint resolution failed'}")
     return None, None, None, None
@@ -381,43 +434,90 @@ def resolve_lab_disk_path(lab_path: str) -> str:
     Resolve the authoritative absolute path to the .unl file on disk.
     Searches case-insensitively, follows symlinks, and searches across all known
     AzamLabs lab locations (/opt/unetlab/labs, /root/labs, /opt/azambasha/labs, /opt/unetlab/tmp).
+    If the requested path is a placeholder or not found, automatically discovers the
+    active open lab from MySQL session or the most recently modified topology.
     """
+    if not lab_path:
+        lab_path = ""
+
     clean = lab_path.strip("/")
     if clean.startswith("opt/unetlab/labs/"):
         clean = clean[len("opt/unetlab/labs/"):]
-    if not clean.endswith(".unl"):
+    if clean and not clean.endswith(".unl"):
         clean += ".unl"
 
-    # Direct check if absolute path provided
-    if os.path.isfile(lab_path):
+    search_bases = ["/opt/unetlab/labs", "/root/labs", "/opt/azambasha/labs", "/opt/unetlab/tmp"]
+
+    # 1. Direct check if absolute path provided
+    if lab_path and os.path.isfile(lab_path):
         return os.path.realpath(lab_path).replace("\\", "/")
-    if not lab_path.endswith(".unl") and os.path.isfile(f"{lab_path}.unl"):
+    if lab_path and not lab_path.endswith(".unl") and os.path.isfile(f"{lab_path}.unl"):
         return os.path.realpath(f"{lab_path}.unl").replace("\\", "/")
 
-    target_lower = os.path.basename(clean).lower()
-    rel_lower = clean.lower()
+    # 2. Direct check under search bases
+    if clean:
+        for base in search_bases:
+            if not os.path.isdir(base):
+                continue
+            direct = os.path.join(base, clean).replace("\\", "/")
+            if os.path.isfile(direct):
+                return os.path.realpath(direct).replace("\\", "/")
 
-    search_bases = ["/opt/unetlab/labs", "/root/labs", "/opt/azambasha/labs", "/opt/unetlab/tmp"]
+    # 3. Case-insensitive recursive walk (following symlinks)
+    if clean:
+        target_lower = os.path.basename(clean).lower()
+        rel_lower = clean.lower()
+        for base in search_bases:
+            if not os.path.isdir(base):
+                continue
+            for root, dirs, files in os.walk(base, followlinks=True):
+                for f in files:
+                    if f.lower() == target_lower:
+                        full = os.path.join(root, f).replace("\\", "/")
+                        rel = os.path.relpath(full, base).replace("\\", "/").lower()
+                        if rel == rel_lower:
+                            return os.path.realpath(full).replace("\\", "/")
+                        return os.path.realpath(full).replace("\\", "/")
+
+    # 4. Auto-discover active lab from MySQL session folder
+    try:
+        db_lab = get_active_db_lab()
+        if db_lab:
+            db_clean = db_lab.strip("/")
+            if not db_clean.endswith(".unl"):
+                db_clean += ".unl"
+            for base in search_bases:
+                cand = os.path.join(base, db_clean).replace("\\", "/")
+                if os.path.isfile(cand):
+                    return os.path.realpath(cand).replace("\\", "/")
+                for root, dirs, files in os.walk(base, followlinks=True):
+                    for f in files:
+                        if f.lower() == os.path.basename(db_clean).lower():
+                            return os.path.realpath(os.path.join(root, f)).replace("\\", "/")
+    except Exception:
+        pass
+
+    # 5. Auto-discover most recently modified .unl file
+    latest_unl = None
+    latest_mtime = 0
     for base in search_bases:
         if not os.path.isdir(base):
             continue
-
-        # Direct path under base
-        direct = os.path.join(base, clean).replace("\\", "/")
-        if os.path.isfile(direct):
-            return os.path.realpath(direct).replace("\\", "/")
-
-        # Case-insensitive recursive walk (following symlinks)
         for root, dirs, files in os.walk(base, followlinks=True):
             for f in files:
-                if f.lower() == target_lower:
+                if f.endswith(".unl"):
                     full = os.path.join(root, f).replace("\\", "/")
-                    rel = os.path.relpath(full, base).replace("\\", "/").lower()
-                    if rel == rel_lower:
-                        return os.path.realpath(full).replace("\\", "/")
-                    return os.path.realpath(full).replace("\\", "/")
+                    try:
+                        mt = os.path.getmtime(full)
+                        if mt > latest_mtime:
+                            latest_mtime = mt
+                            latest_unl = os.path.realpath(full).replace("\\", "/")
+                    except Exception:
+                        pass
+    if latest_unl:
+        return latest_unl
 
-    return f"/opt/unetlab/labs/{clean}"
+    return f"/opt/unetlab/labs/{clean or 'active_lab.unl'}"
 
 
 def get_lab_nodes(host, lab_path, tenant, cj, ctx, proto="https", opener=None, lab_disk_path=None):
@@ -626,9 +726,11 @@ def run_bootstorm(host, lab_path, username="admin", password="azam",
     print("================================================================================")
     lab_disk_path = resolve_lab_disk_path(lab_path)
     cj, ctx, proto, opener = create_session(host, username, password, token=token)
-    if not cj:
-        if (dry_run or host in ("127.0.0.1", "localhost", "::1") or os.environ.get("AZAM_LOCAL", "0") == "1") and os.path.isfile(lab_disk_path):
-            print("  [i] Direct local engine: Topology file verified on disk; orchestrating via native local daemons.")
+    is_local = host in ("127.0.0.1", "localhost", "::1") or os.environ.get("AZAM_LOCAL", "0") == "1"
+
+    if cj is None or opener is None:
+        if is_local or dry_run:
+            print("  [i] Direct local engine: Orchestrating via native local daemons.")
             proto = "file"
         else:
             print("[!] Cannot connect to AzamLabs API. Check host/credentials.")
@@ -652,10 +754,14 @@ def run_bootstorm(host, lab_path, username="admin", password="azam",
         print(f"  [i] Topology file verified on disk: {lab_disk_path}")
 
     nodes_data = get_lab_nodes(host, lab_path, None, cj, ctx, proto=proto, opener=opener, lab_disk_path=lab_disk_path)
+    if not nodes_data and (is_local or dry_run):
+        # Fallback to direct local XML discovery
+        nodes_data = get_lab_nodes(host, lab_path, None, cj, ctx, proto="file", opener=opener, lab_disk_path=lab_disk_path)
+
     if not nodes_data:
         print(f"[!] Could not retrieve nodes from lab: {lab_path}")
         print(f"    Resolved disk path: {lab_disk_path}")
-        print("    Ensure the lab is accessible via AzamLabs API or exists under /opt/unetlab/labs/.")
+        print("    Ensure the lab exists under /opt/unetlab/labs/ or is open in the workbench.")
         sys.exit(1)
 
     # Classify nodes

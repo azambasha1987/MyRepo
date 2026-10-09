@@ -129,7 +129,7 @@ async def get_projects(
     for p in controller.projects.values():
         if name is not None and p.name != name:
             continue
-        if p.id in direct_ace_ids and p.created_by == current_user.username:
+        if p.id in direct_ace_ids and (p.created_by == current_user.username or p.created_by is None):
             if p.id not in seen_project_ids:
                 projects.append(p.asdict())
                 seen_project_ids.add(p.id)
@@ -783,7 +783,12 @@ async def export_project(
     openapi_extra=binary_request_body(ZIP_MEDIA_TYPE),
     dependencies=[Depends(has_privilege("Project.Allocate"))],
 )
-async def import_project(project_id: UUID, request: Request, name: Optional[str] = None) -> schemas.Project:
+async def import_project(
+    project_id: UUID,
+    request: Request,
+    name: Optional[str] = None,
+    current_user: schemas.User = Depends(get_current_active_user),
+) -> schemas.Project:
     """
     Import a project from a portable archive.
 
@@ -811,7 +816,13 @@ async def import_project(project_id: UUID, request: Request, name: Optional[str]
                     await f.write(write_buf)
                     write_buf.clear()
             with open(temp_project_path, "rb") as f:
-                project = await import_controller_project(controller, str(project_id), f, name=name)
+                project = await import_controller_project(
+                    controller, str(project_id), f, name=name, created_by=current_user.username
+                )
+
+        project.created_by = current_user.username
+        project.dump()
+        controller.notification.controller_emit("project.created", project.asdict())
 
         log.info(f"Project '{project.name}' imported in {time.time() - begin:.4f} seconds")
     except OSError as e:

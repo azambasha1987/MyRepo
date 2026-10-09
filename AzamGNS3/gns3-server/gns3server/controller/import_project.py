@@ -51,6 +51,7 @@ async def import_project(
     auto_start=False,
     auto_open=False,
     auto_close=True,
+    created_by=None,
 ):
     """
     Import a project contain in a zip file
@@ -119,6 +120,8 @@ async def import_project(
     topology["auto_start"] = auto_start
     topology["auto_open"] = auto_open
     topology["auto_close"] = auto_close
+    if created_by:
+        topology["created_by"] = created_by
 
     if not restoring_snapshot:
         # Do not re-generate IDs if we are restoring a snapshot because they should be the same in a project

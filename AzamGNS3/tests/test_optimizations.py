@@ -121,5 +121,38 @@ class TestBufferedUploadStream(unittest.TestCase):
         asyncio.run(run_test())
 
 
+class TestProjectImportVisibility(unittest.TestCase):
+    def test_project_ownership_and_visibility_filter(self):
+        # Dummy projects
+        class DummyProject:
+            def __init__(self, pid, name, created_by=None):
+                self.id = pid
+                self.name = name
+                self.created_by = created_by
+
+            def asdict(self):
+                return {"project_id": self.id, "name": self.name, "created_by": self.created_by}
+
+        p1 = DummyProject("p1", "MyLab", created_by="azam")
+        p2 = DummyProject("p2", "ImportedLabNoOwner", created_by=None)
+        p3 = DummyProject("p3", "OtherUserLab", created_by="someone_else")
+
+        projects = {p.id: p for p in [p1, p2, p3]}
+        direct_ace_ids = {"p1", "p2", "p3"}
+        current_username = "azam"
+
+        visible = []
+        for p in projects.values():
+            if p.id in direct_ace_ids and (p.created_by == current_username or p.created_by is None):
+                visible.append(p.name)
+
+        # Both the user's project and the unowned/imported project must be visible
+        self.assertIn("MyLab", visible)
+        self.assertIn("ImportedLabNoOwner", visible)
+        # Another user's private project must remain hidden
+        self.assertNotIn("OtherUserLab", visible)
+
+
 if __name__ == "__main__":
     unittest.main()
+

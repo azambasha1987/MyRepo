@@ -104,7 +104,7 @@ SUBMODULES = [
         "name": "gns3-server",
         "path": "gns3-server",
         "upstream_url": "https://github.com/GNS3/gns3-server.git",
-        "branch": "master"
+        "branch": "3.1"
     },
     {
         "name": "gns3-gui",
@@ -116,7 +116,7 @@ SUBMODULES = [
         "name": "gns3-web-ui",
         "path": "gns3-web-ui",
         "upstream_url": "https://github.com/GNS3/gns3-web-ui.git",
-        "branch": "master"
+        "branch": "3.1"
     }
 ]
 

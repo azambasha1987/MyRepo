@@ -26,6 +26,9 @@ LimitNOFILE=1048576
 LimitMEMLOCK=infinity
 TasksMax=infinity
 
+# Store SQLite database in writable /opt/azamgns3
+Environment="GNS3_DATABASE_URI=sqlite+aiosqlite:////opt/azamgns3/gns3_controller.db"
+
 # Startup execution
 ExecStart=/opt/azamgns3/venv/bin/gns3server --config /etc/azamgns3/gns3_server.conf
 
@@ -36,7 +39,7 @@ TimeoutStopSec=30s
 
 # Sandboxing & security hygiene
 ProtectSystem=strict
-ReadWritePaths=/opt/azamgns3 /var/log/azamgns3 /tmp /opt/gns3
+ReadWritePaths=/opt/azamgns3 /var/log/azamgns3 /tmp /opt/gns3 /etc/azamgns3
 PrivateTmp=true
 
 [Install]

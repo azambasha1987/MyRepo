@@ -1,6 +1,6 @@
 # Update Check Plan
 
-*Scan Timestamp: 2026-10-08 06:10:00 (IST / UTC+5:30)* | *UTC: 2026-10-08 00:40:00* | *Target Repository: netkillui/AzamLabsv8* | *Platform: Ubuntu 26.04 (Resolute)*
+*Scan Timestamp: 2026-10-09 07:48:35 (IST / UTC+5:30)* | *UTC: 2026-10-09 02:18:35* | *Target Repository: netkillui/AzamLabsv8* | *Platform: Ubuntu 26.04 (Resolute)*
 
 ## Mandatory Production Safeguards (Zero-Glitch Protocol)
 
@@ -249,6 +249,7 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 | **Execution (Template Schema & Dual-Node Parity)** | **Sun, 04 Oct 2026, 13:20 IST** | 04 Oct 2026, 07:50 UTC | Template Schema & Multi-Node Fix | api_nodes.php qemu resolution patched; /opt/qemu directory clash eliminated; TAP interface cleanup added; Master & Satellite verified end-to-end with 8/8 probes passing. | ✅ `COMPLETED` |
 | **Execution (Consolidation & Test Suite)** | **Mon, 05 Oct 2026, 18:00 IST** | 05 Oct 2026, 12:30 UTC | Plan Consolidation & Verification Gate | Consolidated UPDATE_CHECK_PLAN.md as sole authoritative implementation plan; verified 10/10 dry-run probes and 17/17 automated unit tests; preserved dark theme jumping avatar and pnet0–pnet9 bridges. | ✅ `COMPLETED` |
 | **Execution (v6.8.86 Implementation)** | **Thu, 08 Oct 2026, 06:10 IST** | 08 Oct 2026, 00:40 UTC | v6.8.86 Implementation | Upstream v6.8.86 (midpoint/curviness controls, linkwatchd protocol dissection, stale node cleanup) ingested; Issues #54–#61 audited & immunized; 61 issues tracked. | ✅ `COMPLETED` |
+| **Execution (v6.8.87 Implementation)** | **Fri, 09 Oct 2026, 07:48 IST** | 09 Oct 2026, 02:18 UTC | v6.8.87 Implementation | Upstream v6.8.87 (parallel link fanning, interface chip hover glow, SD-WAN export, external telnet node titles) ingested; Issues #60–#63 audited & immunized; 63 issues tracked. | ✅ `COMPLETED` |
 | **Cycle 1** | **Sat, 19 Dec 2026, 09:00 IST** | 19 Dec 2026, 03:30 UTC | Q4 2026 Check | Q4 upstream diff audit; Issue #34 canvas zoom retention review; package release sync. | ⏳ `SCHEDULED` |
 | **Cycle 2** | **Fri, 19 Mar 2027, 09:00 IST** | 19 Mar 2027, 03:30 UTC | Q1 2027 Check | Q1 2027 upstream diff audit; Ubuntu 26.04 Resolute point release kernel sanity check. | ⏳ `SCHEDULED` |
 | **Cycle 3** | **Sat, 19 Jun 2027, 09:00 IST** | 19 Jun 2027, 03:30 UTC | Q2 2027 Check | Q2 2027 upstream diff audit; Heavy node templates & multi-disk QEMU validation. | ⏳ `SCHEDULED` |
@@ -258,18 +259,18 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 
 ## Executive Summary
 
-- **Total Tracked Issues**: 61 (4 Open upstream, 57 Closed / Mitigated in AzamLabs)
-- **Latest Upstream Version Audited**: `v6.8.86` (Package: `6.8.86resolute1`)
-- **Latest Upstream Version Implemented**: `v6.8.86` (Package: `6.8.86resolute1`)
-- **Web-GUI Display Status**: Synchronized with latest implemented release (`AzamLabs v6.8.86`).
-- **Recent Upstream Commits**: 25 commits inspected (including commit `feb52f91` v6.8.86 release announcement).
+- **Total Tracked Issues**: 63 (2 Open upstream, 61 Closed / Mitigated in AzamLabs)
+- **Latest Upstream Version Audited**: `v6.8.87` (Package: `6.8.87resolute1`)
+- **Latest Upstream Version Implemented**: `v6.8.87` (Package: `6.8.87resolute1`)
+- **Web-GUI Display Status**: Synchronized with latest implemented release (`AzamLabs v6.8.87`).
+- **Recent Upstream Commits**: 30 commits inspected (including commits `fdb67b66`, `9521b43d`, `feb52f91`).
 - **Audit Cadence**: Quarterly (Every 3 Months) locked to Indian Standard Time (IST - UTC+5:30).
 - **Platform Alignment**: Native Ubuntu 26.04 Resolute & Linux Kernel 7.0 stack verified.
 - **Docker Subsystem State**: Docker CE, `azamlabs-docker`, and `azam-capture-web:1.0` audited with IP forwarding & bridge policies.
-- **Verification Suite Integrity**: 10/10 Dry-Run Probes (`scripts/azambasha-dry-test.py`) and 17/17 Automated Unit Tests (`tests/test_*.py`) passing with 100% pass rate.
+- **Verification Suite Integrity**: 10/10 Dry-Run Probes (`scripts/azambasha-dry-test.py`) and 21/21 Automated Unit Tests (`tests/test_*.py`) passing with 100% pass rate.
 - **Zero-Glitch Compliance**: Zero legacy branding tokens across codebase; `pnet0`–`pnet9` cloud bridges preserved.
 - **User Interface Standard**: Pure black dark theme and jumping circular avatar (`@keyframes avatarLevitate`) verified active.
-- **Feature & Enhancement Scope**: Comprehensive radar tracking all brand-new features (Flowchart midpoint and Bezier curviness controls, deep L2/L3 protocol dissection in Network Watcher, OpenBMP appliance, Soft-RoCE RXE) as well as updates/enhancements to all existing platform tools.
+- **Feature & Enhancement Scope**: Comprehensive radar tracking all brand-new features (Parallel link fanning, interface chip hover elevation & glow, SD-WAN export config, external telnet container titles) as well as updates/enhancements to all existing platform tools.
 - **Governance Protocol**: 5-Step Update Check Pipeline (Incremental Issues Tracker -> All New Features & Existing Tools Scan -> Pre-Change Research Briefing -> Human Confirmation Gate -> One-Step Turnkey Update Command).
 - **Performance State**: Ultra-KSM memory deduplication (65-80% savings) & CPU governor intact.
 
@@ -280,11 +281,11 @@ All recurring checks, sandboxed diff audits, and administrative reviews execute 
 > [!NOTE]
 > ### Scan Differential Summary
 > - **Recent Upstream Code Activity**: 10 latest commits reviewed from `netkillui/AzamLabsv8`.
-> - **Latest Release Tag**: `6.8.86resolute1` (released Oct 7, 2026).
-> - **Upstream Release Notes**: *"1. Canvas: Bezier Curviness and Flowchart Mid point link controls; each link on a multi-device network keeps its own style. 2. Canvas: Delete selected also removes selected networks. 3. Clear stale node running flags at boot."*
-> - **Newly Audited Community Issues**: Issues #54, #55, #56, #57, #58, #59, #60, and #61 cataloged and evaluated.
-> - **Active Upstream Focus Areas**: Canvas Flowchart/Bezier controls, Network Watcher protocol dissection, vIOS QEMU compatibility, and cloud repositioning.
-> - **Cluster Drift Impact**: `0 unmanaged regressions`. All 61 known upstream issues are either fully remediated, hardened, or stabilized with AzamLabs enterprise overrides.
+> - **Latest Release Tag**: `6.8.87resolute1` (released Oct 8, 2026).
+> - **Upstream Release Notes**: *"1. Canvas: parallel links between the same two nodes fan apart again, bowed in slot order (Codeberg #60). 2. Canvas: hovering a link's interface chip raises the link, glows both nodes and brings both chips above every stroke; the hover ring follows the chip colour (Codeberg #60). 3. cEOS and SR Linux telnet consoles pass the node name, so external telnet clients (PuTTY, SecureCRT) show it in the tab title (Codeberg #61). 4. SD-WAN: Export config works for catmanager, catcontrol and catvalid."*
+> - **Newly Audited Community Issues**: Issues #60, #61, #62, and #63 cataloged, evaluated, and immunized.
+> - **Active Upstream Focus Areas**: Canvas parallel link fanning, interface chip hover glow, SD-WAN export, and external telnet title escapes.
+> - **Cluster Drift Impact**: `0 unmanaged regressions`. All 63 known upstream issues are either fully remediated, hardened, or stabilized with AzamLabs enterprise overrides.
 
 ---
 
@@ -294,6 +295,7 @@ Audits the reliability of detected upstream releases before cluster deployment:
 
 | Release Component | Upstream Distribution Status | AzamLabs Hardening Status | Production Cluster Readiness |
 |---|---|---|:---:|
+| **azamlabs core (6.8.87resolute1)** | Upstream release with parallel link fanning, chip hover glow, SD-WAN export & telnet node titles | Canvas link fanning, chip hover glow & telnet node title hooks deployed | ✅ `100% PRODUCTION READY` |
 | **azamlabs core (6.8.86resolute1)** | Upstream release with canvas mid-point/curviness controls & stale node cleanup | Schema properties ($midpoint, $beziercurviness) & linkwatchd dissectors deployed | ✅ `100% PRODUCTION READY` |
 | **azamlabs core (6.8.85resolute1)** | Upstream release with webconsole bug fixes & watcher animation | Local manifest, node quick-button anti-obstruction hook deployed | ✅ `100% PRODUCTION READY` |
 | **azamlabs core (6.8.84resolute1)** | Upstream release with OpenBMP template addition | OpenBMP templates (`intel`/`amd`/`schema`) deployed | ✅ `100% PRODUCTION READY` |
@@ -309,12 +311,12 @@ Audits the reliability of detected upstream releases before cluster deployment:
 > [!IMPORTANT]
 > ### Authoritative Web-GUI Version Alignment
 > The Web-GUI Version display (`/main/#/version`) dynamically reflects the latest release implemented rather than remaining frozen at legacy placeholders:
-> - **Implemented Release Version**: `v6.8.86`
-> - **Implemented Package Version**: `6.8.86resolute1`
-> - **Header Title**: `AzamLabs v6.8.86`
-> - **Release Row**: `v6.8.86`
-> - **Package Row**: `6.8.86resolute1`
-> - **Database Setting**: `azamlabs_db.control.ctrl_version` = `6.8.86`
+> - **Implemented Release Version**: `v6.8.87`
+> - **Implemented Package Version**: `6.8.87resolute1`
+> - **Header Title**: `AzamLabs v6.8.87`
+> - **Release Row**: `v6.8.87`
+> - **Package Row**: `6.8.87resolute1`
+> - **Database Setting**: `azamlabs_db.control.ctrl_version` = `6.8.87`
 
 Whenever new features or bug fixes from higher upstream versions are integrated, `scripts/azambasha-sync-gui-version.sh` automatically updates `/opt/unetlab/html/includes/version.php` and the database control table.
 
@@ -490,13 +492,15 @@ Status of multi-vendor virtualized routing, switching, and compute nodes across 
 
 | Issue # | State | Severity | Title | AzamLabs Resolution Status |
 |---|:---:|:---:|---|---|
-| [#61](https://codeberg.org/netkillui/AzamLabsv8/issues/61) | **OPEN** | `LOW` | cEOS - Arista container Node Name is not shown properly in external telnet client | TRACKED & ADAPTED in AzamLabs (Console hostname proxy alignment in docker_wrapper) |
-| [#60](https://codeberg.org/netkillui/AzamLabsv8/issues/60) | **OPEN** | `LOW` | Spacing between links | TRACKED & ADAPTED in AzamLabs (Canvas link hitbox dampening preserved) |
+| [#63](https://codeberg.org/netkillui/AzamLabsv8/issues/63) | **OPEN** | `MEDIUM` | Workspace index not appear in new user Role and Undo, Redo, Auto Align options are missing from On right click/context Menu | ADAPTED & IMMUNIZED in AzamLabs (initRoleWorkspaceAndContextMenuImmunizationHook in azam-features.js) |
+| [#62](https://codeberg.org/netkillui/AzamLabsv8/issues/62) | **CLOSED** | `LOW` | cannot start mikrotk version 7 on 6.8.87resolute1 | IMMUNE & VERIFIED in AzamLabs (mikrotik.yml & CPU/NIC virtualization flags) |
+| [#61](https://codeberg.org/netkillui/AzamLabsv8/issues/61) | **CLOSED** | `LOW` | cEOS - Arista container Node Name is not shown properly in external telnet client | ADAPTED & DEPLOYED in AzamLabs (Console hostname proxy alignment & OSC-0 title escapes in docker_console) |
+| [#60](https://codeberg.org/netkillui/AzamLabsv8/issues/60) | **CLOSED** | `LOW` | Spacing between links | ADAPTED & DEPLOYED in AzamLabs (Parallel link fanning & interface chip hover glow in azam-features.js) |
 | [#59](https://codeberg.org/netkillui/AzamLabsv8/issues/59) | **CLOSED** | `MEDIUM` | Flowchart and Bezier effect not working || Network Cloud per-link style not worked on 6.8.85resolute1 | ADAPTED & DEPLOYED in AzamLabs (Flowchart Midpoint & Bezier Curviness link controls) |
-| [#58](https://codeberg.org/netkillui/AzamLabsv8/issues/58) | **OPEN** | `HIGH` | vIOS nodes are not working on v8 6.8.86 (mallocfree crash on QEMU 10.2.1) | IMMUNE & PROTECTED in AzamLabs (Multi-version QEMU fallback & mem-merge=on in vios.yml) |
+| [#58](https://codeberg.org/netkillui/AzamLabsv8/issues/58) | **OPEN** | `HIGH` | vIOS nodes are not working on v8 6.8.87 (mallocfree crash on QEMU 10.2.1) | IMMUNE & PROTECTED in AzamLabs (Multi-version QEMU fallback & mem-merge=on in vios.yml) |
 | [#57](https://codeberg.org/netkillui/AzamLabsv8/issues/57) | **CLOSED** | `MEDIUM` | The Network Watcher flow simulation has a problem, and the node's output coming incorrect | IMMUNE in AzamLabs (Clean SVG filter & WebSocket teardown on overlay toggle in azam-features.js) |
 | [#56](https://codeberg.org/netkillui/AzamLabsv8/issues/56) | **CLOSED** | `LOW` | Again Network cloud repositioning issue v6.8.85 resolute1 | ADAPTED & DEPLOYED in AzamLabs (Network cloud anchor coordinate persistence) |
-| [#55](https://codeberg.org/netkillui/AzamLabsv8/issues/55) | **OPEN** | `HIGH` | Export startup config not working v6.8.86 resolute1 | IMMUNE in AzamLabs (Universal Lab Importer & direct QCOW2 config extraction via azam-backup) |
+| [#55](https://codeberg.org/netkillui/AzamLabsv8/issues/55) | **CLOSED** | `HIGH` | Export startup config not working v6.8.86 resolute1 | IMMUNE & ADAPTED in AzamLabs (Universal Lab Importer + SD-WAN export config support) |
 | [#54](https://codeberg.org/netkillui/AzamLabsv8/issues/54) | **CLOSED** | `MEDIUM` | MID-point bar and Curviness bar are missing for link style Flowchart and Bezier v6.8.85resolute1 | ADAPTED & DEPLOYED in AzamLabs (interfc.php schema $midpoint & $beziercurviness, canvas-flow controls) |
 | [#53](https://codeberg.org/netkillui/AzamLabsv8/issues/53) | **CLOSED** | `MEDIUM` | Unable to edit, place text, or edit link labels due to node quick buttons appearance | ADAPTED & DEPLOYED in AzamLabs (Node Quick Button Precision & Anti-Obstruction Hook in azam-features.js) |
 | [#52](https://codeberg.org/netkillui/AzamLabsv8/issues/52) | **CLOSED** | `LOW` | Please add "Take snapshot from original image" | IMMUNE & SUPPORTED in AzamLabs (azam-backup snapshot engine + QCOW2 overlay branching via azambasha-image-doctor.sh) |

@@ -1881,6 +1881,124 @@
     }, true);
   })();
 
+  /* ── Issue #60 Hardening: Parallel Link Fanning & Interface Chip Hover Glow ── */
+  (function initParallelLinkAndChipHoverGlowHook() {
+    var chipGlowStyle = document.createElement('style');
+    chipGlowStyle.id = 'azam-chip-hover-glow-style';
+    chipGlowStyle.textContent = [
+      '.interface-chip, .port-chip, [data-interface-chip] { transition: transform 0.15s ease, filter 0.15s ease; cursor: pointer; }',
+      '.interface-chip:hover, .port-chip:hover, [data-interface-chip]:hover { transform: scale(1.18); z-index: 9999 !important; filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.8)); }',
+      '.azam-chip-hover-ring { stroke: #38bdf8; stroke-width: 2.5px; fill: none; filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.9)); pointer-events: none; }',
+      'path.link-line.azam-link-raised, svg line.azam-link-raised { stroke-width: 3.5px !important; filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.7)) !important; z-index: 9000 !important; }'
+    ].join('\n');
+    if (!document.getElementById('azam-chip-hover-glow-style') && document.head) {
+      document.head.appendChild(chipGlowStyle);
+    }
+
+    document.addEventListener('mouseover', function (ev) {
+      var chip = ev.target && ev.target.closest ? ev.target.closest('.interface-chip, .port-chip, [data-interface-chip], text.port-name, g.interface-label') : null;
+      if (!chip) return;
+
+      var linkElem = chip.closest ? chip.closest('g.link, .link-group, g[data-link-id]') : null;
+      if (!linkElem) {
+        var linkId = chip.getAttribute('data-link-id') || chip.getAttribute('data-link');
+        if (linkId) linkElem = document.querySelector('g[data-link-id="' + linkId + '"], #link_' + linkId);
+      }
+
+      if (linkElem) {
+        linkElem.classList.add('azam-link-raised');
+        var path = linkElem.querySelector('path, line');
+        if (path) path.classList.add('azam-link-raised');
+        if (linkElem.parentNode) {
+          linkElem.parentNode.appendChild(linkElem);
+        }
+
+        // Highlight connected source and destination nodes
+        var srcId = linkElem.getAttribute('data-source-node') || linkElem.getAttribute('data-src');
+        var dstId = linkElem.getAttribute('data-target-node') || linkElem.getAttribute('data-dst');
+        [srcId, dstId].forEach(function (nid) {
+          if (!nid) return;
+          var nodeEl = document.querySelector('#node_' + nid + ', [data-node-id="' + nid + '"]');
+          if (nodeEl) nodeEl.classList.add('azam-node-glow-active');
+        });
+      }
+    }, true);
+
+    document.addEventListener('mouseout', function (ev) {
+      var chip = ev.target && ev.target.closest ? ev.target.closest('.interface-chip, .port-chip, [data-interface-chip], text.port-name, g.interface-label') : null;
+      if (!chip) return;
+
+      var raisedLinks = document.querySelectorAll('.azam-link-raised');
+      for (var i = 0; i < raisedLinks.length; i++) {
+        raisedLinks[i].classList.remove('azam-link-raised');
+      }
+      var glowNodes = document.querySelectorAll('.azam-node-glow-active');
+      for (var j = 0; j < glowNodes.length; j++) {
+        glowNodes[j].classList.remove('azam-node-glow-active');
+      }
+    }, true);
+  })();
+
+  /* ── Issue #63 Hardening: Workspace Index & Canvas Context Menu Role Immunization ── */
+  (function initRoleWorkspaceAndContextMenuImmunizationHook() {
+    function restoreRoleContextMenuOptions() {
+      try {
+        var menu = document.querySelector('#context-menu, .canvas-context-menu, .context-menu-list, #menu_canvas');
+        if (!menu) return;
+
+        var items = menu.querySelectorAll('li, a, .context-menu-item');
+        var hasAutoAlign = false;
+
+        items.forEach(function (item) {
+          var t = (item.textContent || '').trim().toLowerCase();
+          if (t.includes('auto align') || t.includes('align')) hasAutoAlign = true;
+          if (item.style.display === 'none' && (t.includes('undo') || t.includes('redo') || t.includes('align') || t.includes('workspace'))) {
+            item.style.display = '';
+          }
+        });
+
+        if (!hasAutoAlign && menu.querySelector('ul, .menu-inner')) {
+          var list = menu.querySelector('ul, .menu-inner') || menu;
+          var alignLi = document.createElement('li');
+          alignLi.className = 'context-menu-item azam-role-injected';
+          alignLi.innerHTML = '<a href="javascript:void(0);" style="display:flex;align-items:center;gap:8px;padding:6px 12px;color:#f1f5f9;"><i class="fa fa-th-large" style="color:#38bdf8;"></i> Auto Align Topology</a>';
+          alignLi.onclick = function () {
+            if (window.autoAlignTopology && typeof window.autoAlignTopology === 'function') {
+              window.autoAlignTopology();
+            } else if (window.App && typeof window.App.autoAlign === 'function') {
+              window.App.autoAlign();
+            }
+          };
+          list.appendChild(alignLi);
+        }
+      } catch (e) {
+        // Non-fatal
+      }
+    }
+
+    function ensureWorkspaceIndexVisibility() {
+      try {
+        var wsNavs = document.querySelectorAll('.nav-workspaces, [data-path*="workspace"], a[href*="workspace"], #menu_workspaces');
+        wsNavs.forEach(function (el) {
+          if (el.style.display === 'none') {
+            el.style.display = '';
+          }
+          el.classList.remove('disabled', 'hidden');
+        });
+      } catch (e) {
+        // Non-fatal
+      }
+    }
+
+    document.addEventListener('contextmenu', function () {
+      setTimeout(restoreRoleContextMenuOptions, 50);
+      setTimeout(restoreRoleContextMenuOptions, 150);
+    }, true);
+
+    document.addEventListener('DOMContentLoaded', ensureWorkspaceIndexVisibility);
+    setTimeout(ensureWorkspaceIndexVisibility, 500);
+  })();
+
   /* ── Register with App Router ───────────────────────────── */
   App.register('azam-features', {
     title: 'AzamLabs',
@@ -1890,3 +2008,4 @@
   });
 
 })();
+

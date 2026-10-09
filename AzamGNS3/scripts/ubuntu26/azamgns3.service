@@ -1,0 +1,43 @@
+[Unit]
+Description=AzamGNS3 High-Performance Web-Native Emulation Server
+Documentation=https://github.com/azambasha1987/MyRepo
+After=network.target network-online.target systemd-sysctl.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=azam
+Group=azam
+WorkingDirectory=/opt/azamgns3
+
+# ==============================================================================
+# Ubuntu 26 / Systemd v256+ Cgroups v2 Delegation
+# Allows AzamGNS3 to adjust cpu.weight and memory constraints on child nodes
+# without needing root privilege escalation!
+# ==============================================================================
+Delegate=yes
+CPUAccounting=yes
+MemoryAccounting=yes
+IOAccounting=yes
+TasksAccounting=yes
+
+# Limits for ultra-high node densities
+LimitNOFILE=1048576
+LimitMEMLOCK=infinity
+TasksMax=infinity
+
+# Startup execution
+ExecStart=/opt/azamgns3/venv/bin/gns3server --config /etc/azamgns3/gns3_server.conf
+
+# Restart on failure with fast recovery
+Restart=on-failure
+RestartSec=3s
+TimeoutStopSec=30s
+
+# Sandboxing & security hygiene
+ProtectSystem=strict
+ReadWritePaths=/opt/azamgns3 /var/log/azamgns3 /tmp /opt/gns3
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

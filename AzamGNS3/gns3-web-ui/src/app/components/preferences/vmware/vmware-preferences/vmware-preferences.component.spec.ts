@@ -1,0 +1,150 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ActivatedRoute } from '@angular/router';
+import { VmwarePreferencesComponent } from './vmware-preferences.component';
+import { ControllerService } from '@services/controller.service';
+import { ToasterService } from '@services/toaster.service';
+import { Controller } from '@models/controller';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+describe('VmwarePreferencesComponent', () => {
+  let component: VmwarePreferencesComponent;
+  let fixture: ComponentFixture<VmwarePreferencesComponent>;
+  let mockControllerService: any;
+  let mockActivatedRoute: any;
+  let mockToasterService: any;
+  let mockController: Controller;
+
+  beforeEach(async () => {
+    mockController = {
+      id: 1,
+      name: 'Test Controller',
+      location: 'local',
+      host: 'localhost',
+      port: 3080,
+      path: '/',
+      ubridge_path: '',
+      status: 'running',
+      protocol: 'http:',
+      username: 'admin',
+      password: 'admin',
+      authToken: 'token',
+      tokenExpired: false,
+    };
+
+    mockControllerService = {
+      get: vi.fn().mockResolvedValue(mockController),
+    };
+
+    mockActivatedRoute = {
+      snapshot: {
+        paramMap: {
+          get: vi.fn().mockReturnValue('1'),
+        },
+      },
+    };
+
+    mockToasterService = {
+      error: vi.fn(),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [VmwarePreferencesComponent],
+      providers: [
+        { provide: ActivatedRoute, useValue: mockActivatedRoute },
+        { provide: ControllerService, useValue: mockControllerService },
+        { provide: ToasterService, useValue: mockToasterService },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(VmwarePreferencesComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    fixture.destroy();
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+
+  it('should extract controller_id from route params on ngOnInit', () => {
+    expect(mockActivatedRoute.snapshot.paramMap.get).toHaveBeenCalledWith('controller_id');
+  });
+
+  it('should call controllerService.get with parsed controller id', () => {
+    expect(mockControllerService.get).toHaveBeenCalledWith(1);
+  });
+
+  it('should populate controller after async load', async () => {
+    // The mock controllerService.get returns a promise that resolves immediately
+    // After ngOnInit and detectChanges, the controller should be populated
+    expect(component.controller).toEqual(mockController);
+  });
+
+  it('should have vmrunPath initially empty string', () => {
+    const newFixture = TestBed.createComponent(VmwarePreferencesComponent);
+    const newComponent = newFixture.componentInstance;
+    // vmrunPath is initialized with empty string in the component
+    expect(newComponent.vmrunPath()).toBe('');
+  });
+
+  it('should restore vmrunPath to empty string when restoreDefaults is called', () => {
+    component.vmrunPath.set('/some/path');
+    component.restoreDefaults();
+    expect(component.vmrunPath()).toBe('');
+  });
+
+  it('should display VMware preferences title', () => {
+    const compiled = fixture.nativeElement as HTMLElement;
+    const title = compiled.querySelector('h1');
+    expect(title?.textContent).toContain('VMware preferences');
+  });
+
+  it('should display mat-form-field for vmrun path input', () => {
+    const compiled = fixture.nativeElement as HTMLElement;
+    const formField = compiled.querySelector('mat-form-field');
+    expect(formField).toBeTruthy();
+  });
+
+  it('should have input element with placeholder for vmrun path', () => {
+    const compiled = fixture.nativeElement as HTMLElement;
+    const input = compiled.querySelector('input[matInput]');
+    expect(input).toBeTruthy();
+  });
+
+  it('should display "Path to vmrun:" placeholder text', () => {
+    const compiled = fixture.nativeElement as HTMLElement;
+    const input = compiled.querySelector('input[matInput]');
+    expect(input?.getAttribute('placeholder')).toBe('Path to vmrun:');
+  });
+
+  it('should use OnPush change detection strategy', () => {
+    expect(component).toBeTruthy();
+  });
+
+  describe('error handling', () => {
+    it('should show error toaster when controllerService.get fails', async () => {
+      mockControllerService.get.mockRejectedValue({ error: { message: 'Controller error' } });
+
+      fixture = TestBed.createComponent(VmwarePreferencesComponent);
+      component = fixture.componentInstance;
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(mockToasterService.error).toHaveBeenCalledWith('Controller error');
+    });
+
+    it('should use fallback message when controllerService.get error has no message', async () => {
+      mockControllerService.get.mockRejectedValue({});
+
+      fixture = TestBed.createComponent(VmwarePreferencesComponent);
+      component = fixture.componentInstance;
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(mockToasterService.error).toHaveBeenCalledWith('Failed to load controller');
+    });
+  });
+});

@@ -1,0 +1,162 @@
+<button
+  matTooltip="Add a note"
+  matTooltipClass="custom-tooltip"
+  matTooltipPosition="left"
+  mat-icon-button
+  class="menu-button"
+  (click)="addDrawing('text')"
+>
+  <mat-icon [ngClass]="getCssClassForIcon('text')">create</mat-icon>
+</button>
+<input
+  type="file"
+  accept=".bmp, .jpeg, .jpg, .gif, .png"
+  class="non-visible"
+  #file
+  (change)="uploadImageFile($event)"
+/>
+<button
+  matTooltip="Insert a picture"
+  matTooltipClass="custom-tooltip"
+  matTooltipPosition="left"
+  mat-icon-button
+  class="menu-button"
+  (click)="file.click()"
+>
+  <mat-icon>image</mat-icon>
+</button>
+<button
+  matTooltip="Draw a rectangle"
+  matTooltipClass="custom-tooltip"
+  matTooltipPosition="left"
+  mat-icon-button
+  class="menu-button"
+  (click)="addDrawing('rectangle')"
+>
+  <mat-icon [ngClass]="getCssClassForIcon('rectangle')">crop_3_2</mat-icon>
+</button>
+<button
+  matTooltip="Draw an ellipse"
+  matTooltipClass="custom-tooltip"
+  matTooltipPosition="left"
+  mat-icon-button
+  class="menu-button"
+  (click)="addDrawing('ellipse')"
+>
+  <mat-icon [ngClass]="getCssClassForIcon('ellipse')">panorama_fish_eye</mat-icon>
+</button>
+@if (!isLightThemeEnabled) {
+<button
+  matTooltip="Draw a line"
+  matTooltipClass="custom-tooltip"
+  matTooltipPosition="left"
+  mat-icon-button
+  class="menu-button"
+  (click)="addDrawing('line')"
+>
+  <svg height="20" width="20">
+    <line
+      [ngClass]="{ selected: drawTools.isLineChosen }"
+      class="draw-line-icon"
+      x1="15"
+      y1="5"
+      x2="5"
+      y2="15"
+      style="stroke-width: 2"
+    />
+  </svg>
+</button>
+} @if (isLightThemeEnabled) {
+<button
+  matTooltip="Draw a line"
+  matTooltipClass="custom-tooltip"
+  matTooltipPosition="left"
+  mat-icon-button
+  class="menu-button"
+  (click)="addDrawing('line')"
+>
+  <svg height="20" width="20">
+    <line
+      [ngClass]="{ selected: drawTools.isLineChosen }"
+      class="draw-line-icon"
+      x1="15"
+      y1="5"
+      x2="5"
+      y2="15"
+      style="stroke-width: 2"
+    />
+  </svg>
+</button>
+}
+<button
+  matTooltip="Draw a curve"
+  matTooltipClass="custom-tooltip"
+  matTooltipPosition="left"
+  mat-icon-button
+  class="menu-button"
+  (click)="addDrawing('curve')"
+>
+  <svg height="20" width="20" viewBox="0 0 20 20">
+    <g transform="rotate(20, 10, 10)">
+      <path
+        [ngClass]="{ selected: drawTools.isCurveChosen }"
+        class="draw-line-icon"
+        d="M 6 3 C 12 3, 12 6, 10 6 C 8 6, 6 8, 6 10 C 6 12, 8 14, 10 14 C 12 14, 14 17, 14 17"
+        fill="none"
+        stroke-width="2"
+        stroke="currentColor"
+      />
+    </g>
+  </svg>
+</button>
+<button
+  matTooltip="Lock or unlock all items"
+  matTooltipClass="custom-tooltip"
+  matTooltipPosition="left"
+  mat-icon-button
+  class="menu-button"
+  (click)="changeLockValue()"
+>
+  <mat-icon [ngClass]="{ unmarkedLight: !isLocked && isLightThemeEnabled, marked: isLocked }">{{ lock }}</mat-icon>
+</button>
+<button
+  matTooltip="Take a screenshot"
+  matTooltipClass="custom-tooltip"
+  matTooltipPosition="left"
+  mat-icon-button
+  class="menu-button"
+  (click)="takeScreenshot()"
+>
+  <mat-icon [ngClass]="{ unmarkedLight: !isLocked && isLightThemeEnabled }">photo_camera</mat-icon>
+</button>
+<button
+  matTooltip="AI Assistant"
+  matTooltipClass="custom-tooltip"
+  matTooltipPosition="left"
+  mat-icon-button
+  class="menu-button ai-chat-button"
+  [class.ai-active]="isAIChatOpen && !isAIMinimized"
+  [class.ai-minimized]="isAIChatOpen && isAIMinimized"
+  (click)="openAIChat()"
+>
+  <span class="ai-icon">AI</span>
+</button>
+<button
+  matTooltip="Inject Fault"
+  matTooltipClass="custom-tooltip"
+  matTooltipPosition="left"
+  mat-icon-button
+  class="menu-button fault-inject-button"
+  (click)="openFaultInjection()"
+>
+  <mat-icon>bug_report</mat-icon>
+</button>
+<app-drawing-added
+  [controller]="controller()"
+  [project]="project()"
+  [selectedDrawing]="selectedDrawing"
+  (drawingSaved)="onDrawingSaved()"
+>
+</app-drawing-added>
+
+<div id="crowbar-workspace"></div>

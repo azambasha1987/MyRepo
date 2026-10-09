@@ -1,0 +1,250 @@
+#!/usr/bin/env python
+#
+# Copyright (C) 2021 GNS3 Technologies Inc.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import logging
+import os
+import uuid
+from typing import List, Optional, Union, cast
+from uuid import UUID
+
+from sqlalchemy import delete, select
+from sqlalchemy.engine import CursorResult
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+from sqlalchemy.orm.session import make_transient
+
+import gns3server.db.models as models
+from gns3server.controller.controller_error import ControllerNotFoundError
+from gns3server.utils.image_inventory import image_lock, normalized_path
+from gns3server.utils.images import default_images_directory
+
+from .base import BaseRepository
+
+log = logging.getLogger(__name__)
+
+TEMPLATE_TYPE_TO_MODEL = {
+    "cloud": models.CloudTemplate,
+    "docker": models.DockerTemplate,
+    "dynamips": models.DynamipsTemplate,
+    "ethernet_hub": models.EthernetHubTemplate,
+    "ethernet_switch": models.EthernetSwitchTemplate,
+    "iou": models.IOUTemplate,
+    "qemu": models.QemuTemplate,
+    "virtualbox": models.VirtualBoxTemplate,
+    "vmware": models.VMwareTemplate,
+    "vpcs": models.VPCSTemplate,
+}
+
+
+class TemplatesRepository(BaseRepository):
+    def __init__(self, db_session: AsyncSession) -> None:
+
+        super().__init__(db_session)
+
+    def configs_path(self) -> str:
+        return os.path.join(os.getcwd(), "configs")
+
+    async def get_template(self, template_id: UUID) -> Union[None, models.Template]:
+
+        query = (
+            select(models.Template)
+            .options(selectinload(models.Template.images))
+            .where(models.Template.template_id == template_id)
+        )
+        result = await self._db_session.execute(query)
+        return result.scalars().first()
+
+    async def get_template_by_name_and_version(self, name: str, version: Optional[str]) -> Union[None, models.Template]:
+
+        query = (
+            select(models.Template)
+            .options(selectinload(models.Template.images))
+            .where(models.Template.name == name, models.Template.version == version)
+        )
+        result = await self._db_session.execute(query)
+        return result.scalars().first()
+
+    async def get_template_by_name(self, name: str) -> Union[None, models.Template]:
+        """
+        Return the first template with this name, regardless of version.
+        """
+
+        query = (
+            select(models.Template).options(selectinload(models.Template.images)).where(models.Template.name == name)
+        )
+        result = await self._db_session.execute(query)
+        return result.scalars().first()
+
+    async def get_templates(self) -> List[models.Template]:
+
+        query = select(models.Template).options(selectinload(models.Template.images))
+        result = await self._db_session.execute(query)
+        return list(result.scalars().all())
+
+    async def create_template(self, template_type: str, template_settings: dict) -> models.Template:
+
+        model = TEMPLATE_TYPE_TO_MODEL[template_type]
+        db_template = model(**template_settings)
+        self._db_session.add(db_template)
+        await self._db_session.commit()
+        await self._db_session.refresh(db_template)
+        return db_template
+
+    async def update_template(self, db_template: models.Template, template_settings: dict) -> models.Template:
+
+        # update the fields directly because update() query couldn't work
+        for key, value in template_settings.items():
+            setattr(db_template, key, value)
+        await self._db_session.commit()
+        await self._db_session.refresh(db_template)  # force refresh of updated_at value
+        return db_template
+
+    async def delete_template(self, template_id: UUID) -> bool:
+
+        query = delete(models.Template).where(models.Template.template_id == template_id)
+        result = await self._db_session.execute(query)
+        await self._db_session.commit()
+        return cast(CursorResult, result).rowcount > 0
+
+    async def duplicate_template(self, template_id: UUID) -> Optional[models.Template]:
+
+        query = (
+            select(models.Template)
+            .options(selectinload(models.Template.images))
+            .where(models.Template.template_id == template_id)
+        )
+        db_template = (await self._db_session.execute(query)).scalars().first()
+        if db_template:
+            # duplicate db object with new primary key (template_id)
+            self._db_session.expunge(db_template)
+            make_transient(db_template)
+            db_template.template_id = uuid.uuid4()
+            self._db_session.add(db_template)
+            await self._db_session.commit()
+            await self._db_session.refresh(db_template)
+        return db_template
+
+    async def get_image(
+        self,
+        image_path: str,
+        *,
+        include_unavailable: bool = False,
+        image_type: Optional[str] = None,
+        template_id: Optional[UUID] = None,
+    ) -> Optional[models.Image]:
+        """
+        Get an image by its path, preferring its type root for relative references.
+
+        Without image_type, retain legacy filename/suffix matching. Absolute
+        references always match the supplied path regardless of image_type.
+        template_id limits lookup to existing associations when removing an image.
+        """
+
+        lookup_path = os.path.normpath(image_path) if image_type and not os.path.isabs(image_path) else image_path
+        image_dir, image_name = os.path.split(lookup_path)
+        if os.path.isabs(image_path):
+            query = select(models.Image).where(models.Image.path == image_path)
+        elif image_dir:
+            query = select(models.Image).where(
+                models.Image.filename == image_name, models.Image.path.endswith(os.sep + lookup_path, autoescape=True)
+            )
+        else:
+            query = select(models.Image).where(models.Image.filename == image_name)
+        if template_id is not None:
+            query = query.where(models.Image.templates.any(models.Template.template_id == template_id))
+        if not include_unavailable:
+            query = query.where(models.Image.availability.in_(["unknown", "available"]))
+        query = query.order_by(models.Image.image_id)
+        result = await self._db_session.execute(query)
+        images = list(result.scalars().all())
+        if image_type and not os.path.isabs(image_path):
+            # Type-relative paths must resolve below that type's root first.
+            # Preserve legacy suffix/basename lookup for additional image roots.
+            typed_images = [image for image in images if image.image_type == image_type]
+            if typed_images:
+                expected = normalized_path(os.path.join(default_images_directory(image_type), image_path))
+                for image in typed_images:
+                    if normalized_path(image.path) == expected:
+                        return image
+                images = typed_images
+        if len(images) > 1:
+            log.warning(
+                "Multiple images match reference '%s' (%s rows); using '%s' with the lowest image_id (%s)",
+                image_path,
+                len(images),
+                images[0].path,
+                images[0].image_id,
+            )
+        return images[0] if images else None
+
+    async def add_image_to_template(self, template_id: UUID, image: models.Image) -> Union[None, models.Template]:
+        """
+        Add an image to template.
+        """
+
+        async with image_lock(image.path):
+            exists = (
+                await self._db_session.execute(
+                    select(models.Image.image_id).where(models.Image.image_id == image.image_id)
+                )
+            ).scalar_one_or_none()
+            if exists is None:
+                raise ControllerNotFoundError(f"Image '{image.path}' was removed while creating the template")
+            query = (
+                select(models.Template)
+                .options(selectinload(models.Template.images))
+                .where(models.Template.template_id == template_id)
+            )
+            result = await self._db_session.execute(query)
+            template_in_db = result.scalars().first()
+            if not template_in_db:
+                return None
+
+            template_in_db.images.append(image)
+            await self._db_session.commit()
+            await self._db_session.refresh(template_in_db)
+            return template_in_db
+
+    async def remove_image_from_template(self, template_id: UUID, image: models.Image) -> Union[None, models.Template]:
+        """
+        Remove an image from a template.
+        """
+
+        query = (
+            select(models.Template)
+            .options(selectinload(models.Template.images))
+            .where(models.Template.template_id == template_id)
+        )
+        result = await self._db_session.execute(query)
+        template_in_db = result.scalars().first()
+        if not template_in_db:
+            return None
+
+        if image in template_in_db.images:
+            template_in_db.images.remove(image)
+            await self._db_session.commit()
+            await self._db_session.refresh(template_in_db)
+        return template_in_db
+
+    async def get_template_images(self, template_id: UUID) -> List[models.Image]:
+        """
+        Return all images attached to a template.
+        """
+
+        query = select(models.Image).join(models.Image.templates).filter(models.Template.template_id == template_id)
+        result = await self._db_session.execute(query)
+        return list(result.scalars().all())

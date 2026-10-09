@@ -1,0 +1,141 @@
+/**
+ * Xterm Context Menu Styles
+ * Centralized styles for xterm.js right-click context menu
+ * Follows Material Design 3 guidelines
+ */
+
+/* =============================================
+// Xterm Viewport — suppress horizontal overflow and hide the scrollbar.
+// The scrollbar track area is NOT part of the character grid, so selection
+// never fills it, creating a visible right-side gap. Hiding the scrollbar
+// (CSS-only) lets fit() use the full container width. Scroll-by-wheel and
+// keyboard still work; only the drag-handle is removed.
+// ============================================= */
+.xterm .xterm-viewport {
+  overflow-x: hidden;
+  scrollbar-width: none; /* Firefox */
+}
+
+.xterm .xterm-viewport::-webkit-scrollbar {
+  display: none; /* Chrome / Safari */
+}
+
+/* =============================================
+// Xterm height fill — xterm sizes .xterm to content (rows × cellHeight),
+// leaving a gap of (containerHeight % cellHeight) px below the last row.
+// That gap is transparent, showing the consoleWrapper surface color as a
+// thin border. height: 100% makes .xterm fill its container so the
+// viewport's inline background-color covers the full area.
+// ============================================= */
+.xterm {
+  height: 100%;
+}
+
+/* =============================================
+// Xterm Context Menu Animation
+// ============================================= */
+@keyframes xtermContextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* =============================================
+// Xterm Context Menu Container
+// ============================================= */
+.xterm-context-menu {
+  /* Layout */
+  position: absolute;
+  z-index: 10000;
+
+  /* Material Design 3 Surface */
+  background: var(--mat-sys-surface);
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--mat-sys-shadow) 25%, transparent);
+
+  /* Spacing */
+  padding: 4px 0;
+  min-width: 160px;
+  max-width: 240px;
+
+  /* Typography */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-size: 13px;
+
+  /* Animation */
+  animation: xtermContextMenuFadeIn 150ms var(--mat-sys-motion-easing-emphasized);
+
+  /* Interaction */
+  cursor: default;
+  user-select: none;
+
+  /* =============================================
+  // Menu Item
+  // ============================================= */
+  .xterm-context-menu-item {
+    /* Layout */
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    /* Spacing */
+    padding: 8px 16px;
+
+    /* Material Design 3 Text */
+    color: var(--mat-sys-on-surface);
+
+    /* Interaction */
+    cursor: pointer;
+    transition: background-color 150ms var(--mat-sys-motion-easing-linear),
+      color 150ms var(--mat-sys-motion-easing-linear);
+
+    /* Accessibility */
+    &[role='menuitem']:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: -2px;
+    }
+
+    /* Hover State - Use color-mix for reliable state layer */
+    &:hover {
+      background: color-mix(in srgb, var(--mat-sys-on-surface) 8%, transparent);
+      color: var(--mat-sys-on-surface);
+    }
+
+    /* Active/Pressed State - Stronger feedback */
+    &:active {
+      background: color-mix(in srgb, var(--mat-sys-on-surface) 12%, transparent);
+      color: var(--mat-sys-on-surface);
+    }
+
+    /* Disabled State */
+    &.is-disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* Keyboard Shortcut Display */
+    &::after {
+      content: attr(data-shortcut);
+      margin-left: auto;
+      opacity: 0.6;
+      font-size: 11px;
+      color: var(--mat-sys-on-surface-variant);
+    }
+  }
+
+  /* =============================================
+  // Menu Separator
+  // ============================================= */
+  .xterm-context-menu-separator {
+    height: 1px;
+    background: var(--mat-sys-outline-variant);
+    margin: 4px 0;
+  }
+}

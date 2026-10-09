@@ -1,0 +1,9 @@
+<h1 mat-dialog-title>Project README</h1>
+
+<mat-dialog-content>
+  <app-markdown-viewer class="project-readme__content" [data]="readme()"></app-markdown-viewer>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onNoClick()" color="accent">Close</button>
+</mat-dialog-actions>

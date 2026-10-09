@@ -1,0 +1,119 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { ComponentFixture } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
+import { ConfirmationDialogComponent, ConfirmationDialogData } from './confirmation-dialog.component';
+import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+
+describe('ConfirmationDialogComponent', () => {
+  let fixture: ComponentFixture<ConfirmationDialogComponent>;
+  let component: ConfirmationDialogComponent;
+  let mockDialogRef: MatDialogRef<ConfirmationDialogComponent>;
+
+  const defaultDialogData: ConfirmationDialogData = {
+    message: 'Are you sure?',
+    title: 'Confirm Action',
+    confirmButtonText: 'Yes, proceed',
+    cancelButtonText: 'No, cancel',
+    details: ['Router 1', 'Router 2'],
+    note: 'This action cannot be undone.',
+  };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+
+    mockDialogRef = {
+      close: vi.fn(),
+    } as any as MatDialogRef<ConfirmationDialogComponent>;
+
+    await TestBed.configureTestingModule({
+      imports: [ConfirmationDialogComponent],
+      providers: [
+        { provide: MatDialogRef, useValue: mockDialogRef },
+        { provide: MAT_DIALOG_DATA, useValue: defaultDialogData },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(ConfirmationDialogComponent);
+    fixture.detectChanges();
+    component = fixture.componentInstance;
+  });
+
+  afterEach(() => {
+    if (fixture) {
+      fixture.destroy();
+    }
+  });
+
+  describe('creation', () => {
+    it('should create', () => {
+      expect(component).toBeTruthy();
+    });
+
+    it('should have dialogRef', () => {
+      expect(component.dialogRef).toBeDefined();
+    });
+
+    it('should have data', () => {
+      expect(component.data).toBeDefined();
+      expect(component.data.message).toBe('Are you sure?');
+    });
+  });
+
+  describe('title', () => {
+    it('should return custom title from data', () => {
+      expect(component.title).toBe('Confirm Action');
+    });
+
+    it('should return default title when not provided', () => {
+      const componentWithoutTitle = new ConfirmationDialogComponent(mockDialogRef, { message: 'Test' });
+      expect(componentWithoutTitle.title).toBe('Confirm action');
+    });
+  });
+
+  describe('confirmButtonText', () => {
+    it('should return custom confirm button text', () => {
+      expect(component.confirmButtonText).toBe('Yes, proceed');
+    });
+
+    it('should return default confirm button text when not provided', () => {
+      const componentWithoutText = new ConfirmationDialogComponent(mockDialogRef, { message: 'Test' });
+      expect(componentWithoutText.confirmButtonText).toBe('Confirm');
+    });
+  });
+
+  describe('cancelButtonText', () => {
+    it('should return custom cancel button text', () => {
+      expect(component.cancelButtonText).toBe('No, cancel');
+    });
+
+    it('should return default cancel button text when not provided', () => {
+      const componentWithoutText = new ConfirmationDialogComponent(mockDialogRef, { message: 'Test' });
+      expect(componentWithoutText.cancelButtonText).toBe('Cancel');
+    });
+  });
+
+  describe('presentation', () => {
+    it('should default to a destructive confirmation', () => {
+      const defaultComponent = new ConfirmationDialogComponent(mockDialogRef, { message: 'Test' });
+      expect(defaultComponent.tone).toBe('danger');
+      expect(defaultComponent.icon).toBe('delete_forever');
+    });
+
+    it('should render optional details and note', () => {
+      expect(fixture.nativeElement.querySelectorAll('.confirmation-dialog__details li').length).toBe(2);
+      expect(fixture.nativeElement.querySelector('.confirmation-dialog__note').textContent).toContain('cannot be undone');
+    });
+  });
+
+  describe('actions', () => {
+    it('should close dialog with false on onNoClick', () => {
+      component.onNoClick();
+      expect(mockDialogRef.close).toHaveBeenCalledWith(false);
+    });
+
+    it('should close dialog with true on onYesClick', () => {
+      component.onYesClick();
+      expect(mockDialogRef.close).toHaveBeenCalledWith(true);
+    });
+  });
+});

@@ -1,0 +1,22 @@
+/**
+ * GNS3 Link Style Editor Component Styles
+ * Using MD3 CSS variables
+ */
+
+.modal-form-container {
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-form-container > * {
+  width: 100%;
+}
+
+.form-field {
+  width: 100%;
+}
+
+.bezier-curviness-field,
+.flowchart-roundness-field {
+  margin-top: 10px;
+}

@@ -1,0 +1,40 @@
+:host {
+  display: block;
+}
+
+.export-portable-project {
+  &__form {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  &__close-btn {
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+
+  &__settings {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  &__options {
+    display: flex;
+    margin-top: 16px;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+:host-context(html[data-density='compact']) .export-portable-project__options {
+  margin-top: 12px;
+  gap: 4px;
+}
+
+@media (max-width: 600px) {
+  .export-portable-project__settings {
+    grid-template-columns: 1fr;
+  }
+}

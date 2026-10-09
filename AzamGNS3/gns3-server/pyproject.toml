@@ -1,0 +1,257 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gns3-server"
+description = "GNS3 server (controller and compute) for GNS3 network simulator"
+license-files = ["LICENSE"]
+authors = [
+  { name = "Jeremy Grossmann", email = "developers@gns3.com" }
+]
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+        "Development Status :: 5 - Production/Stable",
+        "Environment :: Console",
+        "Framework :: FastAPI",
+        "Intended Audience :: Information Technology",
+        "Topic :: System :: Networking",
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+        "Natural Language :: English",
+        "Operating System :: POSIX :: Linux",
+        "Programming Language :: Python :: 3 :: Only",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
+        "Programming Language :: Python :: Implementation :: CPython"
+]
+
+dynamic = ["version", "dependencies", "optional-dependencies"]
+
+[tool.setuptools.dynamic]
+version = {attr = "gns3server.version.__version__"}
+dependencies = {file = "requirements.txt"}
+
+[tool.setuptools.dynamic.optional-dependencies]
+# Development dependencies
+dev = {file = ['dev-requirements.txt']}
+
+# AI features bundle — installs both AI Copilot and MCP dependencies
+ai-features = {file = ['ai-requirements.txt', 'mcp-requirements.txt']}
+# terraform = {file = ['terraform-requirements.txt']}  # Future component
+
+[project.urls]
+"Homepage" = "http://gns3.com"
+"Repository" = "http://github.com/GNS3/gns3-server"
+"Bug tracker" = "http://github.com/GNS3/gns3-server/issues"
+
+[project.scripts]
+gns3server = "gns3server.main:main"
+gns3vmnet = "gns3server.utils.vmnet:main"
+gns3server-web-wireshark-setup = "gns3server.agent.web_wireshark.setup_wireshark_image:main"
+gns3server-uninstall-ai-features = "gns3server.utils.uninstall_ai_features:main"
+
+[tool.setuptools]
+packages = ["gns3server"]
+
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+extend-exclude = [
+    "*.md",
+]
+
+[tool.ruff.lint]
+select = [
+  "ASYNC", # flake8-async
+  "B",     # flake8-bugbear
+  "BLE",   # flake8-blind-except
+  "C90",   # mccabe
+  "DTZ",   # flake8-datetimez
+  "E",     # pycodestyle errors
+  "F",     # pyflakes
+  "I",     # isort
+  "LOG",   # flake8-logging
+  "PLE",   # pylint errors
+  "PLW",   # pylint warnings
+  "RUF",   # ruff-specific rules
+  "S",     # flake8-bandit
+  "T10",   # flake8-debugger
+  "UP",    # pyupgrade
+  "W",     # pycodestyle warnings
+]
+# Baseline: widespread rules that the existing code still violates
+# (violation count at baseline time). Remove an entry, and fix its
+# violations, in a dedicated small PR. Never add new entries here:
+# fix the code or use a targeted "# noqa: CODE" with a reason.
+ignore = [
+  "ASYNC230",  #  240  blocking-open-call-in-async-function
+  "ASYNC240",  #  235  blocking-path-method-in-async-function
+  "B007",      #   32  unused-loop-control-variable
+  "B008",      #  119  function-call-in-default-argument
+  "B904",      #  365  raise-without-from-inside-except
+  "BLE001",    #  214  blind-except
+  "E402",      #  129  module-import-not-at-top-of-file
+  "E501",      #  655  line-too-long
+  "F841",      #   32  unused-variable
+  "PLW0603",   #   21  global-statement
+  "PLW2901",   #   30  redefined-loop-name
+  "RUF012",    #   23  mutable-class-default
+  "RUF036",    #   22  none-not-at-end-of-union
+  "RUF059",    #   29  unused-unpacked-variable
+  "S101",      #   19  assert
+  "S104",      #   22  hardcoded-bind-all-interfaces
+  "S110",      #   23  try-except-pass
+  "UP006",     #  270  non-pep585-annotation
+  "UP007",     #   81  non-pep604-annotation-union
+  "UP035",     #  106  deprecated-import
+  "UP045",     # 1100  non-pep604-annotation-optional
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI dependency markers are meant to be used as defaults:
+extend-immutable-calls = [
+  "fastapi.Body",
+  "fastapi.Cookie",
+  "fastapi.Depends",
+  "fastapi.File",
+  "fastapi.Form",
+  "fastapi.Header",
+  "fastapi.Path",
+  "fastapi.Query",
+  "fastapi.Security",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests use asserts and hardcoded credentials / temp paths:
+"tests/**" = ["S101", "S105", "S106", "S108"]
+# Baseline: existing violations of rules that are enforced everywhere else.
+# Remove entries one small PR at a time. Never add new ones.
+"gns3server/agent/__init__.py" = ["LOG015"]
+"gns3server/agent/gns3_copilot/agent/gns3_copilot.py" = ["DTZ003"]
+"gns3server/agent/gns3_copilot/agent_service.py" = ["C901", "DTZ003"]
+"gns3server/agent/gns3_copilot/chat_sessions_repository.py" = ["DTZ003", "S608"]
+"gns3server/agent/gns3_copilot/skills/registry.py" = ["C901"]
+"gns3server/agent/gns3_copilot/tools_v2/gns3_packet_filter.py" = ["PLW1510", "S603", "S607"]
+"gns3server/agent/gns3_copilot/tools_v2/packet_analysis_tool.py" = ["PLW1510", "S603", "S607"]
+"gns3server/agent/gns3_copilot/utils/custom_netmiko/huawei_ce.py" = ["S107"]
+"gns3server/agent/gns3_copilot/utils/custom_netmiko/ruijie_telnet.py" = ["LOG015"]
+"gns3server/agent/gns3_copilot/utils/custom_netmiko/scripts/list_netmiko_telnet_devices.py" = ["DTZ005"]
+"gns3server/agent/gns3_copilot/utils/custom_netmiko/vpcs_telnet.py" = ["S107"]
+"gns3server/agent/gns3_copilot/utils/message_converters.py" = ["RUF019"]
+"gns3server/agent/gns3_copilot/utils/parse_tool_content.py" = ["C901", "DTZ003"]
+"gns3server/agent/mcp/__init__.py" = ["RUF003"]
+"gns3server/agent/mcp/device_config.py" = ["E741"]
+"gns3server/agent/web_wireshark/manager.py" = ["C901"]
+"gns3server/agent/web_wireshark/setup_wireshark_image.py" = ["PLW1510", "S603", "S607"]
+"gns3server/agent/web_wireshark/stats.py" = ["ASYNC221", "PLW1510", "S603", "S607"]
+"gns3server/api/routes/compute/qemu_nodes.py" = ["F811"]
+"gns3server/api/routes/controller/dependencies/authentication.py" = ["S105", "S106"]
+"gns3server/api/routes/controller/links.py" = ["E722"]
+"gns3server/api/routes/controller/nodes.py" = ["C901", "RUF019"]
+"gns3server/api/routes/controller/templates.py" = ["S324"]
+"gns3server/api/routes/controller/users.py" = ["S105", "S106"]
+"gns3server/compute/base_node.py" = ["C901", "RUF019"]
+"gns3server/compute/docker/__init__.py" = ["B006", "C901"]
+"gns3server/compute/docker/docker_vm.py" = ["B006", "C901", "E731", "RUF003", "RUF006", "S108"]
+"gns3server/compute/docker/iol_docker_vm.py" = ["RUF002", "S108"]
+"gns3server/compute/docker/vendor_docker_vm.py" = ["RUF002", "S108"]
+"gns3server/compute/dynamips/__init__.py" = ["C901"]
+"gns3server/compute/dynamips/dynamips_hypervisor.py" = ["C901"]
+"gns3server/compute/dynamips/nodes/router.py" = ["F522", "RUF006"]
+"gns3server/compute/iou/iou_vm.py" = ["C901", "S108", "S324"]
+"gns3server/compute/iou/utils/iou_export.py" = ["C901", "RUF003"]
+"gns3server/compute/project.py" = ["DTZ006", "S324"]
+"gns3server/compute/qemu/qemu_vm.py" = ["ASYNC220", "C901", "RUF003", "S603"]
+"gns3server/compute/ubridge/ubridge_hypervisor.py" = ["C901"]
+"gns3server/compute/virtualbox/virtualbox_vm.py" = ["C901", "S314"]
+"gns3server/compute/vmware/__init__.py" = ["C901"]
+"gns3server/compute/vmware/vmware_vm.py" = ["C901"]
+"gns3server/compute/vpcs/vpcs_vm.py" = ["B018"]
+"gns3server/config.py" = ["B905", "C901"]
+"gns3server/controller/__init__.py" = ["S311"]
+"gns3server/controller/appliance_to_template.py" = ["C901"]
+"gns3server/controller/compute.py" = ["B006", "C901"]
+"gns3server/controller/drawing.py" = ["S314", "S324"]
+"gns3server/controller/export_project.py" = ["C901", "DTZ006"]
+"gns3server/controller/gns3vm/hyperv_gns3_vm.py" = ["RUF015", "S608"]
+"gns3server/controller/gns3vm/virtualbox_gns3_vm.py" = ["C901"]
+"gns3server/controller/import_project.py" = ["C901"]
+"gns3server/controller/node.py" = ["C901", "PLW1641"]
+"gns3server/controller/node_types.py" = ["W292"]
+"gns3server/controller/ports/port_factory.py" = ["B020", "C901"]
+"gns3server/controller/project.py" = ["ASYNC110", "C901", "RUF006", "RUF019"]
+"gns3server/controller/topology.py" = ["C901"]
+"gns3server/controller/udp_link.py" = ["C901"]
+"gns3server/db/repositories/llm_model_configs.py" = ["DTZ003", "RUF019"]
+"gns3server/db/repositories/rbac.py" = ["C901"]
+"gns3server/db/tasks.py" = ["RUF006", "RUF019"]
+"gns3server/db_migrations/versions/ec4b7b198555_convert_pickletype_fields_to_json.py" = ["S301", "S608"]
+"gns3server/logger.py" = ["PLW0127"]
+"gns3server/schemas/controller/settings.py" = ["S105"]
+"gns3server/schemas/controller/templates/docker_templates.py" = ["W292"]
+"gns3server/schemas/controller/tokens.py" = ["S105"]
+"gns3server/server.py" = ["DTZ011", "RUF006", "UP036"]
+"gns3server/services/authentication.py" = ["S105"]
+"gns3server/services/templates.py" = ["W292"]
+"gns3server/utils/__init__.py" = ["S324"]
+"gns3server/utils/asyncio/__init__.py" = ["RUF006"]
+"gns3server/utils/asyncio/aiozipstream.py" = ["C901"]
+"gns3server/utils/asyncio/raw_command_server.py" = ["B006"]
+"gns3server/utils/asyncio/telnet_server.py" = ["RUF006"]
+"gns3server/utils/images.py" = ["S324"]
+"gns3server/utils/packet_filter_validation.py" = ["PLW1510", "S603", "S607", "W292"]
+"gns3server/utils/picture.py" = ["C901"]
+"gns3server/utils/port_allocator.py" = ["S324"]
+"gns3server/utils/uninstall_ai_features.py" = ["PLW1510", "S603"]
+"gns3server/utils/vmnet.py" = ["S605", "S607"]
+"gns3server/utils/websocket_to_websocket.py" = ["C901"]
+"gns3server/utils/zipfile_zstd/__init__.py" = ["F403"]
+"gns3server/version.py" = ["S607"]
+"scripts/extract_mermaid.py" = ["C901", "PLW1510", "S603", "S607"]
+"scripts/tag.py" = ["S603", "S607"]
+"scripts/welcome.py" = ["C901", "E722", "PLW1510", "S108", "S112", "S603", "S605", "S606", "S607"]
+"tests/agent/mcp/test_handlers.py" = ["B905"]
+"tests/agent/mcp/test_tool_params.py" = ["C901"]
+"tests/api/test_openapi_spec.py" = ["S603"]
+"tests/api/routes/controller/test_images.py" = ["S324", "W292"]
+"tests/api/routes/controller/test_links.py" = ["RUF015", "W292"]
+"tests/api/routes/controller/test_users.py" = ["F811"]
+"tests/compute/docker/test_docker.py" = ["B018"]
+"tests/compute/docker/test_docker_vm.py" = ["F811"]
+"tests/compute/docker/test_iol_docker_vm.py" = ["RUF003", "RUF015"]
+"tests/compute/docker/test_vendor_docker_vm.py" = ["RUF015"]
+"tests/compute/qemu/test_qemu_vm.py" = ["E741"]
+"tests/compute/test_project.py" = ["RUF003", "RUF064", "S103"]
+"tests/compute/virtualbox/test_virtualbox_manager.py" = ["B011"]
+"tests/compute/vpcs/test_vpcs_vm.py" = ["RUF003"]
+"tests/controller/test_import_project.py" = ["F811"]
+"tests/controller/test_marker.py" = ["B006"]
+"tests/controller/test_node.py" = ["E711", "F811"]
+"tests/controller/test_project.py" = ["RUF015"]
+"tests/controller/test_snapshot.py" = ["RUF015"]
+"tests/controller/test_udp_link.py" = ["B006"]
+"tests/test_server.py" = ["E722"]
+"tests/test_topologies.py" = ["B011"]
+"tests/test_utils.py" = ["F403", "F405"]
+"tests/utils/test_asyncio.py" = ["B017"]
+"tests/utils/test_packet_filter_validation.py" = ["W292"]
+"tests/services/test_image_reconciliation.py" = ["S324"]
+
+[tool.mypy]
+files = ["gns3server"]
+plugins = ["pydantic.mypy"]
+# Third-party packages without type hints / stubs:
+ignore_missing_imports = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+strict_equality = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
+

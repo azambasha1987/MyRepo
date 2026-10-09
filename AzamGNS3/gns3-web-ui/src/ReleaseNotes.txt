@@ -1,0 +1,48 @@
+GNS3 WebUI is web implementation of user interface for GNS3 software.
+
+Current version: 3.1.0-dev.1
+
+---
+
+## What's New
+
+- **Web Wireshark Inline Display**: Open Wireshark directly in the project map canvas
+  - Context menu integration: "Start Web Wireshark (Inline)"
+  - Support for multiple concurrent inline windows
+  - Draggable and resizable inline windows
+  - Minimize/restore with unified taskbar
+  - xpra-html5 client integration (MPL-2.0 licensed)
+
+- **AI Chat Feature**: Integrated AI assistant for network automation
+  - LLM model configuration (OpenAI, Anthropic, local models)
+  - Profile management for different AI providers
+  - Context-aware assistance for network topology
+
+- **Unified Window Management**: Modern floating window system
+  - Unified taskbar for all minimized windows (Console, Wireshark)
+  - Focus-based z-index management (click to bring window to front)
+  - Minimize/restore functionality for all floating panels
+  - Window position persistence across sessions
+
+- **Modern UI Framework**: Angular 21 Zoneless architecture
+  - 100% migration to Angular 21 standalone components
+  - Zone.js removed for better performance
+  - Signal-based reactive state management
+  - OnPush change detection strategy
+
+- **Material Design 3**: Complete visual refresh
+  - Material Design 3 color system and theming
+  - Dynamic theme switching (light/dark)
+  - CSS variable-based theming architecture
+  - Centralized dialog styling system
+
+## Bug Fixes & Enhancements
+
+- Test environment stability improvements (Vitest isolation)
+- Hardcoded color protection mechanism with multi-layer validation
+- Symbol loading with JWT authentication
+- Custom adapters support for template configuration
+- Compute status real-time updates via WebSocket
+- Curve drawing tool improvements
+- Window boundary constraint service for better UX
+- Console devices panel (v2.0.0) with improved device management

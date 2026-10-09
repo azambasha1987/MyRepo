@@ -1,0 +1,171 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { ConfirmationDeleteAllProjectsComponent } from './confirmation-delete-all-projects.component';
+import { ProjectService } from '@services/project.service';
+import { ToasterService } from '@services/toaster.service';
+import { of, throwError } from 'rxjs';
+
+describe('ConfirmationDeleteAllProjectsComponent', () => {
+  let fixture: ComponentFixture<ConfirmationDeleteAllProjectsComponent>;
+  let mockProjectService: any;
+  let mockToasterService: any;
+
+  const mockDialogData = {
+    controller: 'test-controller',
+    deleteFilesPaths: [
+      { project_id: 'project-1', filename: 'project1.gns3' },
+      { project_id: 'project-2', filename: 'project2.gns3' },
+    ],
+    autoStart: false,
+  };
+
+  beforeEach(async () => {
+    mockProjectService = {
+      delete: vi.fn().mockReturnValue(of(null)),
+    };
+
+    mockToasterService = {
+      error: vi.fn(),
+      success: vi.fn(),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [ConfirmationDeleteAllProjectsComponent, MatDialogModule, NoopAnimationsModule],
+      providers: [
+        { provide: MAT_DIALOG_DATA, useValue: mockDialogData },
+        { provide: MatDialogRef, useValue: { close: vi.fn() } },
+        { provide: ProjectService, useValue: mockProjectService },
+        { provide: ToasterService, useValue: mockToasterService },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(ConfirmationDeleteAllProjectsComponent);
+    fixture.detectChanges();
+  });
+
+  afterEach(() => {
+    fixture.destroy();
+  });
+
+  describe('initial state', () => {
+    it('should display deletion progress', () => {
+      const compiled = fixture.nativeElement as HTMLElement;
+
+      expect(compiled.querySelector('h1[mat-dialog-title]')?.textContent).toContain('Deleting projects');
+      expect(compiled.querySelector('mat-spinner')).toBeTruthy();
+    });
+
+    it('should not duplicate confirmation actions', () => {
+      const compiled = fixture.nativeElement as HTMLElement;
+      const buttons = compiled.querySelectorAll('button[mat-button], button[mat-raised-button]');
+
+      expect(buttons.length).toBe(0);
+    });
+
+    it('should start in the deleting state', () => {
+      expect(fixture.componentInstance.isDelete()).toBeTruthy();
+      expect(fixture.componentInstance.isUsedFiles()).toBeFalsy();
+    });
+  });
+
+  describe('deleteAll()', () => {
+    it('should set isDelete signal to true when called', () => {
+      mockProjectService.delete.mockReturnValue(of({}));
+      fixture.componentInstance.deleteAll();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.isDelete()).toBeTruthy();
+    });
+  });
+
+  describe('deleteFile()', () => {
+    it('should call projectService.delete for each project', () => {
+      mockProjectService.delete.mockReturnValue(of(null));
+
+      fixture.componentInstance.deleteFile();
+      fixture.detectChanges();
+
+      expect(mockProjectService.delete).toHaveBeenCalledTimes(2);
+      expect(mockProjectService.delete).toHaveBeenCalledWith('test-controller', 'project-1');
+      expect(mockProjectService.delete).toHaveBeenCalledWith('test-controller', 'project-2');
+    });
+
+    it('should set isUsedFiles to true after successful deletions (null = 204 No Content)', () => {
+      mockProjectService.delete.mockReturnValue(of(null));
+
+      fixture.componentInstance.deleteFile();
+      fixture.detectChanges();
+
+      expect(fixture.componentInstance.isUsedFiles()).toBeTruthy();
+      // null response means successful deletion (204 No Content)
+      expect(fixture.componentInstance.successfulDeletions().length).toBe(2);
+      expect(fixture.componentInstance.failedDeletions().length).toBe(0);
+    });
+
+    it('should set failedDeletions when HTTP errors occur', () => {
+      const httpError = { status: 403, error: { message: 'Forbidden' } };
+      mockProjectService.delete.mockReturnValue(throwError(() => httpError));
+
+      fixture.componentInstance.deleteFile();
+      fixture.detectChanges();
+
+      // HTTP errors are caught and added to failedDeletions
+      expect(fixture.componentInstance.failedDeletions().length).toBe(2);
+      expect(fixture.componentInstance.successfulDeletions().length).toBe(0);
+      expect(fixture.componentInstance.isUsedFiles()).toBeTruthy();
+    });
+
+    it('should correctly handle mixed success and failure deletions independently', () => {
+      let callCount = 0;
+      mockProjectService.delete.mockImplementation(() => {
+        callCount++;
+        // First call succeeds (null), second fails with HTTP error
+        return callCount === 1
+          ? of(null)
+          : throwError(() => ({ status: 403, error: { message: 'Forbidden' } }));
+      });
+
+      fixture.componentInstance.deleteFile();
+      fixture.detectChanges();
+
+      // Each request is handled independently
+      expect(fixture.componentInstance.successfulDeletions().length).toBe(1);
+      expect(fixture.componentInstance.failedDeletions().length).toBe(1);
+      expect(fixture.componentInstance.successfulDeletions()[0]).toEqual(mockDialogData.deleteFilesPaths[0]);
+      expect(fixture.componentInstance.failedDeletions()[0].project).toEqual(mockDialogData.deleteFilesPaths[1]);
+    });
+  });
+
+  describe('error handling', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it('should handle HTTP errors gracefully without throwing', async () => {
+      mockProjectService.delete.mockReturnValue(
+        throwError(() => ({ error: { message: 'Delete failed' } }))
+      );
+
+      fixture.componentInstance.deleteFile();
+      fixture.detectChanges();
+
+      // Errors are caught per-request, forkJoin doesn't fail
+      expect(mockToasterService.error).not.toHaveBeenCalled();
+      expect(fixture.componentInstance.isUsedFiles()).toBeTruthy();
+    });
+
+    it('should call markForCheck when handling errors', async () => {
+      mockProjectService.delete.mockReturnValue(
+        throwError(() => ({ error: { message: 'Delete failed' } }))
+      );
+
+      const cdrSpy = vi.spyOn(fixture.componentInstance['cd'], 'markForCheck');
+      fixture.componentInstance.deleteFile();
+      fixture.detectChanges();
+
+      expect(cdrSpy).toHaveBeenCalled();
+    });
+  });
+});

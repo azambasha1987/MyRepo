@@ -1,0 +1,43 @@
+import { ChangeDetectionStrategy, Component, OnChanges, inject, input } from '@angular/core';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatIconModule } from '@angular/material/icon';
+import { Drawing } from '../../../../../cartography/models/drawing';
+import { ImageElement } from '../../../../../cartography/models/drawings/image-element';
+import { Project } from '@models/project';
+import { Controller } from '@models/controller';
+import { StyleEditorDialogComponent } from '../../../drawings-editors/style-editor/style-editor.component';
+
+@Component({
+  selector: 'app-edit-style-action',
+  templateUrl: './edit-style-action.component.html',
+  imports: [MatDialogModule, MatMenuModule, MatIconModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class EditStyleActionComponent implements OnChanges {
+  private dialog = inject(MatDialog);
+
+  readonly controller = input<Controller>(undefined);
+  readonly project = input<Project>(undefined);
+  readonly drawing = input<Drawing>(undefined);
+  isImageDrawing: boolean = false;
+
+  constructor() {}
+
+  ngOnChanges() {
+    const drawing = this.drawing();
+    this.isImageDrawing = drawing?.element instanceof ImageElement;
+  }
+
+  editStyle() {
+    const dialogRef = this.dialog.open(StyleEditorDialogComponent, {
+      panelClass: ['base-dialog-panel', 'simple-dialog-panel', 'edit-style-action-dialog-panel', 'dialog-medium-panel'],
+      autoFocus: false,
+      disableClose: false,
+    });
+    let instance = dialogRef.componentInstance;
+    instance.controller = this.controller();
+    instance.project = this.project();
+    instance.drawing = this.drawing();
+  }
+}

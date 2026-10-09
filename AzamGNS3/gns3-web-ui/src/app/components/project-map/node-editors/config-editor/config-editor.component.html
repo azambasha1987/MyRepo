@@ -1,0 +1,27 @@
+<h1 mat-dialog-title>Configuration for node {{ node.name }}</h1>
+
+@if (node.node_type === 'vpcs') {
+<div class="modal-form-container">
+  <textarea #textArea id="textArea" class="textArea" [value]="config()" (input)="onConfigChange($event.target.value)"></textarea>
+</div>
+} @if (node.node_type === 'iou' || node.node_type === 'dynamips') {
+<mat-tab-group>
+  <mat-tab label="Startup config">
+    <textarea #textArea id="textArea" class="textAreaTab" [value]="config()" (input)="onConfigChange($event.target.value)"></textarea>
+  </mat-tab>
+  <mat-tab label="Private config">
+    <textarea #textArea id="textArea" class="textAreaTab" [value]="privateConfig()" (input)="onPrivateConfigChange($event.target.value)"></textarea>
+  </mat-tab>
+</mat-tab-group>
+}
+
+<div mat-dialog-actions>
+  <button mat-button (click)="onCancelClick()" color="accent">Cancel</button>
+  <button mat-button (click)="onSaveClick()" tabindex="2" mat-raised-button color="primary" [disabled]="isApplying()">
+    @if (isApplying()) {
+      <mat-spinner diameter="20"></mat-spinner>
+    } @else {
+      Apply
+    }
+  </button>
+</div>

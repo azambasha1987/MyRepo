@@ -1,0 +1,28 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "../out-tsc/app",
+    "baseUrl": "./",
+    "paths": {
+      "@components/*": ["app/components/*"],
+      "@services/*": ["app/services/*"],
+      "@resolvers/*": ["app/resolvers/*"],
+      "@filters/*": ["app/filters/*"],
+      "@models/*": ["app/models/*"],
+      "@utils/*": ["app/utils/*"]
+    },
+    "types": []
+  },
+  "files": [
+    "main.ts"
+  ],
+  "include": [
+    "../src/**/*"
+  ],
+  "exclude": [
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/*.backup.ts",
+    "**/*.bak"
+  ]
+}

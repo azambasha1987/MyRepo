@@ -1,0 +1,203 @@
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, Inject, inject, model } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { ToasterService } from '@services/toaster.service';
+import { CustomAdapter } from '@models/qemu/qemu-custom-adapter';
+import { computeDefaultPortName } from './port-name-format';
+
+export interface NetworkType {
+  value: string;
+  name: string;
+}
+
+export interface CustomAdaptersDialogData {
+  adapters: CustomAdapter[];
+  networkTypes: NetworkType[];
+  portNameFormat?: string;
+  portSegmentSize?: number;
+  firstPortName?: string;
+  defaultAdapterType?: string; // Default adapter type (for incremental save)
+  currentAdapters?: number; // Current adapters count
+}
+
+export interface CustomAdaptersDialogResult {
+  adapters: CustomAdapter[];
+  requiredAdapters?: number; // Minimum required adapters count
+}
+
+@Component({
+  selector: 'app-custom-adapters',
+  templateUrl: './custom-adapters.component.html',
+  styleUrls: ['./custom-adapters.component.scss'],
+  imports: [
+    MatButtonModule,
+    MatFormFieldModule,
+    MatIconModule,
+    MatInputModule,
+    MatSelectModule,
+    MatTooltipModule,
+    MatDialogModule,
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class CustomAdaptersComponent {
+  readonly dialogRef = inject(MatDialogRef<CustomAdaptersComponent>);
+  private cd = inject(ChangeDetectorRef);
+  private toasterService = inject(ToasterService);
+
+  readonly adapters = model<CustomAdapter[]>([]);
+  public numberOfAdapters: number;
+
+  constructor(@Inject(MAT_DIALOG_DATA) public data: CustomAdaptersDialogData) {
+    this.adapters.set(data.adapters ? [...data.adapters] : []);
+  }
+
+  get networkTypes(): any[] {
+    return this.data.networkTypes || [];
+  }
+
+  onAdd() {
+    const currentAdapters = this.adapters();
+    // Find the highest adapter_number to avoid duplicates
+    const maxAdapterNumber = currentAdapters.length > 0 ? Math.max(...currentAdapters.map((a) => a.adapter_number)) : -1;
+    const adapterNumber = maxAdapterNumber + 1;
+
+    // Predict the name the server would generate for this adapter
+    const portName = computeDefaultPortName(adapterNumber, this.data);
+
+    const adapter: CustomAdapter = {
+      adapter_number: adapterNumber,
+      adapter_type: this.networkTypes[0]?.value || 'e1000',
+      port_name: portName,
+      mac_address: '',
+    };
+    this.adapters.set([...currentAdapters, adapter]);
+  }
+
+  delete(adapter: CustomAdapter) {
+    this.adapters.set(this.adapters().filter((a) => a !== adapter));
+  }
+
+  onPortNameChange(adapterNumber: number, value: string) {
+    this.adapters.update((adapters) =>
+      adapters.map((a) => (a.adapter_number === adapterNumber ? { ...a, port_name: value } : a))
+    );
+    this.cd.markForCheck();
+  }
+
+  onAdapterTypeChange(adapterNumber: number, value: string) {
+    this.adapters.update((adapters) =>
+      adapters.map((a) => (a.adapter_number === adapterNumber ? { ...a, adapter_type: value } : a))
+    );
+    this.cd.markForCheck();
+  }
+
+  onMacAddressChange(adapterNumber: number, value: string) {
+    const formattedMac = this.formatMacAddress(value);
+    this.adapters.update((adapters) =>
+      adapters.map((a) => (a.adapter_number === adapterNumber ? { ...a, mac_address: formattedMac } : a))
+    );
+    this.cd.markForCheck();
+  }
+
+  formatMacAddress(mac: string): string {
+    if (!mac) return mac;
+
+    // Remove all non-hex characters
+    const cleaned = mac.replace(/[^0-9A-Fa-f]/g, '');
+
+    // Check if we have a valid MAC length (12 hex digits)
+    if (cleaned.length !== 12) {
+      return mac; // Return original if not 12 digits - will fail validation
+    }
+
+    // Format as XX:XX:XX:XX:XX:XX - will be validated by isValidMacAddress
+    return cleaned.match(/.{1,2}/g)?.join(':') || mac;
+  }
+
+  isValidMacAddress(mac: string): boolean {
+    if (!mac) return true; // Empty is valid (optional field)
+    const macRegex = /^([0-9A-Fa-f]{2}[:]){5}([0-9A-Fa-f]{2})$/;
+    return macRegex.test(mac);
+  }
+
+  hasInvalidMacAddresses(): boolean {
+    return this.adapters().some((adapter) => adapter.mac_address && !this.isValidMacAddress(adapter.mac_address));
+  }
+
+  getMacErrorMessage(mac: string): string {
+    if (!mac) return ' '; // Return space to always show mat-error element but with empty content
+    const cleaned = mac.replace(/[^0-9A-Fa-f]/g, '');
+    if (cleaned.length === 0) {
+      return 'Invalid MAC address format';
+    }
+    if (cleaned.length < 12) {
+      return `Too short (${cleaned.length}/12 hex digits)`;
+    }
+    if (cleaned.length > 12) {
+      return `Too long (${cleaned.length}/12 hex digits)`;
+    }
+    return 'Invalid MAC address format (12 hex digits required)';
+  }
+
+  cancelConfigureCustomAdapters() {
+    this.dialogRef.close();
+  }
+
+  configureCustomAdapters() {
+    // Check for invalid MAC addresses before submitting
+    if (this.hasInvalidMacAddresses()) {
+      const invalidAdapters = this.adapters().filter(
+        (adapter) => adapter.mac_address && !this.isValidMacAddress(adapter.mac_address)
+      );
+
+      const errorMessages = invalidAdapters.map((adapter) => {
+        const error = this.getMacErrorMessage(adapter.mac_address);
+        return `Adapter ${adapter.adapter_number}: ${error}`;
+      });
+
+      this.toasterService.error('Invalid MAC addresses:\n' + errorMessages.join('\n'));
+      return;
+    }
+
+    const defaultAdapterType = this.data.defaultAdapterType || 'e1000';
+
+    // Incremental save: only keep adapters with non-default values (like Desktop GUI)
+    const customAdapters: CustomAdapter[] = [];
+
+    for (const adapter of this.adapters()) {
+      // Predict the default name the server would generate for this adapter_number
+      const defaultPortName = computeDefaultPortName(adapter.adapter_number, this.data);
+
+      // Check if this adapter has any custom (non-default) values
+      const hasCustomPortName = adapter.port_name !== defaultPortName;
+      const hasCustomType = adapter.adapter_type !== defaultAdapterType;
+      const hasCustomMac = adapter.mac_address && adapter.mac_address.length > 0;
+
+      // Only save if at least one field is custom
+      if (hasCustomPortName || hasCustomType || hasCustomMac) {
+        customAdapters.push({
+          adapter_number: adapter.adapter_number,
+          port_name: hasCustomPortName ? adapter.port_name : defaultPortName,
+          adapter_type: adapter.adapter_type,
+          mac_address: adapter.mac_address || null,
+        });
+      }
+    }
+
+    // Calculate required adapters based on the current adapter count
+    const requiredAdapters = this.adapters().length;
+
+    const result: CustomAdaptersDialogResult = {
+      adapters: customAdapters, // Only non-default adapters
+      requiredAdapters: requiredAdapters,
+    };
+
+    this.dialogRef.close(result);
+  }
+}

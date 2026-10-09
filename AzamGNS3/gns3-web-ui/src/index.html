@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>GNS3 Web UI</title>
+    <!-- It's important to have base here because of the script below //-->
+    <base href="/" />
+
+    <script>
+      var userAgent = navigator.userAgent.toLowerCase();
+
+      //in case we're running in electron because we need it for resources
+      if (userAgent.indexOf(' electron/') > -1) {
+        var base = document.getElementsByTagName('base');
+        if (base.length > 0) {
+          base[0].href = './';
+        } else {
+          document.write('<base href="./" />');
+        }
+      }
+    </script>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/x-icon" href="assets/favicon.ico" />
+
+    <script type="application/javascript">
+      // Github Pages redirection
+      (function () {
+        var redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        if (redirect && redirect != location.href) {
+          history.replaceState(null, null, redirect);
+        }
+      })();
+    </script>
+  </head>
+  <!-- <body class="mat-app-background" oncontextmenu="return false;"> -->
+  <body oncontextmenu="return false;">
+    <app-root></app-root>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script>
+      (function () {
+        'use strict';
+
+        /**
+         * Check if user has enabled statistics
+         * @returns {boolean} true if statistics are enabled
+         */
+        function isStatisticsEnabled() {
+          try {
+            const setting = localStorage.getItem('statistics_command');
+
+            // First visit: enabled by default
+            if (setting === null) {
+              console.info('[Analytics] First visit, statistics enabled by default');
+              return true;
+            }
+
+            const enabled = setting === 'true';
+            console.info('[Analytics] Statistics ' + (enabled ? 'enabled' : 'disabled') + ' by user preference');
+            return enabled;
+          } catch (e) {
+            console.warn('[Analytics] Error reading statistics setting:', e);
+            return false; // Default to disabled on error
+          }
+        }
+
+        /**
+         * Initialize Google Analytics
+         */
+        function initGoogleAnalytics() {
+          // Check user setting
+          if (!isStatisticsEnabled()) {
+            console.info('[Analytics] Not loading per user settings');
+            return;
+          }
+
+          // Initialize dataLayer
+          window.dataLayer = window.dataLayer || [];
+
+          // Define gtag function
+          window.gtag = function () {
+            window.dataLayer.push(arguments);
+          };
+
+          // Configure Google Analytics
+          window.gtag('js', new Date());
+          window.gtag('config', 'G-0BT7QQV1W1', {
+            send_page_view: false, // Manual page view control
+            anonymize_ip: true, // Anonymize IP addresses
+          });
+
+          // Dynamically load script
+          var script = document.createElement('script');
+          script.async = true;
+          script.src = 'https://www.googletagmanager.com/gtag/js?id=G-0BT7QQV1W1';
+
+          script.onload = function () {
+            console.info('[Analytics] Google Analytics loaded successfully');
+          };
+
+          script.onerror = function () {
+            console.warn('[Analytics] Failed to load Google Analytics');
+          };
+
+          // Add to head
+          document.head.appendChild(script);
+        }
+
+        // Initialize on page load
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', initGoogleAnalytics);
+        } else {
+          initGoogleAnalytics();
+        }
+      })();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,458 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { of, throwError } from 'rxjs';
+import { MatDialogRef, MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatCardModule } from '@angular/material/card';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { ConfiguratorDialogDockerComponent } from './configurator-docker.component';
+import { DockerConfigurationService } from '@services/docker-configuration.service';
+import { NodeService } from '@services/node.service';
+import { TemplateService } from '@services/template.service';
+import { ToasterService } from '@services/toaster.service';
+import { NetmikoDeviceTypesService } from '@services/netmiko-device-types.service';
+import { DockerValidationService } from '@services/validation';
+import { Node, Properties } from '../../../../../cartography/models/node';
+import { Controller } from '@models/controller';
+import { ChangeDetectorRef } from '@angular/core';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { EditNetworkConfigurationDialogComponent } from './edit-network-configuration/edit-network-configuration.component';
+
+describe('ConfiguratorDialogDockerComponent', () => {
+  let fixture: ComponentFixture<ConfiguratorDialogDockerComponent>;
+  let component: ConfiguratorDialogDockerComponent;
+  let mockDialogRef: { close: ReturnType<typeof vi.fn> };
+  let mockNodeService: any;
+  let mockToasterService: any;
+  let mockDockerConfigurationService: any;
+  let mockDialog: any;
+  let mockDockerValidationService: any;
+  let mockChangeDetectorRef: any;
+
+  const createMockProperties = (): Properties => ({
+    adapter_type: '',
+    adapters: 0,
+    ethernet_adapters: 0,
+    serial_adapters: 0,
+    headless: false,
+    linked_clone: false,
+    on_close: '',
+    aux: 0,
+    ram: 0,
+    system_id: '',
+    nvram: 0,
+    image: '',
+    usage: '',
+    use_any_adapter: false,
+    vmname: '',
+    ports_mapping: [],
+    mappings: {},
+    bios_image: '',
+    boot_priority: '',
+    cdrom_image: '',
+    cpu_throttling: 0,
+    cpus: 0,
+    hda_disk_image: '',
+    hda_disk_image_md5sum: '',
+    hda_disk_interface: '',
+    hdb_disk_image: '',
+    hdb_disk_interface: '',
+    hdc_disk_image: '',
+    hdc_disk_interface: '',
+    hdd_disk_image: '',
+    hdd_disk_interface: '',
+    initrd: '',
+    kernel_command_line: '',
+    kernel_image: '',
+    mac_address: '',
+    mac_addr: '',
+    options: '',
+    platform: '',
+    disk0: 0,
+    disk1: 0,
+    idlepc: '',
+    idlemax: 0,
+    idlesleep: 0,
+    exec_area: 0,
+    mmap: false,
+    sparsemem: false,
+    auto_delete_disks: false,
+    process_priority: '',
+    qemu_path: '',
+    environment: '',
+    extra_hosts: '',
+    start_command: '',
+    replicate_network_connection_state: false,
+    memory: 0,
+    tpm: false,
+    uefi: false,
+    console_resolution: '',
+    console_http_port: 0,
+    console_http_path: '',
+    extra_volumes: '',
+  });
+
+  const mockController = { id: 1 } as unknown as Controller;
+
+  const mockNode = {
+    node_id: 'docker-1',
+    name: 'Docker-1',
+    console_type: 'telnet',
+    aux_type: '',
+    console_auto_start: false,
+    properties: createMockProperties(),
+    tags: [] as string[],
+  } as unknown as Node;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+
+    mockDialogRef = { close: vi.fn() };
+
+    mockDialog = {
+      open: vi.fn().mockReturnValue({
+        componentInstance: {},
+        close: vi.fn(),
+      }),
+    };
+
+    mockChangeDetectorRef = { markForCheck: vi.fn() };
+
+    mockDockerValidationService = {
+      validateName: vi.fn().mockReturnValue({ isValid: true }),
+      validateAdapters: vi.fn().mockReturnValue({ isValid: true }),
+      validateMacAddress: vi.fn().mockReturnValue({ isValid: true }),
+      validateMemory: vi.fn().mockReturnValue({ isValid: true }),
+      validateCpus: vi.fn().mockReturnValue({ isValid: true }),
+      validateConsoleHttpPath: vi.fn().mockReturnValue({ isValid: true }),
+      validateEnvironment: vi.fn().mockReturnValue({ isValid: true }),
+      validateExtraConfigs: vi.fn().mockReturnValue({ isValid: true }),
+      validateNetmikoDeviceType: vi.fn().mockReturnValue({ isValid: true }),
+    };
+
+    mockNodeService = {
+      getNode: vi.fn().mockReturnValue(of(mockNode)),
+      updateNode: vi.fn().mockReturnValue(of(undefined)),
+    };
+
+    mockToasterService = {
+      error: vi.fn(),
+      success: vi.fn(),
+    };
+
+    mockDockerConfigurationService = {
+      getConsoleTypes: vi.fn().mockReturnValue(['telnet', 'vnc', 'http']),
+      getAuxConsoleTypes: vi.fn().mockReturnValue(['telnet', 'vnc']),
+      getMacAddrRegex: vi.fn().mockReturnValue(/^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [
+        ConfiguratorDialogDockerComponent,
+        MatDialogModule,
+        MatChipsModule,
+        MatCardModule,
+        MatTabsModule,
+        MatFormFieldModule,
+        MatInputModule,
+        MatSelectModule,
+        MatButtonModule,
+        MatIconModule,
+        MatCheckboxModule,
+      ],
+      providers: [
+        { provide: MatDialogRef, useValue: mockDialogRef },
+        { provide: MatDialog, useValue: mockDialog },
+        { provide: NodeService, useValue: mockNodeService },
+        { provide: TemplateService, useValue: { list: () => of([]) } },
+        { provide: ToasterService, useValue: mockToasterService },
+        { provide: NetmikoDeviceTypesService, useValue: { getDeviceTypes: vi.fn().mockReturnValue(of({ deviceTypes: null, netmikoVersion: null })) } },
+        { provide: DockerConfigurationService, useValue: mockDockerConfigurationService },
+        { provide: DockerValidationService, useValue: mockDockerValidationService },
+        { provide: ChangeDetectorRef, useValue: mockChangeDetectorRef },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(ConfiguratorDialogDockerComponent);
+    component = fixture.componentInstance;
+    vi.spyOn((component as any).dialog, 'open').mockReturnValue({
+      componentInstance: {},
+      close: vi.fn(),
+    });
+    mockDialog = (component as any).dialog;
+    component.controller = mockController;
+    component.node = { ...mockNode } as Node;
+    fixture.detectChanges();
+  });
+
+  describe('component initialization', () => {
+    it('should create', () => {
+      expect(component).toBeTruthy();
+    });
+
+    it('should have separatorKeysCodes for chip input', () => {
+      expect(component.separatorKeysCodes).toBeDefined();
+      expect(Array.isArray(component.separatorKeysCodes)).toBe(true);
+    });
+
+    it('should have consoleResolutions array', () => {
+      expect(component.consoleResolutions).toBeDefined();
+      expect(component.consoleResolutions.length).toBeGreaterThan(0);
+    });
+
+    it('should initialize model signals', () => {
+      expect(component.nodeName).toBeTruthy();
+      expect(component.adapter).toBeTruthy();
+      expect(component.consoleHttpPort).toBeTruthy();
+      expect(component.consoleHttpPath).toBeTruthy();
+      expect(component.consoleAutoStart()).toBe(false);
+    });
+  });
+
+  describe('getConfiguration', () => {
+    it('should load console types from DockerConfigurationService', () => {
+      component.getConfiguration();
+
+      expect(mockDockerConfigurationService.getConsoleTypes).toHaveBeenCalled();
+      expect(component.consoleTypes).toEqual(['telnet', 'vnc', 'http']);
+    });
+
+    it('should load aux console types from DockerConfigurationService', () => {
+      component.getConfiguration();
+
+      expect(mockDockerConfigurationService.getAuxConsoleTypes).toHaveBeenCalled();
+      expect(component.auxConsoleTypes).toEqual(['telnet', 'vnc']);
+    });
+  });
+
+  describe('ngOnInit', () => {
+    it('should fetch node data from NodeService', () => {
+      expect(mockNodeService.getNode).toHaveBeenCalledWith(mockController, component.node);
+    });
+
+    it('should update node name from fetched data', () => {
+      expect(component.name).toBe(mockNode.name);
+    });
+
+    it('should populate model signals with node data', () => {
+      expect(component.nodeName()).toBe(mockNode.name);
+    });
+
+    it('should call getConfiguration after loading data', () => {
+      expect(mockDockerConfigurationService.getConsoleTypes).toHaveBeenCalled();
+    });
+
+    it('should initialize tags array if undefined', () => {
+      expect(component.node.tags).toBeDefined();
+    });
+  });
+
+  describe('addTag', () => {
+    it('should add tag to node tags array', () => {
+      component.node = { ...mockNode, tags: [] } as Node;
+      const mockEvent = { value: 'new-tag', chipInput: { clear: vi.fn() } } as any;
+
+      component.addTag(mockEvent);
+
+      expect(component.node.tags).toContain('new-tag');
+      expect(mockEvent.chipInput.clear).toHaveBeenCalled();
+    });
+
+    it('should not add empty tag', () => {
+      component.node = { ...mockNode, tags: [] } as Node;
+      const initialTags = [...(component.node.tags || [])];
+      const mockEvent = { value: '', chipInput: { clear: vi.fn() } } as any;
+
+      component.addTag(mockEvent);
+
+      expect(component.node.tags).toEqual(initialTags);
+    });
+
+    it('should initialize tags array if undefined', () => {
+      component.node = { ...mockNode, tags: undefined } as any;
+      const mockEvent = { value: 'test-tag', chipInput: { clear: vi.fn() } } as any;
+
+      component.addTag(mockEvent);
+
+      expect(component.node.tags).toEqual(['test-tag']);
+    });
+
+    it('should trim whitespace from tag value', () => {
+      component.node = { ...mockNode, tags: [] } as Node;
+      const mockEvent = { value: '  trimmed-tag  ', chipInput: { clear: vi.fn() } } as any;
+
+      component.addTag(mockEvent);
+
+      expect(component.node.tags).toContain('trimmed-tag');
+    });
+  });
+
+  describe('removeTag', () => {
+    it('should remove tag from node tags array', () => {
+      component.node = { ...mockNode, tags: ['tag1', 'tag2', 'tag3'] } as Node;
+
+      component.removeTag('tag2');
+
+      expect(component.node.tags).not.toContain('tag2');
+      expect(component.node.tags).toEqual(['tag1', 'tag3']);
+    });
+
+    it('should not throw when tags is undefined', () => {
+      component.node = { ...mockNode, tags: undefined } as any;
+
+      expect(() => component.removeTag('tag1')).not.toThrow();
+    });
+
+    it('should not modify array when tag not found', () => {
+      component.node = { ...mockNode, tags: ['tag1', 'tag2'] } as Node;
+      const originalTags = [...component.node.tags];
+
+      component.removeTag('nonexistent');
+
+      expect(component.node.tags).toEqual(originalTags);
+    });
+  });
+
+  describe('editNetworkConfiguration', () => {
+    it('should open the structured network editor at its responsive dialog size', () => {
+      component.editNetworkConfiguration();
+
+      expect(mockDialog.open).toHaveBeenCalledWith(
+        EditNetworkConfigurationDialogComponent,
+        expect.objectContaining({
+          panelClass: ['base-dialog-panel', 'node-configurator-dialog-panel', 'docker-network-config-dialog-panel'],
+          width: '1040px',
+          maxWidth: 'calc(100vw - 48px)',
+          height: 'min(760px, calc(100vh - 48px))',
+          disableClose: true,
+        })
+      );
+      expect(mockDialog.open.mock.results[0].value.componentInstance.controller).toBe(mockController);
+      expect(mockDialog.open.mock.results[0].value.componentInstance.node).toBe(component.node);
+    });
+  });
+
+  describe('onSaveClick', () => {
+    beforeEach(() => {
+      mockDockerValidationService.validateName.mockReturnValue({ isValid: true });
+      mockDockerValidationService.validateAdapters.mockReturnValue({ isValid: true });
+      mockDockerValidationService.validateMacAddress.mockReturnValue({ isValid: true });
+      mockDockerValidationService.validateMemory.mockReturnValue({ isValid: true });
+      mockDockerValidationService.validateCpus.mockReturnValue({ isValid: true });
+      mockDockerValidationService.validateConsoleHttpPath.mockReturnValue({ isValid: true });
+      mockDockerValidationService.validateEnvironment.mockReturnValue({ isValid: true });
+      mockDockerValidationService.validateExtraConfigs.mockReturnValue({ isValid: true });
+    });
+
+    it('should show error toast when name is empty', () => {
+      mockDockerValidationService.validateName.mockReturnValue({
+        isValid: false,
+        errorMessage: 'Name is required',
+      });
+      component.nodeName.set('');
+
+      component.onSaveClick();
+
+      expect(mockToasterService.error).toHaveBeenCalledWith('Name is required');
+      expect(mockDialogRef.close).not.toHaveBeenCalled();
+    });
+
+    it('should update node properties when validation passes', () => {
+      component.nodeName.set('Updated-Docker');
+      component.startCommand.set('/bin/bash');
+      component.adapter.set('2');
+      component.macAddress.set('00:00:00:00:00:01');
+      component.memory.set('1024');
+      component.cpus.set('2');
+      component.consoleType.set('vnc');
+      component.auxType.set('telnet');
+      component.consoleAutoStart.set(true);
+      component.consoleResolution.set('1920x1080');
+      component.consoleHttpPort.set('8080');
+      component.consoleHttpPath.set('/');
+      component.extraHosts.set('host1.local');
+      component.extraVolumes.set('/data:/data');
+      component.usage.set('Test usage');
+
+      component.onSaveClick();
+
+      expect(component.node.name).toBe('Updated-Docker');
+      expect(component.node.properties.start_command).toBe('/bin/bash');
+      expect(component.node.properties.adapters).toBe(2);
+      expect(component.node.properties.mac_address).toBe('00:00:00:00:00:01');
+      expect(component.node.properties.memory).toBe(1024);
+      expect(component.node.properties.cpus).toBe(2);
+      expect(component.node.console_type).toBe('vnc');
+      expect(component.node.aux_type).toBe('telnet');
+      expect(component.node.console_auto_start).toBe(true);
+      expect(component.node.properties.console_resolution).toBe('1920x1080');
+      expect(component.node.properties.console_http_port).toBe(8080);
+      expect(component.node.properties.console_http_path).toBe('/');
+      expect(component.node.properties.extra_hosts).toBe('host1.local');
+      expect(component.node.properties.extra_volumes).toEqual(['/data:/data']);
+      expect(component.node.properties.usage).toBe('Test usage');
+    });
+
+    it('should call updateNode service with controller and node', () => {
+      component.nodeName.set('Docker-Updated');
+      component.adapter.set('1');
+      component.consoleHttpPort.set('80');
+      component.consoleHttpPath.set('/path');
+
+      component.onSaveClick();
+
+      expect(mockNodeService.updateNode).toHaveBeenCalledWith(mockController, component.node);
+    });
+
+    it('should show success toast with node name on successful update', () => {
+      component.nodeName.set('Docker-Saved');
+      component.adapter.set('1');
+      component.consoleHttpPort.set('80');
+      component.consoleHttpPath.set('/path');
+
+      component.onSaveClick();
+
+      expect(mockToasterService.success).toHaveBeenCalledWith('Node Docker-Saved updated.');
+    });
+  });
+
+  describe('onCancelClick', () => {
+    it('should close dialog without data', () => {
+      component.onCancelClick();
+
+      expect(mockDialogRef.close).toHaveBeenCalledWith();
+    });
+  });
+
+  describe('Error handling', () => {
+    it('should show error toast when getNode fails', () => {
+      mockNodeService.getNode.mockReturnValue(throwError(() => new Error('Failed to load node')));
+      const cdrSpy = vi.spyOn(component['cd'], 'markForCheck');
+
+      component.ngOnInit();
+
+      expect(mockToasterService.error).toHaveBeenCalledWith('Failed to load node');
+      expect(cdrSpy).toHaveBeenCalled();
+    });
+
+    it('should show error toast when updateNode fails', () => {
+      mockNodeService.updateNode.mockReturnValue(throwError(() => new Error('Failed to update node')));
+      const cdrSpy = vi.spyOn(component['cd'], 'markForCheck');
+      component.nodeName.set('Docker-Test');
+      component.adapter.set('1');
+      component.consoleHttpPort.set('80');
+      component.consoleHttpPath.set('/path');
+
+      component.onSaveClick();
+
+      expect(mockToasterService.error).toHaveBeenCalledWith('Failed to update node');
+      expect(cdrSpy).toHaveBeenCalled();
+      expect(mockDialogRef.close).not.toHaveBeenCalled();
+    });
+  });
+});

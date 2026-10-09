@@ -1,0 +1,964 @@
+#
+# Copyright (C) 2020 GNS3 Technologies Inc.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+API routes for nodes.
+"""
+
+import asyncio
+import contextlib
+import ipaddress
+import logging
+from typing import Any, Callable, List, Optional
+from uuid import UUID
+
+import aiohttp
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, WebSocket, WebSocketDisconnect, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import StreamingResponse
+from fastapi.routing import APIRoute
+
+from gns3server import schemas
+from gns3server.api.openapi import binary_request_body, binary_response
+from gns3server.config import Config
+from gns3server.controller import Controller
+from gns3server.controller.controller_error import (
+    ControllerBadRequestError,
+    ControllerForbiddenError,
+    ControllerTimeoutError,
+)
+from gns3server.controller.node import Node
+from gns3server.controller.project import Project
+from gns3server.db.repositories.rbac import RbacRepository
+from gns3server.utils import force_unix_path
+from gns3server.utils.http_client import HTTPClient
+
+from .dependencies.concurrency import (
+    GET_RESPONSES,
+    PUT_RESPONSES,
+    check_if_match,
+    if_match_header,
+    serialize_updates,
+    set_etag,
+)
+from .dependencies.database import get_repository
+from .dependencies.rbac import has_privilege, has_privilege_on_websocket
+
+log = logging.getLogger(__name__)
+
+node_locks: dict[str, dict[str, Any]] = {}
+
+
+class NodeConcurrency(APIRoute):
+    """
+    To avoid strange effects, we prevent concurrency
+    between the same instance of the node
+    (excepting when streaming a PCAP file and for WebSocket consoles).
+    """
+
+    def get_route_handler(self) -> Callable:
+        original_route_handler = super().get_route_handler()
+
+        async def custom_route_handler(request: Request) -> Response:
+
+            node_id = request.path_params.get("node_id")
+            project_id = request.path_params.get("project_id")
+
+            if node_id and "pcap" not in request.url.path and not request.url.path.endswith("console/ws"):
+                lock_key = f"{project_id}:{node_id}"
+                node_locks.setdefault(lock_key, {"lock": asyncio.Lock(), "concurrency": 0})
+                node_locks[lock_key]["concurrency"] += 1
+
+                async with node_locks[lock_key]["lock"]:
+                    response = await original_route_handler(request)
+
+                node_locks[lock_key]["concurrency"] -= 1
+                if node_locks[lock_key]["concurrency"] <= 0:
+                    del node_locks[lock_key]
+            else:
+                response = await original_route_handler(request)
+
+            return response
+
+        return custom_route_handler
+
+
+responses: dict[int | str, dict[str, Any]] = {
+    404: {"model": schemas.ErrorMessage, "description": "Could not find project or node"}
+}
+
+router = APIRouter(route_class=NodeConcurrency, responses=responses)
+
+
+async def dep_project(project_id: UUID) -> Project:
+    """
+    Dependency to retrieve a project.
+    """
+
+    project = await Controller.instance().get_loaded_project(str(project_id))
+    return project
+
+
+async def dep_node(node_id: UUID, project: Project = Depends(dep_project)) -> None:
+    """
+    Dependency to retrieve a node.
+    """
+
+    node = project.get_node(str(node_id))
+    return node
+
+
+def _check_node_type(node: Node, *required_types: str) -> None:
+    """
+    Raise ControllerBadRequestError if node is not one of the required types.
+    """
+
+    if node.node_type not in required_types:
+        type_str = "/".join(required_types)
+        raise ControllerBadRequestError(f"This endpoint is only supported on a {type_str} node")
+
+
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    response_model=schemas.Node,
+    responses={
+        404: {"model": schemas.ErrorMessage, "description": "Could not find project"},
+        409: {"model": schemas.ErrorMessage, "description": "Could not create node"},
+    },
+    dependencies=[Depends(has_privilege("Node.Allocate"))],
+)
+async def create_node(node_create: schemas.NodeCreate, project: Project = Depends(dep_project)) -> schemas.Node:
+    """
+    Create a new node.
+
+    Required privilege: Node.Allocate
+    """
+
+    controller = Controller.instance()
+    compute = controller.get_compute(str(node_create.compute_id))
+    node_data = jsonable_encoder(node_create, exclude_unset=True)
+    node = await project.add_node(compute, node_data.pop("name"), node_data.pop("node_id", None), **node_data)
+    return node.asdict()
+
+
+@router.get(
+    "",
+    response_model=List[schemas.Node],
+    response_model_exclude_unset=True,
+    dependencies=[Depends(has_privilege("Node.Audit"))],
+)
+def get_nodes(
+    project: Project = Depends(dep_project),
+    tags: Optional[List[str]] = Query(None, description="Filter by tags (e.g. tags=vendor:cisco&tags=model:7200)"),
+    name: Optional[str] = Query(None, description="Return only nodes whose name exactly matches (case-sensitive)"),
+) -> List[schemas.Node]:
+    """
+    Return all nodes belonging to a given project.
+
+    Required privilege: Node.Audit
+
+    Query Parameters:
+    - tags: Filter by tags. Multiple tags are ANDed together.
+            Example: ?tags=vendor:cisco&tags=model:7200
+    - name: Exact, case-sensitive match on the node name. Combined with other filters using AND.
+    """
+
+    if project.status == "closed":
+        # allow to retrieve nodes from a closed project
+        nodes = list(project.nodes.values())
+    else:
+        nodes = [v.asdict() for v in project.nodes.values()]
+
+    if name is not None:
+        nodes = [node for node in nodes if node.get("name") == name]
+
+    # Filter by tags if provided (all filter tags have to match the node tags)
+    if tags:
+        filtered_nodes = []
+        for node in nodes:
+            node_tags = node.get("tags") or []
+            match = True
+            for tag_filter in tags:
+                if tag_filter not in node_tags:
+                    match = False
+                    break
+            if match:
+                filtered_nodes.append(node)
+        return filtered_nodes
+    return nodes
+
+
+@router.post("/start", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(has_privilege("Node.PowerMgmt"))])
+async def start_all_nodes(project: Project = Depends(dep_project)) -> None:
+    """
+    Start all nodes belonging to a given project.
+
+    Required privilege: Node.PowerMgmt
+    """
+
+    try:
+        await project.start_all()
+    except HTTPException as e:
+        if not e.status_code == status.HTTP_405_METHOD_NOT_ALLOWED:
+            raise
+
+
+@router.post("/stop", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(has_privilege("Node.PowerMgmt"))])
+async def stop_all_nodes(project: Project = Depends(dep_project)) -> None:
+    """
+    Stop all nodes belonging to a given project.
+
+    Required privilege: Node.PowerMgmt
+    """
+
+    try:
+        await project.stop_all()
+    except HTTPException as e:
+        if not e.status_code == status.HTTP_405_METHOD_NOT_ALLOWED:
+            raise
+
+
+@router.post(
+    "/suspend", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(has_privilege("Node.PowerMgmt"))]
+)
+async def suspend_all_nodes(project: Project = Depends(dep_project)) -> None:
+    """
+    Suspend all nodes belonging to a given project.
+
+    Required privilege: Node.PowerMgmt
+    """
+
+    try:
+        await project.suspend_all()
+    except HTTPException as e:
+        if not e.status_code == status.HTTP_405_METHOD_NOT_ALLOWED:
+            raise
+
+
+@router.post("/reload", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(has_privilege("Node.PowerMgmt"))])
+async def reload_all_nodes(project: Project = Depends(dep_project)) -> None:
+    """
+    Reload all nodes belonging to a given project.
+
+    Required privilege: Node.PowerMgmt
+    """
+
+    try:
+        await project.stop_all()
+        await project.start_all()
+    except HTTPException as e:
+        if not e.status_code == status.HTTP_405_METHOD_NOT_ALLOWED:
+            raise
+
+
+# Node types that need live host interface data from compute
+_HOST_INTERFACE_NODE_TYPES = {"cloud", "nat"}
+
+
+@router.get(
+    "/{node_id}",
+    response_model=schemas.Node,
+    responses=GET_RESPONSES,
+    dependencies=[Depends(has_privilege("Node.Audit"))],
+)
+async def get_node(response: Response, node: Node = Depends(dep_node)) -> schemas.Node:
+    """
+    Return a node from a given project.
+
+    Required privilege: Node.Audit
+    """
+
+    if node.node_type in _HOST_INTERFACE_NODE_TYPES:
+        try:
+            node_response = await node.get()
+            await node.parse_node_response(node_response.json)
+        except Exception:
+            # If compute is unreachable, still return cached data
+            log.warning(f"Could not refresh node {node.id} from compute, returning cached data")
+    node_dict = node.asdict()
+    set_etag(response, node_dict)
+    return node_dict
+
+
+@router.put(
+    "/{node_id}",
+    response_model=schemas.Node,
+    response_model_exclude_unset=True,
+    responses=PUT_RESPONSES,
+    dependencies=[Depends(has_privilege("Node.Modify"))],
+)
+async def update_node(
+    node_update: schemas.NodeUpdate,
+    response: Response,
+    node: Node = Depends(dep_node),
+    if_match: Optional[str] = Depends(if_match_header),
+) -> schemas.Node:
+    """
+    Update a node.
+
+    If the If-Match header is present, the update is only applied when it matches the current ETag.
+
+    Required privilege: Node.Modify
+    """
+
+    node_data = jsonable_encoder(node_update, exclude_unset=True)
+
+    # Ignore these because we only use them when creating a node
+    node_data.pop("node_id", None)
+    node_data.pop("node_type", None)
+    node_data.pop("compute_id", None)
+
+    async with serialize_updates(f"node:{node.id}"):
+        check_if_match(if_match, node.asdict())
+        await node.update(**node_data)
+    node_dict = node.asdict()
+    set_etag(response, node_dict)
+    return node_dict
+
+
+@router.delete(
+    "/{node_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={**responses, 409: {"model": schemas.ErrorMessage, "description": "Cannot delete node"}},
+    dependencies=[Depends(has_privilege("Node.Allocate"))],
+)
+async def delete_node(
+    node_id: UUID,
+    project: Project = Depends(dep_project),
+    rbac_repo: RbacRepository = Depends(get_repository(RbacRepository)),
+) -> None:
+    """
+    Delete a node from a project.
+
+    Required privilege: Node.Allocate
+    """
+
+    await project.delete_node(str(node_id))
+    await rbac_repo.delete_all_ace_starting_with_path(f"/projects/{project.id}/nodes/{node_id}")
+
+
+@router.post(
+    "/{node_id}/duplicate",
+    response_model=schemas.Node,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(has_privilege("Node.Allocate"))],
+)
+async def duplicate_node(duplicate_data: schemas.NodeDuplicate, node: Node = Depends(dep_node)) -> schemas.Node:
+    """
+    Duplicate a node.
+
+    Required privilege: Node.Allocate
+    """
+
+    new_node = await node.project.duplicate_node(node, duplicate_data.x, duplicate_data.y, duplicate_data.z)
+    return new_node.asdict()
+
+
+LIFECYCLE_RESPONSES: dict[int | str, dict[str, Any]] = {
+    status.HTTP_408_REQUEST_TIMEOUT: {"model": schemas.ErrorMessage, "description": "Timeout waiting for the node"},
+}
+
+
+async def _run_lifecycle(
+    node: Node, action: Callable, target: str, wait: bool, timeout: int, tolerate_unsupported: bool = True
+) -> dict:
+    async def _run():
+        try:
+            await action()
+        except HTTPException as e:
+            if not tolerate_unsupported or not e.status_code == status.HTTP_405_METHOD_NOT_ALLOWED:
+                raise
+            return
+        if wait and not node.is_always_running():
+            await node.wait_for_status(target)
+
+    if not wait:
+        await _run()
+        return node.asdict()
+    try:
+        await asyncio.wait_for(_run(), timeout)
+    except asyncio.TimeoutError:
+        raise ControllerTimeoutError(f"Timeout when waiting for {node.name} to be {target}")
+    return node.asdict()
+
+
+@router.post(
+    "/{node_id}/start",
+    response_model=schemas.Node,
+    responses=LIFECYCLE_RESPONSES,
+    dependencies=[Depends(has_privilege("Node.PowerMgmt"))],
+)
+async def start_node(
+    start_data: Optional[dict] = None,
+    wait: bool = Query(False, description="Return only when the node status is 'started'"),
+    timeout: int = Query(240, ge=1, le=3600, description="Seconds to wait when 'wait' is true"),
+    node: Node = Depends(dep_node),
+) -> dict:
+    """
+    Start a node.
+
+    Required privilege: Node.PowerMgmt
+    """
+
+    return await _run_lifecycle(node, lambda: node.start(data=start_data), "started", wait, timeout)
+
+
+@router.post(
+    "/{node_id}/stop",
+    response_model=schemas.Node,
+    responses=LIFECYCLE_RESPONSES,
+    dependencies=[Depends(has_privilege("Node.PowerMgmt"))],
+)
+async def stop_node(
+    wait: bool = Query(False, description="Return only when the node status is 'stopped'"),
+    timeout: int = Query(240, ge=1, le=3600, description="Seconds to wait when 'wait' is true"),
+    node: Node = Depends(dep_node),
+) -> dict:
+    """
+    Stop a node.
+
+    Errors reported while stopping are returned to the caller.
+
+    Required privilege: Node.PowerMgmt
+    """
+
+    return await _run_lifecycle(node, lambda: node.stop(strict=True), "stopped", wait, timeout)
+
+
+@router.post(
+    "/{node_id}/suspend",
+    response_model=schemas.Node,
+    responses=LIFECYCLE_RESPONSES,
+    dependencies=[Depends(has_privilege("Node.PowerMgmt"))],
+)
+async def suspend_node(
+    wait: bool = Query(False, description="Return only when the node status is 'suspended'"),
+    timeout: int = Query(240, ge=1, le=3600, description="Seconds to wait when 'wait' is true"),
+    node: Node = Depends(dep_node),
+) -> dict:
+    """
+    Suspend a node.
+
+    Node types without suspend support return a 405 error instead of a
+    silent no-op, so the caller cannot mistake it for a suspended node.
+
+    Required privilege: Node.PowerMgmt
+    """
+
+    return await _run_lifecycle(node, node.suspend, "suspended", wait, timeout, tolerate_unsupported=False)
+
+
+@router.post(
+    "/{node_id}/reload",
+    response_model=schemas.Node,
+    responses=LIFECYCLE_RESPONSES,
+    dependencies=[Depends(has_privilege("Node.PowerMgmt"))],
+)
+async def reload_node(
+    wait: bool = Query(False, description="Return only when the node status is 'started'"),
+    timeout: int = Query(240, ge=1, le=3600, description="Seconds to wait when 'wait' is true"),
+    node: Node = Depends(dep_node),
+) -> dict:
+    """
+    Reload a node.
+
+    Required privilege: Node.PowerMgmt
+    """
+
+    return await _run_lifecycle(node, node.reload, "started", wait, timeout)
+
+
+@router.post(
+    "/{node_id}/isolate", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(has_privilege("Link.Modify"))]
+)
+async def isolate_node(node: Node = Depends(dep_node)) -> None:
+    """
+    Isolate a node (suspend all attached links).
+
+    Required privilege: Link.Modify
+    """
+
+    for link in node.links:
+        await link.update_suspend(True)
+
+
+@router.post(
+    "/{node_id}/unisolate", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(has_privilege("Link.Modify"))]
+)
+async def unisolate_node(node: Node = Depends(dep_node)) -> None:
+    """
+    Un-isolate a node (resume all attached suspended links).
+
+    Required privilege: Link.Modify
+    """
+
+    for link in node.links:
+        await link.update_suspend(False)
+
+
+@router.get(
+    "/{node_id}/links",
+    response_model=List[schemas.Link],
+    response_model_exclude_unset=True,
+    dependencies=[Depends(has_privilege("Link.Audit"))],
+)
+async def get_node_links(node: Node = Depends(dep_node)) -> List[schemas.Link]:
+    """
+    Return all the links connected to a node.
+
+    Required privilege: Link.Audit
+    """
+
+    links = []
+    for link in node.links:
+        links.append(link.asdict())
+    return links
+
+
+@router.get("/{node_id}/dynamips/auto_idlepc", dependencies=[Depends(has_privilege("Node.Audit"))])
+async def auto_idlepc(node: Node = Depends(dep_node)) -> dict:
+    """
+    Compute an Idle-PC value for a Dynamips node
+
+    Required privilege: Node.Audit
+    """
+
+    _check_node_type(node, "dynamips")
+    return await node.dynamips_auto_idlepc()
+
+
+@router.get("/{node_id}/dynamips/idlepc_proposals", dependencies=[Depends(has_privilege("Node.Audit"))])
+async def idlepc_proposals(node: Node = Depends(dep_node)) -> List[str]:
+    """
+    Compute a list of potential idle-pc values for a Dynamips node
+
+    Required privilege: Node.Audit
+    """
+
+    _check_node_type(node, "dynamips")
+    return await node.dynamips_idlepc_proposals()
+
+
+@router.post(
+    "/{node_id}/qemu/disk_image/{disk_name}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(has_privilege("Node.Allocate"))],
+)
+async def create_disk_image(
+    disk_name: str, disk_data: schemas.QemuDiskImageCreate, node: Node = Depends(dep_node)
+) -> None:
+    """
+    Create a Qemu disk image.
+
+    Required privilege: Node.Allocate
+    """
+
+    _check_node_type(node, "qemu")
+    await node.post(f"/disk_image/{disk_name}", data=disk_data.model_dump(exclude_unset=True))
+
+
+@router.put(
+    "/{node_id}/qemu/disk_image/{disk_name}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(has_privilege("Node.Allocate"))],
+)
+async def update_disk_image(
+    disk_name: str, disk_data: schemas.QemuDiskImageUpdate, node: Node = Depends(dep_node)
+) -> None:
+    """
+    Update a Qemu disk image.
+
+    Required privilege: Node.Allocate
+    """
+
+    _check_node_type(node, "qemu")
+    await node.put(f"/disk_image/{disk_name}", data=disk_data.model_dump(exclude_unset=True))
+
+
+@router.delete(
+    "/{node_id}/qemu/disk_image/{disk_name}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(has_privilege("Node.Allocate"))],
+)
+async def delete_disk_image(disk_name: str, node: Node = Depends(dep_node)) -> None:
+    """
+    Delete a Qemu disk image.
+
+    Required privilege: Node.Allocate
+    """
+
+    _check_node_type(node, "qemu")
+    await node.delete(f"/disk_image/{disk_name}")
+
+
+@router.get(
+    "/{node_id}/files", response_model=List[schemas.NodeFile], dependencies=[Depends(has_privilege("Node.Audit"))]
+)
+async def list_node_files(
+    node: Node = Depends(dep_node),
+    path: str = Query("", description="Subdirectory path within node directory"),
+    recursive: bool = Query(False, description="Recursively list all files"),
+) -> List[schemas.NodeFile]:
+    """
+    List files in a node directory with detailed metadata.
+
+    By default lists only the current directory level (non-recursive).
+    Use recursive=true for a full recursive listing.
+
+    Required privilege: Node.Audit
+    """
+
+    node_type = node.node_type
+    url = f"/projects/{node.project.id}/nodes/{node_type}/{node.id}/files"
+    params = {}
+    if path:
+        params["path"] = path
+    if recursive:
+        params["recursive"] = "true"
+    res = await node.compute.http_query("GET", url, params=params if params else None, timeout=None)
+    return res.json
+
+
+@router.get(
+    "/{node_id}/files/{file_path:path}",
+    response_class=StreamingResponse,
+    responses={200: binary_response(description="File content")},
+    dependencies=[Depends(has_privilege("Node.Audit"))],
+)
+async def get_file(file_path: str, node: Node = Depends(dep_node)) -> Response:
+    """
+    Return a file from the node directory.
+
+    Required privilege: Node.Audit
+    """
+
+    path = force_unix_path(file_path)
+
+    # Raise error if user try to escape
+    if path.startswith(".."):
+        raise ControllerForbiddenError("It is forbidden to get a file outside the project directory")
+
+    node_type = node.node_type
+    path = f"/project-files/{node_type}/{node.id}/{path}"
+
+    compute_resp = await node.compute.http_query(
+        "GET", f"/projects/{node.project.id}/files{path}", timeout=None, stream=True
+    )
+
+    async def streamer():
+        try:
+            async for chunk in compute_resp.content.iter_chunked(65536):
+                yield chunk
+        except (OSError, asyncio.TimeoutError) as e:
+            log.error(f"Error streaming file '{path}' from compute: {e}")
+            raise
+        finally:
+            compute_resp.close()
+
+    return StreamingResponse(
+        streamer(),
+        media_type="application/octet-stream",
+        status_code=compute_resp.status,
+    )
+
+
+@router.post(
+    "/{node_id}/files/{file_path:path}",
+    status_code=status.HTTP_201_CREATED,
+    responses={
+        201: {
+            "description": "File written",
+            "content": {"application/json": {"schema": {"type": "null"}}},
+        }
+    },
+    openapi_extra=binary_request_body(),
+    dependencies=[Depends(has_privilege("Node.Modify"))],
+)
+async def post_file(file_path: str, request: Request, node: Node = Depends(dep_node)):
+    """
+    Write a file in the node directory.
+
+    Required privilege: Node.Modify
+    """
+
+    path = force_unix_path(file_path)
+
+    # Raise error if user try to escape
+    if path.startswith(".."):
+        raise ControllerForbiddenError("Cannot write outside the node directory")
+
+    node_type = node.node_type
+    path = f"/project-files/{node_type}/{node.id}/{path}"
+
+    # Stream request body directly to compute node
+    await node.compute.http_query(
+        "POST", f"/projects/{node.project.id}/files{path}", data=request.stream(), timeout=None
+    )
+
+
+@router.delete(
+    "/{node_id}/files/{file_path:path}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(has_privilege("Node.Modify"))],
+)
+async def delete_node_file(file_path: str, node: Node = Depends(dep_node)) -> None:
+    """
+    Delete a file from the node directory.
+
+    Required privilege: Node.Modify
+    """
+
+    path = force_unix_path(file_path)
+
+    if path.startswith(".."):
+        raise ControllerForbiddenError("It is forbidden to delete a file outside the project directory")
+
+    node_type = node.node_type
+    path = f"/project-files/{node_type}/{node.id}/{path}"
+
+    await node.compute.http_query("DELETE", f"/projects/{node.project.id}/files{path}", timeout=None)
+
+
+@router.websocket("/{node_id}/console/ws")
+async def ws_console(
+    websocket: WebSocket,
+    current_user: schemas.User = Depends(has_privilege_on_websocket("Node.Console")),
+    node: Node = Depends(dep_node),
+) -> None:
+    """
+    WebSocket console.
+
+    Required privilege: Node.Console
+    """
+
+    if current_user is None:
+        return
+
+    compute = node.compute
+    client = f"{websocket.client.host}:{websocket.client.port}" if websocket.client else "unknown"
+    log.info(f"New client {client} has connected to controller console WebSocket")
+
+    compute_host = compute.host
+    try:
+        # handle IPv6 address
+        ip = ipaddress.ip_address(compute_host)
+        if isinstance(ip, ipaddress.IPv6Address):
+            compute_host = "[" + compute_host + "]"
+    except ValueError:
+        pass
+
+    ws_console_compute_url = (
+        f"{websocket.url.scheme}://{compute_host}:{compute.port}/v3/compute/projects/"
+        f"{node.project.id}/{node.node_type}/nodes/{node.id}/console/ws"
+    )
+
+    async def ws_receive(ws_console_compute):
+        """
+        Receive WebSocket data from client and forward to compute console WebSocket.
+        Text frames carry terminal data; binary frames carry client control
+        messages (e.g. terminal size), forwarded as-is.
+        """
+
+        try:
+            while True:
+                msg = await websocket.receive()
+                if msg["type"] == "websocket.disconnect":
+                    break
+                if "text" in msg and msg["text"]:
+                    await ws_console_compute.send_str(msg["text"])
+                elif "bytes" in msg and msg["bytes"]:
+                    await ws_console_compute.send_bytes(msg["bytes"])
+        except WebSocketDisconnect:
+            pass
+        log.info(f"Client {client} has disconnected from controller console WebSocket")
+
+    async def ws_send(ws_console_compute):
+        """
+        Receive WebSocket data from compute console WebSocket and forward to client.
+        """
+
+        try:
+            async for msg in ws_console_compute:
+                if msg.type == aiohttp.WSMsgType.TEXT:
+                    await websocket.send_text(msg.data)
+                elif msg.type == aiohttp.WSMsgType.BINARY:
+                    await websocket.send_bytes(msg.data)
+                elif msg.type == aiohttp.WSMsgType.ERROR:
+                    break
+        except WebSocketDisconnect:
+            # the client disconnected while the compute was still streaming console output
+            log.info(f"Client {client} has disconnected from controller console WebSocket")
+
+    try:
+        # forward WebSocket data in both directions between the client and the compute console WebSocket
+        log.info(f"Forwarding console WebSocket to '{ws_console_compute_url}'")
+        server_config = Config.instance().settings.Server
+        user = server_config.compute_username
+        password = server_config.compute_password
+        if not user:
+            raise ControllerForbiddenError("Compute username is not set")
+        user = user.strip()
+        if user and password:
+            auth = aiohttp.BasicAuth(user, password.get_secret_value(), "utf-8")
+        else:
+            auth = aiohttp.BasicAuth(user, "")
+        ssl_context = Controller.instance().ssl_context()
+        async with HTTPClient.get_client().ws_connect(ws_console_compute_url, auth=auth, ssl_context=ssl_context) as ws:
+            tasks = [
+                asyncio.ensure_future(ws_receive(ws)),
+                asyncio.ensure_future(ws_send(ws)),
+            ]
+            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            for task in done:
+                if task.exception():
+                    log.warning(f"Exception while forwarding console WebSocket data: {task.exception()}")
+            for task in pending:
+                task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            # notify the client that the console session has ended (ignore if the client is already gone)
+            with contextlib.suppress(WebSocketDisconnect):
+                await websocket.close()
+    except aiohttp.ClientError as e:
+        log.error(f"Client error received when forwarding to compute console WebSocket: {e}")
+
+
+@router.websocket("/{node_id}/console/vnc")
+async def vnc_console(
+    websocket: WebSocket,
+    current_user: schemas.User = Depends(has_privilege_on_websocket("Node.Console")),
+    node: Node = Depends(dep_node),
+) -> None:
+    """
+    VNC WebSocket console.
+
+    Required privilege: Node.Console
+    """
+
+    if current_user is None:
+        return
+
+    compute = node.compute
+    client = f"{websocket.client.host}:{websocket.client.port}" if websocket.client else "unknown"
+    log.info(f"New client {client} has connected to controller VNC console WebSocket")
+
+    compute_host = compute.host
+    try:
+        # handle IPv6 address
+        ip = ipaddress.ip_address(compute_host)
+        if isinstance(ip, ipaddress.IPv6Address):
+            compute_host = "[" + compute_host + "]"
+    except ValueError:
+        pass
+
+    vnc_console_compute_url = (
+        f"{websocket.url.scheme}://{compute_host}:{compute.port}/v3/compute/projects/"
+        f"{node.project.id}/{node.node_type}/nodes/{node.id}/console/vnc"
+    )
+
+    async def vnc_receive(vnc_console_compute):
+        """
+        Receive binary WebSocket data from client and forward to compute VNC console WebSocket.
+        """
+
+        try:
+            while True:
+                msg = await websocket.receive()
+                if msg["type"] == "websocket.disconnect":
+                    break
+                data = msg.get("bytes")
+                if data:
+                    await vnc_console_compute.send_bytes(data)
+        except WebSocketDisconnect:
+            pass
+        log.info(f"Client {client} has disconnected from controller VNC console WebSocket")
+
+    async def vnc_send(vnc_console_compute):
+        """
+        Receive binary WebSocket data from compute VNC console WebSocket and forward to client.
+        """
+
+        try:
+            async for msg in vnc_console_compute:
+                if msg.type == aiohttp.WSMsgType.BINARY:
+                    await websocket.send_bytes(msg.data)
+                elif msg.type == aiohttp.WSMsgType.ERROR:
+                    break
+        except WebSocketDisconnect:
+            # the client disconnected while the compute was still streaming VNC console output
+            log.info(f"Client {client} has disconnected from controller VNC console WebSocket")
+
+    try:
+        # forward WebSocket data in both directions between the client and the compute VNC console WebSocket
+        log.info(f"Forwarding VNC console WebSocket to '{vnc_console_compute_url}'")
+        server_config = Config.instance().settings.Server
+        user = server_config.compute_username
+        password = server_config.compute_password
+        if not user:
+            raise ControllerForbiddenError("Compute username is not set")
+        user = user.strip()
+        if user and password:
+            auth = aiohttp.BasicAuth(user, password.get_secret_value(), "utf-8")
+        else:
+            auth = aiohttp.BasicAuth(user, "")
+        ssl_context = Controller.instance().ssl_context()
+        async with HTTPClient.get_client().ws_connect(
+            vnc_console_compute_url, auth=auth, ssl_context=ssl_context
+        ) as ws:
+            tasks = [
+                asyncio.ensure_future(vnc_receive(ws)),
+                asyncio.ensure_future(vnc_send(ws)),
+            ]
+            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+            for task in done:
+                if task.exception():
+                    log.warning(f"Exception while forwarding VNC console WebSocket data: {task.exception()}")
+            for task in pending:
+                task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+            # notify the client that the VNC session has ended (ignore if the client is already gone)
+            with contextlib.suppress(WebSocketDisconnect):
+                await websocket.close()
+    except aiohttp.ClientError as e:
+        log.error(f"Client error received when forwarding to compute VNC console WebSocket: {e}")
+
+
+@router.post(
+    "/console/reset", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(has_privilege("Node.Console"))]
+)
+async def reset_console_all_nodes(project: Project = Depends(dep_project)) -> None:
+    """
+    Reset console for all nodes belonging to the project.
+
+    Required privilege: Node.Console
+    """
+
+    await project.reset_console_all()
+
+
+@router.post(
+    "/{node_id}/console/reset",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(has_privilege("Node.Console"))],
+)
+async def console_reset(node: Node = Depends(dep_node)) -> None:
+    """
+    Reset a console for a given node.
+
+    Required privilege: Node.Console
+    """
+
+    await node.post("/console/reset")

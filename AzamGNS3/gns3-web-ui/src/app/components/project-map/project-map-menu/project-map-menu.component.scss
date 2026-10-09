@@ -1,0 +1,132 @@
+/**
+ * GNS3 Project Map Menu Component Styles
+ * Using MD3 CSS variables
+ */
+
+/* =============================================
+// Icon Button Styles
+// ============================================= */
+:host {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+button.mat-mdc-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  --mdc-icon-button-icon-size: 20px;
+  --mat-icon-button-icon-size: 20px;
+  --mat-icon-button-state-layer-size: 40px;
+  --mdc-icon-button-state-layer-size: 40px;
+
+  .mat-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+    margin: 0;
+
+    svg {
+      width: 20px;
+      height: 20px;
+    }
+  }
+}
+
+/* =============================================
+// Selection State Classes
+// Unified selection states for menu items
+// ============================================= */
+
+/* Unselected state (default) */
+.unmarked,
+.unmarkedLight {
+  color: var(--mat-sys-on-surface);
+}
+
+/* Selected/Active state */
+.marked {
+  color: var(--mat-sys-primary);
+}
+
+/* Drawing button selected state */
+.draw-line-icon.selected {
+  stroke: var(--mat-sys-primary);
+}
+
+.non-visible {
+  display: none;
+}
+
+/* Draw line icon - uses MD3 variables for theme-aware color */
+.draw-line-icon {
+  stroke: var(--mat-sys-on-surface);
+}
+
+.ai-chat-button .ai-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  font-family: 'Roboto', sans-serif;
+  letter-spacing: -0.5px;
+}
+
+/* AI Chat active state (window open) */
+.ai-chat-button.ai-active {
+  position: relative;
+}
+
+.ai-chat-button.ai-active::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 4px;
+  height: 4px;
+  background-color: var(--mat-sys-primary-container);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--mat-sys-primary-container);
+}
+
+/* AI Chat minimized state */
+.ai-chat-button.ai-minimized {
+  position: relative;
+  background-color: var(--mat-sys-primary-container);
+}
+
+.ai-chat-button.ai-minimized .ai-icon {
+  color: var(--mat-sys-on-primary-container);
+  font-weight: 900;
+}
+
+/* Fault Injection Button */
+.fault-inject-button {
+  mat-icon {
+    color: var(--mat-sys-error);
+  }
+}
+
+.fault-inject-button:hover {
+  mat-icon {
+    color: var(--mat-sys-error);
+    filter: drop-shadow(0 0 8px var(--mat-sys-error));
+  }
+}
+
+/* Menu button hover effect */
+.menu-button {
+  transition: transform 100ms ease;
+}
+
+.menu-button:hover {
+  transform: scale(1.3);
+}

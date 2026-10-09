@@ -1,0 +1,986 @@
+#!/usr/bin/env python
+#
+# Copyright (C) 2016 GNS3 Technologies Inc.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import asyncio
+import json
+import os
+import random
+import shutil
+import sys
+import threading
+import uuid
+
+try:
+    import importlib_resources
+except ImportError:
+    from importlib import resources as importlib_resources
+
+import logging
+
+from watchdog.events import DirDeletedEvent, FileDeletedEvent, FileSystemEventHandler
+from watchdog.observers import Observer
+
+from ..config import Config
+from ..db.tasks import update_disk_checksums
+from ..utils import md5sum, parse_version
+from ..utils.asyncio import wait_run_in_executor
+from ..utils.images import default_images_directory
+from ..version import __version__
+from .appliance import Appliance as Appliance
+from .appliance_manager import ApplianceManager
+from .compute import Compute, ComputeError
+from .controller_error import ControllerError, ControllerNotFoundError
+from .gns3vm import GNS3VM
+from .gns3vm.gns3_vm_error import GNS3VMError
+from .node import Node
+from .notification import Notification
+from .project import Project
+from .symbols import Symbols
+from .topology import load_topology
+
+log = logging.getLogger(__name__)
+
+
+class _ProjectsDirectoryEventHandler(FileSystemEventHandler):
+    """
+    Watchdog handler for project directory changes.
+    """
+
+    def __init__(self, controller, projects_path):
+        self._controller = controller
+        self._projects_path = os.path.normpath(projects_path)
+
+    def on_created(self, event):
+        self._handle_event(event)
+
+    def on_modified(self, event):
+        self._handle_event(event)
+
+    def on_moved(self, event):
+        self._handle_event(event)
+
+    def on_deleted(self, event: DirDeletedEvent | FileDeletedEvent) -> None:
+        self._handle_event(event)
+
+    def _handle_event(self, event):
+        if event.is_directory:
+            # Only react to direct child directories of the projects path
+            # to avoid noise from subdirectory changes in existing projects
+            for path in (getattr(event, "src_path", ""), getattr(event, "dest_path", "")):
+                if path and os.path.dirname(os.path.normpath(path)) == self._projects_path:
+                    self._controller._notify_projects_directory_event()
+                    return
+        else:
+            for path in (getattr(event, "src_path", ""), getattr(event, "dest_path", "")):
+                if path and path.endswith(".gns3"):
+                    self._controller._notify_projects_directory_event()
+                    return
+
+
+def _iter_string_values(value):
+    """
+    Yield every string contained in value, recursing into dicts and lists.
+    """
+
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for child in value.values():
+            yield from _iter_string_values(child)
+    elif isinstance(value, (list, tuple, set)):
+        for child in value:
+            yield from _iter_string_values(child)
+
+
+def _image_referenced(node_properties, image_filename: str) -> bool:
+    """
+    Whether a node's properties reference an image by file name.
+
+    Image references live under type-specific property keys
+    (hda_disk_image, hda_disk_image_backing_file, image, initrd, path...)
+    and are stored either as bare file names or as absolute paths
+    depending on topology age, so every string value is matched on its
+    base name instead of walking a fixed key list.
+    """
+
+    return any(os.path.basename(string) == image_filename for string in _iter_string_values(node_properties))
+
+
+class Controller:
+    """
+    The controller is responsible to manage one or more computes.
+    """
+
+    def __init__(self):
+
+        self._computes = {}
+        self._projects = {}
+        self._ssl_context = None
+        self._notification = Notification(self)
+        self.gns3vm = GNS3VM(self)
+        self.symbols = Symbols()
+        self._appliance_manager = ApplianceManager()
+        self._iou_license_settings = {"iourc_content": "", "license_check": False}
+        self._vars_loaded = False
+        self._vars_file = Config.instance().controller_vars
+        self._project_auto_open_task_handle = None
+        self._projects_observer = None
+        self._projects_scan_handle = None
+        self._projects_scan_lock = asyncio.Lock()
+        self._projects_monitor_loop = None
+        self._projects_monitor_thread_id = None
+        log.info(f'Loading controller vars file "{self._vars_file}"')
+
+    async def start(self, computes=None):
+
+        log.info("Controller is starting")
+        self._projects_monitor_loop = asyncio.get_running_loop()
+        self._projects_monitor_thread_id = threading.get_ident()
+        await self._install_base_configs()
+        await self._install_custom_symbols()
+        installed_disks = await self._install_builtin_disks()
+        if installed_disks:
+            await update_disk_checksums(installed_disks)
+
+        server_config = Config.instance().settings.Server
+        Config.instance().listen_for_config_changes(self._update_config)
+        name = server_config.name
+        host = server_config.host
+        port = server_config.port
+
+        # clients will use the IP they use to connect to
+        # the controller if console_host is 0.0.0.0
+        console_host = host
+        if host == "0.0.0.0":
+            host = "127.0.0.1"
+
+        await self._load_controller_vars()
+
+        if server_config.enable_ssl:
+            self._ssl_context = self._create_ssl_context(server_config)
+
+        protocol = server_config.protocol.value
+        if self._ssl_context and protocol != "https":
+            log.warning("Protocol changed to 'https' for local compute because SSL is enabled")
+            protocol = "https"
+        try:
+            self._local_server = await self.add_compute(
+                compute_id="local",
+                name=name,
+                protocol=protocol,
+                host=host,
+                console_host=console_host,
+                port=port,
+                user=server_config.compute_username,
+                password=server_config.compute_password,
+                force=True,
+                connect=True,
+                wait_connection=False,
+                ssl_context=self._ssl_context,
+            )
+        except ControllerError:
+            log.fatal(
+                f"Cannot access to the local server, make sure something else is not running on the TCP port {port}"
+            )
+            sys.exit(1)
+
+        if computes:
+            for c in computes:
+                try:
+                    # FIXME: Task exception was never retrieved
+                    await self.add_compute(
+                        compute_id=str(c.compute_id),
+                        connect=False,
+                        **c.dict(exclude_unset=True, exclude={"compute_id", "created_at", "updated_at"}),
+                        ssl_context=self._ssl_context,
+                    )
+                except (ControllerError, KeyError):
+                    pass  # Skip not available servers at loading
+
+        try:
+            await self.gns3vm.auto_start_vm()
+        except GNS3VMError as e:
+            log.warning(str(e))
+
+        await self.load_projects()
+        self._start_projects_monitor()
+
+        # start to auto open projects (if configured) 5 seconds after the controller has started
+        self._project_auto_open_task_handle = asyncio.get_event_loop().call_later(
+            5, lambda: asyncio.create_task(self._project_auto_open())
+        )
+
+    def _create_ssl_context(self, server_config):
+
+        import ssl
+
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_SSLv23)
+        certfile = server_config.certfile
+        certkey = server_config.certkey
+        try:
+            ssl_context.load_cert_chain(certfile, certkey)
+        except FileNotFoundError:
+            log.critical("Could not find the SSL certfile or certkey")
+            raise SystemExit
+        except ssl.SSLError as e:
+            log.critical(f"SSL error: {e}")
+            raise SystemExit
+        return ssl_context
+
+    def ssl_context(self):
+        """
+        Returns the SSL context for the server.
+        """
+
+        return self._ssl_context
+
+    def _update_config(self):
+        """
+        Call this when the server configuration file changes.
+        """
+
+        if self._local_server:
+            self._local_server.user = Config.instance().settings.Server.compute_username
+            self._local_server.password = Config.instance().settings.Server.compute_password
+
+    async def stop(self):
+
+        log.info("Controller is stopping")
+        self._stop_projects_monitor()
+        if self._project_auto_open_task_handle is not None and not self._project_auto_open_task_handle.cancelled():
+            self._project_auto_open_task_handle.cancel()
+        for project in self._projects.values():
+            await project.close()
+        for compute in self._computes.values():
+            try:
+                await compute.close()
+            # We don't care if a compute is down at this step
+            except (ComputeError, ControllerError, OSError):
+                pass
+        await self.gns3vm.exit_vm()
+        self.save()
+        self._computes = {}
+        self._projects = {}
+
+    async def reload(self):
+
+        log.info("Controller is reloading")
+        await self._load_controller_vars()
+
+        # remove all projects deleted from disk.
+        for project in self._projects.copy().values():
+            if not os.path.exists(project.path) or not os.listdir(project.path):
+                log.info(f"Project '{project.name}' doesn't exist on the disk anymore, closing...")
+                await project.close()
+                self.remove_project(project)
+
+        await self.load_projects()
+
+    def save(self):
+        """
+        Save the controller vars on disk
+        """
+
+        controller_vars = dict()
+        if self._vars_loaded:
+            controller_vars = {
+                "appliances_etag": self._appliance_manager.appliances_etag,
+                "iou_license_check": self._iou_license_settings["license_check"],
+                "version": __version__,
+            }
+
+            if self._iou_license_settings["iourc_content"]:
+                server_config = Config.instance().settings.Server
+                os.makedirs(server_config.secrets_dir, exist_ok=True)
+                iourc_path = os.path.join(server_config.secrets_dir, "iou_license")
+
+                try:
+                    with open(iourc_path, "w+") as f:
+                        f.write(self._iou_license_settings["iourc_content"])
+                    log.info(f"iourc file '{iourc_path}' saved")
+                except OSError as e:
+                    log.error(f"Cannot write IOU license file '{iourc_path}': {e}")
+
+        try:
+            os.makedirs(os.path.dirname(self._vars_file), exist_ok=True)
+            with open(self._vars_file, "w+") as f:
+                json.dump(controller_vars, f, indent=4, sort_keys=True)
+        except OSError as e:
+            log.error(f"Cannot write controller vars file '{self._vars_file}': {e}")
+
+    async def _load_controller_vars(self):
+        """
+        Reload the controller vars from disk
+        """
+
+        try:
+            if not os.path.exists(self._vars_file):
+                self.save()  # this will create the vars file
+            with open(self._vars_file) as f:
+                controller_vars = json.load(f)
+        except (OSError, ValueError) as e:
+            log.critical(f"Cannot load controller vars file '{self._vars_file}': {e}")
+            return []
+
+        # load the IOU license settings
+        server_config = Config.instance().settings.Server
+
+        if not server_config.secrets_dir:
+            server_config.secrets_dir = os.path.dirname(Config.instance().server_config)
+        iourc_path = os.path.join(server_config.secrets_dir, "iou_license")
+
+        if os.path.exists(iourc_path):
+            try:
+                with open(iourc_path) as f:
+                    self._iou_license_settings["iourc_content"] = f.read()
+                log.info(f"iourc file '{iourc_path}' loaded")
+            except OSError as e:
+                log.error(f"Cannot read IOU license file '{iourc_path}': {e}")
+
+        # IOU license check is disabled by default
+        self._iou_license_settings["license_check"] = controller_vars.get("iou_license_check", False)
+        log.info(
+            "IOU license check is {} on the controller".format(
+                "enabled" if self._iou_license_settings["license_check"] else "disabled"
+            )
+        )
+
+        # install the built-in appliances if needed
+        if Config.instance().settings.Server.install_builtin_appliances:
+            previous_version = controller_vars.get("version")
+            log.info(f"Comparing controller version {__version__} with config version {previous_version}")
+            builtin_appliances_path = self._appliance_manager.builtin_appliances_path()
+            if not previous_version or parse_version(__version__.split("+")[0]) > parse_version(
+                previous_version.split("+")[0]
+            ):
+                await self._appliance_manager.install_builtin_appliances()
+            elif not os.listdir(builtin_appliances_path):
+                await self._appliance_manager.install_builtin_appliances()
+            else:
+                log.info(f"Built-in appliances are installed in '{builtin_appliances_path}'")
+
+        self._appliance_manager.appliances_etag = controller_vars.get("appliances_etag")
+        self._appliance_manager.load_appliances()
+        self._vars_loaded = True
+
+    async def load_projects(self):
+        """
+        Preload the list of projects from disk
+        """
+
+        async with self._projects_scan_lock:
+            server_config = Config.instance().settings.Server
+            projects_path = os.path.expanduser(server_config.projects_path)
+            os.makedirs(projects_path, exist_ok=True)
+            try:
+                for project_path in os.listdir(projects_path):
+                    project_dir = os.path.join(projects_path, project_path)
+                    if os.path.isdir(project_dir):
+                        for file in os.listdir(project_dir):
+                            if file.endswith(".gns3"):
+                                project_file = os.path.join(project_dir, file)
+                                try:
+                                    await self.load_project(project_file, load=False)
+                                except (ControllerError, NotImplementedError):
+                                    pass  # Skip not compatible projects
+                                except Exception as e:
+                                    log.warning(f"Could not load project from '{project_file}': {e}", exc_info=True)
+            except OSError as e:
+                log.error(str(e))
+
+    def _start_projects_monitor(self):
+        """
+        Monitor the projects directory for newly added projects.
+        """
+
+        if self._projects_observer is not None:
+            return
+
+        projects_path = self.projects_directory()
+        os.makedirs(projects_path, exist_ok=True)
+
+        try:
+            observer = Observer()
+            observer.schedule(_ProjectsDirectoryEventHandler(self, projects_path), projects_path, recursive=True)
+            observer.start()
+            self._projects_observer = observer
+            log.info(f"Watching projects directory '{projects_path}' for changes")
+        except OSError as e:
+            log.warning(f"Could not watch projects directory '{projects_path}': {e}")
+
+    def _stop_projects_monitor(self):
+        """
+        Stop projects directory monitoring.
+        """
+
+        if self._projects_scan_handle is not None:
+            self._projects_scan_handle.cancel()
+            self._projects_scan_handle = None
+
+        self._projects_monitor_loop = None
+
+        observer = self._projects_observer
+        if observer is None:
+            return
+
+        self._projects_observer = None
+        observer.stop()
+        observer.join(timeout=2)
+
+    def _notify_projects_directory_event(self):
+        """
+        Callback invoked by watchdog threads when the projects directory changes.
+        """
+
+        loop = self._projects_monitor_loop
+        if loop is None:
+            return
+
+        if threading.get_ident() == self._projects_monitor_thread_id:
+            self._schedule_projects_scan()
+            return
+
+        try:
+            loop.call_soon_threadsafe(self._schedule_projects_scan)
+        except RuntimeError:
+            pass  # Event loop may be closed during shutdown
+
+    def _schedule_projects_scan(self, delay=0.5):
+        """
+        Debounce projects directory scans to avoid excessive rescans during copy operations.
+        """
+
+        if self._projects_scan_handle is not None:
+            self._projects_scan_handle.cancel()
+
+        loop = self._projects_monitor_loop or asyncio.get_running_loop()
+        self._projects_scan_handle = loop.call_later(
+            delay, lambda: asyncio.create_task(self._scan_projects_directory())
+        )
+
+    async def _scan_projects_directory(self):
+        """
+        Refresh loaded projects after a filesystem change.
+        """
+
+        self._projects_scan_handle = None
+        if self._projects_observer is None:
+            return  # Monitor was stopped, skip the scan
+        try:
+            await self.load_projects()
+            # Remove stale projects that no longer exist on disk
+            for project_id in list(self._projects):
+                project = self._projects[project_id]
+                if not os.path.exists(project.path):
+                    log.info(f"Removing stale project '{project.name}' ('{project.path}' no longer exists)")
+                    del self._projects[project.id]
+        except Exception as e:
+            log.warning(f"Projects directory rescan failed: {e}")
+
+    @staticmethod
+    async def install_resource_files(dst_path, resource_name, upgrade_resources=True):
+        """
+        Install files from resources to user's file system
+        """
+
+        installed_resources = []
+
+        async def should_copy(src, dst, upgrade_resources):
+            if not os.path.exists(dst):
+                return True
+            if upgrade_resources is False:
+                return False
+            # copy the resource if it is different
+            src_md5 = await wait_run_in_executor(md5sum, src)
+            dst_md5 = await wait_run_in_executor(md5sum, dst)
+            return src_md5 != dst_md5
+
+        if hasattr(sys, "frozen") and sys.platform.startswith("win"):
+            resource_path = os.path.normpath(os.path.join(os.path.dirname(sys.executable), resource_name))
+            for filename in os.listdir(resource_path):
+                if not os.path.exists(os.path.join(dst_path, filename)):
+                    shutil.copy(os.path.join(resource_path, filename), os.path.join(dst_path, filename))
+        else:
+            for entry in importlib_resources.files("gns3server").joinpath(resource_name).iterdir():
+                full_path = os.path.join(dst_path, entry.name)
+                if entry.is_file() and await should_copy(str(entry), full_path, upgrade_resources):
+                    log.debug(f'Installing {resource_name} resource file "{entry.name}" to "{full_path}"')
+                    shutil.copy(str(entry), os.path.join(full_path))
+                    installed_resources.append(full_path)
+                elif entry.is_dir():
+                    os.makedirs(full_path, exist_ok=True)
+                    await Controller.install_resource_files(full_path, os.path.join(resource_name, entry.name))
+        return installed_resources
+
+    async def _install_base_configs(self):
+        """
+        At startup we copy base configs to the user location to allow
+        them to customize it
+        """
+
+        dst_path = self.configs_path()
+        log.info(f"Installing base configs in '{dst_path}'")
+        try:
+            # do not overwrite base configs because they may have been customized by the user
+            await Controller.install_resource_files(dst_path, "configs", upgrade_resources=False)
+        except OSError as e:
+            log.error(f"Could not install base config files to {dst_path}: {e}")
+
+    async def _install_builtin_disks(self):
+        """
+        At startup we copy built-in Qemu disks to the user location to allow
+        them to use with appliances
+        """
+
+        dst_path = self.disks_path()
+        log.info(f"Installing built-in disks in '{dst_path}'")
+        try:
+            return await Controller.install_resource_files(dst_path, "disks")
+        except OSError as e:
+            log.error(f"Could not install disk files to {dst_path}: {e}")
+
+    async def _install_custom_symbols(self):
+        """
+        At startup we copy custom symbols to the user location to allow
+        them to use with appliances
+        """
+
+        dst_path = self.symbols.symbols_path()
+        log.info(f"Installing custom symbols in '{dst_path}'")
+        try:
+            return await Controller.install_resource_files(dst_path, "custom_symbols", upgrade_resources=False)
+        except OSError as e:
+            log.error(f"Could not install custom symbols to {dst_path}: {e}")
+
+    def images_path(self):
+        """
+        Get the image storage directory
+        """
+
+        server_config = Config.instance().settings.Server
+        images_path = os.path.expanduser(server_config.images_path)
+        os.makedirs(images_path, exist_ok=True)
+        return images_path
+
+    def configs_path(self):
+        """
+        Get the configs storage directory
+        """
+
+        server_config = Config.instance().settings.Server
+        configs_path = os.path.expanduser(server_config.configs_path)
+        os.makedirs(configs_path, exist_ok=True)
+        return configs_path
+
+    def disks_path(self, emulator_type="qemu"):
+        """
+        Get the disks storage directory
+        """
+
+        disks_path = default_images_directory(emulator_type)
+        os.makedirs(disks_path, exist_ok=True)
+        return disks_path
+
+    async def add_compute(self, compute_id=None, name=None, force=False, connect=True, wait_connection=True, **kwargs):
+        """
+        Add a server to the dictionary of computes controlled by this controller
+
+        :param compute_id: Compute identifier
+        :param name: Compute name
+        :param force: True skip security check
+        :param connect: True connect to the compute immediately
+        :param kwargs: See the documentation of Compute
+        """
+
+        if compute_id not in self._computes:
+            # We disallow to create from the outside the local and VM server
+            if (compute_id == "local" or compute_id == "vm") and not force:
+                return None
+
+            # It seem we have error with a gns3vm imported as a remote server and conflict
+            # with GNS3 VM settings. That's why we ignore server name gns3vm
+            if name == "gns3vm":
+                return None
+
+            for compute in self._computes.values():
+                if name and compute.name == name and not force:
+                    raise ControllerError(f'Compute name "{name}" already exists')
+
+            compute = Compute(compute_id=compute_id, controller=self, name=name, **kwargs)
+            self._computes[compute.id] = compute
+            if connect:
+                if wait_connection:
+                    await compute.connect()
+                else:
+                    # call compute.connect() later to give time to the controller to be fully started
+                    asyncio.get_event_loop().call_later(1, lambda: asyncio.ensure_future(compute.connect()))
+            self.notification.controller_emit("compute.created", compute.asdict())
+            return compute
+        else:
+            if connect:
+                await self._computes[compute_id].connect()
+            self.notification.controller_emit("compute.updated", self._computes[compute_id].asdict())
+            return self._computes[compute_id]
+
+    async def close_compute_projects(self, compute):
+        """
+        Close projects running on a compute
+        """
+
+        for project in self._projects.values():
+            if compute in project.computes:
+                await project.close()
+
+    def compute_has_open_project(self, compute):
+        """
+        Check is compute has a project opened.
+
+        :returns: True if a project is open
+        """
+
+        for project in self._projects.values():
+            if compute in project.computes and project.status == "opened":
+                return True
+        return False
+
+    async def delete_compute(self, compute_id):
+        """
+        Delete a compute node. Project using this compute will be close
+
+        :param compute_id: Compute identifier
+        """
+
+        try:
+            compute = self.get_compute(compute_id)
+        except ControllerNotFoundError:
+            return
+        await self.close_compute_projects(compute)
+        await compute.close()
+        del self._computes[compute_id]
+        self.notification.controller_emit("compute.deleted", compute.asdict())
+
+    @property
+    def notification(self):
+        """
+        The notification system
+        """
+
+        return self._notification
+
+    @property
+    def computes(self):
+        """
+        :returns: The dictionary of computes managed by this controller
+        """
+
+        return self._computes
+
+    def get_compute(self, compute_id):
+        """
+        Returns a compute or raise a 404 error.
+        """
+
+        if compute_id is None:
+            # get all connected computes
+            computes = [compute for compute in self._computes.values() if compute.connected is True]
+            if len(computes) == 1:
+                # return the only available compute
+                return computes[0]
+            else:
+                # randomly pick a compute until we have proper scalability handling
+                # https://github.com/GNS3/gns3-server/issues/1676
+                return random.choice(computes)
+
+        try:
+            return self._computes[compute_id]
+        except KeyError:
+            if compute_id == "vm":
+                raise ControllerNotFoundError("Cannot use a node on the GNS3 VM server with the GNS3 VM not configured")
+            raise ControllerNotFoundError(
+                f"Compute ID {compute_id} doesn't exist", code="compute_not_found", details={"compute_id": compute_id}
+            )
+
+    def has_compute(self, compute_id):
+        """
+        Return True if the compute exist in the controller
+        """
+
+        return compute_id in self._computes
+
+    async def add_project(self, project_id=None, name=None, path=None, **kwargs):
+        """
+        Creates a project or returns an existing project
+
+        :param project_id: Project ID
+        :param name: Project name
+        :param kwargs: See the documentation of Project
+        """
+
+        if project_id not in self._projects:
+            for project in self._projects.values():
+                if name and project.name == name:
+                    if path and path == project.path:
+                        raise ControllerError(f'Project "{name}" already exists in location "{path}"')
+                    else:
+                        raise ControllerError(f'Project "{name}" already exists')
+            project = Project(project_id=project_id, controller=self, name=name, path=path, **kwargs)
+            self._projects[project.id] = project
+            return self._projects[project.id]
+        return self._projects[project_id]
+
+    def get_project(self, project_id):
+        """
+        Returns a project or raise a 404 error.
+        """
+
+        try:
+            return self._projects[project_id]
+        except KeyError:
+            raise ControllerNotFoundError(
+                f"Project ID {project_id} doesn't exist", code="project_not_found", details={"project_id": project_id}
+            )
+
+    async def get_loaded_project(self, project_id):
+        """
+        Returns a project or raise a 404 error.
+
+        If project is not finished to load wait for it
+        """
+
+        project = self.get_project(project_id)
+        await project.wait_loaded()
+        return project
+
+    def remove_project(self, project):
+
+        if project.id in self._projects:
+            del self._projects[project.id]
+
+    async def load_project(self, path, load=True):
+        """
+        Load a project from a .gns3
+
+        :param path: Path of the .gns3
+        :param load: Load the topology
+        """
+
+        if not os.path.exists(path):
+            raise ControllerError(f"'{path}' does not exist on the controller")
+
+        # A .gns3 file must live in its own directory: the project path is
+        # the file's parent directory. A file placed directly in the
+        # projects directory would register the shared projects root as the
+        # project directory, and deleting that project would wipe every
+        # project on the controller.
+        projects_path = os.path.realpath(self.projects_directory())
+        if os.path.realpath(os.path.dirname(path)) == projects_path:
+            raise ControllerError(
+                f"'{path}' cannot be loaded: the .gns3 file must be in its own subdirectory of '{projects_path}'"
+            )
+
+        topo_data = load_topology(path)
+        topo_data.pop("topology")
+        topo_data.pop("version")
+        topo_data.pop("revision")
+        topo_data.pop("type")
+        # marker_definitions is restored by Project.open() from the topology
+        # file; it must not be passed to Project.__init__.
+        topo_data.pop("marker_definitions", None)
+
+        if topo_data["project_id"] in self._projects:
+            project = self._projects[topo_data["project_id"]]
+        else:
+            project = await self.add_project(
+                path=os.path.dirname(path), status="closed", filename=os.path.basename(path), **topo_data
+            )
+        if load or project.auto_open:
+            await project.open()
+        return project
+
+    async def _project_auto_open(self):
+        """
+        Auto open the project with auto open enable
+        """
+
+        try:
+            for project in self._projects.values():
+                if project.auto_open:
+                    await project.open()
+        except ControllerError as e:
+            log.error(f"Could not auto open projects: {e}")
+
+    def get_free_project_name(self, base_name):
+        """
+        Generate a free project name base on the base name
+        """
+
+        names = [p.name for p in self._projects.values()]
+        if base_name not in names:
+            return base_name
+        i = 1
+
+        projects_path = self.projects_directory()
+
+        while True:
+            new_name = f"{base_name}-{i}"
+            if new_name not in names and not os.path.exists(os.path.join(projects_path, new_name)):
+                break
+            i += 1
+            if i > 1000000:
+                raise ControllerError("A project name could not be allocated (node limit reached?)")
+        return new_name
+
+    def _iter_project_nodes(self):
+        """
+        Iterate over (project, node) for every known project, opened or closed.
+
+        Opened projects yield controller Node objects; closed projects yield
+        the raw node dicts read from their .gns3 file. A project whose
+        topology cannot be read is skipped — it must not block the usage
+        checks that rely on this iterator.
+        """
+
+        for project in self._projects.values():
+            try:
+                nodes = project.nodes.values()
+            except ControllerError:
+                continue
+            for node in nodes:
+                yield project, node
+
+    def find_projects_using_template(self, template_id) -> list:
+        """
+        Return the names of the projects with at least one node created
+        from this template.
+
+        Used to forbid template deletion while any project still
+        references it.
+        """
+
+        template_id = str(template_id)
+        project_names = []
+        for project, node in self._iter_project_nodes():
+            if isinstance(node, Node):
+                node_template_id = node.template_id
+            else:
+                node_template_id = node.get("template_id")
+            if node_template_id and str(node_template_id) == template_id and project.name not in project_names:
+                project_names.append(project.name)
+        return project_names
+
+    def find_projects_using_image(self, image_filename: str) -> list:
+        """
+        Return the names of the projects with at least one node whose
+        properties reference this image file.
+
+        Used to forbid image deletion while any project still uses it.
+        """
+
+        project_names = []
+        for project, node in self._iter_project_nodes():
+            if isinstance(node, Node):
+                node_properties = node.properties
+            else:
+                node_properties = node.get("properties") or {}
+            if _image_referenced(node_properties, image_filename) and project.name not in project_names:
+                project_names.append(project.name)
+        return project_names
+
+    def collect_referenced_image_filenames(self) -> set:
+        """
+        Return every file name referenced by a node property across all
+        projects (opened or closed).
+
+        The set deliberately over-approximates (any property string counts):
+        it protects images from pruning, so a false positive only keeps a
+        file alive. Used as a single-pass skip list for image pruning.
+        """
+
+        filenames = set()
+        for _project, node in self._iter_project_nodes():
+            if isinstance(node, Node):
+                node_properties = node.properties
+            else:
+                node_properties = node.get("properties") or {}
+            for string in _iter_string_values(node_properties):
+                filenames.add(os.path.basename(string))
+        return filenames
+
+    @property
+    def projects(self):
+        """
+        :returns: The dictionary of projects managed by the controller
+        """
+
+        return self._projects
+
+    @property
+    def appliance_manager(self):
+        """
+        :returns: Appliance Manager instance
+        """
+
+        return self._appliance_manager
+
+    @property
+    def iou_license(self):
+        """
+        :returns: The dictionary of IOU license settings
+        """
+
+        return self._iou_license_settings
+
+    def projects_directory(self):
+
+        server_config = Config.instance().settings.Server
+        return os.path.expanduser(server_config.projects_path)
+
+    @staticmethod
+    def instance():
+        """
+        Singleton to return only on instance of Controller.
+
+        :returns: instance of Controller
+        """
+
+        if not hasattr(Controller, "_instance") or Controller._instance is None:
+            Controller._instance = Controller()
+        return Controller._instance
+
+    async def autoidlepc(self, compute_id, platform, image, ram):
+        """
+        Compute and IDLE PC value for an image
+
+        :param compute_id: ID of the compute where the idlepc operation need to run
+        :param platform: Platform type
+        :param image: Image to use
+        :param ram: amount of RAM to use
+        """
+
+        compute = self.get_compute(compute_id)
+        for project in list(self._projects.values()):
+            if project.name == "AUTOIDLEPC":
+                await project.delete()
+                self.remove_project(project)
+        project = await self.add_project(name="AUTOIDLEPC")
+        node = await project.add_node(
+            compute, "AUTOIDLEPC", str(uuid.uuid4()), node_type="dynamips", platform=platform, image=image, ram=ram
+        )
+        res = await node.dynamips_auto_idlepc()
+        await project.delete()
+        self.remove_project(project)
+        return res

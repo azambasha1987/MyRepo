@@ -1,0 +1,295 @@
+<div class="iou-template-details">
+  <header class="iou-template-details__header">
+    <div class="iou-template-details__heading-row">
+      <div>
+        <div class="iou-template-details__breadcrumb">
+          <button type="button" mat-button (click)="goBack()">Templates</button><mat-icon>chevron_right</mat-icon
+          ><span>Edit</span>
+        </div>
+        <h1 class="iou-template-details__title">Edit template</h1>
+      </div>
+      <div class="iou-template-details__header-actions">
+        <button type="button" mat-stroked-button (click)="goBack()">Back to templates</button>
+      </div>
+    </div>
+  </header>
+
+  @if (iouTemplate) {
+  <main class="iou-template-details__content">
+    <nav class="template-edit-tabs" aria-label="Template settings">
+      <button type="button" [class.is-active]="activeSection === 'general'" (click)="selectSection('general')">
+        General settings
+      </button>
+      <button type="button" [class.is-active]="activeSection === 'network'" (click)="selectSection('network')">Network</button>
+      <button type="button" [class.is-active]="activeSection === 'usage'" (click)="selectSection('usage')">Usage</button>
+      <button type="button" [class.is-active]="activeSection === 'metadata'" (click)="selectSection('metadata')">Metadata</button>
+    </nav>
+    <section class="iou-template-details__form-card">
+      <div class="iou-template-details__section-header" (click)="toggleSection('general')">
+        <h3 class="iou-template-details__section-title">General settings</h3>
+        <mat-icon class="iou-template-details__expand-icon">{{
+          generalSettingsExpanded() ? 'expand_less' : 'expand_more'
+        }}</mat-icon>
+      </div>
+      @if (activeSection === 'general') {
+      <form class="iou-template-details__form">
+        <div class="two-column-grid">
+          <mat-form-field appearance="fill" class="iou-template-details__field">
+            <mat-label>Template name</mat-label>
+            <input
+              matInput
+              [value]="templateName()"
+              (input)="templateName.set($event.target.value)"
+              type="text"
+              placeholder="Template name"
+            />
+          </mat-form-field>
+          <mat-form-field appearance="fill" class="iou-template-details__field">
+            <mat-label>Default name format</mat-label>
+            <input
+              matInput
+              [value]="defaultName()"
+              (input)="defaultName.set($event.target.value)"
+              type="text"
+              placeholder="Default name format"
+            />
+          </mat-form-field>
+        </div>
+
+        <div class="iou-template-details__symbol-row">
+          <mat-form-field appearance="fill" class="iou-template-details__field iou-template-details__field--category">
+            <mat-label>Category</mat-label>
+            <mat-select [value]="category()" (selectionChange)="category.set($event.value)">
+              @for (cat of categories; track $index) {
+              <mat-option [value]="cat[1]">{{ cat[0] }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <mat-form-field appearance="fill" class="iou-template-details__field iou-template-details__field--flex">
+            <mat-label>Symbol</mat-label>
+            <input
+              matInput
+              [value]="symbol()"
+              (input)="symbol.set($event.target.value)"
+              type="text"
+              placeholder="Symbol"
+            />
+          </mat-form-field>
+          <button mat-stroked-button color="primary" class="iou-template-details__symbol-btn" (click)="chooseSymbol()">
+            <mat-icon>add</mat-icon>
+            Choose symbol
+          </button>
+        </div>
+
+        <mat-form-field appearance="fill" class="iou-template-details__field">
+          <mat-label>Tags</mat-label>
+          <mat-chip-grid #chipList>
+            @for (tag of tags(); track tag) {
+            <mat-chip (removed)="removeTag(tag)">
+              {{ tag }}
+              <mat-icon matChipRemove>cancel</mat-icon>
+            </mat-chip>
+            }
+          </mat-chip-grid>
+          <input
+            matInput
+            placeholder="Add tags"
+            [matChipInputFor]="chipList"
+            [matChipInputSeparatorKeyCodes]="separatorKeysCodes"
+            (matChipInputTokenEnd)="addTag($event)"
+          />
+        </mat-form-field>
+
+        <div class="iou-template-details__file-row">
+          <input
+            type="file"
+            accept=".bin, .image, .iol"
+            #file
+            class="iou-template-details__file-input"
+            (change)="uploadImageFile($event)"
+          />
+          <button mat-raised-button color="primary" (click)="file.click()" class="iou-template-details__browse-btn">
+            Browse
+          </button>
+          <mat-form-field appearance="fill" class="iou-template-details__field iou-template-details__field--flex">
+            <mat-label>IOU image path</mat-label>
+            <input
+              matInput
+              [value]="path()"
+              (input)="path.set($event.target.value)"
+              type="text"
+              placeholder="IOU image path"
+            />
+          </mat-form-field>
+        </div>
+
+        <mat-form-field appearance="fill" class="iou-template-details__field">
+          <mat-label>Startup config</mat-label>
+          <input
+            matInput
+            [value]="initialConfig()"
+            (input)="initialConfig.set($event.target.value)"
+            type="text"
+            placeholder="Startup config"
+          />
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" class="iou-template-details__field">
+          <mat-label>Private config</mat-label>
+          <input
+            matInput
+            [value]="privateConfig()"
+            (input)="privateConfig.set($event.target.value)"
+            type="text"
+            placeholder="Private config"
+          />
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" class="iou-template-details__field">
+          <mat-label>Console type</mat-label>
+          <mat-select [value]="consoleType()" (selectionChange)="consoleType.set($event.value)">
+            @for (type of consoleTypes; track type) {
+            <mat-option [value]="type">
+              {{ type }}
+            </mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <div class="three-column-grid">
+          <app-netmiko-device-type-select
+            [(value)]="netmikoDeviceType"
+            [controller]="controller"
+            appearance="fill"
+            class="iou-template-details__field"
+          />
+          <mat-form-field appearance="fill" class="iou-template-details__field">
+            <mat-label>Default username</mat-label>
+            <input
+              matInput
+              [value]="defaultUsername()"
+              (input)="onCredentialInput('default_username', $event)"
+              type="text"
+              placeholder="Username to log into this node"
+            />
+          </mat-form-field>
+          <mat-form-field appearance="fill" class="iou-template-details__field">
+            <mat-label>Default password</mat-label>
+            <input
+              matInput
+              [value]="defaultPassword()"
+              (input)="onCredentialInput('default_password', $event)"
+              type="text"
+              placeholder="Password to log into this node"
+            />
+          </mat-form-field>
+        </div>
+
+        <mat-checkbox [checked]="consoleAutoStart()" (change)="consoleAutoStart.set($event.checked)">
+          Auto start console
+        </mat-checkbox>
+        <mat-checkbox [checked]="l1Keepalives()" (change)="l1Keepalives.set($event.checked)">
+          Enable Layer 1 keepalive messages
+        </mat-checkbox>
+        <mat-checkbox [checked]="useDefaultIouValues()" (change)="useDefaultIouValues.set($event.checked)">
+          Use default IOU values for memories
+        </mat-checkbox>
+
+        @if (!useDefaultIouValues()) {
+        <div class="two-column-grid">
+          <mat-form-field appearance="fill" class="iou-template-details__field">
+            <mat-label>RAM size</mat-label>
+            <input
+              matInput
+              [value]="ram()"
+              (input)="ram.set(+$event.target.value)"
+              type="number"
+              min="1"
+              placeholder="RAM size"
+            />
+            <span matSuffix>MB</span>
+          </mat-form-field>
+          <mat-form-field appearance="fill" class="iou-template-details__field">
+            <mat-label>NVRAM size</mat-label>
+            <input
+              matInput
+              [value]="nvram()"
+              (input)="nvram.set(+$event.target.value)"
+              type="number"
+              min="1"
+              placeholder="NVRAM size"
+            />
+            <span matSuffix>KB</span>
+          </mat-form-field>
+        </div>
+        }
+      </form>
+      }
+    </section>
+
+    <section class="iou-template-details__form-card">
+      <div class="iou-template-details__section-header" (click)="toggleSection('network')">
+        <h3 class="iou-template-details__section-title">Network</h3>
+        <mat-icon class="iou-template-details__expand-icon">{{
+          networkExpanded() ? 'expand_less' : 'expand_more'
+        }}</mat-icon>
+      </div>
+      @if (activeSection === 'network') {
+      <form class="iou-template-details__form">
+        <mat-form-field appearance="fill" class="iou-template-details__field">
+          <mat-label>Ethernet adapters</mat-label>
+          <input
+            matInput
+            [value]="ethernetAdapters()"
+            (input)="ethernetAdapters.set(+$event.target.value)"
+            type="number"
+            placeholder="Ethernet adapters"
+          />
+        </mat-form-field>
+
+        <mat-form-field appearance="fill" class="iou-template-details__field">
+          <mat-label>Serial adapters</mat-label>
+          <input
+            matInput
+            [value]="serialAdapters()"
+            (input)="serialAdapters.set(+$event.target.value)"
+            type="number"
+            placeholder="Serial adapters"
+          />
+        </mat-form-field>
+      </form>
+      }
+    </section>
+
+    <section class="iou-template-details__form-card">
+      <div class="iou-template-details__section-header" (click)="toggleSection('usage')">
+        <h3 class="iou-template-details__section-title">Usage</h3>
+        <mat-icon class="iou-template-details__expand-icon">{{
+          usageExpanded() ? 'expand_less' : 'expand_more'
+        }}</mat-icon>
+      </div>
+      @if (activeSection === 'usage') {
+      <div class="preferences__usage-form">
+        <mat-form-field appearance="fill" class="preferences__usage-field--full">
+          <mat-label>Usage notes</mat-label>
+          <textarea matInput [value]="usage()" (input)="usage.set($event.target.value)" type="text"></textarea>
+        </mat-form-field>
+      </div>
+      }
+    </section>
+
+    <section class="iou-template-details__form-card">
+      <div class="iou-template-details__section-header">
+        <h3 class="iou-template-details__section-title">Appliance metadata</h3>
+      </div>
+      @if (activeSection === 'metadata') {
+      <app-template-metadata-section [(metadata)]="applianceMetadata" />
+      }
+    </section>
+    <div class="iou-template-details__actions">
+      <button class="iou-template-details__cancel-btn" (click)="goBack()" mat-button>Cancel</button>
+      <button mat-raised-button color="primary" class="iou-template-details__save-btn" (click)="onSave()">Save</button>
+    </div>
+  </main>
+  }
+</div>

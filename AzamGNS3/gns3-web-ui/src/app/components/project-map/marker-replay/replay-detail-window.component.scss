@@ -1,0 +1,31 @@
+@use './replay-window-handles';
+@use './replay-window-surface';
+
+// The window surface itself (border, header, chrome) is the SHARED
+// _replay-window-surface partial — the peek window wears it too.
+
+// Full-viewport leader-line overlay: a plain "this window describes this
+// link" callout — dot at the link end, NOT a traffic-direction arrow. The
+// snapshot's line is primary (same family as its --snapshot border),
+// keeping the window→hop association visible while the snapshots sit in the
+// dock row.
+.gns3-replay__leader {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.gns3-replay__leader-line {
+  stroke: var(--mat-sys-primary);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
+.gns3-replay__leader-dot {
+  fill: var(--mat-sys-primary);
+}
+
+// The detail BODY (crumbs, chips, states, tree) lives in the shared
+// <app-replay-detail-pane> — see replay-detail-pane.component.scss.

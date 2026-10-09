@@ -1,0 +1,42 @@
+<div
+  class="confirmation-dialog"
+  [class.confirmation-dialog--danger]="tone === 'danger'"
+  [class.confirmation-dialog--warning]="tone === 'warning'"
+>
+  <div mat-dialog-title class="confirmation-dialog__header">
+    <span class="confirmation-dialog__icon" aria-hidden="true">
+      <mat-icon>{{ icon }}</mat-icon>
+    </span>
+    <h2>{{ title }}</h2>
+  </div>
+
+  <mat-dialog-content class="confirmation-dialog__content">
+    <p>{{ data.message }}</p>
+    @if (data.details?.length) {
+    <ul class="confirmation-dialog__details">
+      @for (detail of data.details; track detail) {
+      <li>{{ detail }}</li>
+      }
+    </ul>
+    } @if (data.note) {
+    <p class="confirmation-dialog__note">{{ data.note }}</p>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="confirmation-dialog__actions" align="end">
+    <button mat-stroked-button type="button" cdkFocusInitial class="cancel-button" (click)="onNoClick()">
+      {{ cancelButtonText }}
+    </button>
+    @if (!data.hideConfirm) {
+    <button
+      mat-flat-button
+      type="button"
+      class="confirm-button"
+      [class.destructive-button]="tone === 'danger'"
+      (click)="onYesClick()"
+    >
+      {{ confirmButtonText }}
+    </button>
+    }
+  </mat-dialog-actions>
+</div>

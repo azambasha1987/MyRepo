@@ -1,0 +1,632 @@
+#
+# Copyright (C) 2020 GNS3 Technologies Inc.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import json
+import os
+import uuid
+from unittest.mock import MagicMock, patch
+
+import pytest
+import pytest_asyncio
+from fastapi import FastAPI, status
+from httpx import AsyncClient
+
+import gns3server.utils.zipfile_zstd as zipfile_zstd
+from gns3server.controller import Controller
+from gns3server.controller.compute import Compute
+from gns3server.controller.project import Project
+from tests.utils import AsyncioMagicMock, asyncio_patch
+
+pytestmark = pytest.mark.asyncio
+
+
+class TestControllerProjectRoutes:
+    @pytest_asyncio.fixture
+    async def project(self, app: FastAPI, client: AsyncClient, controller: Controller) -> Project:
+
+        project_id = str(uuid.uuid4())
+        params = {"name": "test", "project_id": project_id}
+        await client.post(app.url_path_for("create_project"), json=params)
+        return controller.get_project(project_id)
+
+    async def test_create_project_with_path(
+        self, app: FastAPI, client: AsyncClient, controller: Controller, config
+    ) -> None:
+
+        params = {
+            "name": "test",
+            "path": str(config.settings.Server.projects_path),
+            "project_id": "00010203-0405-0607-0809-0a0b0c0d0e0f",
+        }
+        response = await client.post(app.url_path_for("create_project"), json=params)
+        # The projects directory itself must never become a project directory
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+        params = {
+            "name": "test",
+            "path": os.path.join(str(config.settings.Server.projects_path), "custom"),
+            "project_id": "00010203-0405-0607-0809-0a0b0c0d0e0f",
+        }
+        response = await client.post(app.url_path_for("create_project"), json=params)
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.json()["name"] == "test"
+        assert response.json()["project_id"] == "00010203-0405-0607-0809-0a0b0c0d0e0f"
+        assert response.json()["status"] == "opened"
+
+    async def test_create_project_without_dir(self, app: FastAPI, client: AsyncClient, controller: Controller) -> None:
+
+        params = {"name": "test", "project_id": "10010203-0405-0607-0809-0a0b0c0d0e0f"}
+        response = await client.post(app.url_path_for("create_project"), json=params)
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.json()["project_id"] == "10010203-0405-0607-0809-0a0b0c0d0e0f"
+        assert response.json()["name"] == "test"
+
+    async def test_create_project_with_uuid(self, app: FastAPI, client: AsyncClient, controller: Controller) -> None:
+
+        params = {"name": "test", "project_id": "30010203-0405-0607-0809-0a0b0c0d0e0f"}
+        response = await client.post(app.url_path_for("create_project"), json=params)
+        assert response.status_code == 201
+        assert response.json()["project_id"] == "30010203-0405-0607-0809-0a0b0c0d0e0f"
+        assert response.json()["name"] == "test"
+
+    async def test_create_project_with_variables(
+        self, app: FastAPI, client: AsyncClient, controller: Controller
+    ) -> None:
+
+        variables = [{"name": "TEST1"}, {"name": "TEST2", "value": "value1"}]
+        params = {"name": "test", "project_id": "30010203-0405-0607-0809-0a0b0c0d0e0f", "variables": variables}
+        response = await client.post(app.url_path_for("create_project"), json=params)
+        assert response.status_code == 201
+        assert response.json()["variables"] == [{"name": "TEST1"}, {"name": "TEST2", "value": "value1"}]
+
+    async def test_create_project_with_supplier(
+        self, app: FastAPI, client: AsyncClient, controller: Controller
+    ) -> None:
+
+        supplier = {"logo": "logo.png", "url": "http://example.com/"}
+        params = {"name": "test", "project_id": "30010203-0405-0607-0809-0a0b0c0d0e0f", "supplier": supplier}
+        response = await client.post(app.url_path_for("create_project"), json=params)
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.json()["supplier"] == supplier
+
+    async def test_update_project(self, app: FastAPI, client: AsyncClient, controller: Controller) -> None:
+
+        params = {"name": "test", "project_id": "10010203-0405-0607-0809-0a0b0c0d0e0f"}
+        response = await client.post(app.url_path_for("create_project"), json=params)
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.json()["project_id"] == "10010203-0405-0607-0809-0a0b0c0d0e0f"
+        assert response.json()["name"] == "test"
+
+        params = {"name": "test2"}
+        response = await client.put(
+            app.url_path_for("update_project", project_id="10010203-0405-0607-0809-0a0b0c0d0e0f"), json=params
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["name"] == "test2"
+
+    async def test_update_project_ignores_path_and_project_id(
+        self, app: FastAPI, client: AsyncClient, controller: Controller
+    ) -> None:
+
+        params = {"name": "test", "project_id": "10010203-0405-0607-0809-0a0b0c0d0e0f"}
+        response = await client.post(app.url_path_for("create_project"), json=params)
+        assert response.status_code == status.HTTP_201_CREATED
+        path = response.json()["path"]
+
+        params = {
+            "name": "test2",
+            "path": os.path.join(os.path.dirname(path), "other"),
+            "project_id": "20010203-0405-0607-0809-0a0b0c0d0e0f",
+        }
+        response = await client.put(
+            app.url_path_for("update_project", project_id="10010203-0405-0607-0809-0a0b0c0d0e0f"), json=params
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["name"] == "test2"
+        assert response.json()["path"] == path
+        assert response.json()["project_id"] == "10010203-0405-0607-0809-0a0b0c0d0e0f"
+
+    async def test_project_etag_and_if_match(self, app: FastAPI, client: AsyncClient, controller: Controller) -> None:
+
+        params = {"name": "test", "project_id": "10010203-0405-0607-0809-0a0b0c0d0e0f"}
+        assert (await client.post(app.url_path_for("create_project"), json=params)).status_code == 201
+        get_url = app.url_path_for("get_project", project_id="10010203-0405-0607-0809-0a0b0c0d0e0f")
+        put_url = app.url_path_for("update_project", project_id="10010203-0405-0607-0809-0a0b0c0d0e0f")
+
+        response = await client.get(get_url)
+        assert response.status_code == status.HTTP_200_OK
+        etag = response.headers["ETag"]
+        assert (await client.get(get_url)).headers["ETag"] == etag
+
+        response = await client.put(put_url, json={"name": "test2"}, headers={"If-Match": etag})
+        assert response.status_code == status.HTTP_200_OK
+        new_etag = response.headers["ETag"]
+        assert new_etag != etag
+        assert (await client.get(get_url)).headers["ETag"] == new_etag
+
+        response = await client.put(put_url, json={"name": "test3"}, headers={"If-Match": etag})
+        assert response.status_code == status.HTTP_412_PRECONDITION_FAILED
+        assert "message" in response.json()
+        assert (await client.get(get_url)).json()["name"] == "test2"
+
+        response = await client.put(put_url, json={"name": "test4"})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["name"] == "test4"
+
+    async def test_update_project_with_variables(
+        self, app: FastAPI, client: AsyncClient, controller: Controller
+    ) -> None:
+
+        variables = [{"name": "TEST1"}, {"name": "TEST2", "value": "value1"}]
+        params = {"name": "test", "project_id": "10010203-0405-0607-0809-0a0b0c0d0e0f", "variables": variables}
+        response = await client.post(app.url_path_for("create_project"), json=params)
+        assert response.status_code == status.HTTP_201_CREATED
+
+        params = {"name": "test2"}
+        response = await client.put(
+            app.url_path_for("update_project", project_id="10010203-0405-0607-0809-0a0b0c0d0e0f"), json=params
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["variables"] == variables
+
+    async def test_list_projects(self, app: FastAPI, client: AsyncClient, controller: Controller) -> None:
+
+        params = {"name": "test", "project_id": "00010203-0405-0607-0809-0a0b0c0d0e0f"}
+        await client.post(app.url_path_for("create_project"), json=params)
+        response = await client.get(app.url_path_for("get_projects"))
+        assert response.status_code == status.HTTP_200_OK
+        projects = response.json()
+        assert projects[0]["name"] == "test"
+
+    async def test_list_projects_filter_by_name(
+        self, app: FastAPI, client: AsyncClient, controller: Controller
+    ) -> None:
+
+        for name in ("test", "other"):
+            params = {"name": name, "project_id": str(uuid.uuid4())}
+            response = await client.post(app.url_path_for("create_project"), json=params)
+            assert response.status_code == status.HTTP_201_CREATED
+
+        response = await client.get(app.url_path_for("get_projects"), params={"name": "test"})
+        assert response.status_code == status.HTTP_200_OK
+        assert [p["name"] for p in response.json()] == ["test"]
+
+        response = await client.get(app.url_path_for("get_projects"), params={"name": "TEST"})
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == []
+
+        response = await client.get(app.url_path_for("get_projects"))
+        assert len(response.json()) == 2
+
+    async def test_get_project(self, app: FastAPI, client: AsyncClient, project: Project) -> None:
+
+        response = await client.get(app.url_path_for("get_project", project_id=project.id))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["name"] == "test"
+
+    async def test_delete_project(
+        self, app: FastAPI, client: AsyncClient, project: Project, controller: Controller
+    ) -> None:
+
+        with asyncio_patch("gns3server.controller.project.Project.delete", return_value=True) as mock:
+            response = await client.delete(app.url_path_for("delete_project", project_id=project.id))
+            assert response.status_code == status.HTTP_204_NO_CONTENT
+            assert mock.called
+            assert project not in controller.projects
+
+    async def test_delete_project_invalid_uuid(self, app: FastAPI, client: AsyncClient) -> None:
+
+        response = await client.delete(app.url_path_for("delete_project", project_id=str(uuid.uuid4())))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    async def test_close_project(self, app: FastAPI, client: AsyncClient, project: Project) -> None:
+
+        with asyncio_patch("gns3server.controller.project.Project.close", return_value=True) as mock:
+            response = await client.post(app.url_path_for("close_project", project_id=project.id))
+            assert response.status_code == status.HTTP_204_NO_CONTENT
+            assert mock.called
+
+    async def test_open_project(self, app: FastAPI, client: AsyncClient, project: Project) -> None:
+
+        with asyncio_patch("gns3server.controller.project.Project.open", return_value=True) as mock:
+            response = await client.post(app.url_path_for("open_project", project_id=project.id))
+            assert response.status_code == status.HTTP_200_OK
+            assert mock.called
+
+    async def test_load_project(self, app: FastAPI, client: AsyncClient, project: Project, config) -> None:
+
+        with asyncio_patch("gns3server.controller.Controller.load_project", return_value=project) as mock:
+            response = await client.post(app.url_path_for("load_project"), json={"path": "/tmp/test.gns3"})
+            assert response.status_code == status.HTTP_201_CREATED
+            mock.assert_called_with("/tmp/test.gns3")
+            assert response.json()["project_id"] == project.id
+
+    # @pytest.mark.asyncio
+    # async def test_notification(controller_api, http_client, project, controller):
+    #
+    #     async with http_client.get(controller_api.get_url("/projects/{project_id}/notifications".format(project_id=project.id))) as response:
+    #         response.body = await response.content.read(200)
+    #         controller.notification.project_emit("node.created", {"a": "b"})
+    #         response.body += await response.content.readany()
+    #         assert response.status_code == 200
+    #         assert b'"action": "ping"' in response.body
+    #         assert b'"cpu_usage_percent"' in response.body
+    #         assert b'{"action": "node.created", "event": {"a": "b"}}\n' in response.body
+    #         assert project.status_code == "opened"
+    #
+    #
+    # @pytest.mark.asyncio
+    # async def test_notification_invalid_id(controller_api):
+    #
+    #     response = await controller_api.get("/projects/{project_id}/notifications".format(project_id=uuid.uuid4()))
+    #     assert response.status_code == 404
+
+    # @pytest.mark.asyncio
+    # async def test_notification_ws(controller_api, http_client, controller, project):
+    #
+    #     ws = await http_client.ws_connect(controller_api.get_url("/projects/{project_id}/notifications/ws".format(project_id=project.id)))
+    #     answer = await ws.receive()
+    #     answer = json.loads(answer.data)
+    #     assert answer["action"] == "ping"
+    #
+    #     controller.notification.project_emit("test", {})
+    #     answer = await ws.receive()
+    #     answer = json.loads(answer.data)
+    #     assert answer["action"] == "test"
+    #
+    #     if not ws.closed:
+    #         await ws.close()
+    #
+    #     assert project.status_code == "opened"
+
+    async def test_export_with_images(self, app: FastAPI, client: AsyncClient, tmpdir, project: Project) -> None:
+
+        project.dump = MagicMock()
+        os.makedirs(project.path, exist_ok=True)
+        with open(os.path.join(project.path, "a"), "w+") as f:
+            f.write("hello")
+
+        os.makedirs(str(tmpdir / "IOS"))
+        with open(str(tmpdir / "IOS" / "test.image"), "w+") as f:
+            f.write("AAA")
+
+        topology = {"topology": {"nodes": [{"properties": {"image": "test.image"}, "node_type": "dynamips"}]}}
+        with open(os.path.join(project.path, "test.gns3"), "w+") as f:
+            json.dump(topology, f)
+
+        with patch("gns3server.compute.Dynamips.get_images_directory", return_value=str(tmpdir / "IOS")):
+            response = await client.get(
+                app.url_path_for("export_project", project_id=project.id), params={"include_images": "yes"}
+            )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.headers["CONTENT-TYPE"] == "application/gns3project"
+        assert (
+            response.headers["CONTENT-DISPOSITION"]
+            == f"attachment; filename=\"{project.name}.gns3project\"; filename*=UTF-8''{project.name}.gns3project"
+        )
+
+        with open(str(tmpdir / "project.zip"), "wb+") as f:
+            f.write(response.content)
+
+        with zipfile_zstd.ZipFile(str(tmpdir / "project.zip")) as myzip:
+            with myzip.open("a") as myfile:
+                content = myfile.read()
+                assert content == b"hello"
+            myzip.getinfo("images/IOS/test.image")
+
+    async def test_export_without_images(self, app: FastAPI, client: AsyncClient, tmpdir, project: Project) -> None:
+
+        project.dump = MagicMock()
+        os.makedirs(project.path, exist_ok=True)
+        with open(os.path.join(project.path, "a"), "w+") as f:
+            f.write("hello")
+
+        os.makedirs(str(tmpdir / "IOS"))
+        with open(str(tmpdir / "IOS" / "test.image"), "w+") as f:
+            f.write("AAA")
+
+        topology = {"topology": {"nodes": [{"properties": {"image": "test.image"}, "node_type": "dynamips"}]}}
+        with open(os.path.join(project.path, "test.gns3"), "w+") as f:
+            json.dump(topology, f)
+
+        with patch(
+            "gns3server.compute.Dynamips.get_images_directory",
+            return_value=str(tmpdir / "IOS"),
+        ):
+            response = await client.get(
+                app.url_path_for("export_project", project_id=project.id), params={"include_images": "0"}
+            )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.headers["CONTENT-TYPE"] == "application/gns3project"
+        assert (
+            response.headers["CONTENT-DISPOSITION"]
+            == f"attachment; filename=\"{project.name}.gns3project\"; filename*=UTF-8''{project.name}.gns3project"
+        )
+        with open(str(tmpdir / "project.zip"), "wb+") as f:
+            f.write(response.content)
+
+        with zipfile_zstd.ZipFile(str(tmpdir / "project.zip")) as myzip:
+            with myzip.open("a") as myfile:
+                content = myfile.read()
+                assert content == b"hello"
+            # Image should not exported
+            with pytest.raises(KeyError):
+                myzip.getinfo("images/IOS/test.image")
+
+    @pytest.mark.parametrize(
+        "compression, compression_level, status_code",
+        (
+            ("none", None, status.HTTP_200_OK),
+            ("none", 4, status.HTTP_400_BAD_REQUEST),
+            ("zip", None, status.HTTP_200_OK),
+            ("zip", 1, status.HTTP_200_OK),
+            ("zip", 12, status.HTTP_400_BAD_REQUEST),
+            ("bzip2", None, status.HTTP_200_OK),
+            ("bzip2", 1, status.HTTP_200_OK),
+            ("bzip2", 13, status.HTTP_400_BAD_REQUEST),
+            ("lzma", None, status.HTTP_200_OK),
+            ("lzma", 1, status.HTTP_400_BAD_REQUEST),
+            ("zstd", None, status.HTTP_200_OK),
+            ("zstd", 12, status.HTTP_200_OK),
+            ("zstd", 23, status.HTTP_400_BAD_REQUEST),
+        ),
+    )
+    async def test_export_compression(
+        self,
+        app: FastAPI,
+        client: AsyncClient,
+        tmpdir,
+        project: Project,
+        compression: str,
+        compression_level: int,
+        status_code: int,
+    ) -> None:
+
+        project.dump = MagicMock()
+        os.makedirs(project.path, exist_ok=True)
+
+        topology = {"topology": {"nodes": [{"node_type": "qemu"}]}}
+        with open(os.path.join(project.path, "test.gns3"), "w+") as f:
+            json.dump(topology, f)
+
+        params = {"compression": compression}
+        if compression_level:
+            params["compression_level"] = compression_level
+        response = await client.get(app.url_path_for("export_project", project_id=project.id), params=params)
+        assert response.status_code == status_code
+
+        if response.status_code == status.HTTP_200_OK:
+            assert response.headers["CONTENT-TYPE"] == "application/gns3project"
+            assert (
+                response.headers["CONTENT-DISPOSITION"]
+                == f"attachment; filename=\"{project.name}.gns3project\"; filename*=UTF-8''{project.name}.gns3project"
+            )
+            with open(str(tmpdir / "project.zip"), "wb+") as f:
+                f.write(response.content)
+
+            with zipfile_zstd.ZipFile(str(tmpdir / "project.zip")) as myzip:
+                with myzip.open("project.gns3") as myfile:
+                    myfile.read()
+
+    async def test_get_file(self, app: FastAPI, client: AsyncClient, project: Project) -> None:
+
+        os.makedirs(project.path, exist_ok=True)
+        with open(os.path.join(project.path, "hello"), "w+") as f:
+            f.write("world")
+
+        response = await client.get(app.url_path_for("get_file", project_id=project.id, file_path="hello"))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.content == b"world"
+
+        response = await client.get(app.url_path_for("get_file", project_id=project.id, file_path="false"))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+        response = await client.get(app.url_path_for("get_file", project_id=project.id, file_path="../hello"))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    async def test_get_project_gns3_file(self, app: FastAPI, client: AsyncClient, project: Project) -> None:
+
+        response = await client.get(app.url_path_for("get_project_gns3_file", project_id=project.id))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.headers["content-type"].startswith("application/json")
+        topology = response.json()
+        assert topology["name"] == "test"
+        assert "topology" in topology
+
+    async def test_get_project_gns3_file_raw_content(self, app: FastAPI, client: AsyncClient, project: Project) -> None:
+
+        # the endpoint must serve the raw file content, without the project being opened
+        topology = {
+            "name": "test",
+            "topology": {
+                "nodes": [{"node_id": "abc", "name": "n1", "x": 10, "y": 20}],
+                "links": [],
+                "drawings": [{"drawing_id": "def", "svg": "<svg/>"}],
+            },
+        }
+        with open(project.topology_file, "w+") as f:
+            json.dump(topology, f)
+
+        response = await client.get(app.url_path_for("get_project_gns3_file", project_id=project.id))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() == topology
+
+    async def test_get_project_gns3_file_project_not_found(self, app: FastAPI, client: AsyncClient) -> None:
+
+        response = await client.get(app.url_path_for("get_project_gns3_file", project_id=str(uuid.uuid4())))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    async def test_get_file_forbidden_location(self, app: FastAPI, client: AsyncClient, project: Project) -> None:
+
+        file_path = "foo/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/etc/passwd"
+        response = await client.get(app.url_path_for("get_file", project_id=project.id, file_path=file_path))
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    async def test_write_file(self, app: FastAPI, client: AsyncClient, project: Project) -> None:
+
+        response = await client.post(
+            app.url_path_for("write_file", project_id=project.id, file_path="hello"), content=b"world"
+        )
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        with open(os.path.join(project.path, "hello")) as f:
+            assert f.read() == "world"
+
+        response = await client.post(app.url_path_for("write_file", project_id=project.id, file_path="../hello"))
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    async def test_write_file_forbidden_location(self, app: FastAPI, client: AsyncClient, project: Project) -> None:
+
+        file_path = "%2e%2e/hello"
+        response = await client.post(
+            app.url_path_for("write_file", project_id=project.id, file_path=file_path), content=b"world"
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    async def test_write_and_get_file_with_leading_slashes_in_filename(
+        self, app: FastAPI, client: AsyncClient, project: Project
+    ) -> None:
+
+        response = await client.post(
+            app.url_path_for("write_file", project_id=project.id, file_path="//hello"), content=b"world"
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+        response = await client.get(app.url_path_for("get_file", project_id=project.id, file_path="//hello"))
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    async def test_import(self, app: FastAPI, client: AsyncClient, tmpdir, controller: Controller) -> None:
+
+        with zipfile_zstd.ZipFile(str(tmpdir / "test.zip"), "w") as myzip:
+            myzip.writestr(
+                "project.gns3",
+                b'{"project_id": "c6992992-ac72-47dc-833b-54aa334bcd05", "version": "2.0.0", "name": "test"}',
+            )
+            myzip.writestr("demo", b"hello")
+
+        project_id = str(uuid.uuid4())
+        with open(str(tmpdir / "test.zip"), "rb") as f:
+            response = await client.post(app.url_path_for("import_project", project_id=project_id), content=f.read())
+        assert response.status_code == status.HTTP_201_CREATED
+
+        project = controller.get_project(project_id)
+        with open(os.path.join(project.path, "demo")) as f:
+            content = f.read()
+        assert content == "hello"
+
+    async def test_import_with_project_name(
+        self, app: FastAPI, client: AsyncClient, tmpdir, controller: Controller
+    ) -> None:
+
+        with zipfile_zstd.ZipFile(str(tmpdir / "test.zip"), "w") as myzip:
+            myzip.writestr(
+                "project.gns3",
+                b'{"project_id": "c6992992-ac72-47dc-833b-54aa334bcd05", "version": "2.0.0", "name": "test"}',
+            )
+            myzip.writestr("demo", b"hello")
+
+        project_id = str(uuid.uuid4())
+        with open(str(tmpdir / "test.zip"), "rb") as f:
+            response = await client.post(
+                app.url_path_for("import_project", project_id=project_id),
+                content=f.read(),
+                params={"name": "my-imported-project-name"},
+            )
+        assert response.status_code == status.HTTP_201_CREATED
+        project = controller.get_project(project_id)
+        assert project.name == "my-imported-project-name"
+
+    async def test_duplicate(self, app: FastAPI, client: AsyncClient, project: Project) -> None:
+
+        response = await client.post(
+            app.url_path_for("duplicate_project", project_id=project.id), json={"name": "hello"}
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.json()["name"] == "hello"
+
+    async def test_lock_unlock(self, app: FastAPI, client: AsyncClient, project: Project, compute: Compute) -> None:
+
+        # add a drawing and node to the project
+        params = {
+            "svg": '<svg height="210" width="500"><line x1="0" y1="0" x2="200" y2="200" style="stroke:rgb(255,0,0);stroke-width:2" /></svg>',
+            "x": 10,
+            "y": 20,
+            "z": 0,
+        }
+
+        response = await client.post(app.url_path_for("create_drawing", project_id=project.id), json=params)
+        assert response.status_code == status.HTTP_201_CREATED
+
+        response = MagicMock()
+        response.json = {"console": 2048}
+        compute.post = AsyncioMagicMock(return_value=response)
+
+        response = await client.post(
+            app.url_path_for("create_node", project_id=project.id),
+            json={
+                "name": "test",
+                "node_type": "vpcs",
+                "compute_id": "example.com",
+                "properties": {"startup_script": "echo test"},
+            },
+        )
+        assert response.status_code == status.HTTP_201_CREATED
+
+        response = await client.post(app.url_path_for("lock_project", project_id=project.id))
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        for drawing in project.drawings.values():
+            assert drawing.locked is True
+        for node in project.nodes.values():
+            assert node.locked is True
+
+        response = await client.get(app.url_path_for("locked_project", project_id=project.id))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() is True
+
+        response = await client.post(app.url_path_for("unlock_project", project_id=project.id))
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        for drawing in project.drawings.values():
+            assert drawing.locked is False
+        for node in project.nodes.values():
+            assert node.locked is False
+
+        response = await client.get(app.url_path_for("locked_project", project_id=project.id))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() is False
+
+    async def test_lock_unlock_empty_project(self, app: FastAPI, client: AsyncClient, project: Project) -> None:
+
+        # a project without drawings or nodes has nothing to lock and must
+        # never report as locked, otherwise it could not be unlocked
+        response = await client.get(app.url_path_for("locked_project", project_id=project.id))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() is False
+
+        response = await client.post(app.url_path_for("lock_project", project_id=project.id))
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        response = await client.get(app.url_path_for("locked_project", project_id=project.id))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() is False
+
+        response = await client.post(app.url_path_for("unlock_project", project_id=project.id))
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+        response = await client.get(app.url_path_for("locked_project", project_id=project.id))
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json() is False

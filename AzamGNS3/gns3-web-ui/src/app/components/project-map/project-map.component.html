@@ -1,0 +1,460 @@
+<div class="project-map" #projectMap [class.pan-mode]="tools.moving" [ngClass]="mapBgClass()">
+  <!-- Project Titlebar -->
+  <div id="project-titlebar">
+    <button
+      mat-button
+      class="back-to-projects"
+      [routerLink]="['/controller', controller.id, 'projects']"
+      matTooltip="Back to projects"
+      matTooltipClass="custom-tooltip"
+      matTooltipPosition="below"
+    >
+      <mat-icon>arrow_back</mat-icon>
+      <span>Back to projects</span>
+    </button>
+    <div class="project-titlebar-controls">
+      @if (!readonly) {
+      <div class="menu-button-group primary-controls">
+        <app-template [controller]="controller" [project]="project" (nodeCreationChange)="onNodeCreation($event)">
+        </app-template>
+        <button
+          matTooltip="Add a link"
+          matTooltipClass="custom-tooltip"
+          matTooltipPosition="below"
+          class="menu-button"
+          mat-icon-button
+          [ngClass]="{ selected: tools.draw_link }"
+          [color]="tools.draw_link ? 'primary' : 'basic'"
+          (click)="toggleDrawLineMode()"
+        >
+          <mat-icon>timeline</mat-icon>
+        </button>
+      </div>
+      }
+      <div class="menu-button-group">
+        <app-nodes-menu [controller]="controller" [project]="project"></app-nodes-menu>
+        <app-context-menu
+          [project]="project"
+          [controller]="controller"
+          (openWebWiresharkInline)="openWebWiresharkInline($event)"
+          (openWebConsoleInline)="onOpenWebConsoleInline($event)"
+          (openFileManagerInline)="onOpenFileManagerInline($event)"
+        ></app-context-menu>
+      </div>
+    </div>
+    <div class="project-titlebar-actions">
+      <button
+        mat-icon-button
+        type="button"
+        class="project-notifications"
+        matTooltip="Notifications"
+        matTooltipClass="custom-tooltip"
+        matTooltipPosition="below"
+        [attr.aria-label]="notificationCenter.panelOpen() ? 'Close notifications' : 'Open notifications'"
+        aria-controls="notification-center-panel"
+        [attr.aria-expanded]="notificationCenter.panelOpen()"
+        (click)="notificationCenter.togglePanel()"
+      >
+        <mat-icon>{{ notificationCenter.panelOpen() ? 'notifications' : 'notifications_none' }}</mat-icon>
+        @if (notificationCenter.unreadCount() > 0) {
+          <span class="project-notifications__badge">{{
+            notificationCenter.unreadCount() > 99 ? '99+' : notificationCenter.unreadCount()
+          }}</span>
+        }
+      </button>
+      <button
+        mat-button
+        class="titlebar-action"
+        [matMenuTriggerFor]="projectMenu"
+        matTooltip="Project settings"
+        matTooltipClass="custom-tooltip"
+        matTooltipPosition="below"
+      >
+        <mat-icon>settings</mat-icon>
+        <span>Project settings</span>
+      </button>
+      <button
+        mat-button
+        class="titlebar-action"
+        [matMenuTriggerFor]="viewMenu"
+        matTooltip="Map settings"
+        matTooltipClass="custom-tooltip"
+        matTooltipPosition="below"
+      >
+        <mat-icon>view_module</mat-icon>
+        <span>Map settings</span>
+      </button>
+      <button
+        matTooltip="Toggle topology map"
+        matTooltipClass="custom-tooltip"
+        matTooltipPosition="left"
+        mat-icon-button
+        (click)="toggleShowTopologySummary(!isTopologySummaryVisible)"
+      >
+        <mat-icon>account_tree</mat-icon>
+      </button>
+    </div>
+
+    <!-- Project Settings sub-menu -->
+    <mat-menu #projectMenu="matMenu" [overlapTrigger]="false">
+      <div>
+        <button mat-menu-item (click)="addNewProject()">
+          <mat-icon>add</mat-icon>
+          <span>Add new blank project</span>
+        </button>
+        <button mat-menu-item (click)="saveProject()">
+          <mat-icon>save</mat-icon>
+          <span>Save project as</span>
+        </button>
+        <button mat-menu-item (click)="editProject()">
+          <mat-icon>edit</mat-icon>
+          <span>Edit project</span>
+        </button>
+        <button mat-menu-item (click)="exportProject()">
+          <mat-icon>call_made</mat-icon>
+          <span>Export project</span>
+        </button>
+        <button mat-menu-item (click)="importProject()">
+          <mat-icon>call_received</mat-icon>
+          <span>Import project</span>
+        </button>
+        <button mat-menu-item (click)="closeProject()">
+          <mat-icon>close</mat-icon>
+          <span>Close project</span>
+        </button>
+        <button mat-menu-item (click)="deleteProject()">
+          <mat-icon>delete</mat-icon>
+          <span>Delete project</span>
+        </button>
+      </div>
+    </mat-menu>
+
+    <!-- Map Settings sub-menu -->
+    <mat-menu #viewMenu="matMenu" class="map-settings-menu" [overlapTrigger]="false">
+      <div class="options-item">
+        <mat-checkbox [checked]="isInterfaceLabelVisible" (change)="toggleShowInterfaceLabels($event.checked)">
+          Show interface labels
+        </mat-checkbox>
+        <mat-checkbox [checked]="isConsoleVisible" (change)="toggleShowConsole($event.checked)">
+          Show console
+        </mat-checkbox>
+        <mat-checkbox [checked]="isTopologySummaryVisible" (change)="toggleShowTopologySummary($event.checked)">
+          Show topology/controllers summary
+        </mat-checkbox>
+        <mat-checkbox [checked]="notificationsVisibility" (change)="toggleNotifications($event.checked)">
+          Show notification toasts
+        </mat-checkbox>
+        <mat-checkbox [checked]="layersVisibility" (change)="toggleLayers($event.checked)"> Show layers </mat-checkbox>
+        <mat-checkbox [checked]="itemLockStatusVisibility" (change)="toggleItemLockStatus($event.checked)">
+          Show item lock status
+        </mat-checkbox>
+        <mat-checkbox [checked]="gridVisibility" (change)="toggleGrid($event.checked)"> Show grid </mat-checkbox>
+        <mat-checkbox [checked]="project.snap_to_grid" (change)="toggleSnapToGrid($event.checked)">
+          Snap to grid
+        </mat-checkbox>
+        <mat-checkbox [checked]="symbolScaling" (change)="toggleSymbolScaling($event.checked)">
+          Scale symbols
+        </mat-checkbox>
+      </div>
+    </mat-menu>
+  </div>
+
+  <!-- Render the map only after the project + controller data has resolved.
+       project/controller start as empty shells ({} as Project/Controller) and are
+       filled asynchronously by getData()'s HTTP chain. If d3-map instantiates
+       before that, createGraph + the first effect redraw lock the canvas origin
+       (centerX/Y) to the fallback scene size (width()/2) — and origin never
+       updates afterwards, so every open landed in a different spot depending on
+       whether the HTTP beat the first redraw. Gating on project_id makes the
+       first render use the real scene_width/height, anchoring origin correctly
+       once and for all. -->
+  @if (controller.id && project.project_id) {
+    <app-d3-map
+      [controller]="controller"
+      [project]="project"
+      [symbols]="symbols"
+      [nodes]="nodes()"
+      [links]="links()"
+      [drawings]="drawings()"
+      [width]="project.scene_width || 2000"
+      [height]="project.scene_height || 1000"
+      [show-interface-labels]="isInterfaceLabelVisible"
+      [readonly]="inReadOnlyMode"
+    >
+    </app-d3-map>
+  }
+
+  <!-- Project toolbar -->
+  <div id="project-toolbar">
+    <div class="section">
+      <button
+        matTooltip="Selection mode"
+        matTooltipClass="custom-tooltip"
+        matTooltipPosition="left"
+        mat-icon-button
+        class="selection-button menu-button"
+        [class.tool-active]="!tools.moving"
+        [color]="tools.moving ? 'basic' : 'primary'"
+        (click)="toggleMovingMode()"
+      >
+        <mat-icon>near_me</mat-icon>
+      </button>
+      <button
+        matTooltip="Pan workspace"
+        matTooltipClass="custom-tooltip"
+        matTooltipPosition="left"
+        class="pan-button menu-button"
+        [class.tool-active]="tools.moving"
+        mat-icon-button
+        [color]="tools.moving ? 'primary' : 'basic'"
+        (click)="toggleMovingMode()"
+      >
+        <mat-icon>zoom_out_map</mat-icon>
+      </button>
+      <button
+        matTooltip="Zoom in"
+        matTooltipClass="custom-tooltip"
+        matTooltipPosition="left"
+        class="zoom-button"
+        mat-icon-button
+        (click)="zoomIn()"
+      >
+        <mat-icon>zoom_in</mat-icon>
+      </button>
+      <button
+        matTooltip="Reset zoom"
+        matTooltipClass="custom-tooltip"
+        matTooltipPosition="left"
+        class="reset-zoom-button"
+        mat-icon-button
+        (click)="resetZoom()"
+      >
+        <mat-icon>adjust</mat-icon>
+      </button>
+      <button
+        matTooltip="Zoom out"
+        matTooltipClass="custom-tooltip"
+        matTooltipPosition="left"
+        class="zoom-button"
+        mat-icon-button
+        (click)="zoomOut()"
+      >
+        <mat-icon>zoom_out</mat-icon>
+      </button>
+    </div>
+    <div class="section">
+      <app-project-map-menu
+        [controller]="controller"
+        [project]="project"
+        (aiChatOpened)="onAIChatOpened()"
+      ></app-project-map-menu>
+    </div>
+    <div class="section">
+      <button
+        matTooltip="Marker manager"
+        matTooltipClass="custom-tooltip"
+        matTooltipPosition="left"
+        mat-icon-button
+        class="menu-button"
+        [class.tool-active]="isMarkerManagerVisible"
+        [color]="isMarkerManagerVisible ? 'primary' : 'basic'"
+        (click)="toggleMarkerManager()"
+      >
+        <mat-icon>insights</mat-icon>
+      </button>
+    </div>
+    @if (!readonly) {
+    <div class="section">
+      <app-snapshot-menu-item [controller]="controller" [project]="project"> </app-snapshot-menu-item>
+    </div>
+    }
+  </div>
+
+  @if (project && isMarkerManagerVisible) {
+  <app-marker-manager
+    [controller]="controller"
+    [project]="project"
+    [zIndex]="markerManagerZIndex"
+    (closeWindow)="closeMarkerManager()"
+    (windowFocused)="bringMarkerManagerToFront()"
+    (startReplay)="openMarkerReplay($event)"
+  ></app-marker-manager>
+  }
+
+  @if (project && isMarkerReplayVisible && markerReplayTag !== null) {
+  <app-marker-replay-overlay
+    [controller]="controller"
+    [project]="project"
+    [tag]="markerReplayTag"
+    [zIndex]="markerReplayZIndex"
+    (closeWindow)="closeMarkerReplay()"
+    (windowFocused)="bringMarkerReplayToFront()"
+  ></app-marker-replay-overlay>
+  }
+
+  <app-progress></app-progress>
+  @if (tools.draw_link) {
+  <app-draw-link-tool [links]="links()"></app-draw-link-tool>
+  }
+  <app-drawing-dragged [controller]="controller" [project]="project"></app-drawing-dragged>
+  <app-drawing-resized [controller]="controller"></app-drawing-resized>
+  <app-interface-label-dragged [controller]="controller"></app-interface-label-dragged>
+  <app-link-created [controller]="controller" [project]="project"></app-link-created>
+  <app-node-dragged [controller]="controller" [project]="project"></app-node-dragged>
+  <app-node-label-dragged [controller]="controller"></app-node-label-dragged>
+  <app-text-added [controller]="controller" [project]="project" (drawingSaved)="onDrawingSaved()"> </app-text-added>
+  <app-text-edited [controller]="controller"></app-text-edited>
+  <div [ngClass]="{ visible: !isConsoleVisible }">
+    @if (project) {
+    <app-console-wrapper
+      [controller]="controller"
+      [project]="project"
+      [zIndex]="consoleZIndex"
+      (closeConsole)="toggleShowConsole($event)"
+      (windowFocused)="bringConsoleToFront()"
+    ></app-console-wrapper>
+    }
+  </div>
+
+  <!-- AI Chat Panel -->
+  @if (project && isAIChatVisible) {
+  <app-ai-chat
+    [project]="project"
+    [controller]="controller"
+    [zIndex]="aiChatZIndex"
+    (closed)="closeAIChat()"
+    (windowFocused)="bringAIChatToFront()"
+  ></app-ai-chat>
+  }
+
+  <!-- Web Wireshark Inline Windows (multiple) -->
+  @if (project && webWiresharkInlineWindows.size > 0) {
+    @for (link of getWebWiresharkInlineWindows(); track link.link_id) {
+      <app-web-wireshark-inline
+        [link]="link"
+        [controller]="controller"
+        [project]="project"
+        [zIndex]="getWebWiresharkWindowZIndex(link.link_id)"
+        (closeWindow)="closeWebWiresharkInline(link.link_id)"
+        (windowFocused)="bringWebWiresharkWindowToFront(link.link_id)"
+      ></app-web-wireshark-inline>
+    }
+  }
+
+  <!-- Web Console Inline Windows (multiple) -->
+  @if (project && webConsoleInlineWindows.size > 0) {
+    @for (node of getWebConsoleInlineWindows(); track node.node_id) {
+      <app-web-console-inline
+        [node]="node"
+        [controller]="controller"
+        [project]="project"
+        [zIndex]="getWebConsoleWindowZIndex(node.node_id)"
+        (closeWindow)="closeWebConsoleInline(node.node_id)"
+        (windowFocused)="bringWebConsoleWindowToFront(node.node_id)"
+      ></app-web-console-inline>
+    }
+  }
+
+  <!-- File Manager Inline Windows (multiple) -->
+  @if (project && fileManagerInlineWindows.size > 0) {
+    @for (node of getFileManagerInlineWindows(); track node.node_id) {
+      <app-node-file-manager-inline
+        [node]="node"
+        [controller]="controller"
+        [zIndex]="getFileManagerZIndex(node.node_id)"
+        (closeWindow)="closeFileManagerInline(node.node_id)"
+        (windowFocused)="bringFileManagerToFront(node.node_id)"
+      ></app-node-file-manager-inline>
+    }
+  }
+
+  <!-- Unified Taskbar for all open windows -->
+  <div class="inline-taskbar">
+    <!-- Console taskbar icon - always shown when console is open -->
+    @if (project && isConsoleVisible) {
+      <div
+        class="inline-taskbar__icon"
+        [class.inline-taskbar__icon--minimized]="windowManagement.minimizedWindows().some(w => w.id === 'console')"
+        [style.left.px]="getConsoleTaskbarLeft()"
+        (click)="toggleConsoleMinimize()"
+        [title]="windowManagement.minimizedWindows().some(w => w.id === 'console') ? 'Console - Click to restore' : 'Console - Click to minimize'"
+      >
+        <mat-icon class="inline-taskbar__icon-type">terminal</mat-icon>
+        <span class="inline-taskbar__label">Console</span>
+      </div>
+    }
+
+    <!-- Wireshark taskbar icons - shown for all open Wireshark windows -->
+    @for (link of getWebWiresharkInlineWindows(); track link.link_id) {
+      <div
+        class="inline-taskbar__icon"
+        [class.inline-taskbar__icon--minimized]="windowManagement.minimizedWindows().some(w => w.id === 'wireshark-' + link.link_id)"
+        [style.left.px]="getWiresharkTaskbarLeft(link.link_id)"
+        (click)="toggleWiresharkMinimize(link.link_id)"
+        [title]="link.capture_file_name"
+      >
+        <mat-icon class="inline-taskbar__icon-type">analytics</mat-icon>
+        <span class="inline-taskbar__label">{{ link.capture_file_name }}</span>
+      </div>
+    }
+
+    <!-- Web Console taskbar icons - shown for all open Web Console windows -->
+    @for (node of getWebConsoleInlineWindows(); track node.node_id) {
+      <div
+        class="inline-taskbar__icon"
+        [class.inline-taskbar__icon--minimized]="windowManagement.minimizedWindows().some(w => w.id === 'console-' + node.node_id)"
+        [style.left.px]="getWebConsoleTaskbarLeft(node.node_id)"
+        (click)="toggleWebConsoleMinimize(node.node_id)"
+        [title]="node.name"
+      >
+        <mat-icon class="inline-taskbar__icon-type">web</mat-icon>
+        <span class="inline-taskbar__label">{{ node.name }}</span>
+      </div>
+    }
+
+    <!-- File Manager taskbar icons -->
+    @for (node of getFileManagerInlineWindows(); track node.node_id) {
+      <div
+        class="inline-taskbar__icon"
+        [class.inline-taskbar__icon--minimized]="isFileManagerMinimized(node.node_id)"
+        [style.left.px]="getFileManagerTaskbarLeft(node.node_id)"
+        (click)="toggleFileManagerMinimize(node.node_id)"
+        [title]="'File Manager - ' + node.name"
+      >
+        <mat-icon class="inline-taskbar__icon-type">folder</mat-icon>
+        <span class="inline-taskbar__label">{{ node.name }}</span>
+      </div>
+    }
+
+    <!-- Marker Manager taskbar icon (singleton, like console) -->
+    @if (project && isMarkerManagerVisible) {
+      <div
+        class="inline-taskbar__icon"
+        [class.inline-taskbar__icon--minimized]="windowManagement.minimizedWindows().some(w => w.id === 'marker-manager')"
+        [style.left.px]="getMarkerManagerTaskbarLeft()"
+        (click)="toggleMarkerManagerMinimize()"
+        [title]="windowManagement.minimizedWindows().some(w => w.id === 'marker-manager') ? 'Marker Manager - Click to restore' : 'Marker Manager - Click to minimize'"
+      >
+        <mat-icon class="inline-taskbar__icon-type">insights</mat-icon>
+        <span class="inline-taskbar__label">Markers</span>
+      </div>
+    }
+
+    <!-- Tag Replay main-window taskbar icon (singleton; pinned comparison windows are unaffected) -->
+    @if (project && isMarkerReplayVisible && markerReplayTag !== null) {
+      <div
+        class="inline-taskbar__icon"
+        [class.inline-taskbar__icon--minimized]="windowManagement.minimizedWindows().some(w => w.id === 'replay-main')"
+        [style.left.px]="getReplayTaskbarLeft()"
+        (click)="toggleReplayMinimize()"
+        [title]="windowManagement.minimizedWindows().some(w => w.id === 'replay-main') ? 'Tag Replay - Click to restore' : 'Tag Replay - Click to minimize'"
+      >
+        <mat-icon class="inline-taskbar__icon-type">history</mat-icon>
+        <span class="inline-taskbar__label">Replay</span>
+      </div>
+    }
+  </div>
+</div>
+
+<app-notification-center></app-notification-center>
+<ng-template #topologySummaryContainer></ng-template>

@@ -1,0 +1,90 @@
+.template__add-btn {
+  transition: transform 100ms ease;
+
+  mat-icon {
+    color: var(--mat-sys-on-primary);
+  }
+
+  &:hover {
+    transform: scale(1.1);
+  }
+}
+
+/* =============================================
+// Ghost Icon (during compute selection and node creation)
+// ============================================= */
+.template__ghost-icon {
+  position: fixed;
+  pointer-events: none;
+  z-index: 999;
+}
+
+.template__ghost-name {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--mat-sys-on-surface);
+  background: var(--mat-sys-surface);
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px var(--mat-sys-shadow);
+  pointer-events: none;
+}
+
+.template__ghost-icon-img {
+  width: 60px;
+  height: 60px;
+  opacity: 1;
+  filter: drop-shadow(0 4px 8px var(--mat-sys-shadow));
+
+  &--error {
+    opacity: 0.4;
+    filter: grayscale(100%) drop-shadow(0 4px 8px var(--mat-sys-shadow));
+  }
+}
+
+.template__ghost-icon-status {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: var(--mat-sys-surface);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px var(--mat-sys-shadow);
+
+  mat-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 20px;
+  }
+
+  .template__status-icon--success {
+    color: var(--mat-sys-primary);
+  }
+
+  .template__status-icon--error {
+    color: var(--mat-sys-error);
+  }
+}
+
+/* =============================================
+// Selector Backdrop (click outside to cancel)
+// ============================================= */
+.template__selector-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1098;
+  cursor: default;
+}

@@ -1,0 +1,61 @@
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject, input } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatMenuModule } from '@angular/material/menu';
+import { Node } from '../../../../../cartography/models/node';
+import { Controller } from '@models/controller';
+import { NodeService } from '@services/node.service';
+import { ToasterService } from '@services/toaster.service';
+import { createActionCompletion } from '@utils/action-completion.util';
+
+@Component({
+  selector: 'app-reload-node-action',
+  templateUrl: './reload-node-action.component.html',
+  imports: [MatButtonModule, MatIconModule, MatMenuModule],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class ReloadNodeActionComponent implements OnInit {
+  private nodeService = inject(NodeService);
+  private toasterService = inject(ToasterService);
+  private cdr = inject(ChangeDetectorRef);
+
+  readonly controller = input<Controller>(undefined);
+  readonly nodes = input<Node[]>(undefined);
+
+  filteredNodes: Node[] = [];
+
+  ngOnInit() {
+    const nodes = this.nodes() || [];
+    nodes.forEach((node) => {
+      if (
+        !node.missing_image &&
+        (node.node_type === 'vpcs' ||
+          node.node_type === 'qemu' ||
+          node.node_type === 'virtualbox' ||
+          node.node_type === 'vmware')
+      ) {
+        this.filteredNodes.push(node);
+      }
+    });
+  }
+
+  reloadNodes() {
+    const completion = createActionCompletion(this.filteredNodes.length, (count) => {
+      if (count > 0) {
+        this.toasterService.success(`${count} ${count === 1 ? 'node' : 'nodes'} reloaded.`);
+      }
+    });
+
+    this.filteredNodes.forEach((node) => {
+      this.nodeService.reload(this.controller(), node).subscribe({
+        next: () => completion.succeed(),
+        error: (err) => {
+          completion.fail();
+          const message = err.error?.message || err.message || 'Failed to reload node';
+          this.toasterService.error(message);
+          this.cdr.markForCheck();
+        },
+      });
+    });
+  }
+}

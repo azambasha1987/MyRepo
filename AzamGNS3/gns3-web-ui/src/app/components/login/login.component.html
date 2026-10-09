@@ -1,0 +1,129 @@
+<div class="login-page">
+  <main class="login-page__main">
+    <mat-card appearance="outlined" class="login-card">
+      <div class="login-card__header">
+        <div class="login-card__logo">
+          @if (!isLightThemeEnabled()) {
+          <mat-icon class="login-card__icon" svgIcon="gns3"></mat-icon>
+          } @if (isLightThemeEnabled()) {
+          <mat-icon class="login-card__icon" svgIcon="gns3black"></mat-icon>
+          }
+          <div class="login-card__title">
+            <h1>GNS3</h1>
+            @if (version()) {
+            <span>v{{ version() }}</span>
+            }
+          </div>
+        </div>
+      </div>
+
+      @if (controllerName) {
+      <div class="login-card__controller-info">
+        <mat-icon class="login-card__controller-icon">storage</mat-icon>
+        <div class="login-card__controller-details">
+          <span class="login-card__controller-name">{{ controllerName }}</span>
+          <span class="login-card__controller-address">{{ controllerAddress }}</span>
+        </div>
+      </div>
+      }
+
+      <form [formGroup]="loginForm" (ngSubmit)="login()" class="login-card__form">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="login-card__form-field">
+          <mat-label>Username</mat-label>
+          <mat-icon matPrefix class="login-card__field-icon">person</mat-icon>
+          <input #usernameInput matInput formControlName="username" autocomplete="username" />
+          @if (loginForm.controls.username.hasError('required')) {
+          <mat-error>Username is required</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="login-card__form-field">
+          <mat-label>Password</mat-label>
+          <mat-icon matPrefix class="login-card__field-icon">lock</mat-icon>
+          <input
+            matInput
+            [type]="hidePassword() ? 'password' : 'text'"
+            formControlName="password"
+            autocomplete="current-password"
+            (keyup)="onCapsLock($event)"
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            class="login-card__visibility-button"
+            [attr.aria-label]="hidePassword() ? 'Show password' : 'Hide password'"
+            [matTooltip]="hidePassword() ? 'Show password' : 'Hide password'"
+            (click)="togglePasswordVisibility()"
+          >
+            <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          @if (loginForm.controls.password.hasError('required')) {
+          <mat-error>Password is required</mat-error>
+          }
+        </mat-form-field>
+
+        @if (isCapsLockOn()) {
+        <div class="login-card__caps-lock-warning" role="status">
+          <mat-icon class="login-card__warning-icon">warning</mat-icon>
+          <span>Caps Lock is on</span>
+        </div>
+        }
+
+        <mat-checkbox
+          class="login-card__checkbox"
+          [checked]="isRememberMeChecked()"
+          color="primary"
+          (change)="onRememberMeChange($event.checked)"
+        >
+          Remember me
+        </mat-checkbox>
+
+        <button
+          type="submit"
+          class="login-card__submit-button"
+          mat-raised-button
+          color="primary"
+          [disabled]="isLoading()"
+        >
+          @if (isLoading()) {
+          <mat-progress-spinner diameter="20" mode="indeterminate" class="login-card__spinner" />
+          <span>Logging in…</span>
+          } @else {
+          <span>Login</span>
+          }
+        </button>
+      </form>
+    </mat-card>
+
+    <footer class="login-page__footer">
+      <div class="login-page__social">
+        <a
+          mat-icon-button
+          href="https://github.com/GNS3"
+          target="_blank"
+          rel="noopener noreferrer"
+          matTooltip="GitHub"
+          aria-label="GNS3 on GitHub"
+        >
+          <mat-icon svgIcon="github"></mat-icon>
+        </a>
+        <a
+          mat-icon-button
+          href="https://www.gns3.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          matTooltip="Website"
+          aria-label="GNS3 website"
+        >
+          @if (!isLightThemeEnabled()) {
+          <mat-icon svgIcon="gns3"></mat-icon>
+          } @if (isLightThemeEnabled()) {
+          <mat-icon svgIcon="gns3black"></mat-icon>
+          }
+        </a>
+      </div>
+      <span>GNS3 Web-UI &copy;2018-{{ currentYear }} v{{ version() }}</span>
+    </footer>
+  </main>
+</div>

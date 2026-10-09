@@ -1,0 +1,45 @@
+{
+    "appliance_id": "cb854aa6-379c-4458-8c4c-2164fa9ec98d",
+    "name": "Kali Linux",
+    "category": "guest",
+    "description": "From the creators of BackTrack comes Kali Linux, the most advanced and versatile penetration testing platform  ever created. We have a set of amazing features lined up in our security distribution geared at streamlining the penetration testing experience.",
+    "vendor_name": "Kali Linux",
+    "vendor_url": "https://www.kali.org/",
+    "documentation_url": "https://www.kali.org/kali-linux-documentation/",
+    "product_name": "Kali Linux",
+    "registry_version": 4,
+    "status": "stable",
+    "maintainer": "GNS3 Team",
+    "maintainer_email": "developers@gns3.net",
+    "usage": "Default username is kali and the default password is kali",
+    "port_name_format": "eth{0}",
+    "qemu": {
+        "adapter_type": "e1000",
+        "adapters": 8,
+        "ram": 2048,
+        "cpus": 2,
+        "hda_disk_interface": "ide",
+        "arch": "x86_64",
+        "console_type": "vnc",
+        "kvm": "require"
+    },
+    "images": [
+      {
+            "filename": "kali-linux-2025.4-qemu-amd64.qcow2",
+            "version": "2025.4",
+            "md5sum": "a4be43351b5deb5b2823cb38a73b2095",
+            "filesize": 15719268352,
+            "download_url": "https://cdimage.kali.org/kali-2025.4/",
+            "direct_download_url": "https://cdimage.kali.org/kali-2025.4/kali-linux-2025.4-qemu-amd64.7z",
+            "compression": "7z"
+        }
+    ],
+    "versions": [
+        {
+            "name": "2025.4",
+            "images": {
+                "hda_disk_image": "kali-linux-2025.4-qemu-amd64.qcow2"
+            }
+        }
+    ]
+}

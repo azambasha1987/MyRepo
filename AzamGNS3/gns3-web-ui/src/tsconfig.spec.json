@@ -1,0 +1,21 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "../out-tsc/spec",
+    "baseUrl": "./",
+    "paths": {
+      "@components/*": ["app/components/*"],
+      "@services/*": ["app/services/*"],
+      "@resolvers/*": ["app/resolvers/*"],
+      "@filters/*": ["app/filters/*"],
+      "@models/*": ["app/models/*"],
+      "@utils/*": ["app/utils/*"]
+    },
+    "types": ["node"]
+  },
+  "include": [
+    "**/*.spec.ts",
+    "**/*.d.ts",
+    "test-setup.ts"
+  ]
+}

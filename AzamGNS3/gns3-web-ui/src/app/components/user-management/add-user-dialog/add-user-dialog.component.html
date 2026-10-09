@@ -1,0 +1,98 @@
+<h1 mat-dialog-title>Create new user</h1>
+<form [formGroup]="addUserForm">
+  <div mat-dialog-content>
+    <div class="form-row">
+      <mat-form-field appearance="fill">
+        <mat-label>Username</mat-label>
+        <input matInput type="text" formControlName="username" placeholder="Username" />
+        @if (form.username?.touched && form.username?.errors && form.username?.errors.required) {
+        <mat-error>Username is required</mat-error>
+        } @if (form.username?.errors && form.username?.errors.pattern) {
+        <mat-error>Username is incorrect</mat-error>
+        } @if (form.username?.errors && form.username?.errors.userExists) {
+        <mat-error>User with this username exists</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>Full name</mat-label>
+        <input matInput type="text" formControlName="full_name" placeholder="Full name" />
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="fill" class="full-width-field">
+      <mat-label>Email</mat-label>
+      <input matInput type="text" formControlName="email" placeholder="Email" />
+      @if (form.email?.touched && form.email?.errors && form.email?.errors.required) {
+      <mat-error>Email is required</mat-error>
+      } @if (form.email?.errors && form.email?.errors.email) {
+      <mat-error>Email must include a valid domain (e.g., user@example.com)</mat-error>
+      }
+    </mat-form-field>
+
+    <div class="form-row">
+      <mat-form-field appearance="fill">
+        <mat-label>Password</mat-label>
+        <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" placeholder="Password" />
+        <mat-icon matSuffix (click)="hidePassword = !hidePassword" style="cursor: pointer; font-size: 18px;">{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+        @if (form.password?.touched && form.password?.errors) {
+        <mat-error>A password between 6 and 100 characters is required.</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="fill">
+        <mat-label>Confirm Password</mat-label>
+        <input matInput [type]="hideConfirmPassword ? 'password' : 'text'" formControlName="confirmPassword" placeholder="Confirm Password" />
+        <mat-icon matSuffix (click)="hideConfirmPassword = !hideConfirmPassword" style="cursor: pointer; font-size: 18px;">{{ hideConfirmPassword ? 'visibility_off' : 'visibility' }}</mat-icon>
+        @if (form.confirmPassword?.touched && form.confirmPassword?.errors) {
+        <mat-error>Password and Confirm password must be the same.</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
+    <mat-checkbox formControlName="is_active">Is active</mat-checkbox>
+    <mat-divider class="my-2"></mat-divider>
+    <h6>Add user to groups:</h6>
+
+    <mat-form-field appearance="fill" class="full-width-field">
+      <mat-label>Groups</mat-label>
+      <input type="text" matInput [matAutocomplete]="auto" [formControl]="autocompleteControl" (click)="openGroupPanel()" #groupInput />
+      <mat-autocomplete
+        #auto="matAutocomplete"
+        [displayWith]="displayFn"
+        (optionSelected)="selectedGroup($event.option.value)"
+      >
+        @for (group of filteredGroups | async; track group) {
+        <mat-option [value]="group">
+          {{ group.name }}
+        </mat-option>
+        }
+      </mat-autocomplete>
+    </mat-form-field>
+
+    <mat-chip-set>
+      @for (group of groupsToAdd; track group.name) {
+      <mat-chip (removed)="deleteGroup(group)">
+        {{ group.name }}
+        <button matChipRemove>
+          <mat-icon>cancel</mat-icon>
+        </button>
+      </mat-chip>
+      }
+    </mat-chip-set>
+  </div>
+
+  <div mat-dialog-actions align="end">
+    <button mat-button (click)="onCancelClick()" color="accent">Cancel</button>
+    <button
+      mat-button
+      (click)="onAddClick()"
+      tabindex="2"
+      mat-raised-button
+      color="primary"
+      [disabled]="!addUserForm.valid"
+    >
+      Add user
+    </button>
+  </div>
+</form>

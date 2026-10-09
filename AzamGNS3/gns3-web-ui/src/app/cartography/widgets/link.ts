@@ -1,0 +1,329 @@
+import { EventEmitter, Injectable, OnDestroy } from '@angular/core';
+import { drag, D3DragEvent } from 'd3-drag';
+import { select } from 'd3-selection';
+import { Subscription } from 'rxjs';
+
+import { LinkContextMenu } from '../events/event-source';
+import { LinksEventSource } from '../events/links-event-source';
+import { MultiLinkCalculatorHelper } from '../helpers/multi-link-calculator-helper';
+import { MarkerFlashService } from '@services/marker-flash.service';
+import { SelectionManager } from '../managers/selection-manager';
+import { MapLink } from '../models/map/map-link';
+import { MapLinksDataSource } from '../datasources/map-datasource';
+import { SVGSelection } from '../models/types';
+import { InterfaceLabelWidget } from './interface-label';
+import { InterfaceStatusWidget } from './interface-status';
+import { EthernetLinkWidget } from './links/ethernet-link';
+import { SerialLinkWidget } from './links/serial-link';
+import { StyleTranslator } from './links/style-translator';
+import { Widget } from './widget';
+
+@Injectable()
+export class LinkWidget implements Widget, OnDestroy {
+  public onContextMenu = new EventEmitter<LinkContextMenu>();
+  private subscription: Subscription;
+
+  constructor(
+    private multiLinkCalculatorHelper: MultiLinkCalculatorHelper,
+    private interfaceLabelWidget: InterfaceLabelWidget,
+    private interfaceStatusWidget: InterfaceStatusWidget,
+    private selectionManager: SelectionManager,
+    private ethernetLinkWidget: EthernetLinkWidget,
+    private serialLinkWidget: SerialLinkWidget,
+    private linksEventSource: LinksEventSource,
+    private mapLinksDataSource: MapLinksDataSource,
+    private markerFlashService: MarkerFlashService
+  ) {
+    this.subscription = this.mapLinksDataSource.itemChanged.subscribe((mapLink: MapLink) => {
+      this.updateFilterIconsVisibility(mapLink);
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.subscription) {
+      this.subscription.unsubscribe();
+    }
+  }
+
+  private updateFilterIconsVisibility(mapLink: MapLink) {
+    const show = mapLink.show_filters_icon !== false;
+    select('svg#map')
+      .selectAll<SVGGElement, MapLink>('g.link_body')
+      .filter((d) => d && d.id === mapLink.id)
+      .selectAll('.filter-capture-icon, .filter-icon')
+      .style('display', show ? null : 'none');
+  }
+
+  public draw(view: SVGSelection) {
+    const link_body = view.selectAll<SVGGElement, MapLink>('g.link_body').data((l) => [l]);
+
+    const link_body_enter = link_body.enter().append<SVGGElement>('g').attr('class', 'link_body');
+
+    const link_body_merge = link_body.merge(link_body_enter).attr('transform', (link) => {
+      const translation = this.multiLinkCalculatorHelper.linkTranslation(link.distance, link.source, link.target);
+      return `translate (${translation.dx}, ${translation.dy})`;
+    });
+
+    // Direction arrows are positioned in path-local coordinates, so after a
+    // redraw (e.g. an endpoint node dragged) their cached positions are stale.
+    // Remove them, then re-render for links with an ACTIVE flash — the flash
+    // state diff only re-renders on state changes, so without this a redraw
+    // mid-flash strips the arrows until the state changes or expires.
+    link_body.selectAll('g.marker-arrow-tx, g.marker-arrow-rx').remove();
+
+    link_body.select('.capture-icon').remove();
+    link_body
+      .filter((l) => {
+        return (
+          l.capturing &&
+          !l.suspend &&
+          (l.show_filters_icon === false || !(l.filters.bpf || l.filters.corrupt || l.filters.delay || l.filters.frequency_drop || l.filters.packet_loss))
+        );
+      })
+      .append<SVGGElement>('g')
+      .on('contextmenu', (event: any, datum: MapLink) => {
+        const evt = event;
+        this.onContextMenu.emit(new LinkContextMenu(evt, datum));
+      })
+      .attr('class', 'capture-icon')
+      .attr('transform', (link) => {
+        // For freeform links, use control_offset as the center position
+        // Icon size is 20x20, scaled to 10x10, so subtract 5 to get top-left corner
+        if (link.link_style?.link_type === 'freeform' && link.link_style?.control_offset) {
+          return `translate (${link.link_style.control_offset[0] - 5}, ${
+            link.link_style.control_offset[1] - 5
+          }) scale(0.5)`;
+        }
+        return `translate (${(link.source.x + link.target.x) / 2 + 24}, ${
+          (link.source.y + link.target.y) / 2 + 24
+        }) scale(0.5)`;
+      })
+      .attr('viewBox', '0 0 20 20')
+      .append<SVGImageElement>('image')
+      .attr('xlink:href', 'assets/resources/images/inspect.svg');
+
+    link_body.select('.filter-capture-icon').remove();
+    link_body
+      .filter((l) => {
+        return (
+          l.show_filters_icon !== false &&
+          l.capturing &&
+          !l.suspend &&
+          (l.filters.bpf || l.filters.corrupt || l.filters.delay || l.filters.frequency_drop || l.filters.packet_loss)
+        );
+      })
+      .append<SVGGElement>('g')
+      .on('contextmenu', (event: any, datum: MapLink) => {
+        const evt = event;
+        this.onContextMenu.emit(new LinkContextMenu(evt, datum));
+      })
+      .attr('class', 'filter-capture-icon')
+      .attr('transform', (link) => {
+        // For freeform links, use control_offset as the center position
+        // Icon size is 20x20, scaled to 10x10, so subtract 5 to get top-left corner
+        if (link.link_style?.link_type === 'freeform' && link.link_style?.control_offset) {
+          return `translate (${link.link_style.control_offset[0] - 5}, ${
+            link.link_style.control_offset[1] - 5
+          }) scale(0.5)`;
+        }
+        return `translate (${(link.source.x + link.target.x) / 2 + 24}, ${
+          (link.source.y + link.target.y) / 2 + 24
+        }) scale(0.5)`;
+      })
+      .attr('viewBox', '0 0 20 20')
+      .append<SVGImageElement>('image')
+      .attr('xlink:href', 'assets/resources/images/filter-capture.svg');
+
+    link_body.select('.filter-icon').remove();
+    link_body
+      .filter((l) => {
+        return (
+          l.show_filters_icon !== false &&
+          !l.capturing &&
+          !l.suspend &&
+          (l.filters.bpf || l.filters.corrupt || l.filters.delay || l.filters.frequency_drop || l.filters.packet_loss)
+        );
+      })
+      .append<SVGGElement>('g')
+      .on('contextmenu', (event: any, datum: MapLink) => {
+        const evt = event;
+        this.onContextMenu.emit(new LinkContextMenu(evt, datum));
+      })
+      .attr('class', 'filter-icon')
+      .attr('width', '48px')
+      .attr('height', '48px')
+      .attr('transform', (link) => {
+        // For freeform links, use control_offset as the center position
+        // Icon size is 20x20, scaled to 10x10, so subtract 5 to get top-left corner
+        if (link.link_style?.link_type === 'freeform' && link.link_style?.control_offset) {
+          return `translate (${link.link_style.control_offset[0] - 5}, ${
+            link.link_style.control_offset[1] - 5
+          }) scale(0.5)`;
+        }
+        return `translate (${(link.source.x + link.target.x) / 2 + 24}, ${
+          (link.source.y + link.target.y) / 2 + 24
+        }) scale(0.5)`;
+      })
+      .attr('viewBox', '0 0 20 20')
+      .append<SVGImageElement>('image')
+      .attr('width', '48px')
+      .attr('height', '48px')
+      .attr('xlink:href', 'assets/resources/images/filter.svg');
+
+    link_body.select('.pause-icon').remove();
+    link_body
+      .filter((l) => {
+        return l.suspend;
+      })
+      .append<SVGGElement>('g')
+      .on('contextmenu', (event: any, datum: MapLink) => {
+        const evt = event;
+        this.onContextMenu.emit(new LinkContextMenu(evt, datum));
+      })
+      .attr('class', 'pause-icon')
+      .attr('transform', (link) => {
+        // For freeform links, use control_offset as the center position
+        // Icon size is 20x20, scaled to 10x10, so subtract 5 to get top-left corner
+        if (link.link_style?.link_type === 'freeform' && link.link_style?.control_offset) {
+          return `translate (${link.link_style.control_offset[0] - 5}, ${
+            link.link_style.control_offset[1] - 5
+          }) scale(0.5)`;
+        }
+        return `translate (${(link.source.x + link.target.x) / 2 + 24}, ${
+          (link.source.y + link.target.y) / 2 + 24
+        }) scale(0.5)`;
+      })
+      .attr('viewBox', '0 0 20 20')
+      .append<SVGImageElement>('image')
+      .attr('xlink:href', 'assets/resources/images/pause.svg');
+
+    this.serialLinkWidget.draw(link_body_merge);
+    this.ethernetLinkWidget.draw(link_body_merge);
+
+    // The paths are drawn now — re-render flash arrows (removed above) along
+    // the new geometry for links that are currently flashing.
+    link_body_merge.each((l: MapLink) => this.markerFlashService.redrawArrows(l.id));
+
+    link_body_merge
+      .select<SVGPathElement>('path')
+      .classed('selected', (l: MapLink) => this.selectionManager.isSelected(l));
+
+    // Curviness drag: directly drag freeform path to adjust curve (Photoshop-like)
+    const self = this;
+    link_body_merge.each(function (l: MapLink) {
+      const linkType = StyleTranslator.normalizeLinkType(l.link_style?.link_type);
+      // Only freeform links can be dragged to adjust curve; bezier/statemachine use fixed curviness
+      if (linkType !== 'freeform') return;
+
+      const linkGroup = select(this);
+      const path = linkGroup.select<SVGPathElement>('path');
+      if (path.empty()) return;
+
+      // Get actual center points (same as used in linkToXxxLink methods)
+      const sourceCenterX = l.source.x + l.source.width / 2;
+      const sourceCenterY = l.source.y + l.source.height / 2;
+      const targetCenterX = l.target.x + l.target.width / 2;
+      const targetCenterY = l.target.y + l.target.height / 2;
+
+      // Midpoint of the link
+      const midX = (sourceCenterX + targetCenterX) / 2;
+      const midY = (sourceCenterY + targetCenterY) / 2;
+
+      // Drag state to track initial position and offset
+      const dragState = {
+        startX: 0,
+        startY: 0,
+        startOffset: [0, 0] as [number, number],
+      };
+
+      // Add drag behavior to path
+      path
+        .attr('cursor', 'grab')
+        .on('mouseenter', function () {
+          select(this).attr('cursor', 'grab');
+        })
+        .on('mouseleave', function () {
+          select(this).attr('cursor', 'default');
+        })
+        .call(
+          drag<SVGPathElement, MapLink>()
+            .on('start', function (event: D3DragEvent<SVGPathElement, MapLink, MapLink>) {
+              select(this).attr('cursor', 'grabbing');
+              // Store initial position and current control offset
+              dragState.startX = event.x;
+              dragState.startY = event.y;
+              // Get current control position from existing offset or calculate from midpoint
+              if (l.link_style?.control_offset) {
+                dragState.startOffset = [l.link_style.control_offset[0], l.link_style.control_offset[1]];
+              } else {
+                dragState.startOffset = [midX, midY];
+              }
+            })
+            .on('drag', function (event: D3DragEvent<SVGPathElement, MapLink, MapLink>, l: MapLink) {
+              // D3 drag provides event.x/y in the path's coordinate system
+              const mousePos: [number, number] = [event.x, event.y];
+
+              // Get the stored start position and apply delta
+              const startX = dragState.startX;
+              const startY = dragState.startY;
+              const startOffset = dragState.startOffset;
+
+              // Calculate delta from drag start
+              const deltaX = mousePos[0] - startX;
+              const deltaY = mousePos[1] - startY;
+
+              // Apply delta to initial offset to get current control position
+              const controlX = startOffset[0] + deltaX;
+              const controlY = startOffset[1] + deltaY;
+
+              // Update path in real-time using freeform bezier
+              const sourceCenter: [number, number] = [sourceCenterX, sourceCenterY];
+              const targetCenter: [number, number] = [targetCenterX, targetCenterY];
+              const sourceOrientation = StyleTranslator.getContinuousOrientation(sourceCenter, targetCenter);
+              const targetOrientation = StyleTranslator.getContinuousOrientation(targetCenter, sourceCenter);
+              const newPath = StyleTranslator.getFreeformBezierPath(
+                sourceCenter,
+                targetCenter,
+                sourceOrientation,
+                targetOrientation,
+                [controlX, controlY]
+              );
+              select(this).attr('d', newPath);
+
+              // Update capture icons position to follow the control point
+              const linkGroup = select(this.parentNode as Element);
+              const captureIcon = linkGroup.select<SVGGElement>('g.capture-icon');
+              if (!captureIcon.empty()) {
+                captureIcon.attr('transform', `translate (${controlX - 5}, ${controlY - 5}) scale(0.5)`);
+              }
+              const filterCaptureIcon = linkGroup.select<SVGGElement>('g.filter-capture-icon');
+              if (!filterCaptureIcon.empty()) {
+                filterCaptureIcon.attr('transform', `translate (${controlX - 5}, ${controlY - 5}) scale(0.5)`);
+              }
+              const filterIcon = linkGroup.select<SVGGElement>('g.filter-icon');
+              if (!filterIcon.empty()) {
+                filterIcon.attr('transform', `translate (${controlX - 5}, ${controlY - 5}) scale(0.5)`);
+              }
+              const pauseIcon = linkGroup.select<SVGGElement>('g.pause-icon');
+              if (!pauseIcon.empty()) {
+                pauseIcon.attr('transform', `translate (${controlX - 5}, ${controlY - 5}) scale(0.5)`);
+              }
+
+              // Store mouse position directly as control_offset
+              if (!l.link_style) {
+                l.link_style = {};
+              }
+              l.link_style.control_offset = [controlX, controlY];
+            })
+            .on('end', function (event: D3DragEvent<SVGPathElement, MapLink, MapLink>) {
+              select(this).attr('cursor', 'grab');
+              // Emit edited event to persist changes
+              self.linksEventSource.edited.next(l);
+            })
+        );
+    });
+
+    this.interfaceLabelWidget.draw(link_body_merge);
+    this.interfaceStatusWidget.draw(link_body_merge);
+  }
+}

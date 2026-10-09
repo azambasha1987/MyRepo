@@ -1,0 +1,62 @@
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, inject, input } from '@angular/core';
+import { Subscription } from 'rxjs';
+import { MapDrawingToSvgConverter } from '../../../cartography/converters/map/map-drawing-to-svg-converter';
+import { DrawingsDataSource } from '../../../cartography/datasources/drawings-datasource';
+import { DrawingsEventSource } from '../../../cartography/events/drawings-event-source';
+import { TextEditedDataEvent } from '../../../cartography/events/event-source';
+import { Drawing } from '../../../cartography/models/drawing';
+import { TextElement } from '../../../cartography/models/drawings/text-element';
+import { MapDrawing } from '../../../cartography/models/map/map-drawing';
+import { Controller } from '@models/controller';
+import { DrawingService } from '@services/drawing.service';
+import { ToasterService } from '@services/toaster.service';
+
+@Component({
+  selector: 'app-text-edited',
+  templateUrl: './text-edited.component.html',
+  styleUrl: './text-edited.component.scss',
+  imports: [],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class TextEditedComponent implements OnInit, OnDestroy {
+  readonly controller = input<Controller>(undefined);
+  private textEdited: Subscription;
+
+  private drawingService = inject(DrawingService);
+  private drawingsDataSource = inject(DrawingsDataSource);
+  private drawingsEventSource = inject(DrawingsEventSource);
+  private mapDrawingToSvgConverter = inject(MapDrawingToSvgConverter);
+  private toasterService = inject(ToasterService);
+  private cdr = inject(ChangeDetectorRef);
+
+  ngOnInit() {
+    this.textEdited = this.drawingsEventSource.textEdited.subscribe((evt) => this.onTextEdited(evt));
+  }
+
+  onTextEdited(evt: TextEditedDataEvent) {
+    let mapDrawing: MapDrawing = new MapDrawing();
+    mapDrawing.element = evt.textElement;
+    (mapDrawing.element as TextElement).text = evt.editedText;
+    let svgString = this.mapDrawingToSvgConverter.convert(mapDrawing);
+
+    let drawing = this.drawingsDataSource.get(evt.textDrawingId);
+
+    this.drawingService
+      .updateText(this.controller(), drawing, svgString)
+      .subscribe({
+        next: (controllerDrawing: Drawing) => {
+          this.drawingsDataSource.update(controllerDrawing);
+          this.drawingsEventSource.textSaved.emit(true);
+        },
+        error: (err) => {
+          const message = err.error?.message || err.message || 'Failed to update text drawing';
+          this.toasterService.error(message);
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  ngOnDestroy() {
+    this.textEdited.unsubscribe();
+  }
+}

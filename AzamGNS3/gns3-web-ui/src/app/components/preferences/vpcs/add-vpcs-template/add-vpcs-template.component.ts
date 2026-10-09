@@ -1,0 +1,138 @@
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef, OnInit, inject, model } from '@angular/core';
+import { Location } from '@angular/common';
+import { goBackOrNavigate } from '@utils/back-navigation.util';
+import {
+  ReactiveFormsModule,
+  UntypedFormBuilder,
+  UntypedFormControl,
+  UntypedFormGroup,
+  Validators,
+} from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatRadioModule } from '@angular/material/radio';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { v4 as uuid } from 'uuid';
+import { Controller } from '@models/controller';
+import { NetmikoDeviceTypeSelectComponent } from '@components/netmiko-device-type-select/netmiko-device-type-select.component';
+import { VpcsTemplate } from '@models/templates/vpcs-template';
+import { ControllerService } from '@services/controller.service';
+import { TemplateMocksService } from '@services/template-mocks.service';
+import { ToasterService } from '@services/toaster.service';
+import { ValidationService } from '@services/validation';
+import { VpcsService } from '@services/vpcs.service';
+import { TemplateInfoFieldsComponent } from '../../common/template-info-fields/template-info-fields.component';
+
+@Component({
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-add-vpcs-template',
+  templateUrl: './add-vpcs-template.component.html',
+  styleUrls: ['./add-vpcs-template.component.scss', '../../preferences.component.scss'],
+  imports: [
+    NetmikoDeviceTypeSelectComponent,
+    ReactiveFormsModule,
+    MatIconModule,
+    MatButtonModule,
+    MatRadioModule,
+    MatFormFieldModule,
+    MatInputModule,
+    TemplateInfoFieldsComponent,
+  ],
+})
+export class AddVpcsTemplateComponent implements OnInit {
+  private route = inject(ActivatedRoute);
+  private controllerService = inject(ControllerService);
+  private vpcsService = inject(VpcsService);
+  private router = inject(Router);
+  private location = inject(Location);
+  private toasterService = inject(ToasterService);
+  private validationService = inject(ValidationService);
+  private templateMocksService = inject(TemplateMocksService);
+  private formBuilder = inject(UntypedFormBuilder);
+  private cd = inject(ChangeDetectorRef);
+
+  controller?: Controller;
+  templateName: string = '';
+  templateNameForm: UntypedFormGroup;
+  netmikoDeviceType: string = '';
+  isLocalComputerChosen: boolean = true;
+  usage = model('');
+  symbol = model('vpcs_guest');
+
+  constructor() {
+    this.templateNameForm = this.formBuilder.group({
+      templateName: new UntypedFormControl(null, [Validators.required]),
+    });
+  }
+
+  ngOnInit() {
+    const controller_id = this.route.snapshot.paramMap.get('controller_id');
+    this.controllerService.get(parseInt(controller_id, 10)).then(
+      (controller: Controller) => {
+        this.controller = controller;
+        this.cd.markForCheck();
+      },
+      (err) => {
+        const message = err.error?.message || err.message || 'Failed to load controller';
+        this.toasterService.error(message);
+        this.cd.markForCheck();
+      }
+    );
+  }
+
+  setControllerType(controllerType: string) {
+    if (controllerType === 'local') {
+      this.isLocalComputerChosen = true;
+    }
+  }
+
+  goBack() {
+    const controllerId = this.controller?.id ?? parseInt(this.route.snapshot.paramMap.get('controller_id'), 10);
+    goBackOrNavigate(this.location, this.router, ['/controller', controllerId, 'preferences']);
+  }
+
+  addTemplate() {
+    if (!this.templateNameForm.invalid && this.controller) {
+      this.templateName = this.templateNameForm.get('templateName').value;
+
+      const netmikoValidation = this.validationService.validateNetmikoDeviceType(this.netmikoDeviceType);
+      if (!netmikoValidation.isValid) {
+        this.toasterService.error(netmikoValidation.errorMessage);
+        return;
+      }
+
+      this.templateMocksService.getVpcsTemplate().subscribe({
+        next: (template: VpcsTemplate) => {
+          const vpcsTemplate = template;
+          vpcsTemplate.template_id = uuid();
+          vpcsTemplate.name = this.templateName;
+          vpcsTemplate.compute_id = 'local';
+          vpcsTemplate.netmiko_device_type = this.netmikoDeviceType.trim() || null;
+          vpcsTemplate.usage = this.usage();
+          vpcsTemplate.symbol = this.symbol();
+
+          this.vpcsService.addTemplate(this.controller, vpcsTemplate).subscribe({
+            next: () => {
+              this.goBack();
+            },
+            error: (err) => {
+              const message = err.error?.message || err.message || 'Failed to add vpcs template';
+              this.toasterService.error(message);
+              this.cd.markForCheck();
+            },
+          });
+        },
+        error: (err) => {
+          const message = err.error?.message || err.message || 'Failed to load VPCS template';
+          this.toasterService.error(message);
+          this.cd.markForCheck();
+        },
+      });
+    } else {
+      this.toasterService.error(`Fill all required fields`);
+    }
+  }
+}

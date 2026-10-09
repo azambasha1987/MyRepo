@@ -1,0 +1,27 @@
+<svg id="map" #svg class="map" preserveAspectRatio="none" appMovingCanvas appZoomingCanvas [project]="project()">
+  <!-- Grid pattern geometry (x/y/width/height/path) is written imperatively by
+       GridAnchorService whenever the canvas transform or size changes, so the
+       grid stays anchored to the scene grid instead of the canvas size. -->
+  @if (gridVisibility() > 0 && project()) {
+    <defs>
+      <pattern id="gridDrawing" patternUnits="userSpaceOnUse">
+        <path fill="none" stroke="var(--gns3-grid-drawing-color)" stroke-width="1" />
+      </pattern>
+      <pattern id="gridNode" patternUnits="userSpaceOnUse">
+        <path fill="none" stroke="var(--gns3-grid-node-color)" stroke-width="1" />
+      </pattern>
+    </defs>
+
+    <rect width="100%" height="100%" fill="url(#gridDrawing)" />
+    <rect width="100%" height="100%" fill="url(#gridNode)" />
+  }
+</svg>
+
+<app-drawing-adding [svg]="svg"></app-drawing-adding>
+<app-curve-drawing [svg]="svg" [controller]="controller()" [project]="project()"></app-curve-drawing>
+<app-drawing-resizing></app-drawing-resizing>
+<app-selection-control></app-selection-control>
+<app-selection-select></app-selection-select>
+<app-text-editor #textEditor [controller]="controller()" [svg]="svg"></app-text-editor>
+<app-draggable-selection [svg]="svg"></app-draggable-selection>
+<app-link-editing [svg]="svg" [controller]="controller()"></app-link-editing>

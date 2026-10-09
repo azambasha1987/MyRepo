@@ -1,0 +1,17 @@
+.full-width-field {
+  width: 100%;
+}
+
+.userList {
+  display: flex;
+  margin: 10px;
+  justify-content: space-between;
+  flex: 1 1 auto;
+}
+
+.users {
+  display: flex;
+  min-height: 40px;
+  overflow: auto;
+  flex-direction: column;
+}

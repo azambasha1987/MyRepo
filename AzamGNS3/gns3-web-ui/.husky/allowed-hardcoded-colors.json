@@ -1,0 +1,190 @@
+{
+  "version": "1.1.0",
+  "last_updated": "2026-09-14",
+  "description": "Allowed hardcoded colors in legacy graphics rendering code. DO NOT modify without proper review. Supports .ts, .html, and .scss files.",
+  "allowed_scss_variables": [
+    {
+      "file": "src/styles/_map.scss",
+      "variables": [
+        "--gns3-map-bg-auto",
+        "--gns3-map-bg-light",
+        "--gns3-map-bg-dark",
+        "--gns3-map-bg-light-1",
+        "--gns3-map-bg-light-2",
+        "--gns3-map-bg-light-3",
+        "--gns3-map-bg-light-4",
+        "--gns3-map-bg-dark-1",
+        "--gns3-map-bg-dark-2",
+        "--gns3-map-bg-dark-3",
+        "--gns3-map-bg-dark-4",
+        "--gns3-map-bg"
+      ],
+      "reason": "Map background presets for light/dark themes and gradient patterns"
+    },
+    {
+      "file": "src/styles/_map.scss",
+      "variables": [
+        "--gns3-canvas-label-color",
+        "--gns3-canvas-link-color"
+      ],
+      "reason": "Canvas element colors that adapt to background (light vs dark)"
+    },
+    {
+      "file": "src/styles/_map.scss",
+      "variables": [
+        "--gns3-grid-drawing-color",
+        "--gns3-grid-node-color"
+      ],
+      "reason": "Grid colors for drawings and nodes with visibility optimization"
+    },
+    {
+      "file": "src/styles/_map.scss",
+      "variables": [
+        "--gns3-lock-badge-locked-color",
+        "--gns3-lock-badge-unlocked-color",
+        "--gns3-lock-badge-outline-color"
+      ],
+      "reason": "Lock status badge colors for nodes and drawings"
+    }
+  ],
+  "allowed_colors": [
+    {
+      "file": "src/app/cartography/components/text-editor/text-editor.component.ts",
+      "patterns": [
+        ": '#000000'",
+        "this.renderer.setStyle(temporaryTextElement.nativeElement, 'color', '#000000');"
+      ],
+      "reason": "D3.js text editor rendering"
+    },
+    {
+      "file": "src/app/cartography/helpers/drawings-factory/ellipse-element-factory.ts",
+      "patterns": [
+        "ellipseElement.fill = '#ffffff'",
+        "ellipseElement.stroke = '#000000'"
+      ],
+      "reason": "Ellipse element factory default colors"
+    },
+    {
+      "file": "src/app/cartography/helpers/drawings-factory/line-element-factory.ts",
+      "patterns": [
+        "lineElement.stroke = '#000000'"
+      ],
+      "reason": "Line element factory default color"
+    },
+    {
+      "file": "src/app/cartography/helpers/drawings-factory/rectangle-element-factory.ts",
+      "patterns": [
+        "rectElement.fill = '#ffffff'",
+        "rectElement.stroke = '#000000'"
+      ],
+      "reason": "Rectangle element factory default colors"
+    },
+    {
+      "file": "src/app/cartography/helpers/drawings-factory/text-element-factory.ts",
+      "patterns": [
+        "textElement.fill = '#000000'"
+      ],
+      "reason": "Text element factory default color"
+    },
+    {
+      "file": "src/app/cartography/helpers/font-bbox-calculator.ts",
+      "patterns": [
+        "element.setAttribute('fill', '#00000')"
+      ],
+      "reason": "Font bounding box calculator"
+    },
+    {
+      "file": "src/app/cartography/widgets/links/ethernet-link.ts",
+      "patterns": [
+        "color: '#000000'"
+      ],
+      "reason": "Ethernet link default color"
+    },
+    {
+      "file": "src/app/cartography/widgets/links/serial-link.ts",
+      "patterns": [
+        "color: '#800000'"
+      ],
+      "reason": "Serial link default color"
+    },
+    {
+      "file": "src/app/cartography/widgets/interface-status.ts",
+      "patterns": [
+        "LABEL_BACKGROUND_COLOR = '#E2E8FF'",
+        ".attr('fill', '#111111')",
+        ".attr('fill', '#2ecc71')",
+        ".attr('fill', '#FFFF00')",
+        "return '#2ecc71'",
+        "return '#FFFF00'"
+      ],
+      "reason": "Interface status widget colors"
+    },
+    {
+      "file": "src/app/cartography/widgets/drawing-line.ts",
+      "patterns": [
+        ".attr('stroke', '#000')"
+      ],
+      "reason": "Drawing line stroke color"
+    },
+    {
+      "file": "src/app/cartography/widgets/drawing.ts",
+      "patterns": [
+        ".attr('fill', `#ffffff`)"
+      ],
+      "reason": "Drawing fill color"
+    },
+    {
+      "file": "src/app/cartography/widgets/node.ts",
+      "patterns": [
+        ".attr('fill', `#ffffff`)"
+      ],
+      "reason": "Node fill color"
+    },
+    {
+      "file": "src/styles/_map.scss",
+      "patterns": [
+        "--gns3-lock-badge-locked-color: #ff1744;",
+        "--gns3-lock-badge-unlocked-color: #00c853;",
+        "--gns3-lock-badge-outline-color: #ffffff;"
+      ],
+      "reason": "Lock status badge CSS variable definitions - red=locked, green=unlocked, white=outline"
+    },
+    {
+      "file": "src/app/components/project-map/drawings-editors/style-editor/style-editor.component.ts",
+      "patterns": [
+        "stroke = this.element.stroke ?? '#000000'"
+      ],
+      "reason": "Style editor default stroke color"
+    },
+    {
+      "file": "src/app/components/project-map/drawings-editors/text-editor/text-editor.component.ts",
+      "patterns": [
+        ": '#000000'"
+      ],
+      "reason": "Text editor default fill color"
+    },
+    {
+      "file": "src/app/components/project-map/drawings-editors/link-style-editor/link-style-editor.component.ts",
+      "patterns": [
+        "link.link_type === 'serial' ? '#800000' : '#000000'"
+      ],
+      "reason": "Link style editor default colors"
+    },
+    {
+      "file": "src/app/services/xterm.service.ts",
+      "patterns": [
+        "if (!color) return '#000000';",
+        "if (!ctx) return '#000000';",
+        "return '#000000';"
+      ],
+      "reason": "Canvas-based CSS color resolver (resolveColorToHex) - fallback to black when input color is empty, canvas context is unavailable, or color cannot be parsed"
+    },
+    {
+      "file": "src/app/directives/safe-color-value-accessor.directive.ts",
+      "patterns": [
+        "PLACEHOLDER = '#000000'"
+      ],
+      "reason": "input[type=color] DOM API only accepts a valid #rrggbb value - black is the HTML-spec default placeholder written when the form control holds null or an invalid color"
+    }
+  ]
+}

@@ -1,0 +1,165 @@
+import { ProtocolTreeNode } from '@models/marker-replay';
+
+/**
+ * Pure helpers for the flat (non-recursive) protocol-tree renderer.
+ *
+ * The decoded sharkd tree is immutable per frame, so rows are derived state:
+ * a depth-first flattening that only descends into nodes whose key sits in
+ * the caller's expansion set. Keeping this pure makes collapse/expand,
+ * "expand all" and selection trivial signal updates in the component — no
+ * per-node state scattered across recursive component instances.
+ */
+
+/** One visible row of the flattened tree. */
+export interface FlatRow {
+  /** Stable path key ("/0/2/1" — index path from the tree root). */
+  key: string;
+  /**
+   * Semantic path ("ip/ip.ttl" — node NAMES, occurrence-disambiguated). Stable
+   * across trees of the same packet even when hidden noise shifts indexes, so
+   * cross-tree diffs (replay-tree-diff) and row highlights share one keyspace.
+   */
+  path: string;
+  node: ProtocolTreeNode;
+  depth: number;
+  hasChildren: boolean;
+}
+
+/** Row text: sharkd's single display label. */
+export function rowText(n: ProtocolTreeNode): string {
+  return n.label;
+}
+
+/**
+ * Case-insensitive search haystack for a row: the field NAME plus its display
+ * label — so both literals ("Time to Live: 64") and field names ("ttl") find
+ * their row. Wireshark's find-in-details matches displayed text too.
+ */
+export function rowSearchText(n: ProtocolTreeNode): string {
+  return `${n.name} ${n.label}`.toLowerCase();
+}
+
+/** Row keys of every ancestor ("/0/1/0" → ["/0/1", "/0"]) — reveal set for search. */
+export function ancestorKeys(key: string): string[] {
+  const out: string[] = [];
+  let k = key;
+  for (;;) {
+    const cut = k.lastIndexOf('/');
+    if (cut <= 0) return out;
+    k = k.slice(0, cut);
+    out.push(k);
+  }
+}
+
+/** Hover context: display label, ready filter expression, byte range. */
+export function rowTooltip(n: ProtocolTreeNode): string {
+  let text = n.label || n.name;
+  if (n.filter_expr) text += `  ·  ${n.filter_expr}`;
+  if (n.pos !== undefined && n.size !== undefined) text += `  [${n.pos}+${n.size}]`;
+  return text;
+}
+
+/**
+ * Protos the tshark-era PDML emitted as plumbing that Wireshark's GUI never
+ * displays (`geninfo` duplicates the `frame` proto's Number/Length/Time
+ * fields). sharkd's tree is the GUI tree and should never carry them — the
+ * guard stays as harmless insurance against engine changes.
+ */
+const UNDISPLAYED_PROTOS = new Set(['geninfo']);
+
+/**
+ * Whether a node renders at all. The sharkd tree carries no `hide` attribute
+ * (it is already the GUI tree), so only the plumbing-proto guard remains.
+ */
+export function isHidden(n: ProtocolTreeNode): boolean {
+  return n.element === 'proto' && UNDISPLAYED_PROTOS.has(n.name);
+}
+
+/** Direct children that render — hidden filter-combination noise is dropped. */
+export function visibleChildren(n: ProtocolTreeNode): ProtocolTreeNode[] {
+  return (n.children ?? []).filter((c) => !isHidden(c));
+}
+
+/**
+ * A parent's visible children paired with their semantic paths. Repeated
+ * sibling names (e.g. two `tcp.options` branches) get an occurrence suffix
+ * (`tcp.options[1]`) so paths stay deterministic under insertion.
+ */
+export function visibleChildEntries(
+  nodes: ProtocolTreeNode[],
+  parentPath: string
+): { node: ProtocolTreeNode; path: string }[] {
+  const totals = new Map<string, number>();
+  for (const n of nodes) {
+    if (isHidden(n)) continue;
+    totals.set(n.name, (totals.get(n.name) ?? 0) + 1);
+  }
+  const seen = new Map<string, number>();
+  const out: { node: ProtocolTreeNode; path: string }[] = [];
+  for (const n of nodes) {
+    if (isHidden(n)) continue;
+    const k = seen.get(n.name) ?? 0;
+    seen.set(n.name, k + 1);
+    const seg = (totals.get(n.name) ?? 1) > 1 ? `${n.name}[${k}]` : n.name;
+    out.push({ node: n, path: parentPath ? `${parentPath}/${seg}` : seg });
+  }
+  return out;
+}
+
+/**
+ * Flatten the decoded tree into the rows currently visible: a child-bearing
+ * node only contributes its children while its key is in `expanded`. Keys are
+ * index paths within the (hide-filtered) arrays, stable for one decode.
+ */
+export function flattenTree(tree: ProtocolTreeNode[], expanded: ReadonlySet<string>): FlatRow[] {
+  const rows: FlatRow[] = [];
+  const walk = (nodes: ProtocolTreeNode[], prefix: string, parentPath: string, depth: number): void => {
+    // Semantic paths precomputed once per sibling array; the ROW key keeps the
+    // ORIGINAL array index (hidden siblings included) — stable for one decode.
+    const paths = new Map(visibleChildEntries(nodes, parentPath).map((e) => [e.node, e.path]));
+    nodes.forEach((node, i) => {
+      if (isHidden(node)) return;
+      const key = `${prefix}/${i}`;
+      const path = paths.get(node) ?? node.name;
+      const kids = visibleChildren(node);
+      rows.push({ key, path, node, depth, hasChildren: kids.length > 0 });
+      if (kids.length > 0 && expanded.has(key)) walk(kids, key, path, depth + 1);
+    });
+  };
+  walk(tree, '', '', 0);
+  return rows;
+}
+
+/** Keys of every child-bearing node — the expansion set for "Expand all". */
+export function collectKeys(tree: ProtocolTreeNode[]): string[] {
+  return collectKeysExcept(tree, EMPTY_NAMES);
+}
+
+/**
+ * Capture-metadata protos kept SHUT by an auto-expanding host: `frame`
+ * (arrival time / frame number / length / protocols-in-frame) is header
+ * noise next to the packet's actual layers — see {@link collectKeysExcept}.
+ */
+export const CAPTURE_METADATA_PROTO = 'frame';
+
+const EMPTY_NAMES: ReadonlySet<string> = new Set();
+
+/**
+ * {@link collectKeys} minus the subtrees rooted at nodes named in `excluded`
+ * — the auto-expand set for a freshly opened detail pane: every protocol
+ * layer unfolds, the capture-metadata `frame` proto stays collapsed.
+ */
+export function collectKeysExcept(tree: ProtocolTreeNode[], excluded: ReadonlySet<string>): string[] {
+  const keys: string[] = [];
+  const walk = (nodes: ProtocolTreeNode[], prefix: string): void => {
+    nodes.forEach((node, i) => {
+      if (isHidden(node) || excluded.has(node.name)) return;
+      const key = `${prefix}/${i}`;
+      const kids = visibleChildren(node);
+      if (kids.length > 0) keys.push(key);
+      walk(kids, key);
+    });
+  };
+  walk(tree, '');
+  return keys;
+}

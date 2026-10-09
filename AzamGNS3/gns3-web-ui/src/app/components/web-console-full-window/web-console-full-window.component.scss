@@ -1,0 +1,19 @@
+/**
+ * GNS3 Web Console Full Window Component Styles
+ * Using MD3 CSS variables
+ */
+
+:host {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Terminal container styling - minimal styling to avoid interfering with xterm.js */
+.terminal {
+  width: 100%;
+  height: 100%;
+}
+
+/* Context menu styles moved to src/styles/_xterm-context-menu.scss */

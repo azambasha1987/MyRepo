@@ -1,0 +1,31 @@
+.logged-user__info {
+  padding: 8px 0;
+}
+
+.logged-user__info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+
+  &:not(:last-child) {
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+  }
+}
+
+.logged-user__info-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.logged-user__info-value {
+  font-size: 14px;
+  color: var(--mat-sys-on-surface);
+}
+
+.logged-user__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

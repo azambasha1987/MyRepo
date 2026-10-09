@@ -1,0 +1,41 @@
+<h1 mat-dialog-title>Create new project</h1>
+<div mat-dialog-content>
+  <mat-form-field class="file-name-form-field" subscriptSizing="dynamic">
+    <mat-label>Project name</mat-label>
+    <input
+      matInput
+      [value]="projectName()"
+      (input)="projectName.set($event.target.value)"
+      (keydown)="onKeyDown($event)"
+      type="text"
+      [ngClass]="{ 'is-invalid': hasInvalidCharacters() || nameExistsError() }"
+      placeholder="Please enter name"
+      [disabled]="isCheckingName()"
+    />
+    @if (isCheckingName()) {
+    <mat-spinner matSuffix diameter="20"></mat-spinner>
+    }
+    @if (hasInvalidCharacters()) {
+    <mat-error>Project name contains invalid characters</mat-error>
+    } @if (nameExistsError()) {
+    <mat-error>Project with this name already exists</mat-error>
+    }
+  </mat-form-field>
+</div>
+<div mat-dialog-actions>
+  <button mat-button (click)="onNoClick()" color="accent" [disabled]="isCheckingName()">Cancel</button>
+  <button
+    mat-button
+    (click)="onAddClick()"
+    tabindex="2"
+    mat-raised-button
+    color="primary"
+    [disabled]="!isNameValid() || isCheckingName()"
+  >
+    @if (isCheckingName()) {
+      <span>Checking...</span>
+    } @else {
+      <span>Add project</span>
+    }
+  </button>
+</div>

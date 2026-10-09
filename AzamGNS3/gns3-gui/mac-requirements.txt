@@ -1,0 +1,3 @@
+-rrequirements.txt
+
+PyQt6==6.10.2

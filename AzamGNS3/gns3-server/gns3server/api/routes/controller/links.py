@@ -1,0 +1,596 @@
+#
+# Copyright (C) 2023 GNS3 Technologies Inc.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+API routes for links.
+"""
+
+import logging
+import os
+from typing import Any, List, Optional
+from uuid import UUID, uuid4
+
+import aiohttp
+import multidict
+from fastapi import APIRouter, Depends, Request, Response, WebSocket, status
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import FileResponse, StreamingResponse
+
+from gns3server import schemas
+from gns3server.agent.web_wireshark.manager import WebWiresharkManager
+from gns3server.api.openapi import PCAP_MEDIA_TYPE, binary_response
+from gns3server.controller import Controller
+from gns3server.controller.controller_error import ControllerError, ControllerNotFoundError
+from gns3server.controller.link import _UNSET, Link
+from gns3server.db.repositories.rbac import RbacRepository
+from gns3server.utils.http_client import HTTPClient
+from gns3server.utils.port_allocator import link_id_to_port
+from gns3server.utils.websocket_to_websocket import websocket_proxy
+
+from .dependencies.concurrency import (
+    GET_RESPONSES,
+    PUT_RESPONSES,
+    check_if_match,
+    if_match_header,
+    serialize_updates,
+    set_etag,
+)
+from .dependencies.database import get_repository
+from .dependencies.rbac import has_privilege, has_privilege_on_websocket
+
+log = logging.getLogger(__name__)
+
+responses: dict[int | str, dict[str, Any]] = {
+    404: {"model": schemas.ErrorMessage, "description": "Could not find project or link"}
+}
+
+router = APIRouter(responses=responses)
+
+
+def _select_port(node, endpoint, other_port):
+    if endpoint.get("port_name") is not None:
+        port = node.get_port_by_name(endpoint["port_name"])
+        if port is None:
+            raise ControllerNotFoundError(f"Port named {endpoint['port_name']} for {node.name} not found")
+        return port
+    if endpoint.get("port") == "auto":
+        port = node.get_free_port(other_port.link_type if other_port else None)
+        if port is None:
+            raise ControllerError(f"No free port available on {node.name}", code="no_free_port")
+        return port
+    return None
+
+
+def _peer_port(project, endpoint):
+    if endpoint.get("port") == "auto":
+        return None
+    node = project.get_node(endpoint["node_id"])
+    if endpoint.get("port_name") is not None:
+        return node.get_port_by_name(endpoint["port_name"])
+    return node.get_port(endpoint["adapter_number"], endpoint["port_number"])
+
+
+async def dep_link(project_id: UUID, link_id: UUID) -> Link:
+    """
+    Dependency to retrieve a link.
+    """
+
+    project = await Controller.instance().get_loaded_project(str(project_id))
+    link = project.get_link(str(link_id))
+    return link
+
+
+@router.get(
+    "",
+    response_model=List[schemas.Link],
+    response_model_exclude_unset=True,
+    dependencies=[Depends(has_privilege("Link.Audit"))],
+)
+async def get_links(project_id: UUID) -> List[schemas.Link]:
+    """
+    Return all links for a given project.
+
+    Required privilege: Link.Audit
+    """
+
+    project = await Controller.instance().get_loaded_project(str(project_id))
+    if project.status == "closed":
+        # allow to retrieve links from a closed project
+        return project.links.values()
+    return [v.asdict() for v in project.links.values()]
+
+
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    response_model=schemas.Link,
+    responses={
+        404: {"model": schemas.ErrorMessage, "description": "Could not find project"},
+        409: {"model": schemas.ErrorMessage, "description": "Could not create link"},
+    },
+    dependencies=[Depends(has_privilege("Link.Allocate"))],
+)
+async def create_link(project_id: UUID, link_create: schemas.LinkCreate) -> schemas.Link:
+    """
+    Create a new link.
+
+    Required privilege: Link.Allocate
+    """
+
+    project = await Controller.instance().get_loaded_project(str(project_id))
+    link = await project.add_link()
+    link_data = jsonable_encoder(link_create, exclude_unset=True)
+    if "filters" in link_data:
+        await link.update_filters(link_data["filters"])
+    if "link_style" in link_data:
+        await link.update_link_style(link_data["link_style"])
+    if "suspend" in link_data:
+        await link.update_suspend(link_data["suspend"])
+    if "show_filters_icon" in link_data:
+        await link.update_show_filters_icon(link_data["show_filters_icon"])
+    try:
+        endpoints = link_data["nodes"]
+        attached_port = None
+        for index, endpoint in enumerate(endpoints):
+            node = project.get_node(endpoint["node_id"])
+            peer_port = attached_port or _peer_port(project, endpoints[1 - index])
+            port = _select_port(node, endpoint, peer_port)
+            adapter_number = port.adapter_number if port else endpoint["adapter_number"]
+            port_number = port.port_number if port else endpoint["port_number"]
+            await link.add_node(node, adapter_number, port_number, label=endpoint.get("label"))
+            attached_port = node.get_port(adapter_number, port_number)
+    except ControllerError as e:
+        link.release_ports()
+        await project.delete_link(link.id)
+        raise e
+    return link.asdict()
+
+
+@router.get(
+    "/{link_id}/available_filters",
+    response_model=List[schemas.LinkFilterDefinition],
+    response_model_exclude_unset=True,
+    dependencies=[Depends(has_privilege("Link.Audit"))],
+)
+async def get_filters(link: Link = Depends(dep_link)) -> List[schemas.LinkFilterDefinition]:
+    """
+    Return all filters available for a given link.
+
+    Required privilege: Link.Audit
+    """
+
+    return link.available_filters()
+
+
+@router.get(
+    "/{link_id}",
+    response_model=schemas.Link,
+    response_model_exclude_unset=True,
+    responses=GET_RESPONSES,
+    dependencies=[Depends(has_privilege("Link.Audit"))],
+)
+async def get_link(response: Response, link: Link = Depends(dep_link)) -> schemas.Link:
+    """
+    Return a link.
+
+    Required privilege: Link.Audit
+    """
+
+    link_dict = link.asdict()
+    set_etag(response, link_dict)
+    return link_dict
+
+
+@router.put(
+    "/{link_id}",
+    response_model=schemas.Link,
+    response_model_exclude_unset=True,
+    responses=PUT_RESPONSES,
+    dependencies=[Depends(has_privilege("Link.Modify"))],
+)
+async def update_link(
+    link_update: schemas.LinkUpdate,
+    response: Response,
+    link: Link = Depends(dep_link),
+    if_match: Optional[str] = Depends(if_match_header),
+) -> schemas.Link:
+    """
+    Update a link.
+
+    If the If-Match header is present, the update is only applied when it matches the current ETag.
+
+    Required privilege: Link.Modify
+    """
+
+    link_data = jsonable_encoder(link_update, exclude_unset=True)
+    async with serialize_updates(f"link:{link.id}"):
+        check_if_match(if_match, link.asdict())
+        if "filters" in link_data:
+            await link.update_filters(link_data["filters"])
+        if "link_style" in link_data:
+            await link.update_link_style(link_data["link_style"])
+        if "suspend" in link_data:
+            await link.update_suspend(link_data["suspend"])
+        if "show_filters_icon" in link_data:
+            await link.update_show_filters_icon(link_data["show_filters_icon"])
+        if "nodes" in link_data:
+            await link.update_nodes(link_data["nodes"])
+    link_dict = link.asdict()
+    set_etag(response, link_dict)
+    return link_dict
+
+
+@router.delete(
+    "/{link_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(has_privilege("Link.Allocate"))]
+)
+async def delete_link(
+    project_id: UUID,
+    link: Link = Depends(dep_link),
+    rbac_repo: RbacRepository = Depends(get_repository(RbacRepository)),
+) -> None:
+    """
+    Delete a link.
+
+    Required privilege: Link.Allocate
+    """
+
+    project = await Controller.instance().get_loaded_project(str(project_id))
+    await project.delete_link(link.id)
+    await rbac_repo.delete_all_ace_starting_with_path(f"/links/{link.id}")
+
+
+@router.post("/{link_id}/reset", response_model=schemas.Link, dependencies=[Depends(has_privilege("Link.Modify"))])
+async def reset_link(link: Link = Depends(dep_link)) -> schemas.Link:
+    """
+    Reset a link.
+
+    Required privilege: Link.Modify
+    """
+
+    await link.reset()
+    return link.asdict()
+
+
+@router.post(
+    "/{link_id}/capture/start",
+    status_code=status.HTTP_201_CREATED,
+    response_model=schemas.Link,
+    dependencies=[Depends(has_privilege("Link.Capture"))],
+)
+async def start_capture(
+    capture_data: schemas.LinkCapture, http_request: Request, link: Link = Depends(dep_link)
+) -> schemas.Link:
+    """
+    Start packet capture on the link.
+
+    Required privilege: Link.Capture
+    """
+
+    # Extract JWT token from Authorization header
+    auth_header = http_request.headers.get("Authorization", "")
+    jwt_token = auth_header.replace("Bearer ", "") if auth_header else None
+
+    await link.start_capture(
+        data_link_type=capture_data.data_link_type,
+        capture_file_name=capture_data.capture_file_name,
+        wireshark=capture_data.wireshark,
+        jwt_token=jwt_token,
+    )
+    return link.asdict()
+
+
+@router.post(
+    "/{link_id}/capture/stop",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(has_privilege("Link.Capture"))],
+)
+async def stop_capture(link: Link = Depends(dep_link)) -> None:
+    """
+    Stop packet capture on the link.
+
+    Required privilege: Link.Capture
+    """
+
+    await link.stop_capture()
+
+
+@router.post(
+    "/{link_id}/capture/wireshark/restart",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(has_privilege("Link.Capture"))],
+)
+async def restart_wireshark(http_request: Request, link: Link = Depends(dep_link)) -> dict:
+    """
+    Restart Wireshark window without stopping the capture.
+
+    This allows recovery after accidentally closing the Wireshark window.
+
+    Required privilege: Link.Capture
+    """
+    # Extract JWT token from Authorization header
+    auth_header = http_request.headers.get("Authorization", "")
+    jwt_token = auth_header.replace("Bearer ", "") if auth_header else None
+
+    if not jwt_token:
+        raise ControllerError("JWT token is required for Web Wireshark restart")
+
+    await link._restart_web_wireshark(jwt_token)
+    return {"status": "restarted"}
+
+
+@router.get(
+    "/{link_id}/capture/stream",
+    response_class=StreamingResponse,
+    responses={200: binary_response(PCAP_MEDIA_TYPE, "Packet capture stream")},
+    dependencies=[Depends(has_privilege("Link.Capture"))],
+)
+async def stream_pcap(request: Request, link: Link = Depends(dep_link)) -> StreamingResponse:
+    """
+    Stream the PCAP capture file from compute.
+
+    Required privilege: Link.Capture
+    """
+
+    # Check both capturing flag and capture_node to avoid race condition
+    # when stop_capture() sets _capture_node = None before this check completes
+    if not link.capturing or not link.capture_node:
+        log.info(f"Stream pcap ended for link {link.id}: capture stopped before stream completed")
+        raise ControllerError("This link has no active packet capture")
+
+    compute = link.compute
+    pcap_streaming_url = link.pcap_streaming_url()
+    headers = multidict.MultiDict(request.headers)
+    headers["Host"] = compute.host
+    headers["Router-Host"] = request.client.host if request.client else ""
+    body = await request.body()
+
+    async def compute_pcap_stream():
+
+        try:
+            ssl_context = Controller.instance().ssl_context()
+            async with HTTPClient.request(
+                request.method,
+                pcap_streaming_url,
+                user=compute.user,
+                password=compute.password,
+                ssl_context=ssl_context,
+                timeout=None,
+                data=body,
+            ) as response:
+                async for data in response.content.iter_any():
+                    if not data:
+                        break
+                    yield data
+        except aiohttp.ClientError as e:
+            raise ControllerError(f"Client error received when receiving pcap stream from compute: {e}")
+
+    return StreamingResponse(compute_pcap_stream(), media_type="application/vnd.tcpdump.pcap")
+
+
+@router.get(
+    "/{link_id}/capture/file", dependencies=[Depends(has_privilege("Link.Capture"))], response_class=FileResponse
+)
+async def download_capture_file(link: Link = Depends(dep_link)):
+    """
+    Download the PCAP capture file.
+
+    This endpoint allows downloading the capture file even while capture is active.
+    The file is streamed directly, so partial data may be received if capture is still running.
+
+    Required privilege: Link.Capture
+    """
+    if not link.capture_file_path:
+        raise ControllerError("No capture file path set for this link")
+
+    if not os.path.exists(link.capture_file_path):
+        raise ControllerError(f"Capture file not found: {link.capture_file_path}")
+
+    return FileResponse(
+        path=link.capture_file_path,
+        filename=os.path.basename(link.capture_file_path),
+        media_type="application/vnd.tcpdump.pcap",
+    )
+
+
+@router.websocket("/{link_id}/capture/web-wireshark")
+async def web_wireshark_websocket(
+    websocket: WebSocket,
+    link_id: str,
+    project_id: str,
+    current_user: schemas.User = Depends(has_privilege_on_websocket("Link.Capture")),
+):
+    """
+    WebSocket proxy endpoint for xpra container (Web Wireshark).
+
+    Path: ws://host/v3/projects/{project_id}/links/{link_id}/capture/web-wireshark?token=<jwt_token>
+
+    Required privilege: Link.Capture
+
+    Note: The WebSocket connection is accepted by the authentication dependency
+    (get_current_active_user_from_websocket) with the proper subprotocol negotiation.
+    """
+    log.info(f"New WebSocket connection for project {project_id}, link {link_id}, user {current_user.username}")
+
+    try:
+        # Get container information
+        container_name = f"gns3-wireshark-{project_id}"
+
+        # Calculate xpra port (using deterministic hash)
+        xpra_port = link_id_to_port(link_id)
+
+        # Get container IP
+        manager = WebWiresharkManager()
+        try:
+            container_ip = await manager.get_container_ip(container_name)
+
+            if not container_ip:
+                log.error(f"Container {container_name} not found in wireshark network")
+                await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
+                return
+
+            # Build container WebSocket URL
+            container_ws_url = f"ws://{container_ip}:{xpra_port}"
+            log.info(f"Proxying WebSocket to container: {container_ws_url}")
+
+            # Get client's requested subprotocols from request headers
+            scope = websocket.scope
+            headers = dict(scope.get("headers", []))
+            requested_protocols_header = headers.get(b"sec-websocket-protocol", b"")
+            requested_protocols = [p.decode().strip() for p in requested_protocols_header.split(b",") if p.strip()]
+            log.info(f"Client requested subprotocols: {requested_protocols}")
+
+            # The WebSocket connection has already been accepted by the authentication dependency
+            # with the proper subprotocol. Now we just proxy data to the backend.
+            await websocket_proxy(websocket, container_ws_url, requested_protocols)
+        finally:
+            await manager.close()
+
+    except Exception as e:
+        log.error(f"Error in WebSocket proxy for link {link_id}: {e}")
+        try:
+            await websocket.close(code=status.WS_1011_INTERNAL_ERROR, reason=str(e))
+        except:
+            pass
+
+
+@router.get("/{link_id}/markers", dependencies=[Depends(has_privilege("Link.Audit"))])
+async def get_markers(link: Link = Depends(dep_link)) -> dict:
+    """
+    Return all traffic-insight markers configured on this link.
+
+    Required privilege: Link.Audit
+    """
+
+    return link.markers
+
+
+@router.post(
+    "/{link_id}/markers", status_code=status.HTTP_201_CREATED, dependencies=[Depends(has_privilege("Link.Modify"))]
+)
+async def create_marker(marker_data: schemas.MarkerCreate, link: Link = Depends(dep_link)) -> dict:
+    """
+    Attach a traffic-insight marker to the link.
+    On BPF match uBridge emits MARK signals and appends packets to a pcap.
+
+    Required privilege: Link.Modify
+    """
+
+    # Auto-generate a link-unique name when the caller omits one. The short
+    # uuid suffix avoids the collision that `marker-{link.id[:8]}` alone would
+    # cause on the second anonymous marker on the same link (start_marker
+    # rejects duplicate names).
+    if marker_data.name and marker_data.name.lower().startswith("global"):
+        raise ControllerError('Names starting with "global" are reserved for inherited markers')
+    name = marker_data.name or f"marker-{link.id[:8]}-{uuid4().hex[:4]}"
+    await link.start_marker(
+        name=name,
+        bpf=marker_data.bpf,
+        tag=marker_data.tag,
+        direction=marker_data.direction,
+        capture_node_id=marker_data.capture_node_id,
+        color=marker_data.color,
+        highlight_duration=marker_data.highlight_duration,
+        data_link_type=marker_data.data_link_type,
+    )
+    return link.markers.get(name, {})
+
+
+@router.delete(
+    "/{link_id}/markers/{marker_name}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(has_privilege("Link.Modify"))],
+)
+async def delete_marker(marker_name: str, link: Link = Depends(dep_link)) -> None:
+    """
+    Remove a traffic-insight marker from the link.
+
+    Required privilege: Link.Modify
+    """
+
+    await link.stop_marker(marker_name)
+
+
+@router.put("/{link_id}/markers/{marker_name}", dependencies=[Depends(has_privilege("Link.Modify"))])
+async def update_marker(marker_name: str, marker_data: schemas.MarkerUpdate, link: Link = Depends(dep_link)) -> dict:
+    """
+    Update a traffic-insight marker (change BPF, tag, or enabled).
+
+    Required privilege: Link.Modify
+    """
+
+    await link.update_marker(
+        name=marker_name,
+        bpf=marker_data.bpf if marker_data.bpf else None,
+        tag=marker_data.tag,
+        direction=marker_data.direction if "direction" in marker_data.model_fields_set else _UNSET,
+        color=marker_data.color,
+        enabled=marker_data.enabled,
+        highlight_duration=marker_data.highlight_duration,
+    )
+    return link.markers.get(marker_name, {})
+
+
+@router.get(
+    "/{link_id}/iface",
+    response_model=schemas.LinkIfaceInfo,
+    dependencies=[Depends(has_privilege("Link.Audit"))],
+)
+async def get_iface(link: Link = Depends(dep_link)) -> dict:
+    """
+    Return iface info for links to Cloud or NAT devices.
+
+    Required privilege: Link.Audit
+    """
+
+    ifaces_info = {}
+    for node_data in link._nodes:
+        node = node_data["node"]
+        if node.node_type not in ("cloud", "nat"):
+            continue
+
+        port_number = node_data["port_number"]
+        compute = node.compute
+        project_id = link.project.id
+        response = await compute.get(f"/projects/{project_id}/{node.node_type}/nodes/{node.id}")
+        if "ports_mapping" not in response.json:
+            continue
+        ports_mapping = response.json["ports_mapping"]
+
+        for port in ports_mapping:
+            port_num = port.get("port_number")
+
+            if port_num and int(port_num) == int(port_number):
+                port_type = port.get("type", "")
+                if "udp" in port_type.lower():
+                    ifaces_info = {
+                        "kind": "udp",
+                        "node_id": node.id,
+                        "type": f"{port_type}",
+                        "lport": port["lport"],
+                        "rhost": port["rhost"],
+                        "rport": port["rport"],
+                    }
+                else:
+                    ifaces_info = {
+                        "kind": "ethernet",
+                        "node_id": node.id,
+                        "type": f"{port_type}",
+                        "interface": port["interface"],
+                    }
+
+    if not ifaces_info:
+        raise ControllerError("Link not connected to Cloud/NAT")
+    return ifaces_info

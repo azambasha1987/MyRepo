@@ -1,0 +1,58 @@
+/**
+ * GNS3 Configurator Component Styles
+ * Using MD3 CSS variables
+ *
+ * MIGRATION NOTICE: These styles have been migrated to src/styles/_dialogs.scss
+ * under the .configurator-dialog-panel class for centralized dialog styling.
+ *
+ * Components should:
+ * 1. Remove styleUrls: ['../configurator.component.scss']
+ * 2. Add comment: // Styles centralized in src/styles/_dialogs.scss via panelClass: 'configurator-dialog-panel'
+ * 3. Ensure panelClass: 'configurator-dialog-panel' is used when opening dialog
+ *
+ * This file is kept for backward compatibility during migration.
+ *
+ * IOS-specific styles have been moved to configurator-ios.component.scss
+ * using BEM naming convention (.ios-configurator__*).
+ */
+
+table {
+  width: 100%;
+}
+
+.form-field {
+  width: 100%;
+}
+
+.configButton {
+  width: 100%;
+}
+
+.modal-form-container {
+  padding: 16px;
+}
+
+.file-button {
+  width: 18%;
+}
+
+.create-button {
+  width: 100%;
+}
+
+.file-name-form-field {
+  padding-left: 2%;
+  width: 80%;
+}
+
+.nonvisible {
+  display: none;
+}
+
+mat-radio-button {
+  margin-right: 8px;
+}
+
+.tags-field {
+  width: 100%;
+}

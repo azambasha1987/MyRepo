@@ -1,0 +1,340 @@
+import { Component, ChangeDetectionStrategy, ChangeDetectorRef, OnInit, model, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatChipsModule, MatChipInputEvent } from '@angular/material/chips';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatDialog } from '@angular/material/dialog';
+import { COMMA, ENTER } from '@angular/cdk/keycodes';
+import { CustomAdapter } from '@models/qemu/qemu-custom-adapter';
+import { Controller } from '@models/controller';
+import { VirtualBoxTemplate } from '@models/templates/virtualbox-template';
+import { ControllerService } from '@services/controller.service';
+import { ToasterService } from '@services/toaster.service';
+import { VirtualBoxConfigurationService } from '@services/virtual-box-configuration.service';
+import { VirtualBoxService } from '@services/virtual-box.service';
+import {
+  CustomAdaptersComponent,
+  CustomAdaptersDialogData,
+  CustomAdaptersDialogResult,
+} from '../../common/custom-adapters/custom-adapters.component';
+import { TemplateSymbolDialogComponent } from '@components/project-map/template-symbol-dialog/template-symbol-dialog.component';
+import { DialogConfigService } from '@services/dialog-config.service';
+
+@Component({
+  standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  selector: 'app-virtual-box-template-details',
+  templateUrl: './virtual-box-template-details.component.html',
+  styleUrls: [
+    './virtual-box-template-details.component.scss',
+    '../../preferences.component.scss',
+    '../../common/template-edit-page.scss',
+  ],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterModule,
+    MatIconModule,
+    MatButtonModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatChipsModule,
+    MatCheckboxModule,
+  ],
+})
+export class VirtualBoxTemplateDetailsComponent implements OnInit {
+  private route = inject(ActivatedRoute);
+  private controllerService = inject(ControllerService);
+  private virtualBoxService = inject(VirtualBoxService);
+  private toasterService = inject(ToasterService);
+  private virtualBoxConfigurationService = inject(VirtualBoxConfigurationService);
+  private router = inject(Router);
+  private cd = inject(ChangeDetectorRef);
+  private dialog = inject(MatDialog);
+  private dialogConfig = inject(DialogConfigService);
+
+  controller: Controller;
+  virtualBoxTemplate: VirtualBoxTemplate;
+  readonly separatorKeysCodes: number[] = [ENTER, COMMA];
+  consoleTypes: string[] = [];
+  onCloseOptions: any[] = [];
+  categories: any[] = [];
+  networkTypes: any[] = [];
+  displayedColumns: string[] = ['adapter_number', 'port_name', 'adapter_type', 'mac_address', 'actions'];
+
+  generalSettingsExpanded = true;
+  networkExpanded = false;
+  usageExpanded = false;
+  activeSection = 'general';
+
+  // Model signals for form fields
+  templateName = model('');
+  defaultName = model('');
+  symbol = model('');
+  category = model('');
+  consoleType = model('');
+  consoleAutoStart = model(false);
+  ram = model(256);
+  onClose = model('');
+  headless = model(false);
+  linkedClone = model(false);
+
+  // Network
+  adapters = model(0);
+  firstPortName = model('');
+  nameFormat = model('');
+  segmentSize = model(0);
+  networkType = model('');
+  useAnyAdapter = model(false);
+
+  // Usage & Tags
+  usage = model('');
+  tags = model<string[]>([]);
+
+  ngOnInit() {
+    const controller_id = this.route.snapshot.paramMap.get('controller_id');
+    const template_id = this.route.snapshot.paramMap.get('template_id');
+    this.controllerService.get(parseInt(controller_id, 10)).then(
+      (controller: Controller) => {
+        this.controller = controller;
+        this.cd.markForCheck();
+
+        this.getConfiguration();
+        this.virtualBoxService.getTemplate(this.controller, template_id).subscribe({
+          next: (virtualBoxTemplate: VirtualBoxTemplate) => {
+            this.virtualBoxTemplate = virtualBoxTemplate;
+            if (!this.virtualBoxTemplate.tags) {
+              this.virtualBoxTemplate.tags = [];
+            }
+            // Custom adapters will be managed through the dialog (incremental save)
+            this.initFormFromTemplate();
+            this.cd.markForCheck();
+          },
+          error: (err) => {
+            const message = err.error?.message || err.message || 'Failed to load VirtualBox template';
+            this.toasterService.error(message);
+            this.cd.markForCheck();
+          },
+        });
+      },
+      (err) => {
+        const message = err.error?.message || err.message || 'Failed to load controller';
+        this.toasterService.error(message);
+        this.cd.markForCheck();
+      }
+    );
+  }
+
+  initFormFromTemplate() {
+    this.templateName.set(this.virtualBoxTemplate.name || '');
+    this.defaultName.set(this.virtualBoxTemplate.default_name_format || '');
+    this.symbol.set(this.virtualBoxTemplate.symbol || '');
+    this.category.set(this.virtualBoxTemplate.category || '');
+    this.consoleType.set(this.virtualBoxTemplate.console_type || '');
+    this.consoleAutoStart.set(this.virtualBoxTemplate.console_auto_start || false);
+    this.ram.set(this.virtualBoxTemplate.ram || 256);
+    this.onClose.set(this.virtualBoxTemplate.on_close || '');
+    this.headless.set(this.virtualBoxTemplate.headless || false);
+    this.linkedClone.set(this.virtualBoxTemplate.linked_clone || false);
+
+    this.adapters.set(this.virtualBoxTemplate.adapters || 0);
+    this.firstPortName.set(this.virtualBoxTemplate.first_port_name || '');
+    this.nameFormat.set(this.virtualBoxTemplate.port_name_format || '');
+    this.segmentSize.set(this.virtualBoxTemplate.port_segment_size || 0);
+    this.networkType.set(this.virtualBoxTemplate.adapter_type || '');
+    this.useAnyAdapter.set(this.virtualBoxTemplate.use_any_adapter || false);
+
+    this.usage.set(this.virtualBoxTemplate.usage || '');
+    this.tags.set(this.virtualBoxTemplate.tags || []);
+  }
+
+  getConfiguration() {
+    this.consoleTypes = this.virtualBoxConfigurationService.getConsoleTypes();
+    this.onCloseOptions = this.virtualBoxConfigurationService.getOnCloseoptions();
+    this.categories = this.virtualBoxConfigurationService.getCategories();
+    this.networkTypes = this.virtualBoxConfigurationService.getNetworkTypes();
+  }
+
+  toggleSection(section: string) {
+    switch (section) {
+      case 'general':
+        this.generalSettingsExpanded = !this.generalSettingsExpanded;
+        break;
+      case 'network':
+        this.networkExpanded = !this.networkExpanded;
+        break;
+      case 'usage':
+        this.usageExpanded = !this.usageExpanded;
+        break;
+    }
+  }
+
+  selectSection(section: string): void {
+    this.activeSection = section;
+  }
+
+  openCustomAdaptersDialog() {
+    // Generate complete adapter list for display
+    const portNameFormat = this.nameFormat() || 'Ethernet{0}';
+    const segmentSize = this.segmentSize() || 0;
+    const defaultAdapterType = this.networkType() || 'e1000';
+    const adapterCount = this.adapters();
+
+    // Get custom adapters from server
+    const serverCustomAdapters = this.virtualBoxTemplate.custom_adapters || [];
+
+    // Build complete adapter list for display
+    const adaptersForDialog: CustomAdapter[] = [];
+
+    for (let i = 0; i < adapterCount; i++) {
+      const customAdapter = serverCustomAdapters.find((adapter) => adapter.adapter_number === i);
+
+      if (customAdapter) {
+        adaptersForDialog.push({
+          adapter_number: customAdapter.adapter_number,
+          adapter_type: customAdapter.adapter_type,
+          port_name: customAdapter.port_name,
+          mac_address: customAdapter.mac_address || '',
+        });
+      } else {
+        let portName: string;
+        if (segmentSize > 0) {
+          const segment = Math.floor(i / segmentSize);
+          const portInSegment = i % segmentSize;
+          portName = portNameFormat.replace('{0}', String(segment * segmentSize + portInSegment));
+        } else {
+          portName = portNameFormat.replace('{0}', String(i));
+        }
+
+        adaptersForDialog.push({
+          adapter_number: i,
+          adapter_type: defaultAdapterType,
+          port_name: portName,
+          mac_address: '',
+        });
+      }
+    }
+
+    const dialogRef = this.dialog.open(CustomAdaptersComponent, {
+      panelClass: ['custom-adapters-dialog-panel', 'dialog-extra-large-panel'],
+      data: {
+        adapters: adaptersForDialog,
+        networkTypes: this.networkTypes,
+        portNameFormat: portNameFormat,
+        portSegmentSize: segmentSize,
+        defaultAdapterType: defaultAdapterType,
+        currentAdapters: adapterCount,
+      } as CustomAdaptersDialogData,
+    });
+
+    dialogRef.afterClosed().subscribe((result: CustomAdaptersDialogResult) => {
+      if (result) {
+        this.virtualBoxTemplate.custom_adapters = result.adapters;
+        if (result.requiredAdapters !== undefined) {
+          this.adapters.set(result.requiredAdapters);
+        }
+        this.cd.markForCheck();
+      }
+    });
+  }
+
+  goBack() {
+    this.router.navigate(['/controller', this.controller.id, 'preferences']);
+  }
+
+  onSave() {
+    if (!this.templateName() || !this.defaultName() || !this.symbol()) {
+      const missingFields: string[] = [];
+      if (!this.templateName()) missingFields.push('Template name');
+      if (!this.defaultName()) missingFields.push('Default name format');
+      if (!this.symbol()) missingFields.push('Symbol');
+      this.toasterService.error(`Missing required fields: ${missingFields.join(', ')}`);
+      return;
+    }
+
+    // Update virtualBoxTemplate from model signals
+    this.virtualBoxTemplate.name = this.templateName();
+    this.virtualBoxTemplate.default_name_format = this.defaultName();
+    this.virtualBoxTemplate.symbol = this.symbol();
+    this.virtualBoxTemplate.category = this.category();
+    this.virtualBoxTemplate.console_type = this.consoleType();
+    this.virtualBoxTemplate.console_auto_start = this.consoleAutoStart();
+    this.virtualBoxTemplate.ram = this.ram();
+    this.virtualBoxTemplate.on_close = this.onClose();
+    this.virtualBoxTemplate.headless = this.headless();
+    this.virtualBoxTemplate.linked_clone = this.linkedClone();
+
+    this.virtualBoxTemplate.adapters = this.adapters();
+    this.virtualBoxTemplate.first_port_name = this.firstPortName();
+    this.virtualBoxTemplate.port_name_format = this.nameFormat();
+    this.virtualBoxTemplate.port_segment_size = this.segmentSize();
+    this.virtualBoxTemplate.adapter_type = this.networkType();
+    this.virtualBoxTemplate.use_any_adapter = this.useAnyAdapter();
+
+    this.virtualBoxTemplate.usage = this.usage();
+    this.virtualBoxTemplate.tags = this.tags();
+
+    // Custom adapters are already managed through the dialog (incremental save)
+
+    this.virtualBoxService.saveTemplate(this.controller, this.virtualBoxTemplate).subscribe({
+      next: (virtualBoxTemplate: VirtualBoxTemplate) => {
+        this.toasterService.success('Changes saved');
+        this.virtualBoxTemplate = virtualBoxTemplate;
+        this.goBack();
+      },
+      error: (err) => {
+        const message = err.error?.message || err.message || 'Failed to save VirtualBox template';
+        this.toasterService.error(message);
+        this.cd.markForCheck();
+      },
+    });
+  }
+
+  chooseSymbol() {
+    const dialogConfig = this.dialogConfig.openConfig('templateSymbol', {
+      autoFocus: false,
+      disableClose: false,
+      data: {
+        controller: this.controller,
+        symbol: this.symbol(),
+      },
+    });
+    const dialogRef = this.dialog.open(TemplateSymbolDialogComponent, dialogConfig);
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.symbol.set(result);
+      }
+    });
+  }
+
+  addTag(event: MatChipInputEvent): void {
+    const value = (event.value || '').trim();
+    const currentTags = this.tags();
+
+    if (value) {
+      this.tags.set([...currentTags, value]);
+    }
+
+    if (event.chipInput) {
+      event.chipInput.clear();
+    }
+  }
+
+  removeTag(tag: string): void {
+    const currentTags = this.tags();
+    const index = currentTags.indexOf(tag);
+
+    if (index >= 0) {
+      const newTags = [...currentTags];
+      newTags.splice(index, 1);
+      this.tags.set(newTags);
+    }
+  }
+}

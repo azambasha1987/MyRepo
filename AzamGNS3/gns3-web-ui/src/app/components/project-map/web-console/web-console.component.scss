@@ -1,0 +1,32 @@
+/**
+ * GNS3 Web Console Component Styles
+ * Using MD3 CSS variables
+ */
+
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* [hidden] sets display:none via user-agent stylesheet, but :host{display:flex}
+   overrides it. This selector restores the correct behaviour. */
+:host([hidden]) {
+  display: none;
+}
+
+:host(.lightTheme) {
+  background: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+}
+
+/* Terminal container styling - minimal styling to avoid interfering with xterm.js */
+.terminal {
+  width: 100%;
+  height: 100%;
+}
+
+/* Context menu styles moved to src/styles/_xterm-context-menu.scss */

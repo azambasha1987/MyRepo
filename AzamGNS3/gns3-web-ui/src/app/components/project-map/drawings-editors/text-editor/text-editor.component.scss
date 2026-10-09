@@ -1,0 +1,13 @@
+/**
+ * GNS3 Text Editor Component Styles
+ * Dialog panel styles are in _dialogs.scss
+ */
+
+.text {
+  width: 100%;
+  min-height: 100px;
+  height: auto;
+  font-family: inherit;
+  resize: vertical;
+  line-height: 1.4;
+}

@@ -1,0 +1,34 @@
+/**
+ * GNS3 Import Project Dialog Component Styles
+ * Material Design 3, unified with other dialogs
+ */
+
+.non-visible {
+  display: none;
+}
+
+.file-button {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.file-name-form-field {
+  flex: 1;
+  min-width: 0;
+  align-self: center;
+}
+
+.result-message-box {
+  text-align: center;
+  color: var(--mat-sys-on-surface);
+}
+
+.progress-bar {
+  background-color: var(--mat-sys-primary);
+}

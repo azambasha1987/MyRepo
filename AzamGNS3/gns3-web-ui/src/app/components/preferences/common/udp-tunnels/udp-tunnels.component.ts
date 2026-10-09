@@ -1,0 +1,112 @@
+import { ChangeDetectionStrategy, Component, Input, OnInit, inject, model, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { MatTableModule } from '@angular/material/table';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { PortsMappingEntity } from '@models/ethernetHub/ports-mapping-enity';
+import { BuiltInTemplatesConfigurationService } from '@services/built-in-templates-configuration.service';
+import { ToasterService } from '@services/toaster.service';
+import { ValidationService } from '@services/validation';
+
+@Component({
+  selector: 'app-udp-tunnels',
+  templateUrl: './udp-tunnels.component.html',
+  styleUrl: '../../preferences.component.scss',
+  styles: [
+    `
+      .udp-tunnels__input-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 16px;
+      }
+
+      .udp-tunnels__add-btn {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 16px;
+
+        button {
+          min-width: 96px;
+        }
+      }
+    `,
+  ],
+  imports: [
+    CommonModule,
+    MatTableModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatIconModule,
+    MatTooltipModule,
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class UdpTunnelsComponent implements OnInit {
+  @Input() dataSourceUdp: PortsMappingEntity[] = [];
+  displayedColumns: string[] = ['name', 'lport', 'rhost', 'rport', 'action'];
+
+  readonly newPortName = model('');
+  readonly newPortLport = model<number>(0);
+  readonly newPortRhost = model('');
+  readonly newPortRport = model<number>(0);
+
+  readonly portTypes = signal<string[]>([]);
+  readonly etherTypes = signal<string[]>([]);
+
+  private builtInTemplatesConfigurationService = inject(BuiltInTemplatesConfigurationService);
+  private toasterService = inject(ToasterService);
+  private validationService = inject(ValidationService);
+
+  ngOnInit() {
+    this.getConfiguration();
+  }
+
+  getConfiguration() {
+    this.etherTypes.set(this.builtInTemplatesConfigurationService.getEtherTypesForEthernetSwitches());
+    this.portTypes.set(this.builtInTemplatesConfigurationService.getPortTypesForEthernetSwitches());
+  }
+
+  onAddUdpInterface() {
+    // Validate remote host (required)
+    const rhostValidation = this.validationService.required(this.newPortRhost(), 'Remote host');
+    if (!rhostValidation.isValid) {
+      this.toasterService.error(rhostValidation.errorMessage || 'Remote host is required');
+      return;
+    }
+
+    // Validate local port (1-65535, not 0)
+    if (this.newPortLport() < 1 || this.newPortLport() > 65535) {
+      this.toasterService.error('Local port must be between 1 and 65535');
+      return;
+    }
+
+    // Validate remote port (1-65535, not 0)
+    if (this.newPortRport() < 1 || this.newPortRport() > 65535) {
+      this.toasterService.error('Remote port must be between 1 and 65535');
+      return;
+    }
+
+    const newPort: PortsMappingEntity = {
+      name: this.newPortName(),
+      lport: this.newPortLport(),
+      rhost: this.newPortRhost(),
+      rport: this.newPortRport(),
+      port_number: 0,
+      type: 'udp',
+    };
+    this.dataSourceUdp = this.dataSourceUdp.concat([newPort]);
+
+    this.newPortName.set('');
+    this.newPortLport.set(0);
+    this.newPortRhost.set('');
+    this.newPortRport.set(0);
+  }
+
+  delete(port: PortsMappingEntity) {
+    this.dataSourceUdp = this.dataSourceUdp.filter((n) => n !== port);
+  }
+}

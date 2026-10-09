@@ -1,0 +1,769 @@
+/**
+ * GNS3 Web UI - Global Styles
+ *
+ * Using Angular Material prebuilt themes with built-in design tokens.
+ * Theme switching is handled by ThemeService.
+ */
+
+@use 'styles/dialogs' as *;
+@use 'styles/map' as *;
+@use 'styles/xterm-context-menu' as *;
+@use 'styles/markdown' as *;
+@use 'styles/template-wizard' as *;
+@use 'styles/density-tokens' as *;
+
+/* =============================================
+// Global Scrollbar Styles
+// ============================================= */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--mat-sys-outline);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--mat-sys-on-surface-variant);
+}
+
+/* =============================================
+// GNS3 Custom Properties - Opacity Levels
+// Unified opacity values for consistent theming
+// ============================================= */
+:root {
+  // Shadow opacity levels
+  --gns3-shadow-opacity-subtle: 10%;
+  --gns3-shadow-opacity-light: 15%;
+  --gns3-shadow-opacity-normal: 20%;
+  --gns3-shadow-opacity-medium: 25%;
+  --gns3-shadow-opacity-strong: 30%;
+  --gns3-shadow-opacity-heavy: 40%;
+
+  // Border opacity levels
+  --gns3-border-opacity-subtle: 8%;
+  --gns3-border-opacity-light: 12%;
+  --gns3-border-opacity-normal: 15%;
+  --gns3-border-opacity-medium: 20%;
+  --gns3-border-opacity-strong: 25%;
+
+  // Selection opacity levels
+  --gns3-selection-opacity-light: 10%;
+  --gns3-selection-opacity-normal: 15%;
+  --gns3-selection-opacity-medium: 20%;
+}
+
+/* =============================================
+// Global markdown list fix (deprecated - moved to _markdown.scss)
+// ============================================= */
+
+/* =============================================
+// Dialog Styles
+// ============================================= */
+.mat-dialog-actions {
+  margin-bottom: -12px;
+}
+
+/* =============================================
+// Notification toast overlay
+// ============================================= */
+.gns3-toast-panel.mat-mdc-snack-bar-container {
+  --mat-snack-bar-container-color: transparent;
+  --mat-snack-bar-supporting-text-color: var(--mat-sys-on-surface);
+
+  .mat-mdc-snackbar-surface {
+    min-width: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .mat-mdc-snack-bar-label {
+    padding: 0;
+  }
+}
+
+/* =============================================
+// Form Field Styles
+// ============================================= */
+@-moz-document url-prefix() {
+  .temporaryElement {
+    line-height: 1.4em;
+  }
+}
+
+.full-width-field {
+  width: 100%;
+}
+
+/*
+ * Search, filter, and sort controls use a consistent rounded shape across
+ * management pages. The selectors intentionally target semantic field
+ * classes so regular data-entry forms retain their existing appearance.
+ */
+:where(mat-form-field[class*='search'], mat-form-field[class*='filter'], mat-form-field[class*='sort']) {
+  --mat-form-field-filled-container-shape: 12px;
+  --mat-form-field-outlined-container-shape: 0;
+}
+
+:where(
+    mat-form-field[class*='search'],
+    mat-form-field[class*='filter'],
+    mat-form-field[class*='sort']
+  ).mat-form-field-appearance-fill
+  .mat-mdc-text-field-wrapper {
+  border-radius: 12px 12px 0 0;
+  overflow: hidden;
+}
+
+:where(
+    mat-form-field[class*='search'],
+    mat-form-field[class*='filter'],
+    mat-form-field[class*='sort']
+  ).mat-form-field-appearance-outline
+  .mdc-notched-outline__leading {
+  border-radius: 12px 0 0;
+}
+
+:where(
+    mat-form-field[class*='search'],
+    mat-form-field[class*='filter'],
+    mat-form-field[class*='sort']
+  ).mat-form-field-appearance-outline
+  .mdc-notched-outline__trailing {
+  border-radius: 0 12px 0 0;
+}
+
+/*
+ * Data-table headers need clear separation from the page in every theme.
+ * `surface-container-highest` remains neutral in the Azure dark theme while
+ * the primary inset accent and sort arrow retain the active theme identity.
+ */
+html body .mat-mdc-table .mat-mdc-header-row {
+  background: var(--mat-sys-surface-container-highest);
+  box-shadow: inset 0 -2px var(--mat-sys-primary);
+  --mat-sort-arrow-color: var(--mat-sys-primary);
+}
+
+html body .mat-mdc-table .mat-mdc-header-row .mat-mdc-header-cell {
+  color: var(--mat-sys-on-surface);
+}
+
+app-root {
+  width: 100%;
+  height: 100%; // Changed to 100%, relative to html/body
+}
+
+html,
+body {
+  height: 100%; // Changed to height to ensure full viewport
+  margin: 0;
+  padding: 0;
+}
+
+/* =============================================
+// Menu Styles
+// ============================================= */
+mat-menu-panel {
+  min-height: 0px;
+}
+
+.template-menu.mat-mdc-menu-panel,
+.mat-mdc-menu-panel.template-menu {
+  max-width: 500px;
+}
+
+/* Allow drag ghost to escape menu panels by increasing selector specificity */
+body .cdk-overlay-container .mat-mdc-menu-panel.mat-mdc-menu-panel {
+  overflow: visible;
+}
+
+body .cdk-overlay-container .mat-mdc-menu-content.mat-mdc-menu-content {
+  overflow: visible;
+}
+
+body .cdk-overlay-container .cdk-overlay-pane .mat-mdc-menu-panel.mat-mdc-menu-panel {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+/* =============================================
+// Topology Context Menus
+// ============================================= */
+body
+  .cdk-overlay-container
+  .cdk-overlay-pane
+  :is(
+      .mat-mdc-menu-panel.context-menu-items,
+      .mat-mdc-menu-panel.interface-menu-panel,
+      .mat-mdc-menu-panel.map-settings-menu
+    ) {
+  width: max-content;
+  max-width: calc(100vw - 16px);
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
+  .mat-mdc-menu-item,
+  .mat-mdc-menu-item-text {
+    white-space: nowrap;
+  }
+}
+
+/* Template menu - fixed width and increased height to prevent double scrollbar */
+body .cdk-overlay-container .cdk-overlay-pane .mat-mdc-menu-panel.template-menu {
+  max-width: 400px;
+  width: 400px;
+  max-height: 700px;
+}
+
+/* =============================================
+// Tab Styles
+// ============================================= */
+.mat-tab-body-content {
+  height: 100%;
+  overflow: initial;
+}
+
+.mat-tab-body.mat-tab-body-active {
+  overflow-y: clip;
+}
+
+.mat-tab-label {
+  padding: 0 8px;
+  min-width: 152px;
+}
+
+.mat-tab-header-pagination-controls-enabled .mat-tab-header-pagination {
+  display: none;
+}
+
+/* Topology inspector tabs are scoped here because Material owns the nested tab DOM. */
+.topology-inspector .inspector-tabs {
+  .mat-mdc-tab-header {
+    flex: 0 0 auto;
+    padding-inline: var(--gns3-density-space-3);
+    border-bottom: 1px solid var(--mat-sys-outline-variant);
+    cursor: grab;
+    user-select: none;
+  }
+
+  .mat-mdc-tab {
+    // Equal-width tabs that shrink with the panel (min panel width is 400px)
+    min-width: 0;
+    flex: 1 1 0;
+    padding-inline: var(--gns3-density-space-2);
+  }
+
+  .mdc-tab__content {
+    gap: var(--gns3-density-space-2);
+  }
+
+  .mat-mdc-tab-body-wrapper,
+  .mat-mdc-tab-body,
+  .mat-mdc-tab-body-content {
+    min-height: 0;
+    height: 100%;
+  }
+
+  .mat-mdc-tab-body-wrapper {
+    flex: 1 1 auto;
+  }
+
+  .mat-mdc-tab-body-content {
+    overflow: hidden;
+  }
+}
+
+/* =============================================
+// Console Wrapper Tabs - Material 3 Layout
+// ============================================= */
+
+// Override the default 48px tab container height to match the 40px console header
+.console-wrapper__tabs .mat-mdc-tab-header {
+  --mat-tab-container-height: 40px;
+}
+
+.console-wrapper__tabs .mat-mdc-tab {
+  // Minimum width: hostname + spacer + close-btn — 140px covers most short hostnames
+  min-width: 140px;
+  flex: 0 0 auto;
+  // Horizontal padding on both sides
+  padding: 0 10px;
+}
+
+.console-wrapper__tabs .mdc-tab__content {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.console-wrapper__tabs .mdc-tab__text-label {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  // No overflow: hidden here — tabs have a fixed min-width so truncation is
+  // handled by the tab-label-text span's own text-overflow
+}
+
+/* Active tab — M3 primary-container token: purpose-built for active-state backgrounds */
+.console-wrapper__tabs .mat-mdc-tab.mdc-tab--active {
+  background: var(--mat-sys-primary-container);
+  border-radius: 4px;
+}
+
+.console-wrapper__tabs .mat-mdc-tab.mdc-tab--active .tab-label-text {
+  color: var(--mat-sys-on-primary-container);
+}
+
+.console-wrapper__tabs .mat-mdc-tab.mdc-tab--active .tab-close-btn {
+  color: var(--mat-sys-on-primary-container);
+}
+
+/* =============================================
+// Console Header Actions
+// Fix: use .mat-mdc-icon-button (Angular Material 21 MDC class, not legacy .mat-icon-button)
+// Fix: use --mat-icon-button-state-layer-size (correct Angular Material 21 token)
+// ============================================= */
+.console-header-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+
+  .mat-mdc-icon-button {
+    --mat-icon-button-state-layer-size: 32px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: var(--mat-sys-on-surface);
+  }
+}
+
+/* =============================================
+// Link Hover Effects (Map Links)
+// ============================================= */
+.ethernet_link,
+.serial_link {
+  transition: stroke-width 150ms cubic-bezier(0.4, 0, 0.2, 1), stroke 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  stroke-opacity: 1;
+}
+
+.ethernet_link:hover,
+.serial_link:hover {
+  stroke: var(--mat-sys-error);
+  stroke-width: 4px;
+  cursor: pointer;
+  stroke-opacity: 1;
+}
+
+/* Hidden links - use class instead of inline style */
+.ethernet_link.link_hidden,
+.serial_link.link_hidden {
+  stroke-opacity: 0;
+}
+
+.ethernet_link.link_hidden:hover,
+.serial_link.link_hidden:hover {
+  stroke-opacity: 0.3;
+  stroke: var(--mat-sys-outline);
+}
+
+/* =============================================
+// Marker Traffic Insight — link highlight on match (static, no animation)
+// Color is set inline by MarkerFlashService (user-chosen hex, or none);
+// when no inline color is set, the default theme color below applies.
+// Static highlight (like link :hover) — no keyframes, so many simultaneous
+// matches don't drive continuous repaint. The base .ethernet_link / .serial_link
+// transition still gives a smooth fade in/out when the class is toggled.
+// ============================================= */
+.ethernet_link.marker-pulse,
+.serial_link.marker-pulse {
+  transition: none;
+  stroke: var(--mat-sys-primary);
+  stroke-width: 5px;
+}
+
+/* Direction arrow drawn at a flashing link's midpoint when a `marker.match`
+   carries a `dir` (tx/rx). Inline fill (user-chosen hex) is set by
+   MarkerFlashService; when none is set, the default theme color below applies. */
+.marker-arrow-tx path,
+.marker-arrow-rx path {
+  fill: var(--mat-sys-primary);
+}
+
+/* Marker tag replay: persistent highlight on the current frame's source link
+   (toggled by MarkerReplayService while the replay overlay is open). Tertiary
+   distinguishes it from the live .marker-pulse (primary); the two can coexist
+   on one link — the flash's inline stroke wins while it lasts. */
+.ethernet_link.marker-replay-active,
+.serial_link.marker-replay-active {
+  transition: none;
+  stroke: var(--mat-sys-tertiary);
+  stroke-width: 5px;
+}
+
+/* =============================================
+// Curviness Anchor (Link Drag Handle)
+// ============================================= */
+.curviness-anchor {
+  transition: r 150ms ease, fill 150ms ease;
+}
+
+.curviness-anchor:hover {
+  r: 10;
+  fill: var(--mat-sys-primary);
+}
+
+/* =============================================
+// Material Overlays Z-Index Fix
+// ============================================= */
+/*
+ * AI Chat container uses z-index: 1000
+ * Material overlays use default z-index: 1000
+ * Session Menu (1300) and Confirm Dialog (1400) are set via ZIndexService
+ */
+
+/* =============================================
+// AI Chat Menu Icon Alignment
+// ============================================= */
+
+/* Fix alignment: menu items with icons */
+.mat-menu-panel .mat-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mat-menu-panel .mat-menu-item:hover .menu-item-icon {
+  fill: var(--mat-sys-primary);
+}
+
+/* =============================================
+// Fix SVG and text alignment in AI Chat buttons
+// ============================================= */
+
+.ai-chat-container .new-session-button .mat-button-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-chat-container .session-list-icon {
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+
+/* =============================================
+// Tool Status Spinner in AI Chat
+// ============================================= */
+.tool-status mat-spinner {
+  display: inline-block;
+}
+
+/* =============================================
+// Session Action Menu Panel
+// ============================================= */
+.session-action-menu {
+  min-height: auto;
+  max-height: none;
+  height: auto;
+  overflow: visible;
+
+  .mat-mdc-menu-content {
+    padding: 4px 0;
+    max-height: none;
+  }
+
+  .mat-mdc-menu-item {
+    height: 40px;
+    min-height: 40px;
+    padding: 0 12px;
+  }
+
+  .mdc-list-item__primary-text {
+    font-size: 14px;
+  }
+
+  .menu-item-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+    vertical-align: middle;
+  }
+
+  .delete-icon {
+    fill: var(--mat-app-error);
+  }
+}
+
+/* =============================================
+// Uploading Processbar Snack Bar
+// ============================================= */
+.uplaoding-file-snackabar .mat-snack-bar-container {
+  min-width: 450px;
+}
+
+.proccessBar-row {
+  display: flex;
+}
+
+.proccessBar-col {
+  margin: auto;
+}
+
+/* =============================================
+// Settings Component Expansion Panel Styles
+// These styles target mat-expansion-panel inside .settings__card
+// Required here because Angular Material internals cannot be styled
+// via component-scoped styles
+// ============================================= */
+.settings__card {
+  .mat-expansion-panel {
+    box-shadow: none;
+    border-radius: 0;
+
+    &:first-child {
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
+    }
+
+    &:last-child {
+      border-bottom-left-radius: 16px;
+      border-bottom-right-radius: 16px;
+    }
+
+    &:not(:last-child) {
+      border-bottom: 1px solid var(--mat-sys-outline-variant);
+    }
+
+    &.mat-expanded {
+      background: color-mix(in srgb, var(--mat-sys-primary-container) 30%, transparent);
+    }
+  }
+
+  .mat-expansion-panel-header {
+    padding: 16px 24px;
+    height: auto;
+    min-height: 64px;
+
+    &:hover {
+      background: color-mix(in srgb, var(--mat-sys-on-surface) 3%, transparent);
+    }
+  }
+
+  .mat-expansion-panel-header-description {
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  .mat-expansion-panel-content {
+    padding: 8px 24px 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .settings__card {
+    .mat-expansion-panel-header {
+      padding: 12px 16px;
+      min-height: 56px;
+    }
+
+    .mat-expansion-panel-content {
+      padding: 8px 16px 16px;
+    }
+  }
+}
+
+/* Hidden link labels - invisible by default, revealed on hover */
+.link-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease-in-out;
+}
+
+g.link:hover .link-hidden {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* =============================================
+// Chips in Form Fields - Fix label overlap
+// ============================================= */
+mat-form-field {
+  mat-chip-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: var(--gns3-density-space-4);
+  }
+
+  .mat-mdc-form-field-subscript-wrapper {
+    margin-top: 4px;
+  }
+
+  /* Ensure label floats above chips when present */
+  .mat-mdc-form-field-flex {
+    align-items: flex-start;
+  }
+}
+
+/* In compact density, form fields reserve no extra helper-text space below
+   the input, which tightens the vertical rhythm of dense forms. */
+html[data-density='compact'] mat-form-field .mat-mdc-form-field-subscript-wrapper {
+  margin-top: 0;
+}
+
+/* Vertically center text prefix (e.g. "global-" in marker name field) */
+.mat-mdc-form-field-text-prefix {
+  align-self: center;
+}
+
+/* =============================================
+// Menu Density
+// ============================================= */
+.mat-mdc-menu-panel {
+  --gns3-menu-item-min-height: 48px;
+  --gns3-menu-item-hover-background: color-mix(
+    in srgb,
+    var(--mat-sys-primary) 12%,
+    var(--mat-menu-container-color, var(--mat-sys-surface-container))
+  );
+  --gns3-menu-item-focus-background: color-mix(
+    in srgb,
+    var(--mat-sys-primary) 16%,
+    var(--mat-menu-container-color, var(--mat-sys-surface-container))
+  );
+  --mat-menu-item-hover-state-layer-color: var(--gns3-menu-item-hover-background);
+  --mat-menu-item-focus-state-layer-color: var(--gns3-menu-item-focus-background);
+}
+
+.mat-mdc-menu-panel .mat-mdc-menu-item {
+  min-height: var(--gns3-menu-item-min-height);
+}
+
+html[data-density='compact'] .mat-mdc-menu-panel {
+  --gns3-menu-item-min-height: 40px;
+}
+
+.mat-mdc-menu-panel:is(.context-menu-items, .interface-menu-panel, .map-settings-menu) {
+  --gns3-menu-item-min-height: 36px;
+
+  .mat-mdc-menu-content {
+    padding: 4px 0;
+  }
+}
+
+/* Workspace style controls are scoped globally so their Material fields share
+   the same density metrics as the rest of the application. */
+app-settings {
+  .settings__setting-row.settings__setting-row--style {
+    display: grid;
+    grid-template-columns: minmax(220px, 280px) minmax(0, 860px);
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--gns3-density-space-5);
+  }
+
+  .settings__style-fields {
+    display: grid;
+    min-width: 0;
+    width: 100%;
+    max-width: 860px;
+    align-items: center;
+    gap: var(--gns3-density-space-4);
+
+    &--text,
+    &--link {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .mat-mdc-form-field-subscript-wrapper {
+      display: none;
+    }
+  }
+
+  .settings__color-field {
+    display: grid;
+    height: var(--gns3-density-form-field-height);
+    box-sizing: border-box;
+    grid-template-columns: auto 32px minmax(62px, 1fr);
+    align-items: center;
+    gap: var(--gns3-density-space-2);
+    padding-inline: var(--gns3-density-space-3);
+    border: 1px solid var(--mat-sys-outline);
+    border-radius: var(--gns3-density-radius-sm);
+    color: var(--mat-sys-on-surface-variant);
+    background: var(--mat-sys-surface-container-lowest);
+    font: var(--mat-sys-body-small);
+
+    input {
+      width: 32px;
+      height: 28px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    code {
+      overflow: hidden;
+      color: var(--mat-sys-on-surface);
+      font: var(--mat-sys-label-small);
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+    }
+  }
+}
+
+@media (max-width: 1180px) {
+  app-settings {
+    .settings__setting-row.settings__setting-row--style {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--gns3-density-space-3);
+    }
+
+    .settings__setting-row--style .settings__setting-copy {
+      max-width: none;
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  app-settings {
+    .settings__style-fields--text,
+    .settings__style-fields--link {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+
+html[data-density='compact'] app-settings {
+  .settings__setting-row.settings__setting-row--style {
+    gap: var(--gns3-density-space-4);
+  }
+
+  .settings__style-fields {
+    gap: var(--gns3-density-space-3);
+  }
+}

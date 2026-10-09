@@ -1,0 +1,11 @@
+.name-form {
+  width: 100%;
+  /* Standard dialog control spacing: 16px normal / 12px compact. */
+  margin-top: var(--gns3-density-space-4);
+}
+
+.radio-group {
+  display: flex;
+  justify-content: center;
+  gap: var(--gns3-density-space-5);
+}

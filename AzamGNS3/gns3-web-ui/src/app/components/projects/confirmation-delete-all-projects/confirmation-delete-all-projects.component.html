@@ -1,0 +1,27 @@
+@if (!isUsedFiles()) {
+<h1 align="center" mat-dialog-title>Deleting projects</h1>
+
+<div mat-dialog-content align="center">
+  <mat-spinner color="accent"></mat-spinner>
+</div>
+} @if (isUsedFiles()) {
+<div mat-dialog-content>
+  @if (successfulDeletions().length > 0) {
+  <h2 mat-dialog-title>✓ {{ successfulDeletions().length }} {{ successfulDeletions().length === 1 ? 'Project' : 'Projects' }} deleted successfully</h2>
+  @for (project of successfulDeletions(); track project; let i = $index) {
+  <p>{{ i + 1 }}. {{ project?.filename || project?.project_id }}</p>
+  } }
+
+  @if (failedDeletions().length > 0) {
+  <h2 mat-dialog-title class="mat-error">✗ {{ failedDeletions().length }} {{ failedDeletions().length === 1 ? 'Project' : 'Projects' }} failed to delete</h2>
+  @for (failure of failedDeletions(); track $index; let i = $index) {
+  <p>
+    {{ i + 1 }}. <strong>{{ failure.project?.filename || failure.project?.project_id }}</strong><br>
+    <span class="mat-error">{{ failure.error?.error?.message || failure.error?.message || 'Unknown error' }}</span>
+  </p>
+  } }
+</div>
+<div mat-dialog-actions align="end">
+  <button mat-raised-button color="primary" (click)="dialogRef.close(successfulDeletions().length > 0)">Close</button>
+</div>
+}

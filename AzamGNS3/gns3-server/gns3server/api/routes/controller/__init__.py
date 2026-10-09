@@ -1,0 +1,152 @@
+#
+# Copyright (C) 2020 GNS3 Technologies Inc.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from fastapi import APIRouter, Depends, HTTPException, status
+
+# Check AI Copilot availability
+from gns3server.agent import AI_COPILOT_AVAILABLE
+from gns3server.api.operation_ids import add_stub_routes
+from gns3server.config import Config
+
+# Conditionally import AI-dependent routes
+if AI_COPILOT_AVAILABLE:
+    from . import chat, copilot, llm_model_configs
+
+    _chat_router = chat.router
+    _copilot_router = copilot.router
+    _llm_router = llm_model_configs.router
+else:
+    # Create stub routers that return 501 for all AI endpoints
+    _chat_router = APIRouter()
+    _copilot_router = APIRouter()
+    _llm_router = APIRouter()
+
+    @_chat_router.api_route("/{path:path}", methods=["GET", "POST", "DELETE", "PATCH", "PUT"], include_in_schema=False)
+    @_copilot_router.api_route(
+        "/{path:path}", methods=["GET", "POST", "DELETE", "PATCH", "PUT"], include_in_schema=False
+    )
+    @_llm_router.api_route("/{path:path}", methods=["GET", "POST", "DELETE", "PATCH", "PUT"], include_in_schema=False)
+    async def ai_not_available(path: str = ""):
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="AI Copilot is not available. Install AI dependencies with: pip install gns3-server[ai-features]",
+        )
+
+    add_stub_routes(_chat_router, ai_not_available, "chat_not_available")
+    add_stub_routes(_copilot_router, ai_not_available, "copilot_not_available")
+    add_stub_routes(_llm_router, ai_not_available, "llm_not_available")
+
+
+from . import (
+    acl,
+    api_keys,
+    appliances,
+    computes,
+    controller,
+    drawings,
+    gns3vm,
+    groups,
+    images,
+    links,
+    netmiko,
+    nodes,
+    pools,
+    privileges,
+    projects,
+    roles,
+    settings,
+    snapshots,
+    symbols,
+    templates,
+    users,
+)
+from .dependencies.authentication import get_current_active_user
+
+_include_ai_in_schema = Config.instance().settings.Server.openapi_include_ai
+
+router = APIRouter()
+
+router.include_router(controller.router, tags=["Controller"])
+
+router.include_router(settings.router, prefix="/settings", tags=["Server settings"])
+
+router.include_router(users.router, prefix="/access/users", tags=["Users"])
+
+router.include_router(groups.router, prefix="/access/groups", tags=["Users groups"])
+
+router.include_router(roles.router, prefix="/access/roles", tags=["Roles"])
+
+router.include_router(
+    privileges.router, dependencies=[Depends(get_current_active_user)], prefix="/access/privileges", tags=["Privileges"]
+)
+
+router.include_router(acl.router, prefix="/access/acl", tags=["ACL"])
+
+router.include_router(images.router, prefix="/images", tags=["Images"])
+
+router.include_router(templates.router, prefix="/templates", tags=["Templates"])
+
+router.include_router(projects.router, prefix="/projects", tags=["Projects"])
+
+router.include_router(nodes.router, prefix="/projects/{project_id}/nodes", tags=["Nodes"])
+
+router.include_router(links.router, prefix="/projects/{project_id}/links", tags=["Links"])
+
+router.include_router(drawings.router, prefix="/projects/{project_id}/drawings", tags=["Drawings"])
+
+router.include_router(symbols.router, prefix="/symbols", tags=["Symbols"])
+
+router.include_router(snapshots.router, prefix="/projects/{project_id}/snapshots", tags=["Snapshots"])
+
+router.include_router(
+    computes.router, dependencies=[Depends(get_current_active_user)], prefix="/computes", tags=["Computes"]
+)
+
+router.include_router(appliances.router, prefix="/appliances", tags=["Appliances"])
+
+router.include_router(netmiko.router, prefix="/netmiko", tags=["Netmiko"])
+
+router.include_router(pools.router, prefix="/pools", tags=["Resource pools"])
+
+router.include_router(
+    gns3vm.router, dependencies=[Depends(get_current_active_user)], deprecated=True, prefix="/gns3vm", tags=["GNS3 VM"]
+)
+
+router.include_router(
+    _llm_router,
+    prefix="/access",
+    dependencies=[Depends(get_current_active_user)],
+    tags=["LLM Model Configurations"],
+    include_in_schema=_include_ai_in_schema,
+)
+
+router.include_router(
+    _copilot_router,
+    prefix="/copilot",
+    dependencies=[Depends(get_current_active_user)],
+    tags=["GNS3 Copilot"],
+    include_in_schema=_include_ai_in_schema,
+)
+
+router.include_router(
+    _chat_router,
+    prefix="/copilot/projects/{project_id}/chat",
+    dependencies=[Depends(get_current_active_user)],
+    tags=["GNS3 Copilot"],
+    include_in_schema=_include_ai_in_schema,
+)
+
+router.include_router(api_keys.router, dependencies=[Depends(get_current_active_user)], tags=["API Keys"])

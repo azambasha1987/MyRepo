@@ -1,0 +1,293 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { of, throwError } from 'rxjs';
+import { MatDialogRef } from '@angular/material/dialog';
+import { MatChipsModule } from '@angular/material/chips';
+import { ConfiguratorDialogEthernetSwitchComponent } from './configurator-ethernet-switch.component';
+import { NodeService } from '@services/node.service';
+import { ToasterService } from '@services/toaster.service';
+import { BuiltInTemplatesConfigurationService } from '@services/built-in-templates-configuration.service';
+import { ValidationService } from '@services/validation';
+import { Node } from '../../../../../cartography/models/node';
+import { Controller } from '@models/controller';
+import { ChangeDetectorRef } from '@angular/core';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+describe('ConfiguratorDialogEthernetSwitchComponent', () => {
+  let fixture: ComponentFixture<ConfiguratorDialogEthernetSwitchComponent>;
+  let component: ConfiguratorDialogEthernetSwitchComponent;
+  let mockDialogRef: { close: ReturnType<typeof vi.fn> };
+  let mockNodeService: any;
+  let mockToasterService: any;
+  let mockEthernetSwitchesConfigurationService: any;
+  let mockValidationService: any;
+  let mockChangeDetectorRef: any;
+
+  const mockController = { id: 1 } as unknown as Controller;
+  const mockNode = {
+    node_id: 'node-1',
+    name: 'Ethernet-Switch-1',
+    console_type: 'telnet',
+    console_auto_start: false,
+    properties: { ports_mapping: [] },
+    tags: [] as string[],
+  } as unknown as Node;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+
+    mockDialogRef = { close: vi.fn() };
+
+    mockNodeService = {
+      getNode: vi.fn().mockReturnValue(of(mockNode)),
+      updateNode: vi.fn().mockReturnValue(of({})),
+    };
+
+    mockToasterService = {
+      error: vi.fn(),
+      success: vi.fn(),
+    };
+
+    mockEthernetSwitchesConfigurationService = {
+      getConsoleTypesForEthernetSwitches: vi.fn().mockReturnValue(['telnet', 'vnc', 'none']),
+      getEtherTypesForEthernetSwitches: vi.fn().mockReturnValue(['Ethernet', 'FastEthernet', 'GigabitEthernet']),
+      getPortTypesForEthernetSwitches: vi.fn().mockReturnValue(['access', 'trunk']),
+    };
+
+    mockValidationService = {
+      required: vi.fn().mockReturnValue({ isValid: true }),
+    };
+
+    mockChangeDetectorRef = {
+      markForCheck: vi.fn(),
+    };
+
+    await TestBed.configureTestingModule({
+      imports: [ConfiguratorDialogEthernetSwitchComponent, MatChipsModule],
+      providers: [
+        { provide: MatDialogRef, useValue: mockDialogRef },
+        { provide: NodeService, useValue: mockNodeService },
+        { provide: ToasterService, useValue: mockToasterService },
+        { provide: BuiltInTemplatesConfigurationService, useValue: mockEthernetSwitchesConfigurationService },
+        { provide: ValidationService, useValue: mockValidationService },
+        { provide: ChangeDetectorRef, useValue: mockChangeDetectorRef },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(ConfiguratorDialogEthernetSwitchComponent);
+    component = fixture.componentInstance;
+    component.controller = mockController;
+    component.node = mockNode as Node;
+    fixture.detectChanges();
+  });
+
+  describe('component initialization', () => {
+    it('should create', () => {
+      expect(component).toBeTruthy();
+    });
+
+    it('should have separatorKeysCodes for chip input', () => {
+      expect(component.separatorKeysCodes).toBeDefined();
+      expect(Array.isArray(component.separatorKeysCodes)).toBe(true);
+      expect(component.separatorKeysCodes).toContain(13); // ENTER
+      expect(component.separatorKeysCodes).toContain(188); // COMMA
+    });
+
+    it('should initialize model signals for form fields', () => {
+      expect(component.nodeName).toBeTruthy();
+      expect(component.consoleType).toBeTruthy();
+    });
+  });
+
+  describe('getConfiguration', () => {
+    it('should load console types from BuiltInTemplatesConfigurationService', () => {
+      component.getConfiguration();
+      expect(mockEthernetSwitchesConfigurationService.getConsoleTypesForEthernetSwitches).toHaveBeenCalled();
+      expect(component.consoleTypes).toEqual(['telnet', 'vnc', 'none']);
+    });
+  });
+
+  describe('addTag', () => {
+    it('should add tag to node tags array', () => {
+      component.node = { ...mockNode, tags: [] } as Node;
+      const mockEvent = { value: 'new-tag', chipInput: { clear: vi.fn() } } as any;
+
+      component.addTag(mockEvent);
+
+      expect(component.node.tags).toContain('new-tag');
+      expect(mockEvent.chipInput.clear).toHaveBeenCalled();
+    });
+
+    it('should not add empty tag', () => {
+      component.node = { ...mockNode, tags: [] } as Node;
+      const initialTags = [...(component.node.tags || [])];
+      const mockEvent = { value: '', chipInput: { clear: vi.fn() } } as any;
+
+      component.addTag(mockEvent);
+
+      expect(component.node.tags).toEqual(initialTags);
+    });
+
+    it('should not add whitespace-only tag', () => {
+      component.node = { ...mockNode, tags: [] } as Node;
+      const initialTags = [...(component.node.tags || [])];
+      const mockEvent = { value: '   ', chipInput: { clear: vi.fn() } } as any;
+
+      component.addTag(mockEvent);
+
+      expect(component.node.tags).toEqual(initialTags);
+    });
+
+    it('should initialize tags array if undefined', () => {
+      component.node = { ...mockNode, tags: undefined } as any;
+      const mockEvent = { value: 'test-tag', chipInput: { clear: vi.fn() } } as any;
+
+      component.addTag(mockEvent);
+
+      expect(component.node.tags).toEqual(['test-tag']);
+    });
+
+    it('should trim tag value before adding', () => {
+      component.node = { ...mockNode, tags: [] } as Node;
+      const mockEvent = { value: '  trimmed-tag  ', chipInput: { clear: vi.fn() } } as any;
+
+      component.addTag(mockEvent);
+
+      expect(component.node.tags).toContain('trimmed-tag');
+    });
+  });
+
+  describe('removeTag', () => {
+    it('should remove tag from node tags array', () => {
+      component.node = { ...mockNode, tags: ['tag1', 'tag2', 'tag3'] } as Node;
+
+      component.removeTag('tag2');
+
+      expect(component.node.tags).not.toContain('tag2');
+      expect(component.node.tags).toEqual(['tag1', 'tag3']);
+    });
+
+    it('should not throw when tags is undefined', () => {
+      component.node = { ...mockNode, tags: undefined } as any;
+
+      expect(() => component.removeTag('tag1')).not.toThrow();
+    });
+
+    it('should not modify array when tag not found', () => {
+      component.node = { ...mockNode, tags: ['tag1', 'tag2'] } as Node;
+      const originalTags = [...component.node.tags];
+
+      component.removeTag('nonexistent');
+
+      expect(component.node.tags).toEqual(originalTags);
+    });
+
+    it('should handle empty tags array', () => {
+      component.node = { ...mockNode, tags: [] } as Node;
+
+      expect(() => component.removeTag('tag1')).not.toThrow();
+      expect(component.node.tags).toEqual([]);
+    });
+  });
+
+  describe('onSaveClick', () => {
+    beforeEach(() => {
+      mockValidationService.required.mockReturnValue({ isValid: true });
+    });
+
+    it('should show error toast when name is empty', () => {
+      mockValidationService.required.mockReturnValue({
+        isValid: false,
+        errorMessage: 'Name is required',
+      });
+      component.nodeName.set('');
+
+      component.onSaveClick();
+
+      expect(mockToasterService.error).toHaveBeenCalledWith('Name is required');
+      expect(mockNodeService.updateNode).not.toHaveBeenCalled();
+    });
+
+    it('should update node with signal values when validation passes', () => {
+      component.node = { ...mockNode } as Node;
+      component.nodeName.set('Updated-Switch');
+      component.consoleType.set('vnc');
+
+      component.onSaveClick();
+
+      expect(component.node.name).toBe('Updated-Switch');
+      expect(component.node.console_type).toBe('vnc');
+      expect(mockNodeService.updateNode).toHaveBeenCalledWith(mockController, component.node);
+    });
+
+    it('should show success toast and close dialog on successful update', () => {
+      component.node = { ...mockNode } as Node;
+      component.nodeName.set('Switch-Updated');
+      component.consoleType.set('telnet');
+
+      component.onSaveClick();
+
+      expect(mockToasterService.success).toHaveBeenCalledWith('Node Switch-Updated updated.');
+      expect(mockDialogRef.close).toHaveBeenCalled();
+    });
+  });
+
+  describe('onCancelClick', () => {
+    it('should close dialog without data', () => {
+      component.onCancelClick();
+
+      expect(mockDialogRef.close).toHaveBeenCalledWith();
+    });
+  });
+
+  describe('prototype methods', () => {
+    it('should have ngOnInit method', () => {
+      expect(typeof (ConfiguratorDialogEthernetSwitchComponent.prototype as any).ngOnInit).toBe('function');
+    });
+
+    it('should have getConfiguration method', () => {
+      expect(typeof (ConfiguratorDialogEthernetSwitchComponent.prototype as any).getConfiguration).toBe('function');
+    });
+
+    it('should have onSaveClick method', () => {
+      expect(typeof (ConfiguratorDialogEthernetSwitchComponent.prototype as any).onSaveClick).toBe('function');
+    });
+
+    it('should have onCancelClick method', () => {
+      expect(typeof (ConfiguratorDialogEthernetSwitchComponent.prototype as any).onCancelClick).toBe('function');
+    });
+
+    it('should have addTag method', () => {
+      expect(typeof (ConfiguratorDialogEthernetSwitchComponent.prototype as any).addTag).toBe('function');
+    });
+
+    it('should have removeTag method', () => {
+      expect(typeof (ConfiguratorDialogEthernetSwitchComponent.prototype as any).removeTag).toBe('function');
+    });
+  });
+
+  describe('Error handling', () => {
+    it('should show error toast when getNode fails', () => {
+      mockNodeService.getNode.mockReturnValue(throwError(() => new Error('Failed to load node')));
+      const cdrSpy = vi.spyOn(component['cd'], 'markForCheck');
+
+      component.ngOnInit();
+
+      expect(mockToasterService.error).toHaveBeenCalledWith('Failed to load node');
+      expect(cdrSpy).toHaveBeenCalled();
+    });
+
+    it('should show error toast when updateNode fails', () => {
+      mockNodeService.updateNode.mockReturnValue(throwError(() => new Error('Failed to update node')));
+      const cdrSpy = vi.spyOn(component['cd'], 'markForCheck');
+      component.node = { ...mockNode, properties: { ports_mapping: [] } } as Node;
+      component.nodeName.set('Updated-Switch');
+      component.consoleType.set('telnet');
+
+      component.onSaveClick();
+
+      expect(mockToasterService.error).toHaveBeenCalledWith('Failed to update node');
+      expect(cdrSpy).toHaveBeenCalled();
+      expect(mockDialogRef.close).not.toHaveBeenCalled();
+    });
+  });
+});

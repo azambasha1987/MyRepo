@@ -1,0 +1,93 @@
+*.py[cod]
+__pycache__
+.pytest_cache
+
+#py.test
+.cache
+
+# environment file
+.env
+
+# hypothesis files
+.hypothesis
+
+# C extensions
+*.so
+
+# Packages
+*.egg
+*.egg-info
+dist
+build
+eggs
+parts
+var
+sdist
+develop-eggs
+.installed.cfg
+lib
+lib64
+
+# Installer logs
+pip-log.txt
+
+# Unit test / coverage reports
+.coverage
+.coverage*
+.tox
+.cache
+nosetests.xml
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Translations
+*.mo
+
+# Mr Developer
+.mr.developer.cfg
+.project
+.pydevproject
+.settings
+.vscode
+
+# Pycharm
+.idea
+
+# Gedit Backup Files
+*~
+
+#Documentation build
+docs/_build
+
+#VPCS
+vpcs.hist
+startup.vpcs
+.gns3_shell_history
+
+# Virtualenv
+env
+venv
+*venv
+.ropeproject
+
+# Claude Code settings (may contain API keys)
+.claude/settings*.json
+.claude/minmax-settings.json
+.claude/zhipu-settings.json
+.claude/settings.local.json
+.claude/deepseek-settings.json
+.claude/claude-settings.json
+.claude/gemini-settings.json
+.claude/grok-settings.json
+!.claude/development.md  # Exception: allow development docs
+!.claude/skills/         # Exception: allow project skills
+!.claude/memory/         # Exception: allow project memory
+# PROJECT_CONTEXT.md  # Commented out: allow tracking project context
+
+# Tiktoken cache files
+gns3server/agent/gns3_copilot/cache/tiktoken/
+
+gns3.log
+/configs/

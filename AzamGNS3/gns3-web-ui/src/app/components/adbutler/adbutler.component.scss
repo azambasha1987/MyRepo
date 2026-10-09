@@ -1,0 +1,58 @@
+.ad {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--mat-sys-primary-container);
+  padding-top: 10px;
+  padding-bottom: 10px;
+  font-size: 12px;
+  font-weight: bold;
+  opacity: 0.8;
+}
+
+.adInnerContainer {
+  margin: auto;
+  text-align: center;
+}
+
+.adBody {
+  padding-right: 16px;
+}
+
+.close-button {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  color: var(--mat-sys-on-surface);
+}
+
+.lightTheme {
+  background-color: var(--mat-sys-surface);
+}
+
+.hidden {
+  visibility: hidden;
+}
+
+button {
+  background-color: var(--mat-sys-primary);
+  margin-top: 2px;
+  border: none;
+  outline: none;
+  padding: 5px;
+  color: var(--mat-sys-on-primary);
+  font-weight: bold;
+  font-size: 11px;
+  padding-right: 15px;
+  padding-left: 15px;
+  border-radius: 6px;
+
+  a {
+    color: var(--mat-sys-on-primary);
+  }
+}
+
+a {
+  color: var(--mat-sys-on-surface);
+}

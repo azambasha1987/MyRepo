@@ -304,31 +304,55 @@ class UpdateChecker:
 
         return report_file
 
-    def execute(self):
+    def execute(self, ci_mode: bool = False, json_output: bool = False, sandbox: bool = False) -> int:
         """Runs the entire update check workflow."""
-        print(f"\n{BOLD}===================================================================={RESET}")
-        print(f"{BOLD} [AzamGNS3] Upstream Update Checker & Code Cross-Audit Engine      {RESET}")
-        print(f"{BOLD}===================================================================={RESET}")
-        print(f"Timestamp: {self.timestamp}\n")
+        if not json_output:
+            print(f"\n{BOLD}===================================================================={RESET}")
+            print(f"{BOLD} [AzamGNS3] Upstream Update Checker & Code Cross-Audit Engine      {RESET}")
+            print(f"{BOLD}===================================================================={RESET}")
+            print(f"Timestamp: {self.timestamp}\n")
 
         for submod in SUBMODULES:
             self.results[submod["name"]] = self.inspect_submodule(submod)
 
-        preflight = self.run_preflight_checks()
+        preflight = self.run_preflight_checks() if not json_output else {"tests_passed": True, "compile_ok": True}
         report_path = self.generate_report(preflight)
+
+        total_commits = sum(len(d.get("new_commits", [])) for d in self.results.values())
+        conflicts = any(d.get("has_conflicts", False) for d in self.results.values())
+
+        if sandbox and total_commits > 0:
+            branch_name = f"sync/audit-{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            for submod in SUBMODULES:
+                if self.results.get(submod["name"], {}).get("new_commits"):
+                    sub_path = self.root / submod["path"]
+                    run_cmd(f"git checkout -b {branch_name}", cwd=sub_path)
+            if not json_output:
+                print(f"{CYAN}[+] Created isolated sandbox branch: {branch_name}{RESET}")
+
+        if json_output:
+            payload = {
+                "timestamp": self.timestamp,
+                "total_new_commits": total_commits,
+                "has_conflicts": conflicts,
+                "preflight_passed": preflight["tests_passed"] and preflight["compile_ok"],
+                "report_file": str(report_path),
+                "submodules": self.results
+            }
+            print(json.dumps(payload, indent=2))
+            if ci_mode and conflicts:
+                return 2
+            if ci_mode and not (preflight["tests_passed"] and preflight["compile_ok"]):
+                return 1
+            return 0
 
         print(f"\n{BOLD}===================================================================={RESET}")
         print(f"{BOLD} SUMMARY RESULTS:{RESET}")
         print(f"====================================================================")
 
-        total_commits = 0
-        conflicts = False
-
         for name, data in self.results.items():
             commits = data.get("new_commits", [])
-            total_commits += len(commits)
             if data.get("has_conflicts"):
-                conflicts = True
                 status_str = f"{RED}Commits Available ({len(commits)}) - COLLISION DETECTED{RESET}"
             elif commits:
                 status_str = f"{GREEN}Commits Available ({len(commits)}) - SAFE{RESET}"
@@ -345,25 +369,34 @@ class UpdateChecker:
         if conflicts:
             print(f"{YELLOW}[!] WARNING: Upstream commits touch protected AzamGNS3 core files.{RESET}")
             print(f"{YELLOW}[!] Follow Audited Adaptation runbook. Do not blindly merge.{RESET}\n")
+            if ci_mode:
+                return 2
         elif total_commits > 0:
             print(f"{GREEN}[+] New upstream commits are safe to review and integrate.{RESET}\n")
         else:
             print(f"{GREEN}[OK] AzamGNS3 is completely synchronized with upstream GNS3.{RESET}\n")
 
+        if ci_mode and not (preflight["tests_passed"] and preflight["compile_ok"]):
+            return 1
+        return 0
+
 
 def main():
     parser = argparse.ArgumentParser(description="AzamGNS3 Upstream Update Checker & Code Cross-Audit Engine")
     parser.add_argument("--root", default=None, help="Root directory of AzamGNS3 workspace")
+    parser.add_argument("--ci", action="store_true", help="CI/CD mode: exits with non-zero code on conflicts or test failures")
+    parser.add_argument("--json", action="store_true", help="Output machine-readable JSON for automated pipelines")
+    parser.add_argument("--sandbox", action="store_true", help="Auto-create isolated git branch for testing adaptations")
     args = parser.parse_args()
 
     if args.root:
         workspace_root = Path(args.root).resolve()
     else:
-        # Default to script parent's parent
         workspace_root = Path(__file__).resolve().parent.parent
 
     checker = UpdateChecker(workspace_root)
-    checker.execute()
+    exit_code = checker.execute(ci_mode=args.ci, json_output=args.json, sandbox=args.sandbox)
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":

@@ -1,10 +1,54 @@
-# Update Check & Code Cross-Audit Plan (AzamGNS3)
+# SDLC-Integrated Upstream Update Check & Governance Plan (AzamGNS3)
 
 *Scan Platform: Ubuntu 26.04 (Resolute) / Windows 11* | *Repository: azambasha1987/MyRepo (AzamGNS3)*
 
 ---
 
-## 1. Mandatory Safeguards: The Zero-Glitch Protocol
+## 1. Executive Framework: SDLC-Wide Governance
+This plan establishes an enterprise-grade **Software Development Life Cycle (SDLC)** governance framework for AzamGNS3. It ensures that official upstream commits from [`gns3-server`](https://github.com/GNS3/gns3-server), [`gns3-gui`](https://github.com/GNS3/gns3-gui), and [`gns3-web-ui`](https://github.com/GNS3/gns3-web-ui) are continuously monitored, audited, and adapted throughout all phases of development, testing, release, and production without regressions.
+
+```mermaid
+flowchart TD
+    subgraph SDLC1 [Stage 1: Threat & Ingestion Radar]
+        R1["Weekly Scheduled Scanner (scripts/azamgns3-update-checker.py)"]
+        R2["Upstream Git Drift Detection (Commits Ahead)"]
+        R3["Dependency CVE & Advisory Checks"]
+    end
+
+    subgraph SDLC2 [Stage 2: Architectural Shielding]
+        A1["Protected Touchpoints Filter (cpu_governor, bootstorm, io_uring)"]
+        A2["Collision & Regression Classification (SAFE vs CAUTION vs CONFLICT)"]
+    end
+
+    subgraph SDLC3 [Stage 3: Dev & Isolation Sandbox]
+        D1["Pre-Commit Hooks (Syntax & AST checks)"]
+        D2["Automated Isolated Sandbox Branches (sync/audit-TIMESTAMP)"]
+    end
+
+    subgraph SDLC4 [Stage 4: CI/CD Pipeline Gates]
+        C1["GitHub Actions Workflow (.github/workflows/azamgns3-upstream-sync.yml)"]
+        C2["Automated Exit Codes (--ci flag: 0=clean, 1=test fail, 2=conflict)"]
+        C3["Automated Markdown Artifact Publishing (docs/reports/)"]
+    end
+
+    subgraph SDLC5 [Stage 5: Multi-Tier QA Matrix]
+        Q1["Unit & Performance Suite (tests/test_optimizations.py)"]
+        Q2["Python 3.14 AST Compilation Checks"]
+        Q3["TAP vhost-net & QEMU CLI Flags Validation"]
+    end
+
+    subgraph SDLC6 [Stage 6: Deployment & Rollback]
+        P1["Canary Staging & Human Approval Gate"]
+        P2["Production Deployment (systemctl restart azamgns3)"]
+        P3["Immutable Backup Checkpoints & 1-Command Instant Rollback"]
+    end
+
+    SDLC1 --> SDLC2 --> SDLC3 --> SDLC4 --> SDLC5 --> SDLC6
+```
+
+---
+
+## 2. Mandatory Production Safeguards: The Zero-Glitch Protocol
 
 > [!CAUTION]
 > ### NON-REGRESSION DIRECTIVE
@@ -23,7 +67,7 @@
 
 ---
 
-## 2. Core Philosophy: Audited Adaptation vs. Blind Copy-Pasting
+## 3. Core Philosophy: Audited Adaptation vs. Blind Copy-Pasting
 
 > [!IMPORTANT]
 > ### WHY WE DO NOT BLINDLY MERGE UPSTREAM COMMITS
@@ -41,7 +85,7 @@
 
 ---
 
-## 3. Protected Touchpoints Matrix (AzamGNS3 Shield)
+## 4. Protected Touchpoints Matrix (AzamGNS3 Shield)
 
 | Protected File | Description | Collision Action |
 | :--- | :--- | :--- |
@@ -54,55 +98,73 @@
 
 ---
 
-## 4. Standard Operating Procedure: The 5-Step Update Workflow
+## 5. SDLC Operational Guide: The 6 Lifecycle Gateways
 
-```mermaid
-flowchart TD
-    S0["Step 0: Run Update Scanner (python scripts/azamgns3-update-checker.py)"] --> S1["Step 1: Inspect Generated Report in docs/reports/"]
-    S1 --> S2{"Are Protected Files Touched?"}
-    
-    S2 -->|No| S3A["Step 2A: Safe Fast-Forward / Cherry-Pick Bug Fixes"]
-    S2 -->|Yes| S3B["Step 2B: Surgical Adaptation in Isolated Sandbox"]
-    
-    S3A --> S4["Step 3: Execute Pre-Flight Regression Suite (tests/test_optimizations.py)"]
-    S3B --> S4
-    
-    S4 --> S5{"All Tests Passed?"}
-    S5 -->|Yes| S6["Step 4: Commit Updates with Pinned Submodule References"]
-    S5 -->|No| S7["Step 4B: Revert & Correct Incompatibility"]
-    
-    S6 --> S8["Step 5: Turnkey Deploy (git push & systemctl restart azamgns3)"]
-```
-
-### Step 0: Run the Live Scanner
+### Gateway 1: Automated Ingestion & Drift Radar
+Run the scanner manually or via cron/task scheduler:
 ```bash
-# From workspace root
+# Standard interactive check with colorized summary
 python scripts/azamgns3-update-checker.py
+
+# Machine-readable JSON output for integrations
+python scripts/azamgns3-update-checker.py --json
+
+# CI/CD execution (returns exit code 2 on conflicts, 1 on test failures, 0 on clean)
+python scripts/azamgns3-update-checker.py --ci
 ```
 
-### Step 1: Review the Markdown Audit Report
-The scanner generates a timestamped report under [`docs/reports/`](file:///e:/Git/AzamGNS3/docs/reports/):
-- Review the commit breakdown table.
-- Verify risk tags (🟢 SAFE vs. 🟡 CAUTION vs. 🔴 COLLISION).
-
-### Step 2: Surgical Adaptation
-- For non-conflicting commits: cherry-pick or fast-forward clean submodules.
-- For conflicting commits touching `qemu_vm.py` or `project.py`: manually review the git diff (`git diff HEAD origin/master path/to/file`) and merge only the relevant bug fix without touching our optimization hooks.
-
-### Step 3: Run Pre-Flight Health Probes
+### Gateway 2: Automated Sandbox Isolation
+If new commits are available, never work on the production branch directly:
 ```bash
-# Run unit tests
+# Automatically creates isolated branch 'sync/audit-TIMESTAMP' across submodules
+python scripts/azamgns3-update-checker.py --sandbox
+```
+
+### Gateway 3: CI/CD Quality Pipeline (GitHub Actions)
+Defined in [`.github/workflows/azamgns3-upstream-sync.yml`](file:///e:/Git/AzamGNS3/.github/workflows/azamgns3-upstream-sync.yml):
+- Executes weekly on schedule (`0 2 * * 1`) or upon pull request.
+- Runs `--ci` mode and publishes timestamped audit reports into GitHub Actions artifacts.
+
+### Gateway 4: Multi-Tier Pre-Flight Testing
+Before approving any adaptation:
+```bash
+# 1. Run optimization unit tests
 python tests/test_optimizations.py
 
-# Verify Python AST compilation
+# 2. Verify Python 3.14 AST compilation
 python -m py_compile gns3-server/gns3server/compute/qemu/cpu_governor.py
 python -m py_compile gns3-server/gns3server/controller/bootstorm.py
 python -m py_compile gns3-server/gns3server/compute/qemu/qemu_vm.py
+python -m py_compile gns3-server/gns3server/controller/project.py
 ```
 
-### Step 4: Commit & Push
+### Gateway 5: Human-in-the-Loop Approval & Commit
+1. Review generated report in [`docs/reports/`](file:///e:/Git/AzamGNS3/docs/reports/).
+2. Apply approved cherry-picks in the sandbox branch.
+3. Merge sandbox into `master` and commit parent references:
+   ```bash
+   git add gns3-server docs/reports
+   git commit -m "sync(upstream): adapt verified upstream bug fixes while preserving AzamGNS3 performance core"
+   git push origin main
+   ```
+
+### Gateway 6: Turnkey Production Deployment & Instant Rollback Runbook
+
+#### Deploying Updates to Production:
 ```bash
-git add gns3-server docs/reports
-git commit -m "sync(upstream): adapt upstream bug fixes while preserving AzamGNS3 performance core"
-git push origin main
+# On Ubuntu 26 server
+cd /opt/azamgns3
+git pull origin main
+git submodule update --init --recursive
+sudo systemctl restart azamgns3
 ```
+
+#### Instant 1-Command Rollback Runbook:
+If any unexpected behavioral drift is observed in production:
+```bash
+# Revert to previous Git commit instantly
+git reset --hard HEAD~1
+git submodule update --init --recursive
+sudo systemctl restart azamgns3
+```
+Active running lab topologies and nodes remain completely intact due to decoupled QEMU process state.

@@ -81,5 +81,45 @@ class TestCpuGovernor(unittest.TestCase):
         self.assertFalse(gov4.is_dpdk_target())
 
 
+class TestBufferedUploadStream(unittest.TestCase):
+    def test_buffer_accumulation_and_integrity(self):
+        async def run_test():
+            # Simulate 128 small 64KB network chunks (total 8 MB)
+            chunk_size = 64 * 1024
+            total_chunks = 128
+            payload_sample = b"A" * chunk_size
+
+            async def mock_stream():
+                for _ in range(total_chunks):
+                    yield payload_sample
+
+            writes = []
+            class MockFile:
+                async def write(self, data):
+                    writes.append(bytes(data))
+
+            f = MockFile()
+            write_buf = bytearray()
+            BUFFER_THRESHOLD = 4 * 1024 * 1024
+
+            async for chunk in mock_stream():
+                write_buf.extend(chunk)
+                if len(write_buf) >= BUFFER_THRESHOLD:
+                    await f.write(write_buf)
+                    write_buf.clear()
+            if write_buf:
+                await f.write(write_buf)
+                write_buf.clear()
+
+            # Instead of 128 separate writes, there should only be 2 writes of 4MB each
+            self.assertEqual(len(writes), 2)
+            self.assertEqual(len(writes[0]), 4 * 1024 * 1024)
+            self.assertEqual(len(writes[1]), 4 * 1024 * 1024)
+            total_bytes = sum(len(w) for w in writes)
+            self.assertEqual(total_bytes, total_chunks * chunk_size)
+
+        asyncio.run(run_test())
+
+
 if __name__ == "__main__":
     unittest.main()

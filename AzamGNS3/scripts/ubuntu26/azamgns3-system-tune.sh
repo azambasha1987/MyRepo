@@ -70,11 +70,20 @@ EOF
 # 4. Kernel Network & Virtualization Sysctl Optimization
 echo "[+] Applying high-throughput sysctl network parameters..."
 cat << 'EOF' > /etc/sysctl.d/99-azamgns3-perf.conf
-# Virtual network interface buffering
-net.core.rmem_max = 16777216
-net.core.wmem_max = 16777216
+# Virtual network interface buffering & 32MB TCP socket buffers for fast uploads
+net.core.rmem_max = 33554432
+net.core.wmem_max = 33554432
+net.core.rmem_default = 1048576
+net.core.wmem_default = 1048576
 net.core.netdev_max_backlog = 100000
 net.core.somaxconn = 4096
+
+# High-bandwidth TCP autotuning for large image / project transfers
+net.ipv4.tcp_rmem = 4096 87380 33554432
+net.ipv4.tcp_wmem = 4096 65536 33554432
+net.ipv4.tcp_window_scaling = 1
+net.ipv4.tcp_timestamps = 1
+net.ipv4.tcp_sack = 1
 
 # Memory swappiness and virtual memory tuning
 vm.swappiness = 10

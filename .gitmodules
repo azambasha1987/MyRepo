@@ -1,0 +1,12 @@
+[submodule "AzamGNS3/gns3-server"]
+	path = AzamGNS3/gns3-server
+	url = https://github.com/GNS3/gns3-server.git
+	branch = master
+[submodule "AzamGNS3/gns3-gui"]
+	path = AzamGNS3/gns3-gui
+	url = https://github.com/GNS3/gns3-gui.git
+	branch = master
+[submodule "AzamGNS3/gns3-web-ui"]
+	path = AzamGNS3/gns3-web-ui
+	url = https://github.com/GNS3/gns3-web-ui.git
+	branch = master

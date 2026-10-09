@@ -10,35 +10,36 @@ This plan establishes an enterprise-grade **Software Development Life Cycle (SDL
 ```mermaid
 flowchart TD
     subgraph SDLC1 [Stage 1: Threat & Ingestion Radar]
-        R1["Weekly Scheduled Scanner (scripts/azamgns3-update-checker.py)"]
+        R1["Multi-Track Scanner: Stable Tags vs. Maintenance vs. Master"]
         R2["Upstream Git Drift Detection (Commits Ahead)"]
-        R3["Dependency CVE & Advisory Checks"]
+        R3["Dependency Supply Chain & CVE Vulnerability Radar"]
     end
 
     subgraph SDLC2 [Stage 2: Architectural Shielding]
-        A1["Protected Touchpoints Filter (cpu_governor, bootstorm, io_uring)"]
-        A2["Collision & Regression Classification (SAFE vs CAUTION vs CONFLICT)"]
+        A1["Function-Level Semantic AST Shield (_disk_interface_options, start_all)"]
+        A2["REST API Contract & Schema Drift Gate (schemas/ validation)"]
+        A3["Risk Classifier (🟢 SAFE vs 🟡 ADAPT vs 🔴 HAZARD)"]
     end
 
     subgraph SDLC3 [Stage 3: Dev & Isolation Sandbox]
-        D1["Pre-Commit Hooks (Syntax & AST checks)"]
+        D1["Pre-Commit Hooks (Syntax, AST, & Lint validation)"]
         D2["Automated Isolated Sandbox Branches (sync/audit-TIMESTAMP)"]
     end
 
     subgraph SDLC4 [Stage 4: CI/CD Pipeline Gates]
         C1["GitHub Actions Workflow (.github/workflows/azamgns3-upstream-sync.yml)"]
-        C2["Automated Exit Codes (--ci flag: 0=clean, 1=test fail, 2=conflict)"]
+        C2["Automated Pipeline Exit Codes (--ci flag: 0=clean, 1=test fail, 2=conflict)"]
         C3["Automated Markdown Artifact Publishing (docs/reports/)"]
     end
 
     subgraph SDLC5 [Stage 5: Multi-Tier QA Matrix]
         Q1["Unit & Performance Suite (tests/test_optimizations.py)"]
         Q2["Python 3.14 AST Compilation Checks"]
-        Q3["TAP vhost-net & QEMU CLI Flags Validation"]
+        Q3["Canary Side-by-Side Sandbox Testing (Port 3081)"]
     end
 
     subgraph SDLC6 [Stage 6: Deployment & Rollback]
-        P1["Canary Staging & Human Approval Gate"]
+        P1["Canary Validation & Operator Approval Gate"]
         P2["Production Deployment (systemctl restart azamgns3)"]
         P3["Immutable Backup Checkpoints & 1-Command Instant Rollback"]
     end
@@ -85,23 +86,97 @@ flowchart TD
 
 ---
 
-## 4. Protected Touchpoints Matrix (AzamGNS3 Shield)
+## 4. Multi-Track Upstream Ingestion Radar
 
-| Protected File | Description | Collision Action |
-| :--- | :--- | :--- |
-| [`gns3server/compute/qemu/cpu_governor.py`](file:///e:/Git/AzamGNS3/gns3-server/gns3server/compute/qemu/cpu_governor.py) | Cgroups v2 dynamic CFS weight scheduling | **IMMUNE**: Never overwrite with upstream code. |
-| [`gns3server/compute/qemu/qemu_vm.py`](file:///e:/Git/AzamGNS3/gns3-server/gns3server/compute/qemu/qemu_vm.py) | Direct `io_uring` I/O, `vhost=on`, `virtio-balloon`, and `CpuGovernor` hooks | **HIGH CAUTION**: Audit line-by-line before adapting. |
-| [`gns3server/controller/bootstorm.py`](file:///e:/Git/AzamGNS3/gns3-server/gns3server/controller/bootstorm.py) | Anti-Bootstorm weighted startup engine | **IMMUNE**: Never overwrite with upstream code. |
-| [`gns3server/controller/project.py`](file:///e:/Git/AzamGNS3/gns3-server/gns3server/controller/project.py) | `start_all()` hook into `BootstormEngine` | **CAUTION**: Preserve `BootstormEngine.start_nodes_staggered`. |
-| [`gns3server/controller/compute.py`](file:///e:/Git/AzamGNS3/gns3-server/gns3server/controller/compute.py) | Python 3.14 explicit `aiohttp.web` import | **CAUTION**: Preserve `import aiohttp.web`. |
-| [`gns3server/controller/__init__.py`](file:///e:/Git/AzamGNS3/gns3-server/gns3server/controller/__init__.py) | Python 3.14 explicit `aiohttp.web` import | **CAUTION**: Preserve `import aiohttp.web`. |
+To accommodate different enterprise risk tolerances across the SDLC, the update check engine supports three distinct monitoring tracks:
+
+| Ingestion Track | Upstream Ref | Target Environment | Update Cadence | Risk Tolerance |
+| :--- | :--- | :--- | :--- | :--- |
+| **Track A: Production Stable** | `refs/tags/v2.2.*`, `v3.0.*` | Production Servers | Monthly / Quarterly | **Conservative**: Only certified, packaged release tags. |
+| **Track B: Maintenance Patch** | `refs/heads/2.2` | Production / Staging | Bi-weekly | **Moderate**: Targeted hotfixes and backports. |
+| **Track C: Bleeding-Edge** | `refs/heads/master` | Staging / Development | Continuous / Weekly | **Agile**: Latest experimental innovations and features. |
+
+*CLI Selector*:
+```bash
+# Monitor default bleeding-edge master
+python scripts/azamgns3-update-checker.py --track master
+
+# Monitor production stable release tags
+python scripts/azamgns3-update-checker.py --track stable
+```
 
 ---
 
-## 5. SDLC Operational Guide: The 6 Lifecycle Gateways
+## 5. Function-Level Semantic Shield (Beyond File Matching)
 
-### Gateway 1: Automated Ingestion & Drift Radar
-Run the scanner manually or via cron/task scheduler:
+Rather than generating false-positive warnings whenever a large file like `qemu_vm.py` is touched, the update engine performs **AST & Symbol-Level Semantic Diffing**:
+
+```
+                                  Upstream Commit Touches qemu_vm.py
+                                                  │
+                        ┌─────────────────────────┴─────────────────────────┐
+                        ▼                                                   ▼
+            Touches Unrelated Method                           Touches Protected Method
+       (e.g., _cdrom_image_options, _tpm)                 (_disk_interface_options, start, stop)
+                        │                                                   │
+                        ▼                                                   ▼
+                 🟢 SAFE TO ADAPT                                   🔴 COLLISION DETECTED
+              (Auto-cherrypick permitted)                         (Requires surgical review)
+```
+
+### Symbol Protection Registry
+
+| Protected Method / Symbol | File Location | Critical Feature Protected | Collision Action |
+| :--- | :--- | :--- | :--- |
+| `QemuVM._disk_interface_options` | `gns3server/compute/qemu/qemu_vm.py` | Direct asynchronous I/O (`cache=none,aio=io_uring,discard=unmap`) | **PROTECTED**: Block overwrite; preserve storage flags. |
+| `QemuVM.start` (Process Hook) | `gns3server/compute/qemu/qemu_vm.py` | `CpuGovernor` TAP monitoring launch | **PROTECTED**: Preserve dynamic governor initialization. |
+| `QemuVM.stop` (Cleanup Hook) | `gns3server/compute/qemu/qemu_vm.py` | `CpuGovernor` graceful termination | **PROTECTED**: Preserve dynamic governor cleanup. |
+| `QemuVM.network_options` (TAP) | `gns3server/compute/qemu/qemu_vm.py` | TAP interface `vhost=on` kernel acceleration | **PROTECTED**: Preserve `vhost=on` flag. |
+| `Project.start_all` | `gns3server/controller/project.py` | Load-aware Anti-Bootstorm batch scheduler | **PROTECTED**: Preserve `BootstormEngine.start_nodes_staggered`. |
+| `controller/compute.py` (Top) | `gns3server/controller/compute.py` | Python 3.14 `import aiohttp.web` fix | **PROTECTED**: Preserve explicit `aiohttp.web` import. |
+| `controller/__init__.py` (Top) | `gns3server/controller/__init__.py` | Python 3.14 `import aiohttp.web` fix | **PROTECTED**: Preserve explicit `aiohttp.web` import. |
+
+---
+
+## 6. Dependency & Supply Chain Security Radar
+
+Upstream commits frequently bump dependencies in `requirements.txt` or `package.json`. The update check engine scrutinizes all third-party changes:
+
+```mermaid
+flowchart LR
+    UpstreamDep["Upstream Dependency Diff"] --> Parser["Dependency Scanner"]
+    Parser --> SafetyCheck["CVE Database Check (pip-audit / npm audit)"]
+    Parser --> CompatCheck["Python 3.14 Wheel Compatibility Probe"]
+    SafetyCheck --> Decision{"Vulnerability or Incompatibility Found?"}
+    CompatCheck --> Decision
+    Decision -->|Yes| Block["🔴 Block Sync & Alert Operator"]
+    Decision -->|No| Pass["🟢 Dependency Bump Cleared"]
+```
+
+1. **Python Dependency Audit**:
+   - Scans diffs in `gns3-server/requirements.txt` and `gns3-server/win-requirements.txt`.
+   - Runs `pip-audit` to ensure new packages contain zero known vulnerabilities (CVEs).
+2. **Web UI NPM Dependency Audit**:
+   - Scans diffs in `gns3-web-ui/package.json`.
+   - Validates Angular and xterm.js version compatibility with Node.js LTS.
+
+---
+
+## 7. REST API Contract & Schema Backward Compatibility Gate
+
+To prevent upstream changes from breaking the in-browser Web UI or external API clients:
+1. **Schema Diffing**:
+   - The engine monitors `gns3-server/gns3server/schemas/`.
+   - Flags any removed JSON schema properties, renamed endpoints, or changed payload requirements.
+2. **Route Decorator Scan**:
+   - Monitors `gns3server/web/route.py` and `gns3server/handlers/` for altered API route signatures.
+   - Any modification to `/v2/projects/{project_id}/nodes/{node_id}/console/ws` is flagged with critical priority.
+
+---
+
+## 8. SDLC Operational Guide: The 6 Lifecycle Gateways
+
+### Gateway 1: Ingestion & Drift Radar
 ```bash
 # Standard interactive check with colorized summary
 python scripts/azamgns3-update-checker.py
@@ -114,7 +189,6 @@ python scripts/azamgns3-update-checker.py --ci
 ```
 
 ### Gateway 2: Automated Sandbox Isolation
-If new commits are available, never work on the production branch directly:
 ```bash
 # Automatically creates isolated branch 'sync/audit-TIMESTAMP' across submodules
 python scripts/azamgns3-update-checker.py --sandbox
@@ -126,7 +200,6 @@ Defined in [`.github/workflows/azamgns3-upstream-sync.yml`](file:///e:/Git/AzamG
 - Runs `--ci` mode and publishes timestamped audit reports into GitHub Actions artifacts.
 
 ### Gateway 4: Multi-Tier Pre-Flight Testing
-Before approving any adaptation:
 ```bash
 # 1. Run optimization unit tests
 python tests/test_optimizations.py
@@ -138,15 +211,18 @@ python -m py_compile gns3-server/gns3server/compute/qemu/qemu_vm.py
 python -m py_compile gns3-server/gns3server/controller/project.py
 ```
 
-### Gateway 5: Human-in-the-Loop Approval & Commit
-1. Review generated report in [`docs/reports/`](file:///e:/Git/AzamGNS3/docs/reports/).
-2. Apply approved cherry-picks in the sandbox branch.
-3. Merge sandbox into `master` and commit parent references:
-   ```bash
-   git add gns3-server docs/reports
-   git commit -m "sync(upstream): adapt verified upstream bug fixes while preserving AzamGNS3 performance core"
-   git push origin main
-   ```
+### Gateway 5: Canary Sandbox Staging & Side-by-Side Verification
+Before deploying to production port `3080`, test the candidate build side-by-side on port `3081`:
+```bash
+# Start temporary canary server instance on port 3081
+/opt/azamgns3/venv/bin/gns3server --port 3081 --daemon --log /var/log/azamgns3/canary.log
+
+# Execute canary smoke probe
+curl -f -s http://localhost:3081/v2/version || { echo "Canary verification failed!"; exit 1; }
+
+# Terminate canary instance after successful probe
+pkill -f "gns3server --port 3081"
+```
 
 ### Gateway 6: Turnkey Production Deployment & Instant Rollback Runbook
 
@@ -168,3 +244,18 @@ git submodule update --init --recursive
 sudo systemctl restart azamgns3
 ```
 Active running lab topologies and nodes remain completely intact due to decoupled QEMU process state.
+
+---
+
+## 9. Emergency Zero-Day Fast-Track Protocol
+
+In the event of a critical upstream security advisory (Zero-Day CVE):
+1. **Bypass Weekly Cadence**: Trigger immediate manual scanner execution with `--track master`.
+2. **Isolate Security Commit**: Identify the exact security commit hash (`<cve_sha>`).
+3. **Cherry-Pick to Sandbox**:
+   ```bash
+   git checkout -b hotfix/cve-remediation
+   git cherry-pick <cve_sha>
+   ```
+4. **Run Pre-Flight Probes**: Ensure `tests/test_optimizations.py` and `py_compile` pass 100%.
+5. **Immediate Hotfix Push**: Merge and deploy to production within a strict 2-hour SLA.

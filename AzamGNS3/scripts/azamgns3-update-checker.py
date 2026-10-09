@@ -76,6 +76,29 @@ PROTECTED_TOUCHPOINTS = {
     }
 }
 
+# Function & Symbol Level Semantic Shield
+PROTECTED_SYMBOLS = {
+    "gns3server/compute/qemu/qemu_vm.py": [
+        "_disk_interface_options",
+        "_set_cpu_throttling",
+        "_cpu_governor",
+        "virtio-balloon",
+        "vhost=on",
+        "aio=io_uring"
+    ],
+    "gns3server/controller/project.py": [
+        "start_all",
+        "BootstormEngine",
+        "start_nodes_staggered"
+    ],
+    "gns3server/controller/compute.py": [
+        "aiohttp.web"
+    ],
+    "gns3server/controller/__init__.py": [
+        "aiohttp.web"
+    ]
+}
+
 SUBMODULES = [
     {
         "name": "gns3-server",
@@ -117,8 +140,9 @@ def run_cmd(cmd, cwd=None):
 
 
 class UpdateChecker:
-    def __init__(self, workspace_root: Path):
+    def __init__(self, workspace_root: Path, track: str = "master"):
         self.root = workspace_root
+        self.track = track
         self.results = {}
         self.timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -135,27 +159,36 @@ class UpdateChecker:
         rc, local_branch, _ = run_cmd("git rev-parse --abbrev-ref HEAD", cwd=sub_path)
 
         # Fetch latest from upstream remote
-        print(f"  {CYAN}Checking remote for {name}...{RESET}")
+        print(f"  {CYAN}Checking remote for {name} [track: {self.track}]...{RESET}")
         rc, _, _ = run_cmd("git fetch origin", cwd=sub_path)
 
-        # Get remote branch tip SHA
-        rc, remote_sha, _ = run_cmd(f"git rev-parse origin/{submod['branch']}", cwd=sub_path)
+        if self.track == "stable":
+            # Target highest release tag
+            rc, target_ref, _ = run_cmd("git describe --tags --abbrev=0 origin/master", cwd=sub_path)
+            if rc != 0 or not target_ref:
+                rc, target_ref, _ = run_cmd("git rev-list --tags --max-count=1", cwd=sub_path)
+            rc, remote_sha, _ = run_cmd(f"git rev-parse {target_ref}", cwd=sub_path)
+        else:
+            target_ref = f"origin/{submod['branch']}"
+            rc, remote_sha, _ = run_cmd(f"git rev-parse {target_ref}", cwd=sub_path)
 
         info = {
             "name": name,
             "local_sha": local_sha[:10] if local_sha else "UNKNOWN",
             "remote_sha": remote_sha[:10] if remote_sha else "UNKNOWN",
             "local_branch": local_branch,
+            "target_ref": target_ref,
             "new_commits": [],
             "status": "UP_TO_DATE",
             "has_conflicts": False,
-            "conflicting_files": []
+            "conflicting_files": [],
+            "conflicting_symbols": []
         }
 
         if local_sha != remote_sha and remote_sha:
             # Query commit difference
             rc, log_output, _ = run_cmd(
-                f'git log {local_sha}..origin/{submod["branch"]} --format="%h|%an|%ad|%s" --date=short',
+                f'git log {local_sha}..{target_ref} --format="%h|%an|%ad|%s" --date=short',
                 cwd=sub_path
             )
 
@@ -171,22 +204,34 @@ class UpdateChecker:
                         rc, stat_out, _ = run_cmd(f"git diff-tree --no-commit-id --name-only -r {c_sha}", cwd=sub_path)
                         modified_files = stat_out.splitlines() if stat_out else []
 
-                        # Cross-audit against protected touchpoints
+                        # Cross-audit against protected touchpoints and symbols
                         c_risk = "SAFE"
                         flagged_files = []
                         for f in modified_files:
-                            # Normalize path
                             norm_f = f.replace("\\", "/")
                             if norm_f in PROTECTED_TOUCHPOINTS:
-                                c_risk = PROTECTED_TOUCHPOINTS[norm_f]["risk"]
+                                # Function-level semantic diff probe
+                                rc, diff_out, _ = run_cmd(f"git diff -U0 {c_sha}^ {c_sha} -- {norm_f}", cwd=sub_path)
+                                touched_syms = [sym for sym in PROTECTED_SYMBOLS.get(norm_f, []) if sym in diff_out]
+
+                                if touched_syms:
+                                    c_risk = PROTECTED_TOUCHPOINTS[norm_f]["risk"]
+                                    desc = f"Touched protected symbols: {', '.join(touched_syms)}"
+                                    info["has_conflicts"] = True
+                                    if norm_f not in info["conflicting_files"]:
+                                        info["conflicting_files"].append(norm_f)
+                                    for sym in touched_syms:
+                                        if sym not in info["conflicting_symbols"]:
+                                            info["conflicting_symbols"].append(f"{norm_f}:{sym}")
+                                else:
+                                    c_risk = "SAFE_ADAPT"
+                                    desc = f"{norm_f} touched, but preserved all AzamGNS3 protected symbols"
+
                                 flagged_files.append({
                                     "file": norm_f,
                                     "risk": c_risk,
-                                    "description": PROTECTED_TOUCHPOINTS[norm_f]["description"]
+                                    "description": desc
                                 })
-                                info["has_conflicts"] = True
-                                if norm_f not in info["conflicting_files"]:
-                                    info["conflicting_files"].append(norm_f)
 
                         commits.append({
                             "sha": c_sha,
@@ -387,6 +432,7 @@ def main():
     parser.add_argument("--ci", action="store_true", help="CI/CD mode: exits with non-zero code on conflicts or test failures")
     parser.add_argument("--json", action="store_true", help="Output machine-readable JSON for automated pipelines")
     parser.add_argument("--sandbox", action="store_true", help="Auto-create isolated git branch for testing adaptations")
+    parser.add_argument("--track", choices=["master", "stable"], default="master", help="Ingestion track: master (bleeding-edge) or stable (release tags)")
     args = parser.parse_args()
 
     if args.root:
@@ -394,7 +440,7 @@ def main():
     else:
         workspace_root = Path(__file__).resolve().parent.parent
 
-    checker = UpdateChecker(workspace_root)
+    checker = UpdateChecker(workspace_root, track=args.track)
     exit_code = checker.execute(ci_mode=args.ci, json_output=args.json, sandbox=args.sandbox)
     sys.exit(exit_code)
 

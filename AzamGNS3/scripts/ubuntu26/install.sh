@@ -36,6 +36,7 @@ apt-get install -y --no-install-recommends \
     python3-pip \
     python3-dev \
     build-essential \
+    libmagic1 \
     qemu-system-x86 \
     qemu-utils \
     libvirt-clients \
@@ -47,6 +48,7 @@ apt-get install -y --no-install-recommends \
     mtools \
     curl \
     git \
+    docker.io \
     systemd-zram-generator
 
 # 2. Run High-Performance System Tuning
@@ -58,7 +60,7 @@ echo "[3/6] Configuring directories and permissions..."
 if ! id -u azam >/dev/null 2>&1; then
     useradd -r -m -s /bin/bash azam || true
 fi
-usermod -aG kvm,libvirt,adm azam || true
+usermod -aG kvm,libvirt,adm,docker azam || true
 
 mkdir -p "${INSTALL_DIR}"
 mkdir -p "${CONFIG_DIR}"
@@ -66,15 +68,32 @@ mkdir -p /var/log/azamgns3
 mkdir -p /opt/gns3/images/QEMU
 mkdir -p /opt/gns3/projects
 
-# Copy code to /opt/azamgns3
-cp -r "${REPO_DIR}/AzamGNS3/gns3-server" "${INSTALL_DIR}/"
-cp -r "${REPO_DIR}/AzamGNS3/scripts" "${INSTALL_DIR}/"
+# Locate source directory dynamically
+if [[ -d "${REPO_DIR}/gns3-server" ]]; then
+    SOURCE_GNS3_SERVER="${REPO_DIR}/gns3-server"
+    SOURCE_SCRIPTS="${REPO_DIR}/scripts"
+elif [[ -d "${REPO_DIR}/AzamGNS3/gns3-server" ]]; then
+    SOURCE_GNS3_SERVER="${REPO_DIR}/AzamGNS3/gns3-server"
+    SOURCE_SCRIPTS="${REPO_DIR}/AzamGNS3/scripts"
+else
+    echo "[-] Error: Could not locate gns3-server source directory" 1>&2
+    exit 1
+fi
+
+cp -r "${SOURCE_GNS3_SERVER}" "${INSTALL_DIR}/"
+cp -r "${SOURCE_SCRIPTS}" "${INSTALL_DIR}/"
 
 # 4. Setup Python 3.14 Virtual Environment
 echo "[4/6] Creating Python 3.14 virtual environment and installing packages..."
 python3 -m venv "${INSTALL_DIR}/venv"
 "${INSTALL_DIR}/venv/bin/pip" install --upgrade pip setuptools wheel
 "${INSTALL_DIR}/venv/bin/pip" install -r "${INSTALL_DIR}/gns3-server/requirements.txt"
+if [[ -f "${INSTALL_DIR}/gns3-server/mcp-requirements.txt" ]]; then
+    "${INSTALL_DIR}/venv/bin/pip" install -r "${INSTALL_DIR}/gns3-server/mcp-requirements.txt"
+fi
+if [[ -f "${INSTALL_DIR}/gns3-server/ai-requirements.txt" ]]; then
+    "${INSTALL_DIR}/venv/bin/pip" install -r "${INSTALL_DIR}/gns3-server/ai-requirements.txt"
+fi
 "${INSTALL_DIR}/venv/bin/pip" install -e "${INSTALL_DIR}/gns3-server"
 
 # 5. Create Default Configuration

@@ -13,6 +13,7 @@ Welcome to the **AzamGNS3** documentation library. This folder contains the arch
 | **[03. Installation & Deployment Guide](file:///e:/Git/AzamGNS3/docs/03_INSTALLATION_AND_DEPLOYMENT.md)** | 1-click automated Ubuntu 26 installation, manual deployment, systemd v256+ management, Windows local testing, and browser access. |
 | **[04. Performance Optimizations Deep-Dive](file:///e:/Git/AzamGNS3/docs/04_PERFORMANCE_OPTIMIZATIONS.md)** | Technical breakdown of the Lossless CFS CPU Governor, Weighted Anti-Bootstorm Engine, KSM Smart-Scan, `io_uring`, and `vhost-net`. |
 | **[05. Future Roadmap & Extensibility](file:///e:/Git/AzamGNS3/docs/05_FUTURE_ROADMAP.md)** | Strategic roadmap for future iterations: In-browser WebShark live packet dissection, Containerlab/CNF presets, distributed clustering, and multi-tenant RBAC. |
+| **[Update Check & Cross-Audit Plan](file:///e:/Git/AzamGNS3/docs/UPDATE_CHECK_PLAN.md)** | Upstream drift detection, surgical cross-audit against AzamGNS3 customizations, collision protection, and regression gating. |
 
 ---
 

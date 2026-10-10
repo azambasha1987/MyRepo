@@ -1,0 +1,13 @@
+[Unit]
+Description=AzamGNS3 Daily Upstream Check Timer (06:00 IST / 00:30 UTC)
+Documentation=https://github.com/azambasha1987/MyRepo
+
+[Timer]
+# Run every morning at 06:00 local time
+OnCalendar=*-*-* 06:00:00
+# Run 5 minutes after boot if missed
+OnBootSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

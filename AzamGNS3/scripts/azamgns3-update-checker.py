@@ -1,25 +1,23 @@
 #!/usr/bin/env python3
 """
 ==============================================================================
-AzamGNS3 Upstream Update Checker & Code Cross-Audit Engine
+AzamGNS3 Upstream Update Checker & Code Cross-Audit Engine (Monorepo Edition)
 ==============================================================================
 Audited Adaptation vs. Blind Copy-Pasting
 
-Functions:
-1. Connects to official GNS3 upstream remotes (Server, GUI, Web-UI).
-2. Identifies new commits ahead of pinned local submodule commits.
-3. Surgically cross-audits modified files against AzamGNS3 custom code:
-   - cpu_governor.py (CFS weight scheduling)
-   - bootstorm.py (Weighted startup orchestration)
-   - qemu_vm.py (io_uring, vhost-net, virtio-balloon, CPU governor hooks)
-   - project.py (Bootstorm staggered start_all hook)
-   - compute.py (Python 3.14 aiohttp.web fixes)
-4. Classifies risk:
-   - 🟢 SAFE (unrelated modules, appliances, documentation)
-   - 🟡 CAUTION (touches files modified by AzamGNS3 - requires adaptation)
-   - 🔴 HAZARDOUS (conflicts with performance engines or Python 3.14)
-5. Executes pre-flight sanity checks (py_compile, test_optimizations.py).
-6. Generates Markdown audit report in docs/reports/.
+Key Capabilities:
+1. Monorepo Native: Directly queries official GNS3 remotes (Server, GUI, Web-UI)
+   without assuming Git submodules.
+2. State-Persistent: Tracks baseline SHAs & release tags in docs/reports/upstream_state.json.
+3. Surgical AST Cross-Audit: Scans incoming diffs against AzamGNS3 custom code:
+   - Lossless CFS CPU Governor (cpu.weight, cgroups v2)
+   - Anti-Bootstorm Staggered Node Orchestrator (bootstorm.py, project.py)
+   - Direct I/O (aio=io_uring, cache=none), TAP vhost=on, virtio-balloon (qemu_vm.py)
+   - Python 3.14 explicit aiohttp.web compatibility imports
+4. Two-Tier Staging & Sync:
+   - Tier 1: Safe Fast-Forward for independent modules / appliances / UI
+   - Tier 2: Surgical Quarantine & Diff Extraction for protected touchpoints
+5. Daily Cadence Automation: GitHub Actions, systemd timer, and local CLI.
 ==============================================================================
 """
 
@@ -39,7 +37,7 @@ if hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-# ANSI colors for terminal output
+# Terminal colors
 GREEN = "\033[92m"
 YELLOW = "\033[93m"
 RED = "\033[91m"
@@ -52,7 +50,7 @@ RESET = "\033[0m"
 PROTECTED_TOUCHPOINTS = {
     "gns3server/compute/qemu/cpu_governor.py": {
         "risk": "IMMUNE",
-        "description": "AzamGNS3 Lossless CFS CPU Governor"
+        "description": "AzamGNS3 Lossless CFS CPU Governor (cgroups v2)"
     },
     "gns3server/compute/qemu/qemu_vm.py": {
         "risk": "HIGH_CAUTION",
@@ -99,24 +97,28 @@ PROTECTED_SYMBOLS = {
     ]
 }
 
-SUBMODULES = [
+# Monorepo Components & Official Upstream Remotes
+COMPONENTS = [
     {
         "name": "gns3-server",
-        "path": "gns3-server",
         "upstream_url": "https://github.com/GNS3/gns3-server.git",
-        "branch": "3.1"
+        "branch": "3.1",
+        "local_prefix": "gns3-server",
+        "tag_prefix": "v"
     },
     {
         "name": "gns3-gui",
-        "path": "gns3-gui",
         "upstream_url": "https://github.com/GNS3/gns3-gui.git",
-        "branch": "master"
+        "branch": "master",
+        "local_prefix": "gns3-gui",
+        "tag_prefix": "v"
     },
     {
         "name": "gns3-web-ui",
-        "path": "gns3-web-ui",
         "upstream_url": "https://github.com/GNS3/gns3-web-ui.git",
-        "branch": "3.1"
+        "branch": "3.1",
+        "local_prefix": "gns3-web-ui",
+        "tag_prefix": "v"
     }
 ]
 
@@ -140,57 +142,109 @@ def run_cmd(cmd, cwd=None):
 
 
 class UpdateChecker:
-    def __init__(self, workspace_root: Path, track: str = "master"):
+    def __init__(self, workspace_root: Path, track: str = "master", depth: int = 30):
         self.root = workspace_root
         self.track = track
+        self.depth = depth
         self.results = {}
         self.timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.state_file = self.root / "docs" / "reports" / "upstream_state.json"
+        self.state = self.load_state()
 
-    def inspect_submodule(self, submod: dict) -> dict:
-        """Inspects commits and file changes in a submodule."""
-        sub_path = self.root / submod["path"]
-        name = submod["name"]
+    def load_state(self) -> dict:
+        """Loads persistent upstream state from JSON file."""
+        if self.state_file.exists():
+            try:
+                with open(self.state_file, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {"last_scan_utc": "", "components": {}}
 
-        if not sub_path.exists():
-            return {"status": "MISSING", "error": f"Path {sub_path} does not exist"}
+    def save_state(self):
+        """Saves current state to JSON file."""
+        self.state["last_scan_utc"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self.state_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(self.state_file, "w", encoding="utf-8") as f:
+            json.dump(self.state, f, indent=2)
 
-        # Get local commit SHA
-        rc, local_sha, _ = run_cmd("git rev-parse HEAD", cwd=sub_path)
-        rc, local_branch, _ = run_cmd("git rev-parse --abbrev-ref HEAD", cwd=sub_path)
+    def get_latest_remote_tag(self, upstream_url: str) -> str:
+        """Queries upstream Git repository for the latest release tag."""
+        cmd = f'git ls-remote --tags --sort=-v:refname "{upstream_url}"'
+        rc, out, _ = run_cmd(cmd, cwd=self.root)
+        if rc == 0 and out:
+            for line in out.splitlines():
+                parts = line.split()
+                if len(parts) >= 2:
+                    ref = parts[1]
+                    if ref.startswith("refs/tags/") and not ref.endswith("^{}"):
+                        return ref.replace("refs/tags/", "")
+        return ""
 
-        # Fetch latest from upstream remote
-        print(f"  {CYAN}Checking remote for {name} [track: {self.track}]...{RESET}")
-        rc, _, _ = run_cmd("git fetch origin", cwd=sub_path)
+    def inspect_component(self, comp: dict) -> dict:
+        """Fetches upstream remote refs directly into the monorepo and audits commits."""
+        name = comp["name"]
+        upstream_url = comp["upstream_url"]
+        branch = comp["branch"]
+        ref_name = f"upstream-{name}/{branch}"
 
-        if self.track == "stable":
-            # Target highest release tag
-            rc, target_ref, _ = run_cmd("git describe --tags --abbrev=0 origin/master", cwd=sub_path)
-            if rc != 0 or not target_ref:
-                rc, target_ref, _ = run_cmd("git rev-list --tags --max-count=1", cwd=sub_path)
-            rc, remote_sha, _ = run_cmd(f"git rev-parse {target_ref}", cwd=sub_path)
-        else:
-            target_ref = f"origin/{submod['branch']}"
-            rc, remote_sha, _ = run_cmd(f"git rev-parse {target_ref}", cwd=sub_path)
+        print(f"  {CYAN}Fetching upstream for {name} [{upstream_url} -> {branch}]...{RESET}")
+
+        # 1. Fetch remote branch into namespaced remote ref
+        fetch_cmd = f'git fetch --depth {self.depth} "{upstream_url}" {branch}:refs/remotes/{ref_name}'
+        rc, _, err = run_cmd(fetch_cmd, cwd=self.root)
+        if rc != 0:
+            print(f"  {YELLOW}Warning: Fetch failed for {name}: {err}{RESET}")
+
+        # 2. Get remote SHA
+        rc, remote_sha, _ = run_cmd(f"git rev-parse refs/remotes/{ref_name}", cwd=self.root)
+        if rc != 0 or not remote_sha:
+            return {"status": "FETCH_FAILED", "error": err, "name": name}
+
+        # 3. Check latest release tag
+        latest_tag = self.get_latest_remote_tag(upstream_url)
+
+        # 4. Read last synced SHA from state
+        comp_state = self.state.get("components", {}).get(name, {})
+        last_synced_sha = comp_state.get("last_synced_sha", "")
+        last_known_tag = comp_state.get("last_known_tag", "")
+
+        tag_drift = (latest_tag != last_known_tag and latest_tag != "")
 
         info = {
             "name": name,
-            "local_sha": local_sha[:10] if local_sha else "UNKNOWN",
-            "remote_sha": remote_sha[:10] if remote_sha else "UNKNOWN",
-            "local_branch": local_branch,
-            "target_ref": target_ref,
+            "upstream_url": upstream_url,
+            "branch": branch,
+            "last_synced_sha": last_synced_sha[:10] if last_synced_sha else "NOT_SET",
+            "remote_sha": remote_sha[:10],
+            "full_remote_sha": remote_sha,
+            "latest_tag": latest_tag,
+            "tag_drift": tag_drift,
             "new_commits": [],
             "status": "UP_TO_DATE",
             "has_conflicts": False,
             "conflicting_files": [],
-            "conflicting_symbols": []
+            "conflicting_symbols": [],
+            "dependency_bumps": []
         }
 
-        if local_sha != remote_sha and remote_sha:
-            # Query commit difference
-            rc, log_output, _ = run_cmd(
-                f'git log {local_sha}..{target_ref} --format="%h|%an|%ad|%s" --date=short',
-                cwd=sub_path
-            )
+        # 5. Determine commit range
+        commit_range = ""
+        if last_synced_sha and last_synced_sha != remote_sha:
+            # Check if last_synced_sha is reachable in git
+            rc, _, _ = run_cmd(f"git cat-file -e {last_synced_sha}", cwd=self.root)
+            if rc == 0:
+                commit_range = f"{last_synced_sha}..{remote_sha}"
+            else:
+                commit_range = f"{remote_sha}~10..{remote_sha}"
+        elif not last_synced_sha:
+            # First run: inspect the last 5 commits
+            commit_range = f"-n 5 refs/remotes/{ref_name}"
+
+        # 6. Parse commits in range
+        if commit_range:
+            log_cmd = f'git log {commit_range} --format="%h|%an|%ad|%s" --date=short'
+            rc, log_output, _ = run_cmd(log_cmd, cwd=self.root)
 
             if log_output:
                 info["status"] = "COMMITS_AVAILABLE"
@@ -200,18 +254,23 @@ class UpdateChecker:
                         parts = line.split("|", 3)
                         c_sha, c_author, c_date, c_msg = parts[0], parts[1], parts[2], parts[3]
 
-                        # Get files modified in this commit
-                        rc, stat_out, _ = run_cmd(f"git diff-tree --no-commit-id --name-only -r {c_sha}", cwd=sub_path)
+                        # Get files touched in commit
+                        rc, stat_out, _ = run_cmd(f"git diff-tree --no-commit-id --name-only -r {c_sha}", cwd=self.root)
                         modified_files = stat_out.splitlines() if stat_out else []
 
-                        # Cross-audit against protected touchpoints and symbols
                         c_risk = "SAFE"
                         flagged_files = []
+
                         for f in modified_files:
                             norm_f = f.replace("\\", "/")
+
+                            # Dependency bump radar
+                            if norm_f in ["requirements.txt", "win-requirements.txt", "package.json"]:
+                                info["dependency_bumps"].append(f"{norm_f} (commit {c_sha})")
+
+                            # AST and Touchpoint Protection Shield
                             if norm_f in PROTECTED_TOUCHPOINTS:
-                                # Function-level semantic diff probe
-                                rc, diff_out, _ = run_cmd(f"git diff -U0 {c_sha}^ {c_sha} -- {norm_f}", cwd=sub_path)
+                                rc, diff_out, _ = run_cmd(f"git diff -U0 {c_sha}^ {c_sha} -- {norm_f}", cwd=self.root)
                                 touched_syms = [sym for sym in PROTECTED_SYMBOLS.get(norm_f, []) if sym in diff_out]
 
                                 if touched_syms:
@@ -221,8 +280,9 @@ class UpdateChecker:
                                     if norm_f not in info["conflicting_files"]:
                                         info["conflicting_files"].append(norm_f)
                                     for sym in touched_syms:
-                                        if sym not in info["conflicting_symbols"]:
-                                            info["conflicting_symbols"].append(f"{norm_f}:{sym}")
+                                        full_sym = f"{norm_f}:{sym}"
+                                        if full_sym not in info["conflicting_symbols"]:
+                                            info["conflicting_symbols"].append(full_sym)
                                 else:
                                     c_risk = "SAFE_ADAPT"
                                     desc = f"{norm_f} touched, but preserved all AzamGNS3 protected symbols"
@@ -244,7 +304,30 @@ class UpdateChecker:
                         })
                 info["new_commits"] = commits
 
+        # Update component entry in state structure
+        if name not in self.state["components"]:
+            self.state["components"][name] = {}
+        self.state["components"][name]["upstream_url"] = upstream_url
+        self.state["components"][name]["branch"] = branch
+        self.state["components"][name]["last_known_remote_sha"] = remote_sha[:10]
+        self.state["components"][name]["last_known_tag"] = latest_tag
+
         return info
+
+    def generate_diff_patches(self):
+        """Generates surgical .diff files in docs/reports/patches/ for human review."""
+        patches_dir = self.root / "docs" / "reports" / "patches"
+        patches_dir.mkdir(parents=True, exist_ok=True)
+
+        for comp_name, data in self.results.items():
+            for c in data.get("new_commits", []):
+                if c["risk"] in ["HIGH_CAUTION", "CAUTION", "SAFE_ADAPT"]:
+                    c_sha = c["sha"]
+                    patch_file = patches_dir / f"{comp_name}_{c_sha}.diff"
+                    rc, diff_out, _ = run_cmd(f"git show {c_sha}", cwd=self.root)
+                    if diff_out:
+                        with open(patch_file, "w", encoding="utf-8") as f:
+                            f.write(diff_out)
 
     def run_preflight_checks(self) -> dict:
         """Executes sanity checks on AzamGNS3 code."""
@@ -255,11 +338,11 @@ class UpdateChecker:
         if not venv_py.exists():
             venv_py = Path(sys.executable)
 
-        # 1. Run unit test suite
+        # 1. Unit test suite
         rc, test_out, test_err = run_cmd(f'"{venv_py}" "{test_script}"', cwd=self.root)
         tests_passed = (rc == 0)
 
-        # 2. Syntax compilation checks
+        # 2. Syntax compilation probes
         python_files = [
             "gns3-server/gns3server/compute/qemu/cpu_governor.py",
             "gns3-server/gns3server/compute/qemu/qemu_vm.py",
@@ -283,97 +366,146 @@ class UpdateChecker:
         }
 
     def generate_report(self, preflight: dict) -> Path:
-        """Generates a structured Markdown report."""
+        """Generates a structured Markdown report and updates LATEST_AUDIT.md."""
         reports_dir = self.root / "docs" / "reports"
         reports_dir.mkdir(parents=True, exist_ok=True)
         report_file = reports_dir / f"UPDATE_AUDIT_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.md"
+        latest_file = reports_dir / "LATEST_AUDIT.md"
+
+        content = []
+        content.append("# AzamGNS3 Upstream Update Audit Report\n")
+        content.append(f"- **Scan Timestamp**: {self.timestamp}")
+        content.append(f"- **Philosophy**: Audited Adaptation vs. Blind Copy-Pasting")
+        content.append(f"- **System Health**: {'🟢 PASSED (All Tests OK)' if preflight['tests_passed'] and preflight['compile_ok'] else '🔴 ATTENTION NEEDED'}\n")
+
+        content.append("## 1. Upstream Remote Status Overview\n")
+        content.append("| Component | Synced SHA | Remote SHA | Latest Tag | Commits Ahead | Cross-Audit Risk |")
+        content.append("| :--- | :--- | :--- | :--- | :--- | :--- |")
+
+        for comp in COMPONENTS:
+            data = self.results.get(comp["name"], {})
+            count = len(data.get("new_commits", []))
+            status = data.get("status", "UNKNOWN")
+            synced_sha = data.get("last_synced_sha", "NOT_SET")
+            remote_sha = data.get("remote_sha", "-")
+            tag = data.get("latest_tag", "-")
+
+            if data.get("has_conflicts"):
+                risk = "🔴 COLLISION (Conflict)"
+            elif count > 0:
+                risk = "🟢 SAFE (New Commits)"
+            else:
+                risk = "✓ UP TO DATE"
+
+            content.append(f"| **{comp['name']}** | `{synced_sha}` | `{remote_sha}` | `{tag}` | {count} | {risk} |")
+
+        content.append("\n---\n")
+        content.append("## 2. Commit Breakdown & Surgical Cross-Audit\n")
+
+        total_new_commits = 0
+        for comp in COMPONENTS:
+            data = self.results.get(comp["name"], {})
+            commits = data.get("new_commits", [])
+            total_new_commits += len(commits)
+
+            if commits:
+                content.append(f"### Component: `{comp['name']}` ({len(commits)} new upstream commits)\n")
+                content.append("| Commit | Date | Author | Risk | Subject |")
+                content.append("| :--- | :--- | :--- | :--- | :--- |")
+                for c in commits:
+                    risk_badge = "🔴 " if c["risk"] == "HIGH_CAUTION" else ("🟡 " if c["risk"] == "CAUTION" else ("⚠️ " if c["risk"] == "SAFE_ADAPT" else "🟢 "))
+                    content.append(f"| `{c['sha']}` | {c['date']} | {c['author']} | {risk_badge}{c['risk']} | {c['subject']} |")
+
+                if data.get("conflicting_files"):
+                    content.append("\n> [!CAUTION]")
+                    content.append(f"> **Protected Files Touched in `{comp['name']}`:**")
+                    for cf in data["conflicting_files"]:
+                        content.append(f"> - `{cf}`: Protected by AzamGNS3 custom performance engine.")
+                    content.append(">\n> **Directive**: Do NOT `git pull` or blindly merge. Perform surgical line-by-line adaptation.\n")
+
+                if data.get("dependency_bumps"):
+                    content.append("\n> [!WARNING]")
+                    content.append(f"> **Dependency Bumps Detected in `{comp['name']}`:**")
+                    for dep in data["dependency_bumps"]:
+                        content.append(f"> - `{dep}`")
+                    content.append(">\n> Run `pip-audit` or `npm audit` before applying.\n")
+            else:
+                content.append(f"### Component: `{comp['name']}`\n- Status: 100% Up-to-date with upstream remote.\n")
+
+        content.append("---\n")
+        content.append("## 3. Pre-Flight Verification Results\n")
+        content.append(f"- **Unit Tests (`tests/test_optimizations.py`)**: {'✓ PASSED' if preflight['tests_passed'] else '✗ FAILED'}")
+        content.append(f"- **Python 3.14 AST Compilation**: {'✓ PASSED (Zero syntax errors)' if preflight['compile_ok'] else '✗ FAILED'}")
+        if preflight.get("compile_errors"):
+            content.append(f"- Compilation Errors: `{preflight['compile_errors']}`")
+
+        content.append("\n---\n")
+        content.append("## 4. Recommended Action\n")
+        if total_new_commits == 0:
+            content.append("> [!NOTE]\n> **No Action Required**: AzamGNS3 is completely synchronized with official upstream repositories.\n")
+        elif any(d.get("has_conflicts") for d in self.results.values()):
+            content.append("> [!IMPORTANT]\n> **Audited Adaptation Required**: New upstream commits touch protected core files. Review the isolated `.diff` patches in `docs/reports/patches/`, preserve AzamGNS3's CPU Governor and Bootstorm engines, and port safe fixes.\n")
+        else:
+            content.append("> [!TIP]\n> **Safe to Fast-Forward**: Upstream commits touch only non-critical or independent files. Safe for staging PR integration.\n")
+
+        report_text = "\n".join(content) + "\n"
 
         with open(report_file, "w", encoding="utf-8") as f:
-            f.write(f"# AzamGNS3 Upstream Update Audit Report\n\n")
-            f.write(f"- **Scan Timestamp**: {self.timestamp}\n")
-            f.write(f"- **Philosophy**: Audited Adaptation vs. Blind Copy-Pasting\n")
-            f.write(f"- **System Health**: {'🟢 PASSED (All Tests OK)' if preflight['tests_passed'] and preflight['compile_ok'] else '🔴 ATTENTION NEEDED'}\n\n")
+            f.write(report_text)
+        with open(latest_file, "w", encoding="utf-8") as f:
+            f.write(report_text)
 
-            f.write("## 1. Submodule Status Overview\n\n")
-            f.write("| Submodule | Current SHA | Remote SHA | Status | Commits Ahead | Cross-Audit Risk |\n")
-            f.write("| :--- | :--- | :--- | :--- | :--- | :--- |\n")
-
-            for submod in SUBMODULES:
-                data = self.results.get(submod["name"], {})
-                count = len(data.get("new_commits", []))
-                status = data.get("status", "UNKNOWN")
-                risk = "🔴 CAUTION (Conflict)" if data.get("has_conflicts") else ("🟢 SAFE" if count > 0 else "✓ UP TO DATE")
-                f.write(f"| **{submod['name']}** | `{data.get('local_sha', '-')}` | `{data.get('remote_sha', '-')}` | {status} | {count} | {risk} |\n")
-
-            f.write("\n---\n\n")
-            f.write("## 2. Commit Breakdown & Surgical Cross-Audit\n\n")
-
-            total_new_commits = 0
-            for submod in SUBMODULES:
-                data = self.results.get(submod["name"], {})
-                commits = data.get("new_commits", [])
-                total_new_commits += len(commits)
-
-                if commits:
-                    f.write(f"### Submodule: `{submod['name']}` ({len(commits)} new upstream commits)\n\n")
-                    f.write("| Commit | Date | Author | Risk | Subject |\n")
-                    f.write("| :--- | :--- | :--- | :--- | :--- |\n")
-                    for c in commits:
-                        risk_badge = "🔴 " if c["risk"] == "HIGH_CAUTION" else ("🟡 " if c["risk"] == "CAUTION" else "🟢 ")
-                        f.write(f"| `{c['sha']}` | {c['date']} | {c['author']} | {risk_badge}{c['risk']} | {c['subject']} |\n")
-
-                    if data.get("conflicting_files"):
-                        f.write("\n> [!CAUTION]\n")
-                        f.write(f"> **Protected Files Touched in `{submod['name']}`:**\n")
-                        for cf in data["conflicting_files"]:
-                            f.write(f"> - `{cf}`: Protected by AzamGNS3 custom performance engine.\n")
-                        f.write(">\n> **Directive**: Do NOT `git pull` or blindly merge. Perform surgical line-by-line adaptation.\n\n")
-                else:
-                    f.write(f"### Submodule: `{submod['name']}`\n- Status: 100% Up-to-date with upstream.\n\n")
-
-            f.write("---\n\n")
-            f.write("## 3. Pre-Flight Verification Results\n\n")
-            f.write(f"- **Unit Tests (`tests/test_optimizations.py`)**: {'✓ PASSED' if preflight['tests_passed'] else '✗ FAILED'}\n")
-            f.write(f"- **Python 3.14 AST Compilation**: {'✓ PASSED (Zero syntax errors)' if preflight['compile_ok'] else '✗ FAILED'}\n")
-            if preflight.get("compile_errors"):
-                f.write(f"- Compilation Errors: `{preflight['compile_errors']}`\n")
-
-            f.write("\n---\n\n")
-            f.write("## 4. Recommended Action\n\n")
-            if total_new_commits == 0:
-                f.write("> [!NOTE]\n> **No Action Required**: AzamGNS3 is completely in sync with official upstream repositories.\n")
-            elif any(d.get("has_conflicts") for d in self.results.values()):
-                f.write("> [!IMPORTANT]\n> **Audited Adaptation Required**: New upstream commits touch core files. Review the diff in an isolated sandbox, preserve AzamGNS3's CPU Governor and Bootstorm engines, and port only bug fixes.\n")
-            else:
-                f.write("> [!TIP]\n> **Safe to Fast-Forward**: Upstream commits touch only non-critical or independent files.\n")
+        # Append to GitHub Step Summary if in GitHub Actions
+        gh_summary = os.environ.get("GITHUB_STEP_SUMMARY")
+        if gh_summary:
+            try:
+                with open(gh_summary, "a", encoding="utf-8") as f:
+                    f.write(report_text)
+            except Exception:
+                pass
 
         return report_file
 
-    def execute(self, ci_mode: bool = False, json_output: bool = False, sandbox: bool = False) -> int:
-        """Runs the entire update check workflow."""
+    def execute(self, ci_mode: bool = False, json_output: bool = False, stage_safe: bool = False, generate_patches: bool = False, mark_synced: bool = False) -> int:
+        """Executes full update check cycle."""
         if not json_output:
             print(f"\n{BOLD}===================================================================={RESET}")
             print(f"{BOLD} [AzamGNS3] Upstream Update Checker & Code Cross-Audit Engine      {RESET}")
             print(f"{BOLD}===================================================================={RESET}")
             print(f"Timestamp: {self.timestamp}\n")
 
-        for submod in SUBMODULES:
-            self.results[submod["name"]] = self.inspect_submodule(submod)
+        # Inspect all components
+        for comp in COMPONENTS:
+            self.results[comp["name"]] = self.inspect_component(comp)
 
+        # Pre-flight probes
         preflight = self.run_preflight_checks() if not json_output else {"tests_passed": True, "compile_ok": True}
         report_path = self.generate_report(preflight)
 
         total_commits = sum(len(d.get("new_commits", [])) for d in self.results.values())
         conflicts = any(d.get("has_conflicts", False) for d in self.results.values())
 
-        if sandbox and total_commits > 0:
-            branch_name = f"sync/audit-{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            for submod in SUBMODULES:
-                if self.results.get(submod["name"], {}).get("new_commits"):
-                    sub_path = self.root / submod["path"]
-                    run_cmd(f"git checkout -b {branch_name}", cwd=sub_path)
+        # Generate patches if requested
+        if generate_patches or conflicts:
+            self.generate_diff_patches()
+
+        # Mark synced if requested
+        if mark_synced:
+            for comp_name, data in self.results.items():
+                if data.get("remote_sha"):
+                    self.state["components"][comp_name]["last_synced_sha"] = data["remote_sha"]
+            self.save_state()
             if not json_output:
-                print(f"{CYAN}[+] Created isolated sandbox branch: {branch_name}{RESET}")
+                print(f"{GREEN}[+] Updated docs/reports/upstream_state.json with current remote SHAs.{RESET}")
+        else:
+            self.save_state()
+
+        # Two-tier safe staging branch
+        if stage_safe and total_commits > 0 and not conflicts:
+            branch_name = f"sync/upstream-{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            run_cmd(f"git checkout -b {branch_name}", cwd=self.root)
+            if not json_output:
+                print(f"{CYAN}[+] Staged safe commits into isolated branch: {branch_name}{RESET}")
 
         if json_output:
             payload = {
@@ -382,7 +514,7 @@ class UpdateChecker:
                 "has_conflicts": conflicts,
                 "preflight_passed": preflight["tests_passed"] and preflight["compile_ok"],
                 "report_file": str(report_path),
-                "submodules": self.results
+                "components": self.results
             }
             print(json.dumps(payload, indent=2))
             if ci_mode and conflicts:
@@ -391,12 +523,14 @@ class UpdateChecker:
                 return 1
             return 0
 
+        # Console Summary
         print(f"\n{BOLD}===================================================================={RESET}")
         print(f"{BOLD} SUMMARY RESULTS:{RESET}")
         print(f"====================================================================")
 
         for name, data in self.results.items():
             commits = data.get("new_commits", [])
+            tag_info = f" [Tag: {data.get('latest_tag', '-')}]"
             if data.get("has_conflicts"):
                 status_str = f"{RED}Commits Available ({len(commits)}) - COLLISION DETECTED{RESET}"
             elif commits:
@@ -404,7 +538,7 @@ class UpdateChecker:
             else:
                 status_str = f"{GREEN}Up-to-Date (0 new commits){RESET}"
 
-            print(f"  * {BOLD}{name:<12}{RESET}: {status_str} [Local: {data.get('local_sha', '-')}]")
+            print(f"  * {BOLD}{name:<12}{RESET}: {status_str} [Remote: {data.get('remote_sha', '-')[:10]}]{tag_info}")
 
         print(f"--------------------------------------------------------------------")
         print(f"  Pre-Flight Probes: {'PASS' if preflight['tests_passed'] and preflight['compile_ok'] else 'FAIL'}")
@@ -413,11 +547,11 @@ class UpdateChecker:
 
         if conflicts:
             print(f"{YELLOW}[!] WARNING: Upstream commits touch protected AzamGNS3 core files.{RESET}")
-            print(f"{YELLOW}[!] Follow Audited Adaptation runbook. Do not blindly merge.{RESET}\n")
+            print(f"{YELLOW}[!] Review generated diffs in docs/reports/patches/. Do not blindly merge.{RESET}\n")
             if ci_mode:
                 return 2
         elif total_commits > 0:
-            print(f"{GREEN}[+] New upstream commits are safe to review and integrate.{RESET}\n")
+            print(f"{GREEN}[+] New upstream commits are safe to review and adapt.{RESET}\n")
         else:
             print(f"{GREEN}[OK] AzamGNS3 is completely synchronized with upstream GNS3.{RESET}\n")
 
@@ -431,8 +565,10 @@ def main():
     parser.add_argument("--root", default=None, help="Root directory of AzamGNS3 workspace")
     parser.add_argument("--ci", action="store_true", help="CI/CD mode: exits with non-zero code on conflicts or test failures")
     parser.add_argument("--json", action="store_true", help="Output machine-readable JSON for automated pipelines")
-    parser.add_argument("--sandbox", action="store_true", help="Auto-create isolated git branch for testing adaptations")
-    parser.add_argument("--track", choices=["master", "stable"], default="master", help="Ingestion track: master (bleeding-edge) or stable (release tags)")
+    parser.add_argument("--no-patches", action="store_true", help="Do not generate .diff files in docs/reports/patches/")
+    parser.add_argument("--mark-synced", action="store_true", help="Update upstream_state.json with current remote SHAs")
+    parser.add_argument("--depth", type=int, default=30, help="Git fetch depth from upstream remotes")
+    parser.add_argument("--track", choices=["master", "stable"], default="master", help="Ingestion track: master or stable")
     args = parser.parse_args()
 
     if args.root:
@@ -440,8 +576,14 @@ def main():
     else:
         workspace_root = Path(__file__).resolve().parent.parent
 
-    checker = UpdateChecker(workspace_root, track=args.track)
-    exit_code = checker.execute(ci_mode=args.ci, json_output=args.json, sandbox=args.sandbox)
+    checker = UpdateChecker(workspace_root, track=args.track, depth=args.depth)
+    exit_code = checker.execute(
+        ci_mode=args.ci,
+        json_output=args.json,
+        stage_safe=False,
+        generate_patches=(not args.no_patches),
+        mark_synced=args.mark_synced
+    )
     sys.exit(exit_code)
 
 

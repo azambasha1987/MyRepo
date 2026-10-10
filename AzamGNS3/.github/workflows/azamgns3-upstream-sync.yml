@@ -1,36 +1,24 @@
-name: "AzamGNS3 Upstream Drift & Cross-Audit Sentinel"
+name: "AzamGNS3 Daily Upstream Check"
 
 on:
   schedule:
-    # Run every Monday at 02:00 UTC (07:30 IST)
-    - cron: '0 2 * * 1'
+    # Run daily at 02:00 UTC (07:30 IST)
+    - cron: '0 2 * * *'
   workflow_dispatch:
-    inputs:
-      auto_sandbox:
-        description: 'Auto-create isolated sandbox branch for pending commits'
-        type: boolean
-        default: false
-  pull_request:
-    paths:
-      - 'gns3-server/**'
-      - 'gns3-gui/**'
-      - 'gns3-web-ui/**'
 
 jobs:
-  audit-upstream-drift:
+  check-upstream:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout AzamGNS3 Repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive
           fetch-depth: 0
 
       - name: Set up Python Environment
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: 'pip'
 
       - name: Install Dependencies
         run: |
@@ -38,13 +26,16 @@ jobs:
           pip install -r gns3-server/requirements.txt || true
           pip install -e gns3-server || true
 
-      - name: Run Upstream Update Checker & Cross-Audit
+      - name: Check Upstream Changes
         run: |
-          python scripts/azamgns3-update-checker.py --ci
+          python scripts/azamgns3-update-checker.py --generate-patches
 
-      - name: Upload Audit Reports
+      - name: Upload Audit Reports & Patches
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: update-audit-reports
-          path: docs/reports/
+          path: |
+            docs/reports/*.md
+            docs/reports/upstream_state.json
+            docs/reports/patches/

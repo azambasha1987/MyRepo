@@ -1,0 +1,17 @@
+[Unit]
+Description=AzamGNS3 Daily Upstream Drift & Cross-Audit Radar
+Documentation=https://github.com/azambasha1987/MyRepo
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=azam
+Group=azam
+WorkingDirectory=/opt/azamgns3
+ExecStart=/opt/azamgns3/venv/bin/python /opt/azamgns3/scripts/azamgns3-update-checker.py --generate-patches
+StandardOutput=append:/var/log/azamgns3/upstream_audit.log
+StandardError=append:/var/log/azamgns3/upstream_audit.log
+
+[Install]
+WantedBy=multi-user.target

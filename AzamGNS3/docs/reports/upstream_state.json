@@ -1,0 +1,26 @@
+{
+  "last_scan_utc": "2026-10-10T01:39:02Z",
+  "components": {
+    "gns3-server": {
+      "upstream_url": "https://github.com/GNS3/gns3-server.git",
+      "branch": "3.1",
+      "last_synced_sha": "5c6478e77e",
+      "last_known_remote_sha": "5c6478e77e",
+      "last_known_tag": "v3.1.0a6"
+    },
+    "gns3-gui": {
+      "upstream_url": "https://github.com/GNS3/gns3-gui.git",
+      "branch": "master",
+      "last_synced_sha": "c776d4ef37",
+      "last_known_remote_sha": "c776d4ef37",
+      "last_known_tag": "v3.1.0a6"
+    },
+    "gns3-web-ui": {
+      "upstream_url": "https://github.com/GNS3/gns3-web-ui.git",
+      "branch": "3.1",
+      "last_synced_sha": "9c477e37c4",
+      "last_known_remote_sha": "9c477e37c4",
+      "last_known_tag": "v2020.4.0-beta.1"
+    }
+  }
+}
